@@ -140,10 +140,17 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
     /* GRR TO DO:  get and map background color? */
 
     if (!(color_type & PNG_COLOR_MASK_ALPHA)) {
+#ifdef PNG_READ_FILLER_SUPPORTED
+        /* GRP:  expand palette to RGB, and grayscale or RGB to GA or RGBA */
+        if (color_type == PNG_COLOR_TYPE_PALETTE)
+            png_set_expand(png_ptr);
+        png_set_filler(png_ptr, 65535L, PNG_FILLER_AFTER);
+#else
         fprintf(stderr, "pngquant readpng:  image is neither RGBA nor GA\n");
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         mainprog_ptr->retval = 26;
         return mainprog_ptr->retval;
+#endif
     }
 /*
     if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
@@ -299,8 +306,10 @@ int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
      * major revisions of libpng (but png_ptr/info_ptr will fail, regardless) */
     png_set_PLTE(png_ptr, info_ptr, (png_colorp)mainprog_ptr->palette,
       mainprog_ptr->num_palette);
-    png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans,
-      mainprog_ptr->num_trans, NULL);
+
+    if (mainprog_ptr->num_trans > 0)
+        png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans,
+          mainprog_ptr->num_trans, NULL);
 
     if (mainprog_ptr->gamma > 0.0)
         png_set_gAMA(png_ptr, info_ptr, mainprog_ptr->gamma);

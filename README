@@ -1,6 +1,6 @@
-======================================================================
-pngquant version 0.95 (DARNED CLOSE TO FINAL BETA) of 29 December 2000
-======================================================================
+                ======================================
+                 pngquant version 1.0 of 5 April 2002
+                ======================================
 
 pngquant is a simple tool with one purpose:  convert 32-bit RGBA PNGs into
 8-bit RGBA-palette PNGs (or fewer than 8 bits, if you want), via quantization
@@ -28,7 +28,7 @@ It does still lack a few features:
     (i.e., all samples are truncated to 8 bits and all images are promoted
     to RGBA before quantization)
 
-These issues will be addressed in a post-1.0 release.
+These issues will be addressed in a post-1.0 release...someday.
 
 By the way, be sure to check "before" and "after" file sizes, preferably with
 pngcrush (http://pmt.sourceforge.net/pngcrush/); dithered palette images may
@@ -62,9 +62,9 @@ use the code however you like, as long as you acknowledge its origins.)
 pngquant.c:
 
    Copyright (C) 1989, 1991 by Jef Poskanzer.
-   Copyright (C) 1997, 2000 by Greg Roelofs; based on an idea by
-                            Stefan Schneider.
-  
+   Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
+                                  Stefan Schneider.
+
    Permission to use, copy, modify, and distribute this software and its
    documentation for any purpose and without fee is hereby granted, provided
    that the above copyright notice appear in all copies and that both that
@@ -74,7 +74,7 @@ pngquant.c:
 
 rwpng.c (and rwpng.h):
 
-   Copyright (c) 1998-2000 Greg Roelofs.  All rights reserved.
+   Copyright (c) 1998-2002 Greg Roelofs.  All rights reserved.
 
    This software is provided "as is," without warranty of any kind,
    express or implied.  In no event shall the author or contributors

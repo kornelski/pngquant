@@ -1,3 +1,8 @@
+version 1.0
+------------
+ - cleaned up Makefile.unx (better gcc optimizations, "clean" target)
+ - recompiled binaries with zlib 1.1.4
+
 version 0.95
 ------------
  - fixed Win32 filter bug (binary mode for stdin/stdout)

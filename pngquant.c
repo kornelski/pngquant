@@ -1,8 +1,8 @@
 /* pngquant.c - quantize the colors in an alphamap down to a specified number
 **
 ** Copyright (C) 1989, 1991 by Jef Poskanzer.
-** Copyright (C) 1997, 2000 by Greg Roelofs; based on an idea by
-**                          Stefan Schneider.
+** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
+**                                Stefan Schneider.
 **
 ** Permission to use, copy, modify, and distribute this software and its
 ** documentation for any purpose and without fee is hereby granted, provided
@@ -25,7 +25,7 @@
 /* GRR TO DO:  if all samples are 0 or maxval, eliminate gAMA chunk (rwpng.c) */
 
 
-#define VERSION "0.95 of 29 December 2000"
+#define VERSION "1.0 of 5 April 2002"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] <ncolors> [pngfile [pngfile ...]]\n\
@@ -64,6 +64,7 @@
 #  endif
 #endif
 
+#include "zlib.h"	/* libpng header; includes zlib.h */
 #include "png.h"	/* libpng header; includes zlib.h */
 #include "rwpng.h"	/* typedefs, common macros, public prototypes */
 

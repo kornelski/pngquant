@@ -1,5 +1,5 @@
 # Makefile for pngquant
-# GRR 20001222
+# GRR 20020405
 
 CC=gcc
 
@@ -9,14 +9,18 @@ PNGLIB = ../libpng
 ZINC = ../zlib
 ZLIB = ../zlib
 
-CFLAGS = -O3 -Wall -I. -I$(PNGINC) -I$(ZINC)
+CFLAGS = -O3 -Wall -I. -I$(PNGINC) -I$(ZINC) -funroll-loops -fomit-frame-pointer
+
 #LDFLAGS = -L$(PNGLIB) -lpng -L$(ZLIB) -lz -lm
 LDFLAGS = $(PNGLIB)/libpng.a -L$(ZLIB) -lz -lm
+#LDFLAGS = $(PNGLIB)/libpng.a $(ZLIB)/libz.a -lm
 
-OBJS = pngquant.o rwpng.o 
+OBJS = pngquant.o rwpng.o
 
 all: pngquant
 
-pngquant: pngquant.o rwpng.o
-	$(CC) -o pngquant $(OBJS) $(LDFLAGS)
+pngquant: $(OBJS)
+	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
+clean:
+	rm -f pngquant $(OBJS)

@@ -13,9 +13,6 @@
 */
 
 /* GRR TO DO:  set stdin and stdout to binary mode on bogus OSes */
-/* GRR TO DO:  find suitable replacement for getpid() in srandom() " " " */
-/* GRR TO DO:  add EMX wildcard code */
-/* GRR TO DO:  make MSVC makefile */
 /* GRR TO DO:  set sBIT flag appropriately for maxval-scaled images */
 /* GRR TO DO:  "original file size" and "quantized file size" if verbose? */
 /* GRR TO DO:  add option to preserve background color (if any) exactly */
@@ -25,7 +22,7 @@
 /* GRR TO DO:  replace PBMPLUS mem management routines? */
 
 
-#define VERSION "0.90 of 27 December 2000"
+#define VERSION "0.91 of 28 December 2000"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] <ncolors> [pngfile [pngfile ...]]\n\
@@ -46,10 +43,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>     /* getpid() */
+#ifdef unix
+#  include <unistd.h>	/* getpid() */
+#endif
+#ifdef _MSC_VER		/* or use WIN32 (defined in Makefile.w32) */
+#  include <process.h>	/* _getpid() */
+#  ifndef getpid
+#    define getpid _getpid
+#  endif
+#  ifndef srandom
+#    define srandom srand
+#  endif
+#  ifndef random
+#    define random rand
+#  endif
+#endif
 
-#include "png.h"        /* libpng header; includes zlib.h */
-#include "rwpng.h"      /* typedefs, common macros, public prototypes */
+#include "png.h"	/* libpng header; includes zlib.h */
+#include "rwpng.h"	/* typedefs, common macros, public prototypes */
 
 typedef uch pixval;	/* GRR: hardcoded for now; later add 16-bit support */
 
@@ -186,6 +197,10 @@ main( argc, argv )
     char *pq_usage = PNGQUANT_USAGE;
 
 
+#ifdef __EMX__
+    _wildcard(&argc, &argv);   /* Unix-like globbing for OS/2 and DOS */
+#endif
+
     argn = 1;
     mapapixels = (apixel **)0;
 
@@ -290,8 +305,10 @@ main( argc, argv )
     while (argn <= argc) {
         int retval;
 
-        fprintf(stderr, "%s:\n", filename);
-        fflush(stderr);
+        if (verbose) {
+            fprintf(stderr, "%s:\n", filename);
+            fflush(stderr);
+        }
 
 #ifdef SUPPORT_MAPFILE
         retval = pngquant(filename, newext, floyd, force, verbose, using_stdin,
@@ -306,8 +323,10 @@ main( argc, argv )
         }
         ++file_count;
 
-        fprintf(stderr, "\n");
-        fflush(stderr);
+        if (verbose) {
+            fprintf(stderr, "\n");
+            fflush(stderr);
+        }
 
         filename = argv[argn];
         ++argn;
@@ -479,8 +498,8 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
                   " to improve clustering...\n", maxval, newmaxval);
                 fflush(stderr);
             }
-            for ( row = 0; row < rows; ++row )
-                for ( col = 0, pP = apixels[row]; col < cols; ++col, ++pP )
+            for ( row = 0; (ulg)row < rows; ++row )
+                for ( col = 0, pP = apixels[row]; (ulg)col < cols; ++col, ++pP )
                     PAM_DEPTH( *pP, *pP, maxval, newmaxval );
             maxval = newmaxval;
         }
@@ -630,7 +649,7 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
     if (rwpng_info.interlaced) {
         if ((rwpng_info.indexed_data = (uch *)malloc(rows * cols)) != NULL) {
             if ((row_pointers = (uch **)malloc(rows * sizeof(uch *))) != NULL) {
-                for (row = 0;  row < rows;  ++row)
+                for (row = 0;  (ulg)row < rows;  ++row)
                     row_pointers[row] = rwpng_info.indexed_data + row*cols;
             }
         }
@@ -694,7 +713,7 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
         thisaerr = (long*) pm_allocrow( cols + 2, sizeof(long) );
         nextaerr = (long*) pm_allocrow( cols + 2, sizeof(long) );
         srandom( (int) ( time( 0 ) ^ getpid( ) ) );
-        for ( col = 0; col < cols + 2; ++col ) {
+        for ( col = 0; (ulg)col < cols + 2; ++col ) {
             thisrerr[col] = random( ) % ( FS_SCALE * 2 ) - FS_SCALE;
             thisgerr[col] = random( ) % ( FS_SCALE * 2 ) - FS_SCALE;
             thisberr[col] = random( ) % ( FS_SCALE * 2 ) - FS_SCALE;
@@ -703,11 +722,11 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
         }
         fs_direction = 1;
     }
-    for ( row = 0; row < rows; ++row ) {
+    for ( row = 0; (ulg)row < rows; ++row ) {
         outrow = rwpng_info.interlaced? row_pointers[row] :
                                         rwpng_info.indexed_data;
         if ( floyd )
-            for ( col = 0; col < cols + 2; ++col )
+            for ( col = 0; (ulg)col < cols + 2; ++col )
                 nextrerr[col] = nextgerr[col] =
                 nextberr[col] = nextaerr[col] = 0;
         if ( ( ! floyd ) || fs_direction ) {
@@ -736,7 +755,8 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
                 else if ( sb > maxval ) sb = maxval;
                 if ( sa < 0 ) sa = 0;
                 else if ( sa > maxval ) sa = maxval;
-                PAM_ASSIGN( *pP, sr, sg, sb, sa );
+                /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
+                PAM_ASSIGN( *pP, (uch)sr, (uch)sg, (uch)sb, (uch)sa );
             }
 
             /* Check hash table to see if we have already matched this color. */
@@ -1152,7 +1172,8 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
         if ( b > maxval ) b = maxval;
         a = a / sum;
         if ( a > maxval ) a = maxval;
-        PAM_ASSIGN( acolormap[bi].acolor, r, g, b, a );
+        /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
+        PAM_ASSIGN( acolormap[bi].acolor, (uch)r, (uch)g, (uch)b, (uch)a );
 #endif /*REP_AVERAGE_PIXELS*/
     }
 

@@ -1,6 +1,6 @@
-======================================================
-pngquant version 0.90 (FINAL BETA) of 27 December 2000
-======================================================
+=============================================================
+pngquant version 0.91 (PRETTY FINAL BETA) of 28 December 2000
+=============================================================
 
 pngquant is a simple tool with one purpose:  convert 32-bit RGBA PNGs into
 8-bit RGBA-palette PNGs (or fewer than 8 bits, if you want), via quantization

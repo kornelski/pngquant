@@ -1,3 +1,8 @@
+version 0.91
+------------
+ - fixed Win32 (MSVC) portability issues (getpid(), random(), srandom())
+ - added Makefile.w32 for MSVC (tested with 5.0)
+
 version 0.90
 ------------
  - added support for multiple files on command line

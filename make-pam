@@ -1,0 +1,12 @@
+#!/bin/sh
+
+gcc -c -fomit-frame-pointer -I. -O3 -D_BSD_SOURCE -I. -I../pbm -I../pgm -DRGB_DB=\"/usr/lib/X11/rgb\" pamquant.c -o pamquant.o
+
+gcc -c -fomit-frame-pointer -I. -O3 -D_BSD_SOURCE -I. -I../pbm -I../pgm -DRGB_DB=\"/usr/lib/X11/rgb\" libpam1.c -o libpam1.o
+gcc -c -fomit-frame-pointer -I. -O3 -D_BSD_SOURCE -I. -I../pbm -I../pgm -DRGB_DB=\"/usr/lib/X11/rgb\" libpam3.c -o libpam3.o
+
+# ar r libppm.a libppm1.o libppm2.o libppm3.o libppm4.o libppm5.o bitio.o
+# gcc -c -fomit-frame-pointer -fpic  -I. -O3 -D_BSD_SOURCE  -I. -I../pbm -I../pgm -DRGB_DB=\"/usr/lib/X11/rgb\" libppm1.c -o libppm1.pic.o
+# gcc -o libppm.so.1.0.0 -shared -Wl,-soname -Wl,libppm.so.1  libppm1.pic.o libppm2.pic.o libppm3.pic.o libppm4.pic.o libppm5.pic.o bitio.pic.o  -lc
+
+gcc -o pamquant pamquant.o libpam1.o libpam3.o -L. -lppm -L../pgm -lpgm -L../pbm -lpbm -lm 

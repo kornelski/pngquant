@@ -1,6 +1,6 @@
-===============================================
-pngquant version 0.7 (BETA) of 24 December 2000
-===============================================
+================================================
+pngquant version 0.75 (BETA) of 26 December 2000
+================================================
 
 pngquant is a simple tool with one purpose:  convert 32-bit RGBA PNGs into
 8-bit RGBA-palette PNGs (or fewer than 8 bits, if you want), via quantization
@@ -9,23 +9,24 @@ and either ordered or diffusion (Floyd-Steinberg) dithering.
 The current beta version is basically functional but lacks several important
 features:
 
- - no reordering of the palette so that opaque entries can be eliminated
-   from the tRNS chunk
-
  - no multifile support (e.g., "pngquant -fs 256 *.png")
 
  - no ancillary chunk preservation (except gAMA)
 
+ - no preservation of significant-bits info after rescaling (sBIT chunk)
+
  - no mapfile support
 
 It also doesn't treat 16-bit-per-sample files or gray+alpha files specially
-(all samples get truncated to 8 bits and all images promoted to RGBA before
-quantization).  These issues will be addressed in time, but palette optimi-
-zation and multifile support are first on the list.
+(all samples get truncated to 8 bits and all images are promoted to RGBA
+before quantization).  These issues will be addressed in time, but multifile
+support is the highest priority at the moment.
 
-I'm also debating whether to make FS dithering the default; ordered dithering
-usually looks terrible, at least with interesting alpha channels (i.e., ones
-not used solely for antialiasing curved and diagonal edges).
+Version 0.75 fixes a bug or two, adds tRNS optimization, and changes the
+default behavior in a couple of respects, including making Floyd-Steinberg
+the default dithering method (since it usually looks much better, at least
+for interesting alpha channels).  See the CHANGELOG file for the complete
+list.
 
 By the way, be sure to check "before" and "after" file sizes, preferably with
 pngcrush (http://pmt.sourceforge.net/pngcrush/); dithered palette images may
@@ -33,9 +34,7 @@ be four times smaller to begin with, but they don't compress nearly as well
 as grayscale and truecolor images.  Some images, such as Henri Sivonen's alpha
 button (http://www.pp.htv.fi/hsivone1/css-test/bitmapstyle.html), can be made
 smaller as full 32-bit RGBA images (4076 bytes in this case) than as either
-FS-dithered palette (4622 bytes) or ordered-dither palette (4554 bytes) images.
-(Palette-reordering would remove only 107 bytes from each dithered image in
-this case.)
+FS-dithered palette (4550 bytes) or ordered-dither palette (4482 bytes) images.
 
 See http://www.libpng.org/pub/png/apps/pngquant.html for updates.
 

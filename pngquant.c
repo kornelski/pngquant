@@ -12,7 +12,7 @@
 ** implied warranty.
 */
 
-#define VERSION "0.7 of 24 December 2000"
+#define VERSION "0.75 of 26 December 2000"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -74,9 +74,49 @@ typedef acolorhist_list *acolorhash_table;
 
 static mainprog_info rwpng_info;
 
-#define FNMAX     1024
+/* initialize with the unity mapping for simplicity */
+/* GRR TO DO:  when multifile support, this will need to be reinitialized for
+ *             each file */
+static int remap[256] = {
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+    0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+    0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+    0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+    0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+    0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+    0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
+    0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+    0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
+    0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+    0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
+    0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
+    0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f,
+    0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+    0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
+    0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+    0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
+    0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+    0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+    0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+    0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+    0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+    0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+    0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+    0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+    0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+    0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+    0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+    0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
+};
 
-#define MAXCOLORS 32767
+
+
+#define FNMAX      1024     /* max filename length */
+#define MAXCOLORS  32767
+#define FS_SCALE   1024     /* Floyd-Steinberg scaling factor */
 
 #define LARGE_NORM
 /* #define LARGE_LUM */   /* GRR 19970727:  this isn't well-defined for RGBA */
@@ -92,25 +132,25 @@ struct box {
     int sum;
 };
 
-static acolorhist_vector mediancut(acolorhist_vector achv, int colors,
-                                   int sum, pixval maxval, int newcolors);
-static int redcompare(const void *ch1, const void *ch2);
-static int greencompare(const void *ch1, const void *ch2);
-static int bluecompare(const void *ch1, const void *ch2);
-static int alphacompare(const void *ch1, const void *ch2);
-static int sumcompare(const void *b1, const void *b2);
 
-static acolorhist_vector pam_computeacolorhist (apixel **apixels, int cols,
-                                                int rows, int maxacolors,
-                                                int* acolorsP);
-static acolorhash_table pam_computeacolorhash (apixel** apixels, int cols,
-                                               int rows, int maxacolors,
-                                               int* acolorsP);
+
+static acolorhist_vector mediancut
+  (acolorhist_vector achv, int colors, int sum, pixval maxval, int newcolors);
+static int redcompare (const void *ch1, const void *ch2);
+static int greencompare (const void *ch1, const void *ch2);
+static int bluecompare (const void *ch1, const void *ch2);
+static int alphacompare (const void *ch1, const void *ch2);
+static int sumcompare (const void *b1, const void *b2);
+
+static acolorhist_vector pam_acolorhashtoacolorhist
+  (acolorhash_table acht, int maxacolors);
+static acolorhist_vector pam_computeacolorhist
+  (apixel **apixels, int cols, int rows, int maxacolors, int* acolorsP);
+static acolorhash_table pam_computeacolorhash
+  (apixel** apixels, int cols, int rows, int maxacolors, int* acolorsP);
 static acolorhash_table pam_allocacolorhash (void);
-static int pam_addtoacolorhash (acolorhash_table acht, apixel *acolorP,
-                                int value);
-static acolorhist_vector pam_acolorhashtoacolorhist (acolorhash_table acht,
-                                                     int maxacolors);
+static int pam_addtoacolorhash
+  (acolorhash_table acht, apixel *acolorP, int value);
 static int pam_lookupacolor (acolorhash_table acht, apixel* acolorP);
 static void pam_freeacolorhist (acolorhist_vector achv);
 static void pam_freeacolorhash (acolorhash_table acht);
@@ -119,6 +159,8 @@ static char *pm_allocrow (int cols, int size);
 static void pm_freerow (char* itrow);
 static char **pm_allocarray (int cols, int rows, int size);
 static void pm_freearray (char **its, int rows);
+
+
 
 int
 main( argc, argv )
@@ -142,7 +184,10 @@ main( argc, argv )
     register int ind;
     acolorhist_vector achv, acolormap=NULL;
     acolorhash_table acht;
-    int floyd=0, force=0;
+    int floyd = TRUE;
+    int force = FALSE;
+    int verbose = FALSE;
+    int using_stdin = FALSE;
     int usehash;
     long *thisrerr = NULL;
     long *nextrerr = NULL;
@@ -154,38 +199,50 @@ main( argc, argv )
     long *nextaerr = NULL;
     long *temperr;
     register long sr=0, sg=0, sb=0, sa=0, err;
-#define FS_SCALE 1024
     int fs_direction = 0;
     int x;
-    int using_stdin = FALSE;
     int channels;
+    int bot_idx, top_idx;
     char *filename, outname[FNMAX];
     char *pq_usage =
-      "usage:  pngquant [-floyd|-fs] [-force] <ncolors> [pngfile]\n"
-      "                 [-floyd|-fs] [-force] -map mapfile [pngfile]\n\n"
+      "usage:  pngquant [options] <ncolors> [pngfile]\n"
+      "                 [options] -map mapfile [pngfile]\n"
+      "options:\n"
+      "   -force         overwrite existing output files\n"
+      "   -ordered       use ordered dithering (synonyms:  -nofloyd, -nofs)\n"
+      "   -verbose       print status messages (synonyms:  -noquiet)\n"
+      "\n"
       "Quantizes a 32-bit RGBA PNG into an 8-bit (or smaller) RGBA-palette PNG\n"
-      "using either ordered dithering (default) or Floyd-Steinberg diffusion\n"
-      "dithering.  The output filename is the same as the input name except that\n"
-      "it ends in \"-8.png\" .  Use -force to overwrite existing files.\n\n"
+      "using either ordered dithering or Floyd-Steinberg diffusion dithering\n"
+      "(default).  The output filename is the same as the input name except that\n"
+      "it ends in \"-fs8.png\" or \"-or8.png\" (unless the input is standard\n"
+      "input, in which case \"stdin\" is used as the base name).  The default\n"
+      "behavior if the output file exists is to skip the conversion; use -force\n"
+      "to overwrite.\n\n"
       "NOTE:  the -map option is NOT YET SUPPORTED.\n";
 
 
     argn = 1;
-    floyd = 0;
     mapapixels = (apixel **)0;
 
     while ( argn < argc && argv[argn][0] == '-' && argv[argn][1] != '\0' ) {
         if ( 0 == strncmp( argv[argn], "-fs", 3 ) ||
              0 == strncmp( argv[argn], "-floyd", 3 ) )
-            floyd = 1;
+            floyd = TRUE;
         else if ( 0 == strncmp( argv[argn], "-nofs", 5 ) ||
-             0 == strncmp( argv[argn], "-nofloyd", 5 ) )
-            floyd = 0;
+                  0 == strncmp( argv[argn], "-nofloyd", 5 ) ||
+                  0 == strncmp( argv[argn], "-ordered", 3 ) )
+            floyd = FALSE;
         else if ( 0 == strncmp( argv[argn], "-force", 2 ) )
-            force = 1;
+            force = TRUE;
         else if ( 0 == strncmp( argv[argn], "-noforce", 4 ) )
-            force = 0;
-        /* GRR TO DO:  add "-ordered" option */
+            force = FALSE;
+        else if ( 0 == strncmp( argv[argn], "-verbose", 2 ) ||
+                  0 == strncmp( argv[argn], "-noquiet", 4 ) )
+            verbose = TRUE;
+        else if ( 0 == strncmp( argv[argn], "-noverbose", 4 ) ||
+                  0 == strncmp( argv[argn], "-quiet", 2 ) )
+            verbose = FALSE;
         /* GRR TO DO:  add option to preserve background color (if any) exactly */
 #ifdef SUPPORT_MAPFILE
         else if ( 0 == strncmp( argv[argn], "-map", 2 ) ) {
@@ -275,22 +332,22 @@ main( argc, argv )
      * the ".png" extension (or by appending "-8.png" if no extension) */
 
     x = strlen(filename);
-    if (x > FNMAX-7) {
+    if (x > FNMAX-9) {
         fprintf(stderr, "warning:  filename will be truncated\n");
         fflush(stderr);
-        x = FNMAX-7;
+        x = FNMAX-9;
     }
-    strncpy(outname, filename, FNMAX-7);
-    if (strncmp(outname+x-4, ".png", 4) == 0) 
-        strcpy(outname+x-4, "-8.png");
+    strncpy(outname, filename, x);
+    if (strncmp(outname+x-4, ".png", 4) == 0)
+        strcpy(outname+x-4, floyd? "-fs8.png" : "-or8.png");
     else
-        strcpy(outname+x, "-8.png");
+        strcpy(outname+x, floyd? "-fs8.png" : "-or8.png");
 
     if (!force) {
         if ((outfile = fopen( outname, "rb" )) != NULL) {
             fprintf(stderr, "warning:  %s exists; not overwriting\n", outname);
             fflush(stderr);
-            fclose( outfile );
+            fclose(outfile);
             return 15;
         }
     }
@@ -313,6 +370,7 @@ main( argc, argv )
     if (rwpng_info.retval) {
         fprintf(stderr, "rwpng_read_image() error\n");
         fflush(stderr);
+        fclose(outfile);
         return rwpng_info.retval;
     }
 
@@ -321,7 +379,7 @@ main( argc, argv )
     cols = rwpng_info.width;
     rows = rwpng_info.height;
     channels = rwpng_info.channels;
-    maxval = 255;	/* GRR TO DO:  allow 8 or 16 bps */
+    maxval = 255;	/* GRR TO DO:  allow either 8 or 16 bps */
 
 
     if ( mapapixels == (apixel**) 0 ) {
@@ -332,32 +390,38 @@ main( argc, argv )
         ** maxval at worst 15, since 32^3 is approximately MAXCOLORS.
         */
         for ( ; ; ) {
-            fprintf(stderr, "making histogram..." );
-            fflush(stderr);
+            if (verbose) {
+                fprintf(stderr, "making histogram..." );
+                fflush(stderr);
+            }
             achv = pam_computeacolorhist(
                 apixels, cols, rows, MAXCOLORS, &colors );
             if ( achv != (acolorhist_vector) 0 )
                 break;
-            fprintf(stderr, "too many colors!\n" );
-            fflush(stderr);
             newmaxval = maxval / 2;
-            fprintf(stderr,
-        "scaling colors from maxval=%d to maxval=%d to improve clustering...\n",
-                    maxval, newmaxval );
-            fflush(stderr);
+            if (verbose) {
+                fprintf(stderr, "too many colors!\n" );
+                fprintf(stderr, "scaling colors from maxval=%d to maxval=%d to"
+                  " improve clustering...\n", maxval, newmaxval);
+                fflush(stderr);
+            }
             for ( row = 0; row < rows; ++row )
                 for ( col = 0, pP = apixels[row]; col < cols; ++col, ++pP )
                     PAM_DEPTH( *pP, *pP, maxval, newmaxval );
             maxval = newmaxval;
         }
-        fprintf(stderr, "%d colors found\n", colors );
-        fflush(stderr);
+        if (verbose) {
+            fprintf(stderr, "%d colors found\n", colors);
+            fflush(stderr);
+        }
 
         /*
         ** Step 3: apply median-cut to histogram, making the new acolormap.
         */
-        fprintf(stderr, "choosing %d colors...\n", newcolors );
-        fflush(stderr);
+        if (verbose) {
+            fprintf(stderr, "choosing %d colors...\n", newcolors);
+            fflush(stderr);
+        }
         acolormap = mediancut( achv, colors, rows * cols, maxval, newcolors );
         pam_freeacolorhist( achv );
     }
@@ -368,7 +432,7 @@ main( argc, argv )
         */
         if (mapmaxval != maxval) {
             if (mapmaxval > maxval) {
-                fprintf(stderr, "rescaling colormap colors\n" );
+                fprintf(stderr, "rescaling colormap colors\n");
                 fflush(stderr);
             }
             for (row = 0; row < maprows; ++row)
@@ -385,24 +449,92 @@ main( argc, argv )
                 free(rwpng_info.row_pointers);
             if (rwpng_info.rgba_data)
                 free(rwpng_info.rgba_data);
+            fclose(outfile);
             return 5;
         }
         pam_freearray( mapapixels, maprows );
-        fprintf(stderr, "%d colors found in acolormap\n", newcolors );
-        fflush(stderr);
+        if (verbose) {
+            fprintf(stderr, "%d colors found in acolormap\n", newcolors);
+            fflush(stderr);
+        }
     }
 #endif /* SUPPORT_MAPFILE */
 
 
+    /*
+    ** Step 3.5 [GRR]: remap the palette colors so that all entries with a
+    ** maximum alpha value (i.e., opaque) are at the end and can therefore
+    ** be omitted from the tRNS chunk.  Note that the ordering of opaque
+    ** entries is reversed from how Step 3 arranged them--not that this
+    ** should matter to anyone.
+    */
 
-    /* GRR TO DO:  remap palette to lose opaque tRNS entries */
-    rwpng_info.num_palette = rwpng_info.num_trans = newcolors;
+    if (verbose) {
+        fprintf(stderr,
+          "remapping colormap to eliminate opaque tRNS-chunk entries...");
+        fflush(stderr);
+    }
+    for (top_idx = newcolors-1, bot_idx = x = 0;  x < newcolors;  ++x) {
+        if (PAM_GETA(acolormap[x].acolor) == maxval)
+            remap[x] = top_idx--;
+        else
+            remap[x] = bot_idx++;
+    }
+    if (verbose) {
+        fprintf(stderr, "%d entries left\n", bot_idx);
+        fflush(stderr);
+    }
 
-    for (x = 0; x < newcolors; ++x) {
-        rwpng_info.palette[x].red   = PAM_GETR( acolormap[x].acolor );
-        rwpng_info.palette[x].green = PAM_GETG( acolormap[x].acolor );
-        rwpng_info.palette[x].blue  = PAM_GETB( acolormap[x].acolor );
-        rwpng_info.trans[x]         = PAM_GETA( acolormap[x].acolor );
+    /* sanity check:  top and bottom indices should have just crossed paths */
+    if (bot_idx != top_idx + 1) {
+        fprintf(stderr,
+          "internal logic error: remapped bot_idx = %d, top_idx = %d\n",
+          bot_idx, top_idx);
+        fflush(stderr);
+        if (rwpng_info.row_pointers)
+            free(rwpng_info.row_pointers);
+        if (rwpng_info.rgba_data)
+            free(rwpng_info.rgba_data);
+        fclose(outfile);
+        return 18;
+    }
+
+    rwpng_info.num_palette = newcolors;
+    rwpng_info.num_trans = bot_idx;
+    /* GRR TO DO:  if num_trans is zero, omit chunk entirely */
+
+    if (maxval < 255) {
+        if (verbose) {
+            fprintf(stderr,
+              "rescaling colormap colors from maxval=%d to maxval=255\n",
+              maxval);
+            fflush(stderr);
+        }
+        for (x = 0; x < newcolors; ++x) {
+            /* the rescaling part of this is really just PAM_DEPTH() broken out
+             *  for the PNG palette; the trans-remapping just puts the values
+             *  in different slots in the PNG palette */
+            rwpng_info.palette[remap[x]].red
+              = (PAM_GETR(acolormap[x].acolor)*255 + (maxval >> 1)) / maxval;
+            rwpng_info.palette[remap[x]].green
+              = (PAM_GETG(acolormap[x].acolor)*255 + (maxval >> 1)) / maxval;
+            rwpng_info.palette[remap[x]].blue
+              = (PAM_GETB(acolormap[x].acolor)*255 + (maxval >> 1)) / maxval;
+            rwpng_info.trans[remap[x]]
+              = (PAM_GETA(acolormap[x].acolor)*255 + (maxval >> 1)) / maxval;
+        }
+        /* GRR TO DO:  set sBIT flag appropriately */
+    } else {
+        for (x = 0; x < newcolors; ++x) {
+            rwpng_info.palette[remap[x]].red
+              = PAM_GETR( acolormap[x].acolor );
+            rwpng_info.palette[remap[x]].green
+              = PAM_GETG( acolormap[x].acolor );
+            rwpng_info.palette[remap[x]].blue
+              = PAM_GETB( acolormap[x].acolor );
+            rwpng_info.trans[remap[x]]
+              = PAM_GETA( acolormap[x].acolor );
+        }
     }
 
 
@@ -432,6 +564,7 @@ main( argc, argv )
             free(rwpng_info.rgba_data);
         if (rwpng_info.indexed_data)
             free(rwpng_info.indexed_data);
+        fclose(outfile);
         return 17;
     }
 
@@ -441,8 +574,10 @@ main( argc, argv )
     ** Step 4: map the colors in the image to their closest match in the
     ** new colormap, and write 'em out.
     */
-    fprintf(stderr, "mapping image to new colors...\n" );
-    fflush(stderr);
+    if (verbose) {
+        fprintf(stderr, "mapping image to new colors...\n" );
+        fflush(stderr);
+    }
     acht = pam_allocacolorhash( );
     usehash = 1;
 
@@ -457,6 +592,7 @@ main( argc, argv )
             free(rwpng_info.indexed_data);
         if (row_pointers)
             free(row_pointers);
+        fclose(outfile);
         return rwpng_info.retval;
     }
 
@@ -544,9 +680,11 @@ main( argc, argv )
                 }
                 if ( usehash ) {
                     if ( pam_addtoacolorhash( acht, pP, ind ) < 0 ) {
-                        fprintf(stderr,
-                   "out of memory adding to hash table, proceeding without it");
-                        fflush(stderr);
+                        if (verbose) {
+                            fprintf(stderr, "out of memory adding to hash"
+                              " table, proceeding without it\n");
+                            fflush(stderr);
+                        }
                         usehash = 0;
                     }
                 }
@@ -600,7 +738,7 @@ main( argc, argv )
             }
 
 /*          *pP = acolormap[ind].acolor;  */
-            *pQ = (uch)ind;
+            *pQ = (uch)remap[ind];
 
             if ( ( ! floyd ) || fs_direction ) {
                 ++col;

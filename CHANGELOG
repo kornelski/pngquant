@@ -1,0 +1,12 @@
+version 0.75
+------------
+ - added support for any type of input file [Glenn Randers-Pehrson]
+ - fixed palette-(re)scaling bug
+ - added -verbose and -quiet options (default now is -quiet)
+ - added palette-remapping to minimize size of tRNS chunk
+ - made Floyd-Steinberg dithering default
+ - changed output naming scheme to -fs8.png and -or8.png (FS or ordered dither)
+
+version 0.7
+-----------
+ - first public release

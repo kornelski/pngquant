@@ -1,0 +1,94 @@
+===============================================
+pngquant version 0.7 (BETA) of 24 December 2000
+===============================================
+
+pngquant is a simple tool with one purpose:  convert 32-bit RGBA PNGs into
+8-bit RGBA-palette PNGs (or fewer than 8 bits, if you want), via quantization
+and either ordered or diffusion (Floyd-Steinberg) dithering.
+
+The current beta version is basically functional but lacks several important
+features:
+
+ - no reordering of the palette so that opaque entries can be eliminated
+   from the tRNS chunk
+
+ - no multifile support (e.g., "pngquant -fs 256 *.png")
+
+ - no ancillary chunk preservation (except gAMA)
+
+ - no mapfile support
+
+It also doesn't treat 16-bit-per-sample files or gray+alpha files specially
+(all samples get truncated to 8 bits and all images promoted to RGBA before
+quantization).  These issues will be addressed in time, but palette optimi-
+zation and multifile support are first on the list.
+
+I'm also debating whether to make FS dithering the default; ordered dithering
+usually looks terrible, at least with interesting alpha channels (i.e., ones
+not used solely for antialiasing curved and diagonal edges).
+
+By the way, be sure to check "before" and "after" file sizes, preferably with
+pngcrush (http://pmt.sourceforge.net/pngcrush/); dithered palette images may
+be four times smaller to begin with, but they don't compress nearly as well
+as grayscale and truecolor images.  Some images, such as Henri Sivonen's alpha
+button (http://www.pp.htv.fi/hsivone1/css-test/bitmapstyle.html), can be made
+smaller as full 32-bit RGBA images (4076 bytes in this case) than as either
+FS-dithered palette (4622 bytes) or ordered-dither palette (4554 bytes) images.
+(Palette-reordering would remove only 107 bytes from each dithered image in
+this case.)
+
+See http://www.libpng.org/pub/png/apps/pngquant.html for updates.
+
+Greg Roelofs
+newt@pobox.com
+
+
+
+Copyright and license info:
+--------------------------
+
+The quantization and dithering code is lifted from Jef Poskanzer's ppmquant,
+part of his wonderful PBMPLUS tool suite.  The PNG reading and writing code
+is a merged and slightly simplified version of readpng, readpng2, and writepng
+from my book, "PNG: The Definitive Guide."  pngquant therefore inherits both
+licenses, one for each source file.  (Note that both licenses are basically
+BSD-like; i.e., use the code however you like, as long as you acknowledge its
+origins.)
+
+pngquant.c:
+
+   Copyright (C) 1989, 1991 by Jef Poskanzer.
+   Copyright (C) 1997, 2000 by Greg Roelofs; based on an idea by
+                            Stefan Schneider.
+  
+   Permission to use, copy, modify, and distribute this software and its
+   documentation for any purpose and without fee is hereby granted, provided
+   that the above copyright notice appear in all copies and that both that
+   copyright notice and this permission notice appear in supporting
+   documentation.  This software is provided "as is" without express or
+   implied warranty.
+
+rwpng.c (and rwpng.h):
+
+   Copyright (c) 1998-2000 Greg Roelofs.  All rights reserved.
+
+   This software is provided "as is," without warranty of any kind,
+   express or implied.  In no event shall the author or contributors
+   be held liable for any damages arising in any way from the use of
+   this software.
+
+   Permission is granted to anyone to use this software for any purpose,
+   including commercial applications, and to alter it and redistribute
+   it freely, subject to the following restrictions:
+
+   1. Redistributions of source code must retain the above copyright
+      notice, disclaimer, and this list of conditions.
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, disclaimer, and this list of conditions in the documenta-
+      tion and/or other materials provided with the distribution.
+   3. All advertising materials mentioning features or use of this
+      software must display the following acknowledgment:
+
+         This product includes software developed by Greg Roelofs
+         and contributors for the book, "PNG: The Definitive Guide,"
+         published by O'Reilly and Associates.

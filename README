@@ -1,15 +1,15 @@
-================================================
-pngquant version 0.75 (BETA) of 26 December 2000
-================================================
+======================================================
+pngquant version 0.90 (FINAL BETA) of 27 December 2000
+======================================================
 
 pngquant is a simple tool with one purpose:  convert 32-bit RGBA PNGs into
 8-bit RGBA-palette PNGs (or fewer than 8 bits, if you want), via quantization
-and either ordered or diffusion (Floyd-Steinberg) dithering.
+and either ordered or diffusion (Floyd-Steinberg) dithering.  The fact that
+you can also use it on RGB or even palette images (e.g., to further color-
+reduce them to 16 colors or whatever) is just a bonus feature.
 
-The current beta version is basically functional but lacks several important
-features:
-
- - no multifile support (e.g., "pngquant -fs 256 *.png")
+The current beta version is basically fully functional, although it still
+lacks a few lesser features:
 
  - no ancillary chunk preservation (except gAMA)
 
@@ -19,14 +19,10 @@ features:
 
 It also doesn't treat 16-bit-per-sample files or gray+alpha files specially
 (all samples get truncated to 8 bits and all images are promoted to RGBA
-before quantization).  These issues will be addressed in time, but multifile
-support is the highest priority at the moment.
-
-Version 0.75 fixes a bug or two, adds tRNS optimization, and changes the
-default behavior in a couple of respects, including making Floyd-Steinberg
-the default dithering method (since it usually looks much better, at least
-for interesting alpha channels).  See the CHANGELOG file for the complete
-list.
+before quantization).  On the other hand, it does handle multiple files, it
+can act as a command-line (Unix-style) filter, and it automatically optimizes
+the size of tRNS chunks.  Any remaining issues will be addressed in a post-1.0
+release.
 
 By the way, be sure to check "before" and "after" file sizes, preferably with
 pngcrush (http://pmt.sourceforge.net/pngcrush/); dithered palette images may
@@ -47,12 +43,14 @@ Copyright and license info:
 --------------------------
 
 The quantization and dithering code is lifted from Jef Poskanzer's ppmquant,
-part of his wonderful PBMPLUS tool suite.  The PNG reading and writing code
-is a merged and slightly simplified version of readpng, readpng2, and writepng
-from my book, "PNG: The Definitive Guide."  pngquant therefore inherits both
-licenses, one for each source file.  (Note that both licenses are basically
-BSD-like; i.e., use the code however you like, as long as you acknowledge its
-origins.)
+part of his wonderful PBMPLUS tool suite.  I hacked it into a slightly cheesy
+"pamquant" back in 1997 (http://pobox.com/~newt/greg_rgba.html) and finally
+ripped out the cheesy file-I/O parts and replaced them with nice PNG code in
+December 2000.  The PNG reading and writing code is a merged and slightly
+simplified version of readpng, readpng2, and writepng from my book, "PNG:
+The Definitive Guide."  pngquant therefore inherits both licenses, one for
+each source file.  (Note that both licenses are basically BSD-like; that is,
+use the code however you like, as long as you acknowledge its origins.)
 
 pngquant.c:
 

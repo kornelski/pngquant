@@ -12,12 +12,41 @@
 ** implied warranty.
 */
 
-#define VERSION "0.75 of 26 December 2000"
+/* GRR TO DO:  set stdin and stdout to binary mode on bogus OSes */
+/* GRR TO DO:  find suitable replacement for getpid() in srandom() " " " */
+/* GRR TO DO:  add EMX wildcard code */
+/* GRR TO DO:  make MSVC makefile */
+/* GRR TO DO:  set sBIT flag appropriately for maxval-scaled images */
+/* GRR TO DO:  "original file size" and "quantized file size" if verbose? */
+/* GRR TO DO:  add option to preserve background color (if any) exactly */
+/* GRR TO DO:  add mapfile support, but do it cleanly */
+/* GRR TO DO:  default to 256 colors if number not specified on command line */
+/* GRR TO DO:  support 16 bps without down-conversion */
+/* GRR TO DO:  replace PBMPLUS mem management routines? */
+
+
+#define VERSION "0.90 of 27 December 2000"
+
+#define PNGQUANT_USAGE "\
+   usage:  pngquant [options] <ncolors> [pngfile [pngfile ...]]\n\
+                    [options] -map mapfile [pngfile [pngfile ...]]\n\
+   options:\n\
+      -force         overwrite existing output files\n\
+      -ordered       use ordered dithering (synonyms:  -nofloyd, -nofs)\n\
+      -verbose       print status messages (synonyms:  -noquiet)\n\n\
+   Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
+   PNGs using either ordered dithering or Floyd-Steinberg diffusion dithering\n\
+   (default).  The output filename is the same as the input name except that\n\
+   it ends in \"-fs8.png\" or \"-or8.png\" (unless the input is stdin, in which\n\
+   case the quantized image will go to stdout).  The default behavior if the\n\
+   output file exists is to skip the conversion; use -force to overwrite.\n\n\
+   NOTE:  the -map option is NOT YET SUPPORTED.\n"
+
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <unistd.h>     /* getpid() */
 
 #include "png.h"        /* libpng header; includes zlib.h */
 #include "rwpng.h"      /* typedefs, common macros, public prototypes */
@@ -74,44 +103,6 @@ typedef acolorhist_list *acolorhash_table;
 
 static mainprog_info rwpng_info;
 
-/* initialize with the unity mapping for simplicity */
-/* GRR TO DO:  when multifile support, this will need to be reinitialized for
- *             each file */
-static int remap[256] = {
-    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-    0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-    0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-    0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
-    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-    0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
-    0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
-    0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
-    0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
-    0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
-    0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
-    0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
-    0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
-    0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f,
-    0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
-    0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
-    0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
-    0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
-    0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
-    0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
-    0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
-    0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
-    0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
-    0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
-    0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
-    0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
-    0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
-    0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
-    0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
-    0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
-};
-
 
 
 #define FNMAX      1024     /* max filename length */
@@ -133,6 +124,17 @@ struct box {
 };
 
 
+
+#ifdef SUPPORT_MAPFILE
+   static int pngquant
+     (char *filename, char *newext, int floyd, int force, int verbose,
+      int using_stdin, int newcolors, apixel **mapapixels, ulg maprows,
+      ulg mapcols, pixval mapmaxval);
+#else
+   static int pngquant
+     (char *filename, char *newext, int floyd, int force, int verbose,
+      int using_stdin, int newcolors, apixel **mapapixels);
+#endif
 
 static acolorhist_vector mediancut
   (acolorhist_vector achv, int colors, int sum, pixval maxval, int newcolors);
@@ -167,59 +169,21 @@ main( argc, argv )
     int argc;
     char *argv[];
 {
-    FILE *infile, *outfile;
-    apixel **apixels;
-    apixel **mapapixels;
-    register apixel *pP;
-    uch *pQ, *outrow, **row_pointers=NULL;
-    int argn, row;
-    register int col, limitcol;
-    ulg rows, cols;
-    pixval maxval, newmaxval;
 #ifdef SUPPORT_MAPFILE
+    FILE *infile;
     ulg maprows, mapcols;
     pixval mapmaxval;
 #endif
-    int newcolors, colors;
-    register int ind;
-    acolorhist_vector achv, acolormap=NULL;
-    acolorhash_table acht;
+    apixel **mapapixels;
+    int argn;
+    int newcolors;
     int floyd = TRUE;
     int force = FALSE;
     int verbose = FALSE;
     int using_stdin = FALSE;
-    int usehash;
-    long *thisrerr = NULL;
-    long *nextrerr = NULL;
-    long *thisgerr = NULL;
-    long *nextgerr = NULL;
-    long *thisberr = NULL;
-    long *nextberr = NULL;
-    long *thisaerr = NULL;
-    long *nextaerr = NULL;
-    long *temperr;
-    register long sr=0, sg=0, sb=0, sa=0, err;
-    int fs_direction = 0;
-    int x;
-    int channels;
-    int bot_idx, top_idx;
-    char *filename, outname[FNMAX];
-    char *pq_usage =
-      "usage:  pngquant [options] <ncolors> [pngfile]\n"
-      "                 [options] -map mapfile [pngfile]\n"
-      "options:\n"
-      "   -force         overwrite existing output files\n"
-      "   -ordered       use ordered dithering (synonyms:  -nofloyd, -nofs)\n"
-      "   -verbose       print status messages (synonyms:  -noquiet)\n"
-      "\n"
-      "Quantizes a 32-bit RGBA PNG into an 8-bit (or smaller) RGBA-palette PNG\n"
-      "using either ordered dithering or Floyd-Steinberg diffusion dithering\n"
-      "(default).  The output filename is the same as the input name except that\n"
-      "it ends in \"-fs8.png\" or \"-or8.png\" (unless the input is standard\n"
-      "input, in which case \"stdin\" is used as the base name).  The default\n"
-      "behavior if the output file exists is to skip the conversion; use -force\n"
-      "to overwrite.\n\n"
-      "NOTE:  the -map option is NOT YET SUPPORTED.\n";
+    int latest_error=0, error_count=0, file_count=0;
+    char *filename, *newext;
+    char *pq_usage = PNGQUANT_USAGE;
 
 
     argn = 1;
@@ -243,7 +207,6 @@ main( argc, argv )
         else if ( 0 == strncmp( argv[argn], "-noverbose", 4 ) ||
                   0 == strncmp( argv[argn], "-quiet", 2 ) )
             verbose = FALSE;
-        /* GRR TO DO:  add option to preserve background color (if any) exactly */
 #ifdef SUPPORT_MAPFILE
         else if ( 0 == strncmp( argv[argn], "-map", 2 ) ) {
             ++argn;
@@ -259,21 +222,24 @@ main( argc, argv )
                 return 2;
             }
             mapapixels = pam_readpam( infile, &mapcols, &maprows, &mapmaxval );
-            fclose( infile );
+            fclose(infile);
             if ( mapcols == 0 || maprows == 0 ) {
                 fprintf( stderr, "null colormap??\n" );
                 fflush( stderr );
                 return 3;
             }
         }
+/* GRR TO DO:  really want to build entire mapfile palette right here and
+               pass that (and *only* that) to pngquant()
+ */
 #endif /* SUPPORT_MAPFILE */
         else {
-            fprintf( stderr, "pngquant, version %s, by Greg Roelofs.\n",
-              VERSION );
+            fprintf(stderr, "pngquant, version %s, by Greg Roelofs.\n",
+              VERSION);
             rwpng_version_info();
-            fprintf( stderr, "\n" );
-            fprintf( stderr, pq_usage );
-            fflush( stderr );
+            fprintf(stderr, "\n");
+            fprintf(stderr, pq_usage);
+            fflush(stderr);
             return 1;
         }
         ++argn;
@@ -308,77 +274,185 @@ main( argc, argv )
         ++argn;
     }
 
-    if ( argn != argc ) {
-        if ((infile = fopen( argv[argn], "rb" )) == NULL) {
-            fprintf(stderr, "cannot open %s for reading\n", argv[argn]);
-            fflush( stderr );
-            return 2;
-        }
+    newext = floyd? "-fs8.png" : "-or8.png";
+
+    if ( argn == argc ) {
+        using_stdin = TRUE;
+        filename = "stdin";
+    } else {
         filename = argv[argn];
         ++argn;
-    } else {
-        infile = stdin;
-        filename = "stdin";
-        using_stdin = TRUE;
     }
 
-    if ( argn != argc ) {
-        fprintf( stderr, pq_usage );
-        fflush( stderr );
-        return 1;
-    }
 
-    /* build the output filename from the input name by inserting "-8" before
-     * the ".png" extension (or by appending "-8.png" if no extension) */
+    /*=============================  MAIN LOOP  =============================*/
 
-    x = strlen(filename);
-    if (x > FNMAX-9) {
-        fprintf(stderr, "warning:  filename will be truncated\n");
+    while (argn <= argc) {
+        int retval;
+
+        fprintf(stderr, "%s:\n", filename);
         fflush(stderr);
-        x = FNMAX-9;
-    }
-    strncpy(outname, filename, x);
-    if (strncmp(outname+x-4, ".png", 4) == 0)
-        strcpy(outname+x-4, floyd? "-fs8.png" : "-or8.png");
-    else
-        strcpy(outname+x, floyd? "-fs8.png" : "-or8.png");
 
-    if (!force) {
-        if ((outfile = fopen( outname, "rb" )) != NULL) {
-            fprintf(stderr, "warning:  %s exists; not overwriting\n", outname);
+#ifdef SUPPORT_MAPFILE
+        retval = pngquant(filename, newext, floyd, force, verbose, using_stdin,
+          newcolors, mapapixels, maprows, mapcols, mapmaxval);
+#else
+        retval = pngquant(filename, newext, floyd, force, verbose, using_stdin,
+          newcolors, mapapixels);
+#endif
+        if (retval) {
+            latest_error = retval;
+            ++error_count;
+        }
+        ++file_count;
+
+        fprintf(stderr, "\n");
+        fflush(stderr);
+
+        filename = argv[argn];
+        ++argn;
+    }
+
+    /*=======================================================================*/
+
+
+    if (verbose) {
+        if (error_count)
+            fprintf(stderr, "There were errors quantizing %d file%s out of a"
+              " total of %d file%s.\n",
+              error_count, (error_count == 1)? "" : "s",
+              file_count, (file_count == 1)? "" : "s");
+        else
+            fprintf(stderr, "No errors detected while quantizing %d image%s.\n",
+              file_count, (file_count == 1)? "" : "s");
+        fflush(stderr);
+    }
+
+    return latest_error;
+}
+
+
+
+#ifdef SUPPORT_MAPFILE
+int
+pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
+         mapapixels, maprows, mapcols, mapmaxval)
+    char *filename, *newext;
+    int floyd, force, verbose, using_stdin, newcolors;
+    apixel **mapapixels;
+    ulg maprows, mapcols;
+    pixval mapmaxval;
+#else
+int
+pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
+         mapapixels)
+    char *filename, *newext;
+    int floyd, force, verbose, using_stdin, newcolors;
+    apixel **mapapixels;
+#endif
+{
+    FILE *infile, *outfile;
+    apixel **apixels;
+    register apixel *pP;
+    register int col, limitcol;
+    register int ind;
+    uch *pQ, *outrow, **row_pointers=NULL;
+    ulg rows, cols;
+    pixval maxval, newmaxval;
+    acolorhist_vector achv, acolormap=NULL;
+    acolorhash_table acht;
+    long *thisrerr = NULL;
+    long *nextrerr = NULL;
+    long *thisgerr = NULL;
+    long *nextgerr = NULL;
+    long *thisberr = NULL;
+    long *nextberr = NULL;
+    long *thisaerr = NULL;
+    long *nextaerr = NULL;
+    long *temperr;
+    register long sr=0, sg=0, sb=0, sa=0, err;
+    int row;
+    int colors;
+    int usehash;
+    int fs_direction = 0;
+    int x;
+/*  int channels;  */
+    int bot_idx, top_idx;
+    int remap[256];
+    char outname[FNMAX];
+
+
+    /* can't do much if we don't have an input file...but don't reopen stdin */
+
+    if (using_stdin) {
+        infile = stdin;
+    } else if ((infile = fopen(filename, "rb")) == NULL) {
+        fprintf(stderr, "  error:  cannot open %s for reading\n", filename);
+        fflush(stderr);
+        return 2;
+    }
+
+
+    /* build the output filename from the input name by inserting "-fs8" or
+     * "-or8" before the ".png" extension (or by appending that plus ".png" if
+     * there isn't any extension), then make sure it doesn't exist already */
+
+    if (using_stdin) {
+        outfile = stdout;
+    } else {
+        x = strlen(filename);
+        if (x > FNMAX-9) {
+            fprintf(stderr,
+              "  warning:  base filename [%s] will be truncated\n", filename);
             fflush(stderr);
-            fclose(outfile);
-            return 15;
+            x = FNMAX-9;
+        }
+        strncpy(outname, filename, x);
+        if (strncmp(outname+x-4, ".png", 4) == 0)
+            strcpy(outname+x-4, newext);
+        else
+            strcpy(outname+x, newext);
+        if (!force) {
+            if ((outfile = fopen(outname, "rb")) != NULL) {
+                fprintf(stderr, "  error:  %s exists; not overwriting\n",
+                  outname);
+                fflush(stderr);
+                fclose(outfile);
+                return 15;
+            }
+        }
+        if ((outfile = fopen(outname, "wb")) == NULL) {
+            fprintf(stderr, "  error:  cannot open %s for writing\n", outname);
+            fflush(stderr);
+            return 16;
         }
     }
-    if ((outfile = fopen( outname, "wb" )) == NULL) {
-        fprintf(stderr, "cannot open %s for writing\n", outname);
-        fflush(stderr);
-        return 16;
-    }
+
+
 
     /*
     ** Step 1: read in the alpha-channel image.
     */
-    /* GRR:  returns RGB or RGBA (3 or 4 channels), 8 bps */
-/*  apixels = pam_readpam( infile, &cols, &rows, &maxval );  */
+    /* GRR:  returns RGBA (4 channels), 8 bps */
     rwpng_read_image(infile, &rwpng_info);
 
     if (!using_stdin)
         fclose(infile);
 
     if (rwpng_info.retval) {
-        fprintf(stderr, "rwpng_read_image() error\n");
+        fprintf(stderr, "  rwpng_read_image() error\n");
         fflush(stderr);
-        fclose(outfile);
+        if (!using_stdin)
+            fclose(outfile);
         return rwpng_info.retval;
     }
 
-    /* note:  rgba_data and row_pointers are allocated but not freed */
+    /* NOTE:  rgba_data and row_pointers are allocated but not freed in
+     *        rwpng_read_image() */
     apixels = (apixel **)rwpng_info.row_pointers;
     cols = rwpng_info.width;
     rows = rwpng_info.height;
-    channels = rwpng_info.channels;
+    /* channels = rwpng_info.channels; */
     maxval = 255;	/* GRR TO DO:  allow either 8 or 16 bps */
 
 
@@ -391,7 +465,7 @@ main( argc, argv )
         */
         for ( ; ; ) {
             if (verbose) {
-                fprintf(stderr, "making histogram..." );
+                fprintf(stderr, "  making histogram...");
                 fflush(stderr);
             }
             achv = pam_computeacolorhist(
@@ -400,9 +474,9 @@ main( argc, argv )
                 break;
             newmaxval = maxval / 2;
             if (verbose) {
-                fprintf(stderr, "too many colors!\n" );
-                fprintf(stderr, "scaling colors from maxval=%d to maxval=%d to"
-                  " improve clustering...\n", maxval, newmaxval);
+                fprintf(stderr, "too many colors!\n");
+                fprintf(stderr, "  scaling colors from maxval=%d to maxval=%d"
+                  " to improve clustering...\n", maxval, newmaxval);
                 fflush(stderr);
             }
             for ( row = 0; row < rows; ++row )
@@ -419,7 +493,7 @@ main( argc, argv )
         ** Step 3: apply median-cut to histogram, making the new acolormap.
         */
         if (verbose) {
-            fprintf(stderr, "choosing %d colors...\n", newcolors);
+            fprintf(stderr, "  choosing %d colors...\n", newcolors);
             fflush(stderr);
         }
         acolormap = mediancut( achv, colors, rows * cols, maxval, newcolors );
@@ -432,7 +506,7 @@ main( argc, argv )
         */
         if (mapmaxval != maxval) {
             if (mapmaxval > maxval) {
-                fprintf(stderr, "rescaling colormap colors\n");
+                fprintf(stderr, "  rescaling colormap colors\n");
                 fflush(stderr);
             }
             for (row = 0; row < maprows; ++row)
@@ -443,18 +517,19 @@ main( argc, argv )
         acolormap = pam_computeacolorhist(
             mapapixels, mapcols, maprows, MAXCOLORS, &newcolors );
         if ( acolormap == (acolorhist_vector) 0 ) {
-            fprintf( stderr, "too many colors in acolormap!\n" );
+            fprintf( stderr, "  too many colors in acolormap!\n" );
             fflush(stderr);
             if (rwpng_info.row_pointers)
                 free(rwpng_info.row_pointers);
             if (rwpng_info.rgba_data)
                 free(rwpng_info.rgba_data);
-            fclose(outfile);
+            if (!using_stdin)
+                fclose(outfile);
             return 5;
         }
         pam_freearray( mapapixels, maprows );
         if (verbose) {
-            fprintf(stderr, "%d colors found in acolormap\n", newcolors);
+            fprintf(stderr, "  %d colors found in acolormap\n", newcolors);
             fflush(stderr);
         }
     }
@@ -462,16 +537,16 @@ main( argc, argv )
 
 
     /*
-    ** Step 3.5 [GRR]: remap the palette colors so that all entries with a
-    ** maximum alpha value (i.e., opaque) are at the end and can therefore
-    ** be omitted from the tRNS chunk.  Note that the ordering of opaque
-    ** entries is reversed from how Step 3 arranged them--not that this
-    ** should matter to anyone.
+    ** Step 3.5 [GRR]: remap the palette colors so that all entries with
+    ** the maximal alpha value (i.e., fully opaque) are at the end and can
+    ** therefore be omitted from the tRNS chunk.  Note that the ordering of
+    ** opaque entries is reversed from how Step 3 arranged them--not that
+    ** this should matter to anyone.
     */
 
     if (verbose) {
         fprintf(stderr,
-          "remapping colormap to eliminate opaque tRNS-chunk entries...");
+          "  remapping colormap to eliminate opaque tRNS-chunk entries...");
         fflush(stderr);
     }
     for (top_idx = newcolors-1, bot_idx = x = 0;  x < newcolors;  ++x) {
@@ -488,25 +563,32 @@ main( argc, argv )
     /* sanity check:  top and bottom indices should have just crossed paths */
     if (bot_idx != top_idx + 1) {
         fprintf(stderr,
-          "internal logic error: remapped bot_idx = %d, top_idx = %d\n",
+          "  internal logic error: remapped bot_idx = %d, top_idx = %d\n",
           bot_idx, top_idx);
         fflush(stderr);
         if (rwpng_info.row_pointers)
             free(rwpng_info.row_pointers);
         if (rwpng_info.rgba_data)
             free(rwpng_info.rgba_data);
-        fclose(outfile);
+        if (!using_stdin)
+            fclose(outfile);
         return 18;
     }
 
     rwpng_info.num_palette = newcolors;
     rwpng_info.num_trans = bot_idx;
-    /* GRR TO DO:  if num_trans is zero, omit chunk entirely */
+
+
+    /*
+    ** Step 3.6 [GRR]: rescale the palette colors to a maxval of 255, as
+    ** required by the PNG spec.  (Technically, the remapping happens in
+    ** here, too.)
+    */
 
     if (maxval < 255) {
         if (verbose) {
             fprintf(stderr,
-              "rescaling colormap colors from maxval=%d to maxval=255\n",
+              "  rescaling colormap colors from maxval=%d to maxval=255\n",
               maxval);
             fflush(stderr);
         }
@@ -538,9 +620,12 @@ main( argc, argv )
     }
 
 
-    /* allocate memory for either a single row (non-interlaced -> progressive
-     *  write) or the entire indexed image (if interlaced -> all at once);
-     *  note that rwpng_info.row_pointers is still used via apixels (INPUT) */
+    /*
+    ** Step 3.7 [GRR]: allocate memory for either a single row (non-
+    ** interlaced -> progressive write) or the entire indexed image
+    ** (if interlaced -> all at once); note that rwpng_info.row_pointers
+    ** is still in use via apixels (INPUT data).
+    */
 
     if (rwpng_info.interlaced) {
         if ((rwpng_info.indexed_data = (uch *)malloc(rows * cols)) != NULL) {
@@ -556,7 +641,7 @@ main( argc, argv )
         (rwpng_info.interlaced && row_pointers == NULL))
     {
         fprintf(stderr,
-          "insufficient memory for indexed data and/or row pointers");
+          "  insufficient memory for indexed data and/or row pointers\n");
         fflush(stderr);
         if (rwpng_info.row_pointers)
             free(rwpng_info.row_pointers);
@@ -564,7 +649,8 @@ main( argc, argv )
             free(rwpng_info.rgba_data);
         if (rwpng_info.indexed_data)
             free(rwpng_info.indexed_data);
-        fclose(outfile);
+        if (!using_stdin)
+            fclose(outfile);
         return 17;
     }
 
@@ -575,14 +661,14 @@ main( argc, argv )
     ** new colormap, and write 'em out.
     */
     if (verbose) {
-        fprintf(stderr, "mapping image to new colors...\n" );
+        fprintf(stderr, "  mapping image to new colors...\n" );
         fflush(stderr);
     }
     acht = pam_allocacolorhash( );
     usehash = 1;
 
     if (rwpng_write_image_init(outfile, &rwpng_info) != 0) {
-        fprintf( stderr, "rwpng_write_image_init() error\n" );
+        fprintf( stderr, "  rwpng_write_image_init() error\n" );
         fflush( stderr );
         if (rwpng_info.rgba_data)
             free(rwpng_info.rgba_data);
@@ -592,7 +678,8 @@ main( argc, argv )
             free(rwpng_info.indexed_data);
         if (row_pointers)
             free(row_pointers);
-        fclose(outfile);
+        if (!using_stdin)
+            fclose(outfile);
         return rwpng_info.retval;
     }
 
@@ -621,7 +708,8 @@ main( argc, argv )
                                         rwpng_info.indexed_data;
         if ( floyd )
             for ( col = 0; col < cols + 2; ++col )
-                nextrerr[col] = nextgerr[col] = nextberr[col] = nextaerr[col] = 0;
+                nextrerr[col] = nextgerr[col] =
+                nextberr[col] = nextaerr[col] = 0;
         if ( ( ! floyd ) || fs_direction ) {
             col = 0;
             limitcol = cols;
@@ -681,7 +769,7 @@ main( argc, argv )
                 if ( usehash ) {
                     if ( pam_addtoacolorhash( acht, pP, ind ) < 0 ) {
                         if (verbose) {
-                            fprintf(stderr, "out of memory adding to hash"
+                            fprintf(stderr, "  out of memory adding to hash"
                               " table, proceeding without it\n");
                             fflush(stderr);
                         }
@@ -693,43 +781,43 @@ main( argc, argv )
             if ( floyd ) {
                 /* Propagate Floyd-Steinberg error terms. */
                 if ( fs_direction ) {
-                    err = (sr - (long)PAM_GETR(acolormap[ind].acolor)) * FS_SCALE;
+                    err = (sr - (long)PAM_GETR(acolormap[ind].acolor))*FS_SCALE;
                     thisrerr[col + 2] += ( err * 7 ) / 16;
                     nextrerr[col    ] += ( err * 3 ) / 16;
                     nextrerr[col + 1] += ( err * 5 ) / 16;
                     nextrerr[col + 2] += ( err     ) / 16;
-                    err = (sg - (long)PAM_GETG(acolormap[ind].acolor)) * FS_SCALE;
+                    err = (sg - (long)PAM_GETG(acolormap[ind].acolor))*FS_SCALE;
                     thisgerr[col + 2] += ( err * 7 ) / 16;
                     nextgerr[col    ] += ( err * 3 ) / 16;
                     nextgerr[col + 1] += ( err * 5 ) / 16;
                     nextgerr[col + 2] += ( err     ) / 16;
-                    err = (sb - (long)PAM_GETB(acolormap[ind].acolor)) * FS_SCALE;
+                    err = (sb - (long)PAM_GETB(acolormap[ind].acolor))*FS_SCALE;
                     thisberr[col + 2] += ( err * 7 ) / 16;
                     nextberr[col    ] += ( err * 3 ) / 16;
                     nextberr[col + 1] += ( err * 5 ) / 16;
                     nextberr[col + 2] += ( err     ) / 16;
-                    err = (sa - (long)PAM_GETA(acolormap[ind].acolor)) * FS_SCALE;
+                    err = (sa - (long)PAM_GETA(acolormap[ind].acolor))*FS_SCALE;
                     thisaerr[col + 2] += ( err * 7 ) / 16;
                     nextaerr[col    ] += ( err * 3 ) / 16;
                     nextaerr[col + 1] += ( err * 5 ) / 16;
                     nextaerr[col + 2] += ( err     ) / 16;
                 } else {
-                    err = (sr - (long)PAM_GETR(acolormap[ind].acolor)) * FS_SCALE;
+                    err = (sr - (long)PAM_GETR(acolormap[ind].acolor))*FS_SCALE;
                     thisrerr[col    ] += ( err * 7 ) / 16;
                     nextrerr[col + 2] += ( err * 3 ) / 16;
                     nextrerr[col + 1] += ( err * 5 ) / 16;
                     nextrerr[col    ] += ( err     ) / 16;
-                    err = (sg - (long)PAM_GETG(acolormap[ind].acolor)) * FS_SCALE;
+                    err = (sg - (long)PAM_GETG(acolormap[ind].acolor))*FS_SCALE;
                     thisgerr[col    ] += ( err * 7 ) / 16;
                     nextgerr[col + 2] += ( err * 3 ) / 16;
                     nextgerr[col + 1] += ( err * 5 ) / 16;
                     nextgerr[col    ] += ( err     ) / 16;
-                    err = (sb - (long)PAM_GETB(acolormap[ind].acolor)) * FS_SCALE;
+                    err = (sb - (long)PAM_GETB(acolormap[ind].acolor))*FS_SCALE;
                     thisberr[col    ] += ( err * 7 ) / 16;
                     nextberr[col + 2] += ( err * 3 ) / 16;
                     nextberr[col + 1] += ( err * 5 ) / 16;
                     nextberr[col    ] += ( err     ) / 16;
-                    err = (sa - (long)PAM_GETA(acolormap[ind].acolor)) * FS_SCALE;
+                    err = (sa - (long)PAM_GETA(acolormap[ind].acolor))*FS_SCALE;
                     thisaerr[col    ] += ( err * 7 ) / 16;
                     nextaerr[col + 2] += ( err * 3 ) / 16;
                     nextaerr[col + 1] += ( err * 5 ) / 16;
@@ -794,7 +882,8 @@ main( argc, argv )
     } else
         rwpng_write_image_finish(&rwpng_info);
 
-    fclose(outfile);
+    if (!using_stdin)
+        fclose(outfile);
 
 
     /* now we're done with the OUTPUT data and row_pointers, too */
@@ -835,7 +924,7 @@ mediancut( achv, colors, sum, maxval, newcolors )
     acolormap =
         (acolorhist_vector) malloc( sizeof(struct acolorhist_item) * newcolors);
     if ( bv == (box_vector) 0 || acolormap == (acolorhist_vector) 0 ) {
-        fprintf( stderr, "out of memory allocating box vector\n" );
+        fprintf( stderr, "  out of memory allocating box vector\n" );
         fflush(stderr);
         exit(6);
     }
@@ -1134,6 +1223,8 @@ pam.h:
  */
 
 
+/*===========================================================================*/
+
 
 /* libpam3.c - pam (portable alpha map) utility library part 3
 **
@@ -1215,7 +1306,7 @@ pam_computeacolorhash( apixels, cols, rows, maxacolors, acolorsP )
 		    }
 		achl = (acolorhist_list) malloc( sizeof(struct acolorhist_list_item) );
 		if ( achl == 0 ) {
-                    fprintf( stderr, "out of memory computing hash table\n" );
+                    fprintf( stderr, "  out of memory computing hash table\n" );
                     exit(7);
                 }
 		achl->ch.acolor = *pP;
@@ -1238,7 +1329,7 @@ pam_allocacolorhash( )
 
     acht = (acolorhash_table) malloc( HASH_SIZE * sizeof(acolorhist_list) );
     if ( acht == 0 ) {
-        fprintf( stderr, "out of memory allocating hash table\n" );
+        fprintf( stderr, "  out of memory allocating hash table\n" );
         exit(8);
     }
 
@@ -1285,7 +1376,7 @@ pam_acolorhashtoacolorhist( acht, maxacolors )
     achv = (acolorhist_vector) malloc( maxacolors * sizeof(struct acolorhist_item) );
     /* (Leave room for expansion by caller.) */
     if ( achv == (acolorhist_vector) 0 ) {
-        fprintf( stderr, "out of memory generating histogram\n" );
+        fprintf( stderr, "  out of memory generating histogram\n" );
         exit(9);
     }
 
@@ -1349,7 +1440,7 @@ pam_freeacolorhash( acht )
 }
 
 
-/* 00000000 */ /* 00000000 */ /* 00000000 */ /* 00000000 */ /* 00000000 */
+/*===========================================================================*/
 
 /* from libpbm1.c */
 
@@ -1362,7 +1453,7 @@ pm_allocrow( cols, size )
 
     itrow = (char*) malloc( cols * size );
     if ( itrow == (char*) 0 ) {
-        fprintf( stderr, "out of memory allocating a row\n" );
+        fprintf( stderr, "  out of memory allocating a row\n" );
         fflush( stderr );
         exit(12);
     }
@@ -1390,13 +1481,13 @@ pm_allocarray( cols, rows, size )
 
     its = (char**) malloc( rows * sizeof(char*) );
     if ( its == (char**) 0 ) {
-        fprintf( stderr, "out of memory allocating an array\n" );
+        fprintf( stderr, "  out of memory allocating an array\n" );
         fflush( stderr );
         exit(13);
     }
     its[0] = (char*) malloc( rows * cols * size );
     if ( its[0] == (char*) 0 ) {
-        fprintf( stderr, "out of memory allocating an array\n" );
+        fprintf( stderr, "  out of memory allocating an array\n" );
         fflush( stderr );
         exit(14);
     }

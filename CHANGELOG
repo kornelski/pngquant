@@ -1,3 +1,8 @@
+version 0.90
+------------
+ - added support for multiple files on command line
+ - changed stdin support to write PNG stream to stdout (not "stdin-fs8.png")
+
 version 0.75
 ------------
  - added support for any type of input file [Glenn Randers-Pehrson]
@@ -7,6 +12,6 @@ version 0.75
  - made Floyd-Steinberg dithering default
  - changed output naming scheme to -fs8.png and -or8.png (FS or ordered dither)
 
-version 0.7
------------
+version 0.70
+------------
  - first public release

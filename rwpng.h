@@ -69,11 +69,11 @@ typedef struct _mainprog_info {
     uch **row_pointers;		/* read/write */
     jmp_buf jmpbuf;		/* read/write */
     int interlaced;		/* read/write */
-    int channels;		/* read */
-    int done;
+    int channels;		/* read (currently not used) */
+    int sample_depth;		/* write */
     int num_palette;		/* write */
     int num_trans;		/* write */
-    int retval;			/* read */
+    int retval;			/* read/write */
 } mainprog_info;
 
 

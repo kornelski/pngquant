@@ -1,28 +1,34 @@
-=============================================================
-pngquant version 0.91 (PRETTY FINAL BETA) of 28 December 2000
-=============================================================
+======================================================================
+pngquant version 0.95 (DARNED CLOSE TO FINAL BETA) of 29 December 2000
+======================================================================
 
 pngquant is a simple tool with one purpose:  convert 32-bit RGBA PNGs into
 8-bit RGBA-palette PNGs (or fewer than 8 bits, if you want), via quantization
 and either ordered or diffusion (Floyd-Steinberg) dithering.  The fact that
 you can also use it on RGB or even palette images (e.g., to further color-
-reduce them to 16 colors or whatever) is just a bonus feature.
+reduce them to 16 colors or whatever) is just a nice little bonus.
 
-The current beta version is basically fully functional, although it still
-lacks a few lesser features:
+The current version is fully functional in the sense that it can do:
+
+ - nice reduction of all PNG image types to 256-color (or smaller) palette
+ - automatic optimization of tRNS chunks
+ - batch conversion of multiple files (e.g., "pngquant 256 *.png")
+ - Unix-style command-line filtering (e.g., "... | pngquant 16 | ...")
+
+...on at least Unix and Win32.  It should be pretty easy to port to almost
+any other platform with a command-line interface and unstructured (stream-
+oriented) files, including VMS but probably not VM or MVS.
+
+It does still lack a few features:
 
  - no ancillary chunk preservation (except gAMA)
-
  - no preservation of significant-bits info after rescaling (sBIT chunk)
-
  - no mapfile support
+ - no "native" handling of 16-bit-per-sample files or gray+alpha files
+    (i.e., all samples are truncated to 8 bits and all images are promoted
+    to RGBA before quantization)
 
-It also doesn't treat 16-bit-per-sample files or gray+alpha files specially
-(all samples get truncated to 8 bits and all images are promoted to RGBA
-before quantization).  On the other hand, it does handle multiple files, it
-can act as a command-line (Unix-style) filter, and it automatically optimizes
-the size of tRNS chunks.  Any remaining issues will be addressed in a post-1.0
-release.
+These issues will be addressed in a post-1.0 release.
 
 By the way, be sure to check "before" and "after" file sizes, preferably with
 pngcrush (http://pmt.sourceforge.net/pngcrush/); dithered palette images may
@@ -32,7 +38,8 @@ button (http://www.pp.htv.fi/hsivone1/css-test/bitmapstyle.html), can be made
 smaller as full 32-bit RGBA images (4076 bytes in this case) than as either
 FS-dithered palette (4550 bytes) or ordered-dither palette (4482 bytes) images.
 
-See http://www.libpng.org/pub/png/apps/pngquant.html for updates.
+See http://www.libpng.org/pub/png/apps/pngquant.html for updates and links
+to compiled binaries for various platforms.
 
 Greg Roelofs
 newt@pobox.com

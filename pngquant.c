@@ -12,17 +12,20 @@
 ** implied warranty.
 */
 
-/* GRR TO DO:  set stdin and stdout to binary mode on bogus OSes */
 /* GRR TO DO:  set sBIT flag appropriately for maxval-scaled images */
 /* GRR TO DO:  "original file size" and "quantized file size" if verbose? */
 /* GRR TO DO:  add option to preserve background color (if any) exactly */
-/* GRR TO DO:  add mapfile support, but do it cleanly */
+/* GRR TO DO:  add mapfile support, but cleanly (build palette in main()) */
 /* GRR TO DO:  default to 256 colors if number not specified on command line */
 /* GRR TO DO:  support 16 bps without down-conversion */
-/* GRR TO DO:  replace PBMPLUS mem management routines? */
+/* GRR TO DO:  replace PBMPLUS mem-management routines? */
+/* GRR TO DO:  if all samples are gray and image is opaque and sample depth
+                would be no bigger than palette and user didn't explicitly
+                specify a mapfile, switch to grayscale */
+/* GRR TO DO:  if all samples are 0 or maxval, eliminate gAMA chunk (rwpng.c) */
 
 
-#define VERSION "0.91 of 28 December 2000"
+#define VERSION "0.95 of 29 December 2000"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] <ncolors> [pngfile [pngfile ...]]\n\
@@ -46,7 +49,9 @@
 #ifdef unix
 #  include <unistd.h>	/* getpid() */
 #endif
-#ifdef _MSC_VER		/* or use WIN32 (defined in Makefile.w32) */
+#ifdef WIN32		/* defined in Makefile.w32 (or use _MSC_VER for MSVC) */
+#  include <fcntl.h>	/* O_BINARY */
+#  include <io.h>	/* setmode() */
 #  include <process.h>	/* _getpid() */
 #  ifndef getpid
 #    define getpid _getpid
@@ -139,12 +144,12 @@ struct box {
 #ifdef SUPPORT_MAPFILE
    static int pngquant
      (char *filename, char *newext, int floyd, int force, int verbose,
-      int using_stdin, int newcolors, apixel **mapapixels, ulg maprows,
+      int using_stdin, int reqcolors, apixel **mapapixels, ulg maprows,
       ulg mapcols, pixval mapmaxval);
 #else
    static int pngquant
      (char *filename, char *newext, int floyd, int force, int verbose,
-      int using_stdin, int newcolors, apixel **mapapixels);
+      int using_stdin, int reqcolors, apixel **mapapixels);
 #endif
 
 static acolorhist_vector mediancut
@@ -187,7 +192,7 @@ main( argc, argv )
 #endif
     apixel **mapapixels;
     int argn;
-    int newcolors;
+    int reqcolors;
     int floyd = TRUE;
     int force = FALSE;
     int verbose = FALSE;
@@ -271,17 +276,17 @@ main( argc, argv )
             fflush( stderr );
             return 1;
         }
-        if ( sscanf( argv[argn], "%d", &newcolors ) != 1 ) {
+        if ( sscanf( argv[argn], "%d", &reqcolors ) != 1 ) {
             fprintf( stderr, pq_usage );
             fflush( stderr );
             return 1;
         }
-        if ( newcolors <= 1 ) {
+        if ( reqcolors <= 1 ) {
             fprintf( stderr, "number of colors must be greater than 1\n" );
             fflush( stderr );
             return 4;
         }
-        if ( newcolors > 256 ) {
+        if ( reqcolors > 256 ) {
             fprintf( stderr, "number of colors cannot be more than 256\n" );
             fflush( stderr );
             return 4;
@@ -312,10 +317,10 @@ main( argc, argv )
 
 #ifdef SUPPORT_MAPFILE
         retval = pngquant(filename, newext, floyd, force, verbose, using_stdin,
-          newcolors, mapapixels, maprows, mapcols, mapmaxval);
+          reqcolors, mapapixels, maprows, mapcols, mapmaxval);
 #else
         retval = pngquant(filename, newext, floyd, force, verbose, using_stdin,
-          newcolors, mapapixels);
+          reqcolors, mapapixels);
 #endif
         if (retval) {
             latest_error = retval;
@@ -354,19 +359,19 @@ main( argc, argv )
 
 #ifdef SUPPORT_MAPFILE
 int
-pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
+pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
          mapapixels, maprows, mapcols, mapmaxval)
     char *filename, *newext;
-    int floyd, force, verbose, using_stdin, newcolors;
+    int floyd, force, verbose, using_stdin, reqcolors;
     apixel **mapapixels;
     ulg maprows, mapcols;
     pixval mapmaxval;
 #else
 int
-pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
+pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
          mapapixels)
     char *filename, *newext;
-    int floyd, force, verbose, using_stdin, newcolors;
+    int floyd, force, verbose, using_stdin, reqcolors;
     apixel **mapapixels;
 #endif
 {
@@ -392,6 +397,7 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
     register long sr=0, sg=0, sb=0, sa=0, err;
     int row;
     int colors;
+    int newcolors = 0;
     int usehash;
     int fs_direction = 0;
     int x;
@@ -404,7 +410,21 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
     /* can't do much if we don't have an input file...but don't reopen stdin */
 
     if (using_stdin) {
+
+#if defined(MSDOS) || defined(FLEXOS) || defined(OS2) || defined(WIN32)
+#if (defined(__HIGHC__) && !defined(FLEXOS))
+        setmode(stdin, _BINARY);
+#else
+        setmode(0, O_BINARY);
+#endif
+#endif
+        /* GRR:  Reportedly "some buggy C libraries require BOTH the setmode()
+         *       call AND fdopen() in binary mode," but it's not clear which
+         *       ones or that any of them are still in use as of 2000.  Until
+         *       someone reports a specific problem, we're skipping the fdopen
+         *       part...  */
         infile = stdin;
+
     } else if ((infile = fopen(filename, "rb")) == NULL) {
         fprintf(stderr, "  error:  cannot open %s for reading\n", filename);
         fflush(stderr);
@@ -417,7 +437,16 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
      * there isn't any extension), then make sure it doesn't exist already */
 
     if (using_stdin) {
-        outfile = stdout;
+
+#if defined(MSDOS) || defined(FLEXOS) || defined(OS2) || defined(WIN32)
+#if (defined(__HIGHC__) && !defined(FLEXOS))
+        setmode(stdout, _BINARY);
+#else
+        setmode(1, O_BINARY);
+#endif
+#endif
+        outfile = stdout;   /* GRR:  see comment above about fdopen() */
+
     } else {
         x = strlen(filename);
         if (x > FNMAX-9) {
@@ -481,6 +510,7 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
         ** If at first we don't succeed, lower maxval to increase color
         ** coherence and try again.  This will eventually terminate, with
         ** maxval at worst 15, since 32^3 is approximately MAXCOLORS.
+                  [GRR POSSIBLE BUG:  what about 32^4 ?]
         */
         for ( ; ; ) {
             if (verbose) {
@@ -507,16 +537,17 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
             fprintf(stderr, "%d colors found\n", colors);
             fflush(stderr);
         }
+        newcolors = MIN(colors, reqcolors);
 
         /*
         ** Step 3: apply median-cut to histogram, making the new acolormap.
         */
-        if (verbose) {
+        if (verbose && colors > reqcolors) {
             fprintf(stderr, "  choosing %d colors...\n", newcolors);
             fflush(stderr);
         }
-        acolormap = mediancut( achv, colors, rows * cols, maxval, newcolors );
-        pam_freeacolorhist( achv );
+        acolormap = mediancut(achv, colors, rows * cols, maxval, newcolors);
+        pam_freeacolorhist(achv);
     }
 #ifdef SUPPORT_MAPFILE
     else {
@@ -550,10 +581,30 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
         if (verbose) {
             fprintf(stderr, "  %d colors found in acolormap\n", newcolors);
             fflush(stderr);
+            /* GRR TO DO:  eliminate unused colors from mapfile */
         }
     }
 #endif /* SUPPORT_MAPFILE */
 
+
+    /*
+    ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
+    ** number of colors that will be used in the output image.
+    */
+
+    if (newcolors <= 2)
+        rwpng_info.sample_depth = 1;
+    else if (newcolors <= 4)
+        rwpng_info.sample_depth = 2;
+    else if (newcolors <= 16)
+        rwpng_info.sample_depth = 4;
+    else
+        rwpng_info.sample_depth = 8;
+    if (verbose) {
+        fprintf(stderr, "  writing %d-bit colormapped image\n",
+          rwpng_info.sample_depth);
+        fflush(stderr);
+    }
 
     /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with
@@ -575,7 +626,8 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
             remap[x] = bot_idx++;
     }
     if (verbose) {
-        fprintf(stderr, "%d entries left\n", bot_idx);
+        fprintf(stderr, "%d entr%s left\n", bot_idx,
+          (bot_idx == 1)? "y" : "ies");
         fflush(stderr);
     }
 
@@ -596,12 +648,15 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
 
     rwpng_info.num_palette = newcolors;
     rwpng_info.num_trans = bot_idx;
+    /* GRR TO DO:  if bot_idx == 0, check whether all RGB samples are gray
+                   and if so, whether grayscale sample_depth would be same
+                   => skip following palette section and go grayscale */
 
 
     /*
     ** Step 3.6 [GRR]: rescale the palette colors to a maxval of 255, as
-    ** required by the PNG spec.  (Technically, the remapping happens in
-    ** here, too.)
+    ** required by the PNG spec.  (Technically, the actual remapping happens
+    ** in here, too.)
     */
 
     if (maxval < 255) {
@@ -642,7 +697,7 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, newcolors,
     /*
     ** Step 3.7 [GRR]: allocate memory for either a single row (non-
     ** interlaced -> progressive write) or the entire indexed image
-    ** (if interlaced -> all at once); note that rwpng_info.row_pointers
+    ** (interlaced -> all at once); note that rwpng_info.row_pointers
     ** is still in use via apixels (INPUT data).
     */
 

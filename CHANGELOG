@@ -1,5 +1,13 @@
+version 0.95
+------------
+ - fixed Win32 filter bug (binary mode for stdin/stdout)
+ - fixed cosmetic "choosing colors" verbosity buglet
+ - fixed palette-size bug when number of colors in image < number requested
+ - fixed sample-depth bug (png_set_packing() not retroactively smart)
+
 version 0.91
 ------------
+ - fixed some verbose/non-verbose oopers
  - fixed Win32 (MSVC) portability issues (getpid(), random(), srandom())
  - added Makefile.w32 for MSVC (tested with 5.0)
 

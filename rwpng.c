@@ -239,7 +239,6 @@ int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
 {
     png_structp png_ptr;       /* note:  temporary variables! */
     png_infop info_ptr;
-    int sample_depth = 8;
 
 
     /* could also replace libpng warning-handler (final NULL), but no need: */
@@ -298,7 +297,7 @@ int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
     /* set the image parameters appropriately */
 
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,
-      sample_depth, PNG_COLOR_TYPE_PALETTE,
+      mainprog_ptr->sample_depth, PNG_COLOR_TYPE_PALETTE,
       mainprog_ptr->interlaced, PNG_COMPRESSION_TYPE_DEFAULT,
       PNG_FILTER_TYPE_DEFAULT);
 

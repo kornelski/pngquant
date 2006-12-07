@@ -1,0 +1,42 @@
+.TH PNGQUANT 1 "Thu, 07 Dec 2006 00:33:40 -0200"
+.SH NAME
+pngquant \- PNG image optimising utility
+.SH SYNOPSIS
+.B pngquant
+.RI "[ options ] <ncolors> [pngfile [pngfile ...]]"
+.br
+.B pngquant
+.RI "[ options ] \-map mapfile [pngfile [pngfile ...]]"
+.br
+.PP
+Note that it's \fBrequired\fP to specify the number of colors (\fI<ncolors>\fP) or the \fImapfile\fP. Arguments in square brackets are optional.
+.SH DESCRIPTION
+This manual page documents briefly the
+.B pngquant
+command.
+.PP
+\fBpngquant\fP quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette PNGs using either ordered dithering or Floyd-Steinberg diffusion dithering (default). The output filename is the same as the input name except that it ends in \fI-fs8.png\fP or \fI-or8.png\fP (unless the input is stdin, in which case the quantized image will go to stdout).  The default behavior if the output file exists is to skip the conversion; use \fI-force\fP to overwrite.
+.SH OPTIONS
+.TP
+.B \-force
+Overwrite existing output files.
+.TP
+.B \-ordened, \-nofloyd, \-nofs
+Use ordered dithering.
+.TP
+.B \-verbose, \-noquiet
+Print status messages.
+.TP
+.B NOTE:
+the \-map option is NOT YET SUPPORTED.
+.SH EXAMPLE
+Creating a new image with the number of colors reduced to 64:
+.TP
+	pngquant 64 image.png
+.TP
+The resulting image will have 64 colors and will be saved as \fBimage-fs8.png\fP.
+.SH AUTHOR
+pngquant was written by Greg Roelofs <newt@pobox.com>.
+.PP
+This manual page was written by Nelson A. de Oliveira <naoliv@debian.org>,
+for the Debian project (but may be used by others).

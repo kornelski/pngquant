@@ -1,0 +1,98 @@
+                ======================================
+                 pngquant version 1.0 of 5 April 2002
+                ======================================
+
+pngquant is a simple tool with one purpose:  convert 32-bit RGBA PNGs into
+8-bit RGBA-palette PNGs (or fewer than 8 bits, if you want), via quantization
+and either ordered or diffusion (Floyd-Steinberg) dithering.  The fact that
+you can also use it on RGB or even palette images (e.g., to further color-
+reduce them to 16 colors or whatever) is just a nice little bonus.
+
+The current version is fully functional in the sense that it can do:
+
+ - nice reduction of all PNG image types to 256-color (or smaller) palette
+ - automatic optimization of tRNS chunks
+ - batch conversion of multiple files (e.g., "pngquant 256 *.png")
+ - Unix-style command-line filtering (e.g., "... | pngquant 16 | ...")
+
+...on at least Unix and Win32.  It should be pretty easy to port to almost
+any other platform with a command-line interface and unstructured (stream-
+oriented) files, including VMS but probably not VM or MVS.
+
+It does still lack a few features:
+
+ - no ancillary chunk preservation (except gAMA)
+ - no preservation of significant-bits info after rescaling (sBIT chunk)
+ - no mapfile support
+ - no "native" handling of 16-bit-per-sample files or gray+alpha files
+    (i.e., all samples are truncated to 8 bits and all images are promoted
+    to RGBA before quantization)
+
+These issues will be addressed in a post-1.0 release...someday.
+
+By the way, be sure to check "before" and "after" file sizes, preferably with
+pngcrush (http://pmt.sourceforge.net/pngcrush/); dithered palette images may
+be four times smaller to begin with, but they don't compress nearly as well
+as grayscale and truecolor images.  Some images, such as Henri Sivonen's alpha
+button (http://www.pp.htv.fi/hsivone1/css-test/bitmapstyle.html), can be made
+smaller as full 32-bit RGBA images (4076 bytes in this case) than as either
+FS-dithered palette (4550 bytes) or ordered-dither palette (4482 bytes) images.
+
+See http://www.libpng.org/pub/png/apps/pngquant.html for updates and links
+to compiled binaries for various platforms.
+
+Greg Roelofs
+newt@pobox.com
+
+
+
+Copyright and license info:
+--------------------------
+
+The quantization and dithering code is lifted from Jef Poskanzer's ppmquant,
+part of his wonderful PBMPLUS tool suite.  I hacked it into a slightly cheesy
+"pamquant" back in 1997 (http://pobox.com/~newt/greg_rgba.html) and finally
+ripped out the cheesy file-I/O parts and replaced them with nice PNG code in
+December 2000.  The PNG reading and writing code is a merged and slightly
+simplified version of readpng, readpng2, and writepng from my book, "PNG:
+The Definitive Guide."  pngquant therefore inherits both licenses, one for
+each source file.  (Note that both licenses are basically BSD-like; that is,
+use the code however you like, as long as you acknowledge its origins.)
+
+pngquant.c:
+
+   Copyright (C) 1989, 1991 by Jef Poskanzer.
+   Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
+                                  Stefan Schneider.
+  
+   Permission to use, copy, modify, and distribute this software and its
+   documentation for any purpose and without fee is hereby granted, provided
+   that the above copyright notice appear in all copies and that both that
+   copyright notice and this permission notice appear in supporting
+   documentation.  This software is provided "as is" without express or
+   implied warranty.
+
+rwpng.c (and rwpng.h):
+
+   Copyright (c) 1998-2002 Greg Roelofs.  All rights reserved.
+
+   This software is provided "as is," without warranty of any kind,
+   express or implied.  In no event shall the author or contributors
+   be held liable for any damages arising in any way from the use of
+   this software.
+
+   Permission is granted to anyone to use this software for any purpose,
+   including commercial applications, and to alter it and redistribute
+   it freely, subject to the following restrictions:
+
+   1. Redistributions of source code must retain the above copyright
+      notice, disclaimer, and this list of conditions.
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, disclaimer, and this list of conditions in the documenta-
+      tion and/or other materials provided with the distribution.
+   3. All advertising materials mentioning features or use of this
+      software must display the following acknowledgment:
+
+         This product includes software developed by Greg Roelofs
+         and contributors for the book, "PNG: The Definitive Guide,"
+         published by O'Reilly and Associates.

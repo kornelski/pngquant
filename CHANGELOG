@@ -1,0 +1,42 @@
+version 1.1
+------------
+ - alpha-sensitive color reduction and dithering
+ - support -- and - arguments in command line
+ - number of colors optional (defaults to 256)
+ - increased maximum number of colors in histogram
+
+version 1.0
+------------
+ - cleaned up Makefile.unx (better gcc optimizations, "clean" target)
+ - recompiled binaries with zlib 1.1.4
+
+version 0.95
+------------
+ - fixed Win32 filter bug (binary mode for stdin/stdout)
+ - fixed cosmetic "choosing colors" verbosity buglet
+ - fixed palette-size bug when number of colors in image < number requested
+ - fixed sample-depth bug (png_set_packing() not retroactively smart)
+
+version 0.91
+------------
+ - fixed some verbose/non-verbose oopers
+ - fixed Win32 (MSVC) portability issues (getpid(), random(), srandom())
+ - added Makefile.w32 for MSVC (tested with 5.0)
+
+version 0.90
+------------
+ - added support for multiple files on command line
+ - changed stdin support to write PNG stream to stdout (not "stdin-fs8.png")
+
+version 0.75
+------------
+ - added support for any type of input file [Glenn Randers-Pehrson]
+ - fixed palette-(re)scaling bug
+ - added -verbose and -quiet options (default now is -quiet)
+ - added palette-remapping to minimize size of tRNS chunk
+ - made Floyd-Steinberg dithering default
+ - changed output naming scheme to -fs8.png and -or8.png (FS or ordered dither)
+
+version 0.70
+------------
+ - first public release

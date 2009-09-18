@@ -37,5 +37,7 @@ To further reduce file size, you may want to consider the following tools:
 For copyright and license information, check out the COPYRIGHT file. For the
 change log, see the CHANGELOG file.
 
+The INSTALL file explains how to build pngquant from source.
+
 NOTE: This is a modified version of the regular 'pngquant' tool. The homepage of
       the latter is: http://www.libpng.org/pub/png/apps/pngquant.html

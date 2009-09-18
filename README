@@ -1,6 +1,5 @@
-This is pngquant, a quantization utility for PNG images.
-Image quantization is the process of the reducing the number of colors in an
-image.
+This is pngquant, a quantization utility for PNG images. Image quantization
+is the process of the reducing the number of colors in an image.
 
 Typically, pngquant is used to convert 32-bit RGBA PNGs to 8-bit RGBA-palette
 PNGs in order to save file space. For example, for the web.

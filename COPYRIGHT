@@ -1,0 +1,59 @@
+The quantization and dithering code in pngquant is lifted from Jef Poskanzer's
+'ppmquant', part of his wonderful PBMPLUS tool suite.
+
+Greg Roelofs hacked it into a (in his words) "slightly cheesy" 'pamquant' back
+in 1997 (see http://pobox.com/~newt/greg_rgba.html) and finally he ripped out
+the cheesy file-I/O parts and replaced them with nice PNG code in December
+2000. The PNG reading and writing code is a merged and slightly simplified
+version of readpng, readpng2, and writepng from his book:
+
+   "PNG: The Definitive Guide."
+
+Pngquant therefore inherits both licenses, one for each source file.
+
+Note that both licenses are basically BSD-like; that is, use the code however
+you like, as long as you acknowledge its origins.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+pngquant.c:
+
+   Copyright (C) 1989, 1991 by Jef Poskanzer.
+   Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
+                                  Stefan Schneider.
+  
+   Permission to use, copy, modify, and distribute this software and its
+   documentation for any purpose and without fee is hereby granted, provided
+   that the above copyright notice appear in all copies and that both that
+   copyright notice and this permission notice appear in supporting
+   documentation.  This software is provided "as is" without express or
+   implied warranty.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+rwpng.c (and rwpng.h):
+
+   Copyright (c) 1998-2002 Greg Roelofs.  All rights reserved.
+
+   This software is provided "as is," without warranty of any kind,
+   express or implied.  In no event shall the author or contributors
+   be held liable for any damages arising in any way from the use of
+   this software.
+
+   Permission is granted to anyone to use this software for any purpose,
+   including commercial applications, and to alter it and redistribute
+   it freely, subject to the following restrictions:
+
+   1. Redistributions of source code must retain the above copyright
+      notice, disclaimer, and this list of conditions.
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, disclaimer, and this list of conditions in the documenta-
+      tion and/or other materials provided with the distribution.
+   3. All advertising materials mentioning features or use of this
+      software must display the following acknowledgment:
+
+         This product includes software developed by Greg Roelofs
+         and contributors for the book, "PNG: The Definitive Guide,"
+         published by O'Reilly and Associates.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

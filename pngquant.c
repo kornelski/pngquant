@@ -247,7 +247,7 @@ main( argc, argv )
         else if ( 0 == strcmp( argv[argn], "-ext" ) ) {
             ++argn;
             if ( argn == argc ) {
-                fprintf( stderr, pq_usage );
+                fprintf( stderr, "%s", pq_usage );
                 fflush( stderr );
                 return 1;
             } 
@@ -1057,7 +1057,7 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
     }
     if (row_pointers) {
         free(row_pointers);
-        row_pointers = rwpng_info.row_pointers = NULL;
+        rwpng_info.row_pointers = NULL;
     }
 
 

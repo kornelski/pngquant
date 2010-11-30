@@ -1075,10 +1075,7 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
 static apixel background;
 
 static acolorhist_vector
-mediancut( achv, colors, sum, maxval, min_opaque_val, newcolors )
-    acolorhist_vector achv;
-    int colors, sum, newcolors;
-    pixval maxval, min_opaque_val;
+mediancut( acolorhist_vector achv, int colors, int sum, pixval maxval, pixval min_opaque_val, int newcolors )
 {
     acolorhist_vector acolormap;
     box_vector bv;

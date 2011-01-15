@@ -411,7 +411,6 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
     int row;
     int colors;
     int newcolors = 0;
-    int usehash;
     int fs_direction = 0;
     int x;
 /*  int channels;  */
@@ -797,7 +796,6 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         fflush(stderr);
     }
     acht = pam_allocacolorhash( );
-    usehash = 1;
 
     if (rwpng_write_image_init(outfile, &rwpng_info) != 0) {
         fprintf(stderr, "  rwpng_write_image_init() error\n");
@@ -915,15 +913,13 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                         dist = newdist;
                     }
                 }
-                if (usehash) {
-                    if (pam_addtoacolorhash(acht, pP, ind) < 0) {
-                        if (verbose) {
-                            fprintf(stderr, "  out of memory adding to hash"
-                              " table, proceeding without it\n");
-                            fflush(stderr);
-                        }
-                        usehash = 0;
+
+                if (pam_addtoacolorhash(acht, pP, ind) < 0) {
+                    if (verbose) {
+                        fprintf(stderr, "  out of memory adding to hash");
+                        fflush(stderr);
                     }
+                    return OUT_OF_MEMORY_ERROR;
                 }
             }
 

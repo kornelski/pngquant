@@ -26,7 +26,7 @@
 /* GRR TO DO:  if all samples are 0 or maxval, eliminate gAMA chunk (rwpng.c) */
 
 
-#define PNGQUANT_VERSION "1.1.3 of February 2009"
+#define PNGQUANT_VERSION "1.1.4dev (2011)"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\
@@ -90,10 +90,6 @@ typedef struct {
  */
 
 #define pam_freearray(pixels,rows) pm_freearray((char **)pixels, rows)
-#define PAM_GETR(p) ((p).r)
-#define PAM_GETG(p) ((p).g)
-#define PAM_GETB(p) ((p).b)
-#define PAM_GETA(p) ((p).a)
 #define PAM_SETA(p,v) ((p).a = (v))
 #define PAM_ASSIGN(p,red,grn,blu,alf) \
    do { (p).r = (red); (p).g = (grn); (p).b = (blu); (p).a = (alf); } while (0)
@@ -101,10 +97,10 @@ typedef struct {
    ((p).r == (q).r && (p).g == (q).g && (p).b == (q).b && (p).a == (q).a)
 #define PAM_DEPTH(newp,p,oldmaxval,newmaxval) \
    PAM_ASSIGN( (newp), \
-      ( (int) PAM_GETR(p) * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval), \
-      ( (int) PAM_GETG(p) * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval), \
-      ( (int) PAM_GETB(p) * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval), \
-      ( (int) PAM_GETA(p) * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval) )
+      ( (int) (p).r * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval), \
+      ( (int) (p).g * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval), \
+      ( (int) (p).b * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval), \
+      ( (int) (p).a * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval) )
 
 
 /* from pamcmap.h */
@@ -554,14 +550,14 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
         for ( col = 0, pP = apixels[row]; (ulg)col < cols; ++col, ++pP )
         {
             /* set all completely transparent colors to black */
-            if (!PAM_GETA(*pP))
+            if (!(*pP).a)
             {
-                PAM_ASSIGN(*pP,0,0,0,PAM_GETA(*pP));
+                PAM_ASSIGN(*pP,0,0,0,(*pP).a);
             }
             /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
-            else if (PAM_GETA(*pP) < maxval && PAM_GETA(*pP) > almost_opaque_val)
+            else if ((*pP).a < maxval && (*pP).a > almost_opaque_val)
             {
-                int al = almost_opaque_val + (PAM_GETA(*pP)-almost_opaque_val) * (maxval-almost_opaque_val) / (min_opaque_val-almost_opaque_val); 
+                int al = almost_opaque_val + ((*pP).a-almost_opaque_val) * (maxval-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
                 if (al > maxval) al = maxval;
                 PAM_SETA(*pP,al);
             }
@@ -692,7 +688,7 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
         fflush(stderr);
     }
     for (top_idx = newcolors-1, bot_idx = x = 0;  x < newcolors;  ++x) {
-        if (PAM_GETA(acolormap[x].acolor) == maxval)
+        if ((acolormap[x].acolor).a == maxval)
             remap[x] = top_idx--;
         else
             remap[x] = bot_idx++;
@@ -743,25 +739,25 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
              *  for the PNG palette; the trans-remapping just puts the values
              *  in different slots in the PNG palette */
             rwpng_info.palette[remap[x]].red
-              = (PAM_GETR(acolormap[x].acolor)*255 + (maxval >> 1)) / maxval;
+              = ((acolormap[x].acolor).r*255 + (maxval >> 1)) / maxval;
             rwpng_info.palette[remap[x]].green
-              = (PAM_GETG(acolormap[x].acolor)*255 + (maxval >> 1)) / maxval;
+              = ((acolormap[x].acolor).g*255 + (maxval >> 1)) / maxval;
             rwpng_info.palette[remap[x]].blue
-              = (PAM_GETB(acolormap[x].acolor)*255 + (maxval >> 1)) / maxval;
+              = ((acolormap[x].acolor).b*255 + (maxval >> 1)) / maxval;
             rwpng_info.trans[remap[x]]
-              = (PAM_GETA(acolormap[x].acolor)*255 + (maxval >> 1)) / maxval;
+              = ((acolormap[x].acolor).a*255 + (maxval >> 1)) / maxval;
         }
         /* GRR TO DO:  set sBIT flag appropriately */
     } else {
         for (x = 0; x < newcolors; ++x) {
             rwpng_info.palette[remap[x]].red
-              = PAM_GETR( acolormap[x].acolor );
+              = ( acolormap[x].acolor ).r;
             rwpng_info.palette[remap[x]].green
-              = PAM_GETG( acolormap[x].acolor );
+              = ( acolormap[x].acolor ).g;
             rwpng_info.palette[remap[x]].blue
-              = PAM_GETB( acolormap[x].acolor );
+              = ( acolormap[x].acolor ).b;
             rwpng_info.trans[remap[x]]
-              = PAM_GETA( acolormap[x].acolor );
+              = ( acolormap[x].acolor ).a;
         }
     }
 
@@ -873,11 +869,11 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
         do {
             if ( floyd ) {
                 /* Use Floyd-Steinberg errors to adjust actual color. */
-                sr = PAM_GETR(*pP) + thisrerr[col + 1] / FS_SCALE;
-                sg = PAM_GETG(*pP) + thisgerr[col + 1] / FS_SCALE;
-                sb = PAM_GETB(*pP) + thisberr[col + 1] / FS_SCALE;
-                sa = PAM_GETA(*pP) + thisaerr[col + 1] / FS_SCALE;
-                
+                sr = (*pP).r + thisrerr[col + 1] / FS_SCALE;
+                sg = (*pP).g + thisgerr[col + 1] / FS_SCALE;
+                sb = (*pP).b + thisberr[col + 1] / FS_SCALE;
+                sa = (*pP).a + thisaerr[col + 1] / FS_SCALE;
+
                 if ( sr < 0 ) sr = 0;
                 else if ( sr > maxval ) sr = maxval;
                 if ( sg < 0 ) sg = 0;
@@ -886,38 +882,38 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
                 else if ( sb > maxval ) sb = maxval;
                 if ( sa < 0 ) sa = 0;
                 /* when fighting IE bug, dithering must not make opaque areas transparent */
-                else if ( sa > maxval || (ie_bug && PAM_GETA(*pP) == maxval)) sa = maxval;                            
-                
+                else if ( sa > maxval || (ie_bug && (*pP).a == maxval)) sa = maxval;
+
                 /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
                 PAM_ASSIGN( *pP, (uch)sr, (uch)sg, (uch)sb, (uch)sa );
             }
 
             /* Check hash table to see if we have already matched this color. */
             ind = pam_lookupacolor( acht, pP );
-                        
-            int a1 = PAM_GETA( *pP );
-            int colorimp = colorimportance(a1);            
-            
+
+            int a1 = ( *pP ).a;
+            int colorimp = colorimportance(a1);
+
             if ( ind == -1 ) {
                 /* No; search acolormap for closest match. */
                 int i, r1, g1, b1, r2, g2, b2, a2;
                 long dist = 1<<30, newdist;
 
-                r1 = PAM_GETR( *pP );
-                g1 = PAM_GETG( *pP );
-                b1 = PAM_GETB( *pP );
-                /* a1 read few lines earlier */       
-                
+                r1 = ( *pP ).r;
+                g1 = ( *pP ).g;
+                b1 = ( *pP ).b;
+                /* a1 read few lines earlier */
+
                 for ( i = 0; i < newcolors; ++i ) {
-                    r2 = PAM_GETR( acolormap[i].acolor );
-                    g2 = PAM_GETG( acolormap[i].acolor );
-                    b2 = PAM_GETB( acolormap[i].acolor );
-                    a2 = PAM_GETA( acolormap[i].acolor );
+                    r2 = ( acolormap[i].acolor ).r;
+                    g2 = ( acolormap[i].acolor ).g;
+                    b2 = ( acolormap[i].acolor ).b;
+                    a2 = ( acolormap[i].acolor ).a;
 /* GRR POSSIBLE BUG */
                                         
                     /* 8+1 shift is /256 for colorimportance and approx /3 for 3 channels vs 1 */
                     newdist = (( a1 - a2 ) * ( a1 - a2 ) << 8+1) +
-                              (( r1 - r2 ) * ( r1 - r2 ) * colorimp + 
+                              (( r1 - r2 ) * ( r1 - r2 ) * colorimp +
                                ( g1 - g2 ) * ( g1 - g2 ) * colorimp +
                                ( b1 - b2 ) * ( b1 - b2 ) * colorimp);
 
@@ -944,43 +940,43 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
             if ( floyd ) {
                 /* Propagate Floyd-Steinberg error terms. */
                 if ( fs_direction ) {
-                    err = (sr - (long)PAM_GETR(acolormap[ind].acolor))*FS_SCALE * colorimp/256;
+                    err = (sr - (long)(acolormap[ind].acolor).r)*FS_SCALE * colorimp/256;
                     thisrerr[col + 2] += ( err * 7 ) / 16;
                     nextrerr[col    ] += ( err * 3 ) / 16;
                     nextrerr[col + 1] += ( err * 5 ) / 16;
                     nextrerr[col + 2] += ( err     ) / 16;
-                    err = (sg - (long)PAM_GETG(acolormap[ind].acolor))*FS_SCALE * colorimp/256;
+                    err = (sg - (long)(acolormap[ind].acolor).g)*FS_SCALE * colorimp/256;
                     thisgerr[col + 2] += ( err * 7 ) / 16;
                     nextgerr[col    ] += ( err * 3 ) / 16;
                     nextgerr[col + 1] += ( err * 5 ) / 16;
                     nextgerr[col + 2] += ( err     ) / 16;
-                    err = (sb - (long)PAM_GETB(acolormap[ind].acolor))*FS_SCALE * colorimp/256;
+                    err = (sb - (long)(acolormap[ind].acolor).b)*FS_SCALE * colorimp/256;
                     thisberr[col + 2] += ( err * 7 ) / 16;
                     nextberr[col    ] += ( err * 3 ) / 16;
                     nextberr[col + 1] += ( err * 5 ) / 16;
                     nextberr[col + 2] += ( err     ) / 16;
-                    err = (sa - (long)PAM_GETA(acolormap[ind].acolor))*FS_SCALE;
+                    err = (sa - (long)(acolormap[ind].acolor).a)*FS_SCALE;
                     thisaerr[col + 2] += ( err * 7 ) / 16;
                     nextaerr[col    ] += ( err * 3 ) / 16;
                     nextaerr[col + 1] += ( err * 5 ) / 16;
                     nextaerr[col + 2] += ( err     ) / 16;
                 } else {
-                    err = (sr - (long)PAM_GETR(acolormap[ind].acolor))*FS_SCALE * colorimp/256;
+                    err = (sr - (long)(acolormap[ind].acolor).r)*FS_SCALE * colorimp/256;
                     thisrerr[col    ] += ( err * 7 ) / 16;
                     nextrerr[col + 2] += ( err * 3 ) / 16;
                     nextrerr[col + 1] += ( err * 5 ) / 16;
                     nextrerr[col    ] += ( err     ) / 16;
-                    err = (sg - (long)PAM_GETG(acolormap[ind].acolor))*FS_SCALE * colorimp/256;
+                    err = (sg - (long)(acolormap[ind].acolor).g)*FS_SCALE * colorimp/256;
                     thisgerr[col    ] += ( err * 7 ) / 16;
                     nextgerr[col + 2] += ( err * 3 ) / 16;
                     nextgerr[col + 1] += ( err * 5 ) / 16;
                     nextgerr[col    ] += ( err     ) / 16;
-                    err = (sb - (long)PAM_GETB(acolormap[ind].acolor))*FS_SCALE * colorimp/256;
+                    err = (sb - (long)(acolormap[ind].acolor).b)*FS_SCALE * colorimp/256;
                     thisberr[col    ] += ( err * 7 ) / 16;
                     nextberr[col + 2] += ( err * 3 ) / 16;
                     nextberr[col + 1] += ( err * 5 ) / 16;
                     nextberr[col    ] += ( err     ) / 16;
-                    err = (sa - (long)PAM_GETA(acolormap[ind].acolor))*FS_SCALE;
+                    err = (sa - (long)(acolormap[ind].acolor).a)*FS_SCALE;
                     thisaerr[col    ] += ( err * 7 ) / 16;
                     nextaerr[col + 2] += ( err * 3 ) / 16;
                     nextaerr[col + 1] += ( err * 5 ) / 16;
@@ -1131,26 +1127,26 @@ mediancut( acolorhist_vector achv, int colors, int sum, pixval maxval, pixval mi
         /* background is global - used when sorting too */        
         averagepixels(bv[bi].ind, bv[bi].colors, &background, achv, maxval, min_opaque_val);
 
-        minr = maxr = PAM_GETR( achv[indx].acolor );
-        ming = maxg = PAM_GETG( achv[indx].acolor );
-        minb = maxb = PAM_GETB( achv[indx].acolor );
-        mina = maxa = PAM_GETA( achv[indx].acolor );
+        minr = maxr = ( achv[indx].acolor ).r;
+        ming = maxg = ( achv[indx].acolor ).g;
+        minb = maxb = ( achv[indx].acolor ).b;
+        mina = maxa = ( achv[indx].acolor ).a;
 
         for ( i = 0; i < clrs; ++i )
-        {            
-            v = PAM_GETA( achv[indx + i].acolor );
+        {
+            v = ( achv[indx + i].acolor ).a;
             if ( v < mina ) mina = v;
-            if ( v > maxa ) maxa = v;  
-            
+            if ( v > maxa ) maxa = v;
+
             /* linear blending makes it too obsessed with accurate alpha, but the optimum unfortunately seems to depend on image */
-            int al = colorimportance(255-v); 
-            v = (PAM_GETR( achv[indx + i].acolor ) * (256-al) + al*PAM_GETR( background ))/256; /* 256 is deliberate */
+            int al = colorimportance(255-v);
+            v = (( achv[indx + i].acolor ).r * (256-al) + al*( background ).r)/256; /* 256 is deliberate */
             if ( v < minr ) minr = v;
             if ( v > maxr ) maxr = v;
-            v = (PAM_GETG( achv[indx + i].acolor ) * (256-al) + al*PAM_GETG( background ))/256;
+            v = (( achv[indx + i].acolor ).g * (256-al) + al*( background ).g)/256;
             if ( v < ming ) ming = v;
             if ( v > maxg ) maxg = v;
-            v = (PAM_GETB( achv[indx + i].acolor ) * (256-al) + al*PAM_GETB( background ))/256;
+            v = (( achv[indx + i].acolor ).b * (256-al) + al*( background ).b)/256;
             if ( v < minb ) minb = v;
             if ( v > maxb ) maxb = v;
  
@@ -1262,22 +1258,22 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
         int clrs = bv[bi].colors;
         int minr, maxr, ming, maxg, minb, maxb, mina, maxa, v;
 
-        minr = maxr = PAM_GETR( achv[indx].acolor );
-        ming = maxg = PAM_GETG( achv[indx].acolor );
-        minb = maxb = PAM_GETB( achv[indx].acolor );
-        mina = maxa = PAM_GETA( achv[indx].acolor );
+        minr = maxr = ( achv[indx].acolor ).r;
+        ming = maxg = ( achv[indx].acolor ).g;
+        minb = maxb = ( achv[indx].acolor ).b;
+        mina = maxa = ( achv[indx].acolor ).a;
         for ( i = 1; i < clrs; ++i )
             {
-            v = PAM_GETR( achv[indx + i].acolor );
+            v = ( achv[indx + i].acolor ).r;
             minr = min( minr, v );
             maxr = max( maxr, v );
-            v = PAM_GETG( achv[indx + i].acolor );
+            v = ( achv[indx + i].acolor ).g;
             ming = min( ming, v );
             maxg = max( maxg, v );
-            v = PAM_GETB( achv[indx + i].acolor );
+            v = ( achv[indx + i].acolor ).b;
             minb = min( minb, v );
             maxb = max( maxb, v );
-            v = PAM_GETA( achv[indx + i].acolor );
+            v = ( achv[indx + i].acolor ).a;
             mina = min( mina, v );
             maxa = max( maxa, v );
             }
@@ -1292,10 +1288,10 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
 
         for ( i = 0; i < clrs; ++i )
             {
-            r += PAM_GETR( achv[indx + i].acolor );
-            g += PAM_GETG( achv[indx + i].acolor );
-            b += PAM_GETB( achv[indx + i].acolor );
-            a += PAM_GETA( achv[indx + i].acolor );
+            r += ( achv[indx + i].acolor ).r;
+            g += ( achv[indx + i].acolor ).g;
+            b += ( achv[indx + i].acolor ).b;
+            a += ( achv[indx + i].acolor ).a;
             }
         r = r / clrs;
         g = g / clrs;
@@ -1329,26 +1325,26 @@ static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector a
         /* give more weight to colors that are further away from average (128,128,128) 
             this is intended to prevent desaturation of images and fading of whites
          */
-        tmp = 128 - PAM_GETR( achv[indx + i].acolor);
+        tmp = 128 - ( achv[indx + i].acolor).r;
         weight += tmp*tmp;
-        tmp = 128 - PAM_GETG( achv[indx + i].acolor);
+        tmp = 128 - ( achv[indx + i].acolor).g;
         weight += tmp*tmp;
-        tmp = 128 - PAM_GETB( achv[indx + i].acolor);
+        tmp = 128 - ( achv[indx + i].acolor).b;
         weight += tmp*tmp;
         
         /* find if there are opaque colors, in case we're supposed to preserve opacity exactly (ie_bug) */
-        if (PAM_GETA( achv[indx + i].acolor ) > maxa) maxa = PAM_GETA( achv[indx + i].acolor );
-        
-        a += PAM_GETA( achv[indx + i].acolor ) * achv[indx + i].value * weight;
+        if (( achv[indx + i].acolor ).a > maxa) maxa = ( achv[indx + i].acolor ).a;
+
+        a += ( achv[indx + i].acolor ).a * achv[indx + i].value * weight;
         sum += achv[indx + i].value * weight;
         
         /* blend colors proportionally to their alpha. It has minor effect and doesn't need colorimportance() */
-        weight *= colorimportance( PAM_GETA(achv[indx + i].acolor) );            
-        
-        r += PAM_GETR( achv[indx + i].acolor ) * achv[indx + i].value * weight;
-        g += PAM_GETG( achv[indx + i].acolor ) * achv[indx + i].value * weight;
-        b += PAM_GETB( achv[indx + i].acolor ) * achv[indx + i].value * weight;
-        colorsum += achv[indx + i].value * weight;      
+        weight *= colorimportance( (achv[indx + i].acolor).a );
+
+        r += ( achv[indx + i].acolor ).r * achv[indx + i].value * weight;
+        g += ( achv[indx + i].acolor ).g * achv[indx + i].value * weight;
+        b += ( achv[indx + i].acolor ).b * achv[indx + i].value * weight;
+        colorsum += achv[indx + i].value * weight;
     }
     
     if (!colorsum) colorsum=1;    
@@ -1369,30 +1365,30 @@ static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector a
 
 static int
 redcompare( const void *ch1, const void *ch2 )
-{    
-    return ((int) PAM_GETR( ((acolorhist_vector)ch1)->acolor )) -
-           ((int) PAM_GETR( ((acolorhist_vector)ch2)->acolor ));
+{
+    return ((int) ( ((acolorhist_vector)ch1)->acolor ).r) -
+           ((int) ( ((acolorhist_vector)ch2)->acolor ).r);
 }
 
 static int
 greencompare( const void *ch1, const void *ch2 )
 {
-    return ((int) PAM_GETG( ((acolorhist_vector)ch1)->acolor )) -
-           ((int) PAM_GETG( ((acolorhist_vector)ch2)->acolor ));
+    return ((int) ( ((acolorhist_vector)ch1)->acolor ).g) -
+           ((int) ( ((acolorhist_vector)ch2)->acolor ).g);
 }
 
 static int
 bluecompare( const void *ch1, const void *ch2 )
 {
-    return ((int) PAM_GETB( ((acolorhist_vector)ch1)->acolor )) -
-           ((int) PAM_GETB( ((acolorhist_vector)ch2)->acolor ));
+    return ((int) ( ((acolorhist_vector)ch1)->acolor ).b) -
+           ((int) ( ((acolorhist_vector)ch2)->acolor ).b);
 }
 
 static int
 alphacompare( const void *ch1, const void *ch2 )
 {
-    return (int) PAM_GETA( ((acolorhist_vector)ch1)->acolor ) -
-           (int) PAM_GETA( ((acolorhist_vector)ch2)->acolor );
+    return (int) ( ((acolorhist_vector)ch1)->acolor ).a -
+           (int) ( ((acolorhist_vector)ch2)->acolor ).a;
 }
 
 static int
@@ -1457,10 +1453,10 @@ pam.h:
 
 #define HASH_SIZE 20023
 
-#define pam_hashapixel(p) ( ( ( (long) PAM_GETR(p) * 33023 + \
-                                (long) PAM_GETG(p) * 30013 + \
-                                (long) PAM_GETB(p) * 27011 + \
-                                (long) PAM_GETA(p) * 24007 ) \
+#define pam_hashapixel(p) ( ( ( (long) (p).r * 33023 + \
+                                (long) (p).g * 30013 + \
+                                (long) (p).b * 27011 + \
+                                (long) (p).a * 24007 ) \
                               & 0x7fffffff ) % HASH_SIZE )
 
 static acolorhist_vector

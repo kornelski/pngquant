@@ -144,15 +144,22 @@ struct box {
     int sum;
 };
 
-
+typedef enum {
+    READ_ERROR = 2,
+    TOO_MANY_COLORS = 5,
+    NOT_OVERWRITING_ERROR = 15,
+    CANT_WRITE_ERROR = 16,
+    OUT_OF_MEMORY_ERROR = 17,
+    INTERNAL_LOGIC_ERROR = 18,
+} pngquant_error;
 
 #ifdef SUPPORT_MAPFILE
-   static int pngquant
+   static pngquant_error pngquant
      (char *filename, char *newext, int floyd, int force, int verbose,
       int using_stdin, int reqcolors, apixel **mapapixels, ulg maprows,
       ulg mapcols, pixval mapmaxval, int ie_bug);
 #else
-   static int pngquant
+   static pngquant_error pngquant
      (char *filename, char *newext, int floyd, int force, int verbose,
       int using_stdin, int reqcolors, apixel **mapapixels, int ie_bug);
 #endif
@@ -374,13 +381,11 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-
-
 #ifdef SUPPORT_MAPFILE
-int pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, apixel **mapapixels,
+pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, apixel **mapapixels,
             ulg maprows, ulg mapcols, pixval mapmaxval, int ie_bug)
 #else
-int pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, apixel **mapapixels, int ie_bug)
+pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, apixel **mapapixels, int ie_bug)
 #endif
 {
     FILE *infile, *outfile;
@@ -436,7 +441,7 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
     } else if ((infile = fopen(filename, "rb")) == NULL) {
         fprintf(stderr, "  error:  cannot open %s for reading\n", filename);
         fflush(stderr);
-        return 2;
+        return READ_ERROR;
     }
 
 
@@ -474,13 +479,13 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
                   outname);
                 fflush(stderr);
                 fclose(outfile);
-                return 15;
+                return NOT_OVERWRITING_ERROR;
             }
         }
         if ((outfile = fopen(outname, "wb")) == NULL) {
             fprintf(stderr, "  error:  cannot open %s for writing\n", outname);
             fflush(stderr);
-            return 16;
+            return CANT_WRITE_ERROR;
         }
     }
 
@@ -627,7 +632,7 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
                 free(rwpng_info.rgba_data);
             if (!using_stdin)
                 fclose(outfile);
-            return 5;
+            return TOO_MANY_COLORS;
         }
         pam_freearray(mapapixels, maprows);
         if (verbose) {
@@ -695,7 +700,7 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
             free(rwpng_info.rgba_data);
         if (!using_stdin)
             fclose(outfile);
-        return 18;
+        return INTERNAL_LOGIC_ERROR;
     }
 
     rwpng_info.num_palette = newcolors;
@@ -778,7 +783,7 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
             free(rwpng_info.indexed_data);
         if (!using_stdin)
             fclose(outfile);
-        return 17;
+        return OUT_OF_MEMORY_ERROR;
     }
 
 

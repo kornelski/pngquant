@@ -186,10 +186,7 @@ static void pm_freearray (char **its, int rows);
 static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector achv, pixval maxval, pixval min_opaque_val);
 
 
-int
-main(argc, argv)
-    int argc;
-    char *argv[];
+int main(int argc, char *argv[])
 {
 #ifdef SUPPORT_MAPFILE
     FILE *infile;
@@ -379,21 +376,10 @@ main(argc, argv)
 
 
 #ifdef SUPPORT_MAPFILE
-int
-pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
-         mapapixels, maprows, mapcols, mapmaxval, ie_bug)
-    char *filename, *newext;
-    int floyd, force, verbose, using_stdin, reqcolors, ie_bug;
-    apixel **mapapixels;
-    ulg maprows, mapcols;
-    pixval mapmaxval;
+int pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, apixel **mapapixels,
+            ulg maprows, ulg mapcols, pixval mapmaxval, int ie_bug)
 #else
-int
-pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
-         mapapixels, ie_bug)
-    char *filename, *newext;
-    int floyd, force, verbose, using_stdin, reqcolors, ie_bug;
-    apixel **mapapixels;
+int pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, apixel **mapapixels, int ie_bug)
 #endif
 {
     FILE *infile, *outfile;
@@ -1061,8 +1047,7 @@ pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors,
 
 static apixel background;
 
-static acolorhist_vector
-mediancut(acolorhist_vector achv, int colors, int sum, pixval maxval, pixval min_opaque_val, int newcolors)
+static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval maxval, pixval min_opaque_val, int newcolors)
 {
     acolorhist_vector acolormap;
     box_vector bv;
@@ -1349,36 +1334,31 @@ static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector a
     PAM_ASSIGN(*pixel, (uch)r, (uch)g, (uch)b, (uch)a);
 }
 
-static int
-redcompare(const void *ch1, const void *ch2)
+static int redcompare(const void *ch1, const void *ch2)
 {
     return ((int) ((acolorhist_vector)ch1)->acolor.r) -
            ((int) ((acolorhist_vector)ch2)->acolor.r);
 }
 
-static int
-greencompare(const void *ch1, const void *ch2)
+static int greencompare(const void *ch1, const void *ch2)
 {
     return ((int) ((acolorhist_vector)ch1)->acolor.g) -
            ((int) ((acolorhist_vector)ch2)->acolor.g);
 }
 
-static int
-bluecompare(const void *ch1, const void *ch2)
+static int bluecompare(const void *ch1, const void *ch2)
 {
     return ((int) ((acolorhist_vector)ch1)->acolor.b) -
            ((int) ((acolorhist_vector)ch2)->acolor.b);
 }
 
-static int
-alphacompare(const void *ch1, const void *ch2)
+static int alphacompare(const void *ch1, const void *ch2)
 {
     return (int) ((acolorhist_vector)ch1)->acolor.a -
            (int) ((acolorhist_vector)ch2)->acolor.a;
 }
 
-static int
-sumcompare(const void *b1, const void *b2)
+static int sumcompare(const void *b1, const void *b2)
 {
     return ((box_vector)b2)->sum -
            ((box_vector)b1)->sum;
@@ -1445,11 +1425,7 @@ pam.h:
                                 (long) (p).a * 24007 ) \
                               & 0x7fffffff ) % HASH_SIZE )
 
-static acolorhist_vector
-pam_computeacolorhist(apixels, cols, rows, maxacolors, acolorsP)
-    apixel** apixels;
-    int cols, rows, maxacolors;
-    int* acolorsP;
+static acolorhist_vector pam_computeacolorhist(apixel** apixels, int cols, int rows, int maxacolors, int* acolorsP)
 {
     acolorhash_table acht;
     acolorhist_vector achv;
@@ -1502,8 +1478,7 @@ static int contrast(apixel *p, apixel *prevp, apixel *nextp,int col,int cols)
     return sqrt(maxcontrast);
 }
 
-static acolorhash_table
-pam_computeacolorhash(apixel** apixels,int cols,int rows,int maxacolors, int* acolorsP )
+static acolorhash_table pam_computeacolorhash(apixel** apixels,int cols,int rows,int maxacolors, int* acolorsP )
 {
     acolorhash_table acht;
     acolorhist_list achl;
@@ -1552,8 +1527,7 @@ pam_computeacolorhash(apixel** apixels,int cols,int rows,int maxacolors, int* ac
 
 
 
-static acolorhash_table
-pam_allocacolorhash( )
+static acolorhash_table pam_allocacolorhash( )
 {
     acolorhash_table acht;
     int i;
@@ -1572,11 +1546,7 @@ pam_allocacolorhash( )
 
 
 
-static int
-pam_addtoacolorhash(acht, acolorP, value)
-    acolorhash_table acht;
-    apixel* acolorP;
-    int value;
+static int pam_addtoacolorhash(acolorhash_table acht, apixel* acolorP, int value)
 {
     int hash;
     acolorhist_list achl;
@@ -1594,10 +1564,7 @@ pam_addtoacolorhash(acht, acolorP, value)
 
 
 
-static acolorhist_vector
-pam_acolorhashtoacolorhist(acht, maxacolors)
-    acolorhash_table acht;
-    int maxacolors;
+static acolorhist_vector pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors)
 {
     acolorhist_vector achv;
     acolorhist_list achl;
@@ -1626,10 +1593,7 @@ pam_acolorhashtoacolorhist(acht, maxacolors)
 
 
 
-static int
-pam_lookupacolor(acht, acolorP)
-    acolorhash_table acht;
-    apixel* acolorP;
+static int pam_lookupacolor(acolorhash_table acht, apixel* acolorP)
 {
     int hash;
     acolorhist_list achl;
@@ -1644,18 +1608,14 @@ pam_lookupacolor(acht, acolorP)
 
 
 
-static void
-pam_freeacolorhist(achv)
-    acolorhist_vector achv;
+static void pam_freeacolorhist(acolorhist_vector achv)
 {
     free((char*) achv);
 }
 
 
 
-static void
-pam_freeacolorhash(acht)
-    acolorhash_table acht;
+static void pam_freeacolorhash(acolorhash_table acht)
 {
     int i;
     acolorhist_list achl, achlnext;
@@ -1673,10 +1633,7 @@ pam_freeacolorhash(acht)
 
 /* from libpbm1.c */
 
-static char*
-pm_allocrow(cols, size)
-    int cols;
-    int size;
+static char* pm_allocrow(int cols, int size)
 {
     char* itrow;
 
@@ -1690,10 +1647,7 @@ pm_allocrow(cols, size)
 }
 
 #ifdef SUPPORT_MAPFILE
-static void
-pm_freearray(its, rows)
-    char** its;
-    int rows;
+static void pm_freearray(char** its, int rows)
 {
     free(its[0]);
     free(its);

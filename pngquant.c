@@ -51,6 +51,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #ifdef unix
 #  include <unistd.h>   /* getpid() */
 #endif
@@ -526,7 +527,6 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
         min_opaque_val = almost_opaque_val = maxval;
     }
 
-
     for (row = 0; (ulg)row < rows; ++row)
         for (col = 0, pP = apixels[row]; (ulg)col < cols; ++col, ++pP) {
             /* set all completely transparent colors to black */
@@ -535,6 +535,8 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
             }
             /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
             else if (pP->a < maxval && pP->a > almost_opaque_val) {
+                assert((min_opaque_val-almost_opaque_val)>0);
+
                 int al = almost_opaque_val + (pP->a-almost_opaque_val) * (maxval-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
                 if (al > maxval) al = maxval;
                 pP->a = al;
@@ -564,6 +566,7 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
                 apixels, cols, rows, MAXCOLORS, &colors );
             if (achv != (acolorhist_vector) 0)
                 break;
+
             newmaxval = maxval / 2;
             min_opaque_val /= 2;
 
@@ -573,6 +576,10 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
                   " to improve clustering...\n", maxval, newmaxval);
                 fflush(stderr);
             }
+
+            assert(newmaxval >= 15);
+            assert(maxval >= 15);
+
             for (row = 0; (ulg)row < rows; ++row)
                 for (col = 0, pP = apixels[row]; (ulg)col < cols; ++col, ++pP)
                     PAM_DEPTH(*pP, *pP, maxval, newmaxval);
@@ -704,6 +711,7 @@ int pngquant(char *filename, char *newext, int floyd, int force, int verbose, in
     ** in here, too.)
     */
 
+    assert(maxval>0);
     if (maxval < 255) {
         if (verbose) {
             fprintf(stderr,

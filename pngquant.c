@@ -112,7 +112,7 @@ typedef struct acolorhist_item *acolorhist_vector;
 struct acolorhist_item {
     apixel acolor;
     int value;
-    int contrast;
+/*    int contrast;*/
 };
 
 typedef struct acolorhist_list_item *acolorhist_list;
@@ -1469,7 +1469,7 @@ inline static unsigned long colordiff(apixel a, apixel b)
     return diff;
 }
 
-
+/*
 static int contrast(apixel *p, apixel *prevp, apixel *nextp,int col,int cols)
 {
     unsigned int maxcontrast = colordiff(*p,*prevp);
@@ -1488,6 +1488,7 @@ static int contrast(apixel *p, apixel *prevp, apixel *nextp,int col,int cols)
 
     return sqrt(maxcontrast);
 }
+*/
 
 static acolorhash_table pam_computeacolorhash(apixel** apixels,int cols,int rows,int maxacolors, int* acolorsP )
 {
@@ -1502,10 +1503,10 @@ static acolorhash_table pam_computeacolorhash(apixel** apixels,int cols,int rows
     for (row = 0; row < rows; ++row) {
         apixel* pP = apixels[row];
         apixel* nextpP = apixels[row < rows-1?row+1:row];
-        apixel* prevpP = apixels[row > 0?row-1:0];
+        /*apixel* prevpP = apixels[row > 0?row-1:0];*/
 
         for (col = 0; col < cols; ++col, ++pP, ++nextpP) {
-            int contr = contrast(pP,prevpP,nextpP,col,cols);
+            /*int contr = contrast(pP,prevpP,nextpP,col,cols);*/
 
             hash = pam_hashapixel(*pP);
             for (achl = acht[hash]; achl != (acolorhist_list) 0; achl = achl->next)
@@ -1513,7 +1514,7 @@ static acolorhash_table pam_computeacolorhash(apixel** apixels,int cols,int rows
                 break;
             if (achl != (acolorhist_list) 0) {
                 ++(achl->ch.value);
-                achl->ch.contrast += contr;
+                /*achl->ch.contrast += contr;*/
             } else {
                 if (++(*acolorsP) > maxacolors) {
                     pam_freeacolorhash(acht);
@@ -1526,7 +1527,7 @@ static acolorhash_table pam_computeacolorhash(apixel** apixels,int cols,int rows
                 }
                 achl->ch.acolor = *pP;
                 achl->ch.value = 1;
-                achl->ch.contrast = contr;
+                /*achl->ch.contrast = contr;*/
                 achl->next = acht[hash];
                 acht[hash] = achl;
             }

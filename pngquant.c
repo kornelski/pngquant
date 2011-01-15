@@ -85,11 +85,12 @@ typedef png_uint_32     ulg;
    do { (p).r = (red); (p).g = (grn); (p).b = (blu); (p).a = (alf); } while (0)
 #define PAM_DEPTH(newp,p,oldmaxval,newmaxval) \
    PAM_ASSIGN( (newp), \
-      ((int) (p).r * (newmaxval) + (oldmaxval) / 2) / (oldmaxval), \
-      ((int) (p).g * (newmaxval) + (oldmaxval) / 2) / (oldmaxval), \
-      ((int) (p).b * (newmaxval) + (oldmaxval) / 2) / (oldmaxval), \
-      ((int) (p).a * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval))
+      PAM_DEPTH_SCALE((p).r, (oldmaxval), (newmaxval)), \
+      PAM_DEPTH_SCALE((p).g, (oldmaxval), (newmaxval)), \
+      PAM_DEPTH_SCALE((p).b, (oldmaxval), (newmaxval)), \
+      PAM_DEPTH_SCALE((p).a, (oldmaxval), (newmaxval)))
 
+#define PAM_DEPTH_SCALE(p, old, new) ((int)(p) * (new) / (old))
 
 
 
@@ -135,8 +136,7 @@ typedef enum {
       int using_stdin, int reqcolors, apixel **mapapixels, int ie_bug);
 #endif
 
-static acolorhist_vector mediancut
-  (acolorhist_vector achv, int colors, int sum, pixval maxval, pixval min_opaque_val, int newcolors);
+static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval min_opaque_val, int newcolors);
 static int redcompare (const void *ch1, const void *ch2);
 static int greencompare (const void *ch1, const void *ch2);
 static int bluecompare (const void *ch1, const void *ch2);
@@ -149,7 +149,7 @@ static char *pm_allocrow (int cols, int size);
 #ifdef SUPPORT_MAPFILE
 static void pm_freearray (char **its, int rows);
 #endif
-static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector achv, pixval maxval, pixval min_opaque_val);
+static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector achv, pixval min_opaque_val);
 
 
 int main(int argc, char *argv[])
@@ -353,7 +353,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
     int ind;
     uch *pQ, *outrow, **row_pointers=NULL;
     ulg rows, cols;
-    pixval maxval, min_opaque_val, almost_opaque_val;
+    pixval min_opaque_val, almost_opaque_val;
     int ignorebits=0;
     acolorhist_vector achv, acolormap=NULL;
     acolorhash_table acht;
@@ -473,13 +473,11 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
     rows = rwpng_info.height;
     /* channels = rwpng_info.channels; */
 
-    maxval = 255;   /* GRR TO DO:  allow either 8 or 16 bps */
-
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
     if (ie_bug) {
-        min_opaque_val = maxval * 15 / 16; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
+        min_opaque_val = 255 * 15 / 16; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
         almost_opaque_val = min_opaque_val * 2 / 3;
 
         if (verbose) {
@@ -487,7 +485,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
             fflush(stderr);
         }
     } else {
-        min_opaque_val = almost_opaque_val = maxval;
+        min_opaque_val = almost_opaque_val = 255;
     }
 
     for (row = 0; (ulg)row < rows; ++row)
@@ -497,28 +495,26 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 PAM_ASSIGN(*pP,0,0,0,pP->a);
             }
             /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
-            else if (pP->a < maxval && pP->a > almost_opaque_val) {
+            else if (pP->a < 255 && pP->a > almost_opaque_val) {
                 assert((min_opaque_val-almost_opaque_val)>0);
 
-                int al = almost_opaque_val + (pP->a-almost_opaque_val) * (maxval-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
-                if (al > maxval) al = maxval;
+                int al = almost_opaque_val + (pP->a-almost_opaque_val) * (255-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
+                if (al > 255) al = 255;
                 pP->a = al;
             }
         }
 
     /* ie bug: despite increased opaqueness in the picture, color reduction could still produce
         non-opaque colors. to prevent that, set a treshold (it'll be used when remapping too) */
-    if (min_opaque_val != maxval) {
-        min_opaque_val = maxval*15/16;
+    if (min_opaque_val != 255) {
+        min_opaque_val = 255*15/16;
     }
 
     if (mapapixels == (apixel**) 0) {
-        /*
+       /*
         ** Step 2: attempt to make a histogram of the colors, unclustered.
-        ** If at first we don't succeed, lower maxval to increase color
-        ** coherence and try again.  This will eventually terminate, with
-        ** maxval at worst 15, since 32^3 is approximately MAXCOLORS.
-                  [GRR POSSIBLE BUG:  what about 32^4 ?]
+        ** If at first we don't succeed, increase ignorebits to increase color
+        ** coherence and try again.
         */
         for (; ;) {
             if (verbose) {
@@ -551,7 +547,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
             fprintf(stderr, "  choosing %d colors...\n", newcolors);
             fflush(stderr);
         }
-        acolormap = mediancut(achv, colors, rows * cols, maxval, min_opaque_val, newcolors);
+        acolormap = mediancut(achv, colors, rows * cols, min_opaque_val, newcolors);
         pam_freeacolorhist(achv);
     }
 #ifdef SUPPORT_MAPFILE
@@ -559,15 +555,15 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         /*
         ** Reverse steps 2 & 3 : Turn mapapixels into an acolormap.
         */
-        if (mapmaxval != maxval) {
-            if (mapmaxval > maxval) {
+        if (mapmaxval != 255) {
+            if (mapmaxval > 255) {
                 fprintf(stderr, "  rescaling colormap colors\n");
                 fflush(stderr);
             }
             for (row = 0; row < maprows; ++row)
                 for (col = 0, pP = mapapixels[row]; col < mapcols; ++col, ++pP)
-                    PAM_DEPTH(*pP, *pP, mapmaxval, maxval);
-            mapmaxval = maxval;
+                    PAM_DEPTH(*pP, *pP, mapmaxval, 255);
+            mapmaxval = 255;
         }
         acolormap = pam_computeacolorhist(
             mapapixels, mapcols, maprows, MAXCOLORS, &newcolors );
@@ -625,7 +621,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         fflush(stderr);
     }
     for (top_idx = newcolors-1, bot_idx = x = 0;  x < newcolors;  ++x) {
-        if (acolormap[x].acolor.a == maxval)
+        if (acolormap[x].acolor.a == 255)
             remap[x] = top_idx--;
         else
             remap[x] = bot_idx++;
@@ -659,46 +655,15 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 
 
     /*
-    ** Step 3.6 [GRR]: rescale the palette colors to a maxval of 255, as
-    ** required by the PNG spec.  (Technically, the actual remapping happens
-    ** in here, too.)
+    ** Step 3.6 [GRR]: (Technically, the actual remapping happens in here)
     */
 
-    assert(maxval>0);
-    if (maxval < 255) {
-        if (verbose) {
-            fprintf(stderr,
-              "  rescaling colormap colors from maxval=%d to maxval=255\n",
-              maxval);
-            fflush(stderr);
-        }
-        for (x = 0; x < newcolors; ++x) {
-            /* the rescaling part of this is really just PAM_DEPTH() broken out
-             *  for the PNG palette; the trans-remapping just puts the values
-             *  in different slots in the PNG palette */
-            rwpng_info.palette[remap[x]].red
-              = (acolormap[x].acolor.r*255 + (maxval >> 1)) / maxval;
-            rwpng_info.palette[remap[x]].green
-              = (acolormap[x].acolor.g*255 + (maxval >> 1)) / maxval;
-            rwpng_info.palette[remap[x]].blue
-              = (acolormap[x].acolor.b*255 + (maxval >> 1)) / maxval;
-            rwpng_info.trans[remap[x]]
-              = (acolormap[x].acolor.a*255 + (maxval >> 1)) / maxval;
-        }
-        /* GRR TO DO:  set sBIT flag appropriately */
-    } else {
-        for (x = 0; x < newcolors; ++x) {
-            rwpng_info.palette[remap[x]].red
-              = acolormap[x].acolor.r;
-            rwpng_info.palette[remap[x]].green
-              = acolormap[x].acolor.g;
-            rwpng_info.palette[remap[x]].blue
-              = acolormap[x].acolor.b;
-            rwpng_info.trans[remap[x]]
-              = acolormap[x].acolor.a;
-        }
+    for (x = 0; x < newcolors; ++x) {
+        rwpng_info.palette[remap[x]].red   = acolormap[x].acolor.r;
+        rwpng_info.palette[remap[x]].green = acolormap[x].acolor.g;
+        rwpng_info.palette[remap[x]].blue  = acolormap[x].acolor.b;
+        rwpng_info.trans[remap[x]]         = acolormap[x].acolor.a;
     }
-
 
     /*
     ** Step 3.7 [GRR]: allocate memory for either a single row (non-
@@ -812,14 +777,14 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 sa = pP->a + thisaerr[col + 1] / FS_SCALE;
 
                 if (sr < 0) sr = 0;
-                else if (sr > maxval) sr = maxval;
+                else if (sr > 255) sr = 255;
                 if (sg < 0) sg = 0;
-                else if (sg > maxval) sg = maxval;
+                else if (sg > 255) sg = 255;
                 if (sb < 0) sb = 0;
-                else if (sb > maxval) sb = maxval;
+                else if (sb > 255) sb = 255;
                 if (sa < 0) sa = 0;
                 /* when fighting IE bug, dithering must not make opaque areas transparent */
-                else if (sa > maxval || (ie_bug && pP->a == maxval)) sa = maxval;
+                else if (sa > 255 || (ie_bug && pP->a == 255)) sa = 255;
 
                 /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
                 PAM_ASSIGN(*pP, (uch)sr, (uch)sg, (uch)sb, (uch)sa);
@@ -855,7 +820,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                                (b1 - b2) * (b1 - b2) * colorimp);
 
                     /* penalty for making holes in IE */
-                    if (a1 >= min_opaque_val && a2 < maxval) newdist += maxval*maxval/64;
+                    if (a1 >= min_opaque_val && a2 < 255) newdist += 255*255/64;
 
                     if (newdist < dist) {
                         ind = i;
@@ -1005,7 +970,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 
 static apixel background;
 
-static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval maxval, pixval min_opaque_val, int newcolors)
+static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval min_opaque_val, int newcolors)
 {
     acolorhist_vector acolormap;
     box_vector bv;
@@ -1058,7 +1023,7 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
 
         /* colors are blended with background color, to prevent transparent colors from widening range unneccesarily */
         /* background is global - used when sorting too */
-        averagepixels(bv[bi].ind, bv[bi].colors, &background, achv, maxval, min_opaque_val);
+        averagepixels(bv[bi].ind, bv[bi].colors, &background, achv, min_opaque_val);
 
         minr = maxr = achv[indx].acolor.r;
         ming = maxg = achv[indx].acolor.g;
@@ -1229,7 +1194,7 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
         PAM_ASSIGN(acolormap[bi].acolor, r, g, b, a);
 #endif /*REP_AVERAGE_COLORS*/
 #ifdef REP_AVERAGE_PIXELS
-        averagepixels(bv[bi].ind, bv[bi].colors, &acolormap[bi].acolor, achv, maxval, min_opaque_val);
+        averagepixels(bv[bi].ind, bv[bi].colors, &acolormap[bi].acolor, achv, min_opaque_val);
 #endif /*REP_AVERAGE_PIXELS*/
     }
 
@@ -1239,7 +1204,7 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
     return acolormap;
 }
 
-static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector achv, pixval maxval, pixval min_opaque_val)
+static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector achv, pixval min_opaque_val)
 {
     /* use floating-point to avoid overflow. unsigned long will suffice for small images. */
     double r = 0, g = 0, b = 0, a = 0, sum = 0, colorsum = 0;
@@ -1277,16 +1242,16 @@ static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector a
 
     if (!colorsum) colorsum=1;
     r = round(r / colorsum);
-    if (r > maxval) r = maxval;        /* avoid math/rounding errors */
+    if (r > 255) r = 255;        /* avoid math/rounding errors */
     g = round(g / colorsum);
-    if (g > maxval) g = maxval;
+    if (g > 255) g = 255;
     b = round(b / colorsum);
-    if (b > maxval) b = maxval;
+    if (b > 255) b = 255;
     a = round(a / sum);
-    if (a >= maxval) a = maxval;
+    if (a >= 255) a = 255;
 
     /** if there was at least one completely opaque color, "round" final color to opaque */
-    if (a >= min_opaque_val && maxa == maxval) a = maxval;
+    if (a >= min_opaque_val && maxa == 255) a = 255;
 
     PAM_ASSIGN(*pixel, (uch)r, (uch)g, (uch)b, (uch)a);
 }

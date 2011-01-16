@@ -45,10 +45,6 @@
 #  define Trace(x)  ;
 #endif
 
-typedef unsigned char   uch;
-typedef unsigned short  ush;
-typedef png_uint_32     ulg;
-
 typedef struct _rwpng_color_struct {
    png_byte red;
    png_byte green;
@@ -57,16 +53,9 @@ typedef struct _rwpng_color_struct {
 
 typedef struct _mainprog_info {
     double gamma;
-    ulg width;			/* read/write */
-    ulg height;			/* read/write */
-    ulg rowbytes;		/* read */
     void *png_ptr;		/* read/write */
     void *info_ptr;		/* read/write */
     rwpng_color palette[256];	/* write */
-    uch trans[256];		/* write */
-    uch *rgba_data;		/* read */
-    uch *indexed_data;		/* write */
-    uch **row_pointers;		/* read/write */
     jmp_buf jmpbuf;		/* read/write */
     int interlaced;		/* read/write */
     int channels;		/* read (currently not used) */
@@ -74,6 +63,13 @@ typedef struct _mainprog_info {
     int num_palette;		/* write */
     int num_trans;		/* write */
     int retval;			/* read/write */
+    png_uint_32 width;      /* read/write */
+    png_uint_32 height;     /* read/write */
+    png_uint_32 rowbytes;   /* read */
+    unsigned char trans[256];   /* write */
+    unsigned char *rgba_data;   /* read */
+    unsigned char *indexed_data;    /* write */
+    unsigned char **row_pointers;   /* read/write */
 } mainprog_info;
 
 

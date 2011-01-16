@@ -70,7 +70,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
     png_infop    info_ptr = NULL;
     png_uint_32  i, rowbytes;
     int          color_type, bit_depth;
-    uch          sig[8];
+    unsigned char sig[8];
 
 
     /* first do a quick check that the file really is a PNG image; could
@@ -181,7 +181,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
     mainprog_ptr->rowbytes = rowbytes = png_get_rowbytes(png_ptr, info_ptr);
     mainprog_ptr->channels = (int)png_get_channels(png_ptr, info_ptr);
 
-    if ((mainprog_ptr->rgba_data = (uch *)malloc(rowbytes*mainprog_ptr->height)) == NULL) {
+    if ((mainprog_ptr->rgba_data = malloc(rowbytes*mainprog_ptr->height)) == NULL) {
         fprintf(stderr, "pngquant readpng:  unable to allocate image data\n");
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         mainprog_ptr->retval = 24;

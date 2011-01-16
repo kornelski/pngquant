@@ -74,6 +74,9 @@
 
 #include "png.h"    /* libpng header; includes zlib.h */
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
+typedef unsigned char   uch;
+typedef unsigned short  ush;
+typedef png_uint_32     ulg;
 
 typedef uch pixval; /* GRR: hardcoded for now; later add 16-bit support */
 

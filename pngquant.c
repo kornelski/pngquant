@@ -254,6 +254,83 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
+int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap)
+{
+    /*
+    ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
+    ** number of colors that will be used in the output image.
+    */
+
+    int top_idx,bot_idx;
+
+    if (newcolors <= 2)
+        rwpng_info.sample_depth = 1;
+    else if (newcolors <= 4)
+        rwpng_info.sample_depth = 2;
+    else if (newcolors <= 16)
+        rwpng_info.sample_depth = 4;
+    else
+        rwpng_info.sample_depth = 8;
+
+    if (verbose) {
+        fprintf(stderr, "  writing %d-bit colormapped image\n",
+          rwpng_info.sample_depth);
+        fflush(stderr);
+    }
+
+    /*
+    ** Step 3.5 [GRR]: remap the palette colors so that all entries with
+    ** the maximal alpha value (i.e., fully opaque) are at the end and can
+    ** therefore be omitted from the tRNS chunk.  Note that the ordering of
+    ** opaque entries is reversed from how Step 3 arranged them--not that
+    ** this should matter to anyone.
+    */
+
+    if (verbose) {
+        fprintf(stderr,
+          "  remapping colormap to eliminate opaque tRNS-chunk entries...");
+        fflush(stderr);
+    }
+    int x=0;
+    for (top_idx = newcolors-1, bot_idx = 0;  x < newcolors;  ++x) {
+        if (acolormap[x].acolor.a == 255)
+            remap[x] = top_idx--;
+        else
+            remap[x] = bot_idx++;
+    }
+    if (verbose) {
+        fprintf(stderr, "%d entr%s left\n", bot_idx,
+          (bot_idx == 1)? "y" : "ies");
+        fflush(stderr);
+    }
+
+    /* sanity check:  top and bottom indices should have just crossed paths */
+    if (bot_idx != top_idx + 1) {
+        return INTERNAL_LOGIC_ERROR;
+    }
+
+    rwpng_info.num_palette = newcolors;
+    rwpng_info.num_trans = bot_idx;
+
+    /* GRR TO DO:  if bot_idx == 0, check whether all RGB samples are gray
+                   and if so, whether grayscale sample_depth would be same
+                   => skip following palette section and go grayscale */
+
+
+    /*
+    ** Step 3.6 [GRR]: (Technically, the actual remapping happens in here)
+    */
+
+    for (x = 0; x < newcolors; ++x) {
+        rwpng_info.palette[remap[x]].red   = acolormap[x].acolor.r;
+        rwpng_info.palette[remap[x]].green = acolormap[x].acolor.g;
+        rwpng_info.palette[remap[x]].blue  = acolormap[x].acolor.b;
+        rwpng_info.trans[remap[x]]         = acolormap[x].acolor.a;
+    }
+
+    return 0;
+}
+
 pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
 {
     FILE *infile, *outfile;
@@ -272,9 +349,6 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
     int newcolors = 0;
     int fs_direction = 0;
     int x;
-/*  int channels;  */
-    int bot_idx, top_idx;
-    int remap[256];
     char outname[FNMAX];
 
 
@@ -448,83 +522,12 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
     acolormap = mediancut(achv, colors, rows * cols, min_opaque_val, newcolors);
     pam_freeacolorhist(achv);
 
+    int remap[256];
 
-    /*
-    ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
-    ** number of colors that will be used in the output image.
-    */
-
-    if (newcolors <= 2)
-        rwpng_info.sample_depth = 1;
-    else if (newcolors <= 4)
-        rwpng_info.sample_depth = 2;
-    else if (newcolors <= 16)
-        rwpng_info.sample_depth = 4;
-    else
-        rwpng_info.sample_depth = 8;
-    if (verbose) {
-        fprintf(stderr, "  writing %d-bit colormapped image\n",
-          rwpng_info.sample_depth);
-        fflush(stderr);
-    }
-
-    /*
-    ** Step 3.5 [GRR]: remap the palette colors so that all entries with
-    ** the maximal alpha value (i.e., fully opaque) are at the end and can
-    ** therefore be omitted from the tRNS chunk.  Note that the ordering of
-    ** opaque entries is reversed from how Step 3 arranged them--not that
-    ** this should matter to anyone.
-    */
-
-    if (verbose) {
-        fprintf(stderr,
-          "  remapping colormap to eliminate opaque tRNS-chunk entries...");
-        fflush(stderr);
-    }
-    for (top_idx = newcolors-1, bot_idx = x = 0;  x < newcolors;  ++x) {
-        if (acolormap[x].acolor.a == 255)
-            remap[x] = top_idx--;
-        else
-            remap[x] = bot_idx++;
-    }
-    if (verbose) {
-        fprintf(stderr, "%d entr%s left\n", bot_idx,
-          (bot_idx == 1)? "y" : "ies");
-        fflush(stderr);
-    }
-
-    /* sanity check:  top and bottom indices should have just crossed paths */
-    if (bot_idx != top_idx + 1) {
-        fprintf(stderr,
-          "  internal logic error: remapped bot_idx = %d, top_idx = %d\n",
-          bot_idx, top_idx);
-        fflush(stderr);
-        if (rwpng_info.row_pointers)
-            free(rwpng_info.row_pointers);
-        if (rwpng_info.rgba_data)
-            free(rwpng_info.rgba_data);
-        if (!using_stdin)
-            fclose(outfile);
+    if (set_palette(newcolors,verbose,remap,acolormap)) {
         return INTERNAL_LOGIC_ERROR;
     }
 
-    rwpng_info.num_palette = newcolors;
-    rwpng_info.num_trans = bot_idx;
-    /* GRR TO DO:  if bot_idx == 0, check whether all RGB samples are gray
-                   and if so, whether grayscale sample_depth would be same
-                   => skip following palette section and go grayscale */
-
-
-    /*
-    ** Step 3.6 [GRR]: (Technically, the actual remapping happens in here)
-    */
-
-    for (x = 0; x < newcolors; ++x) {
-        rwpng_info.palette[remap[x]].red   = acolormap[x].acolor.r;
-        rwpng_info.palette[remap[x]].green = acolormap[x].acolor.g;
-        rwpng_info.palette[remap[x]].blue  = acolormap[x].acolor.b;
-        rwpng_info.trans[remap[x]]         = acolormap[x].acolor.a;
-    }
 
     /*
     ** Step 3.7 [GRR]: allocate memory for either a single row (non-

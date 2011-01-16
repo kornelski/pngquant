@@ -759,14 +759,14 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
     */
 
     if (rwpng_info.interlaced) {
-        if ((rwpng_info.indexed_data = (uch *)malloc(rows * cols)) != NULL) {
+        if ((rwpng_info.indexed_data = malloc(rows * cols)) != NULL) {
             if ((row_pointers = (uch **)malloc(rows * sizeof(uch *))) != NULL) {
                 for (row = 0;  (ulg)row < rows;  ++row)
                     row_pointers[row] = rwpng_info.indexed_data + row*cols;
             }
         }
     } else {
-        rwpng_info.indexed_data = (uch *)malloc(cols);
+        rwpng_info.indexed_data = malloc(cols);
     }
 
     if (rwpng_info.indexed_data == NULL ||
@@ -815,14 +815,14 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 
     if (floyd) {
         /* Initialize Floyd-Steinberg error vectors. */
-        thisrerr = (long*) pm_allocrow(cols + 2, sizeof(long));
-        nextrerr = (long*) pm_allocrow(cols + 2, sizeof(long));
-        thisgerr = (long*) pm_allocrow(cols + 2, sizeof(long));
-        nextgerr = (long*) pm_allocrow(cols + 2, sizeof(long));
-        thisberr = (long*) pm_allocrow(cols + 2, sizeof(long));
-        nextberr = (long*) pm_allocrow(cols + 2, sizeof(long));
-        thisaerr = (long*) pm_allocrow(cols + 2, sizeof(long));
-        nextaerr = (long*) pm_allocrow(cols + 2, sizeof(long));
+        thisrerr = malloc((cols + 2) * sizeof(long));
+        nextrerr = malloc((cols + 2) * sizeof(long));
+        thisgerr = malloc((cols + 2) * sizeof(long));
+        nextgerr = malloc((cols + 2) * sizeof(long));
+        thisberr = malloc((cols + 2) * sizeof(long));
+        nextberr = malloc((cols + 2) * sizeof(long));
+        thisaerr = malloc((cols + 2) * sizeof(long));
+        nextaerr = malloc((cols + 2) * sizeof(long));
         srandom(12345); /** deterministic dithering is better for comparing results */
         for (col = 0; (ulg)col < cols + 2; ++col) {
             thisrerr[col] = random() % (FS_SCALE * 2) - FS_SCALE;
@@ -1063,10 +1063,9 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
     int bi, i;
     int boxes;
 
-    bv = (box_vector) malloc(sizeof(struct box) * newcolors);
-    acolormap =
-        (acolorhist_vector) malloc( sizeof(struct acolorhist_item) * newcolors);
-    if (bv == (box_vector) 0 || acolormap == (acolorhist_vector) 0) {
+    bv = malloc(sizeof(struct box) * newcolors);
+    acolormap = malloc( sizeof(struct acolorhist_item) * newcolors);
+    if (!bv || !acolormap) {
         fprintf(stderr, "  out of memory allocating box vector\n");
         fflush(stderr);
         exit(6);
@@ -1639,21 +1638,6 @@ static void pam_freeacolorhash(acolorhash_table acht)
 
 
 /*===========================================================================*/
-
-/* from libpbm1.c */
-
-static char* pm_allocrow(int cols, int size)
-{
-    char* itrow;
-
-    itrow = (char*) malloc(cols * size);
-    if (itrow == (char*) 0) {
-        fprintf(stderr, "  out of memory allocating a row\n");
-        fflush(stderr);
-        exit(12);
-    }
-    return itrow;
-}
 
 #ifdef SUPPORT_MAPFILE
 static void pm_freearray(char** its, int rows)

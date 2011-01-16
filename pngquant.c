@@ -293,7 +293,9 @@ int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap
     }
     int x=0;
     for (top_idx = newcolors-1, bot_idx = 0;  x < newcolors;  ++x) {
-        if (acolormap[x].acolor.a == 255)
+        rgb_pixel px = to_rgb(acolormap[x].acolor);
+
+        if (px.a == 255)
             remap[x] = top_idx--;
         else
             remap[x] = bot_idx++;
@@ -322,10 +324,13 @@ int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap
     */
 
     for (x = 0; x < newcolors; ++x) {
-        rwpng_info.palette[remap[x]].red   = acolormap[x].acolor.r;
-        rwpng_info.palette[remap[x]].green = acolormap[x].acolor.g;
-        rwpng_info.palette[remap[x]].blue  = acolormap[x].acolor.b;
-        rwpng_info.trans[remap[x]]         = acolormap[x].acolor.a;
+        rgb_pixel px = to_rgb(acolormap[x].acolor);
+        acolormap[x].acolor = to_f(px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
+
+        rwpng_info.palette[remap[x]].red   = px.r;
+        rwpng_info.palette[remap[x]].green = px.g;
+        rwpng_info.palette[remap[x]].blue  = px.b;
+        rwpng_info.trans[remap[x]]         = px.a;
     }
 
     return 0;

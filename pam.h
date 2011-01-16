@@ -12,6 +12,7 @@
  ** implied warranty.
  */
 
+#include <math.h>
 
 /* from pam.h */
 
@@ -26,6 +27,11 @@ typedef struct {
 inline static f_pixel to_f(rgb_pixel r)
 {
     return (f_pixel){r.r,r.g,r.b,r.a};
+}
+
+inline static rgb_pixel to_rgb(f_pixel r)
+{
+    return (rgb_pixel){round(r.r),round(r.g),round(r.b),round(r.a)};
 }
 
 /*

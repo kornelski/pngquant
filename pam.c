@@ -21,7 +21,7 @@
 ((p).r == (q).r && (p).g == (q).g && (p).b == (q).b && (p).a == (q).a)
 
 static acolorhist_vector pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
-static acolorhash_table pam_computeacolorhash(rgb_pixel** apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP);
+static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 
 
@@ -80,7 +80,7 @@ static void pam_freeacolorhash(acolorhash_table acht);
 
 #define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) == (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
 
-acolorhist_vector pam_computeacolorhist(rgb_pixel** apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP)
+acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP)
 {
     acolorhash_table acht;
     acolorhist_vector achv;
@@ -93,12 +93,12 @@ acolorhist_vector pam_computeacolorhist(rgb_pixel** apixels, int cols, int rows,
     return achv;
 }
 
-static acolorhash_table pam_computeacolorhash(rgb_pixel** apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP)
+static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP)
 {
     acolorhash_table acht;
     acolorhist_list achl;
     int col, row, hash;
-    int maxval = 255>>ignorebits;
+    const int maxval = 255>>ignorebits;
     acht = pam_allocacolorhash();
     *acolorsP = 0;
 

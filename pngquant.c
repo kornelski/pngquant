@@ -149,7 +149,7 @@ static char *pm_allocrow (int cols, int size);
 #ifdef SUPPORT_MAPFILE
 static void pm_freearray (char **its, int rows);
 #endif
-static void averagepixels(int indx, int clrs, rgb_pixel *pixel, acolorhist_vector achv, pixval min_opaque_val);
+static rgb_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val);
 
 
 int main(int argc, char *argv[])
@@ -521,8 +521,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 fprintf(stderr, "  making histogram...");
                 fflush(stderr);
             }
-            achv = pam_computeacolorhist(
-                input_pixels, cols, rows, MAXCOLORS, ignorebits, &colors );
+            achv = pam_computeacolorhist(input_pixels, cols, rows, MAXCOLORS, ignorebits, &colors);
             if (achv != (acolorhist_vector) 0)
                 break;
 
@@ -1021,7 +1020,7 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
 
         /* colors are blended with background color, to prevent transparent colors from widening range unneccesarily */
         /* background is global - used when sorting too */
-        averagepixels(bv[bi].ind, bv[bi].colors, &background, achv, min_opaque_val);
+        background = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 
         minr = maxr = achv[indx].acolor.r;
         ming = maxg = achv[indx].acolor.g;
@@ -1192,7 +1191,7 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
         PAM_ASSIGN(acolormap[bi].acolor, r, g, b, a);
 #endif /*REP_AVERAGE_COLORS*/
 #ifdef REP_AVERAGE_PIXELS
-        averagepixels(bv[bi].ind, bv[bi].colors, &acolormap[bi].acolor, achv, min_opaque_val);
+        acolormap[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 #endif /*REP_AVERAGE_PIXELS*/
     }
 
@@ -1202,7 +1201,7 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
     return acolormap;
 }
 
-static void averagepixels(int indx, int clrs, rgb_pixel *pixel, acolorhist_vector achv, pixval min_opaque_val)
+static rgb_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val)
 {
     /* use floating-point to avoid overflow. unsigned long will suffice for small images. */
     double r = 0, g = 0, b = 0, a = 0, sum = 0, colorsum = 0;
@@ -1251,7 +1250,7 @@ static void averagepixels(int indx, int clrs, rgb_pixel *pixel, acolorhist_vecto
     /** if there was at least one completely opaque color, "round" final color to opaque */
     if (a >= min_opaque_val && maxa == 255) a = 255;
 
-    PAM_ASSIGN(*pixel, (uch)r, (uch)g, (uch)b, (uch)a);
+    return (rgb_pixel){(uch)r, (uch)g, (uch)b, (uch)a};
 }
 
 static int redcompare(const void *ch1, const void *ch2)

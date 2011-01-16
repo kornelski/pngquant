@@ -148,6 +148,9 @@ static char *pm_allocrow (int cols, int size);
 #ifdef SUPPORT_MAPFILE
 static void pm_freearray (char **its, int rows);
 #endif
+
+static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv);
+static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val);
 
 
@@ -1128,48 +1131,10 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
     */
     for (bi = 0; bi < boxes; ++bi) {
 #ifdef REP_CENTER_BOX
-        int indx = bv[bi].ind;
-        int clrs = bv[bi].colors;
-        double minr, maxr, ming, maxg, minb, maxb, mina, maxa, v;
-
-        minr = maxr = achv[indx].acolor.r;
-        ming = maxg = achv[indx].acolor.g;
-        minb = maxb = achv[indx].acolor.b;
-        mina = maxa = achv[indx].acolor.a;
-        for (i = 1; i < clrs; ++i) {
-            v = achv[indx + i].acolor.r;
-            minr = min(minr, v);
-            maxr = max(maxr, v);
-            v = achv[indx + i].acolor.g;
-            ming = min(ming, v);
-            maxg = max(maxg, v);
-            v = achv[indx + i].acolor.b;
-            minb = min(minb, v);
-            maxb = max(maxb, v);
-            v = achv[indx + i].acolor.a;
-            mina = min(mina, v);
-            maxa = max(maxa, v);
-        }
-        PAM_ASSIGN(
-            acolormap[bi].acolor, (minr + maxr) / 2, (ming + maxg) / 2,
-            (minb + maxb) / 2, (mina + maxa) / 2 );
+        acolormap[bi].acolor = centerbox(bv[bi].ind, bv[bi].colors);
 #endif /*REP_CENTER_BOX*/
 #ifdef REP_AVERAGE_COLORS
-        int indx = bv[bi].ind;
-        int clrs = bv[bi].colors;
-        double r = 0, g = 0, b = 0, a = 0;
-
-        for (i = 0; i < clrs; ++i) {
-            r += achv[indx + i].acolor.r;
-            g += achv[indx + i].acolor.g;
-            b += achv[indx + i].acolor.b;
-            a += achv[indx + i].acolor.a;
-        }
-        r = r / clrs;
-        g = g / clrs;
-        b = b / clrs;
-        a = a / clrs;
-        PAM_ASSIGN(acolormap[bi].acolor, r, g, b, a);
+        acolormap[bi].acolor = averagecolors(bv[bi].ind, bv[bi].colors);
 #endif /*REP_AVERAGE_COLORS*/
 #ifdef REP_AVERAGE_PIXELS
         acolormap[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
@@ -1180,6 +1145,52 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
     ** All done.
     */
     return acolormap;
+}
+
+static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv)
+{
+    double minr, maxr, ming, maxg, minb, maxb, mina, maxa, v;
+
+    minr = maxr = achv[indx].acolor.r;
+    ming = maxg = achv[indx].acolor.g;
+    minb = maxb = achv[indx].acolor.b;
+    mina = maxa = achv[indx].acolor.a;
+    for (int i = 1; i < clrs; ++i) {
+        v = achv[indx + i].acolor.r;
+        minr = MIN(minr, v);
+        maxr = MAX(maxr, v);
+        v = achv[indx + i].acolor.g;
+        ming = MIN(ming, v);
+        maxg = MAX(maxg, v);
+        v = achv[indx + i].acolor.b;
+        minb = MIN(minb, v);
+        maxb = MAX(maxb, v);
+        v = achv[indx + i].acolor.a;
+        mina = MIN(mina, v);
+        maxa = MAX(maxa, v);
+    }
+
+    return (f_pixel){ (minr + maxr) / 2, (ming + maxg) / 2,
+                      (minb + maxb) / 2, (mina + maxa) / 2 };
+}
+
+static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv)
+{
+    double r = 0, g = 0, b = 0, a = 0;
+
+    for (int i = 0; i < clrs; ++i) {
+        r += achv[indx + i].acolor.r;
+        g += achv[indx + i].acolor.g;
+        b += achv[indx + i].acolor.b;
+        a += achv[indx + i].acolor.a;
+    }
+
+    r = r / clrs;
+    g = g / clrs;
+    b = b / clrs;
+    a = a / clrs;
+
+    return (f_pixel){r, g, b, a};
 }
 
 static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val)

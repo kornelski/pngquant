@@ -410,7 +410,6 @@ int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **i
                 /* when fighting IE bug, dithering must not make opaque areas transparent */
                 else if (sa > 255 || (ie_bug && px.a == 255)) sa = 255;
 
-                /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
                 px = (f_pixel){sr, sg, sb, sa};
             }
 
@@ -426,11 +425,10 @@ int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **i
                 double a1, r1, g1, b1, r2, g2, b2, a2;
                 double dist = 1<<30, newdist;
 
-                a1 = px.a;
                 r1 = px.r;
                 g1 = px.g;
                 b1 = px.b;
-                /* a1 read few lines earlier */
+                a1 = px.a;
 
                 for (i = 0; i < newcolors; ++i) {
                     r2 = acolormap[i].acolor.r;
@@ -1054,11 +1052,12 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval 
         /* give more weight to colors that are further away from average (128,128,128)
             this is intended to prevent desaturation of images and fading of whites
          */
-        tmp = 128 - achv[indx + i].acolor.r;
+        rgb_pixel rgbpx = to_rgb(achv[indx + i].acolor);
+        tmp = 128 - rgbpx.r;
         weight += tmp*tmp;
-        tmp = 128 - achv[indx + i].acolor.g;
+        tmp = 128 - rgbpx.g;
         weight += tmp*tmp;
-        tmp = 128 - achv[indx + i].acolor.b;
+        tmp = 128 - rgbpx.b;
         weight += tmp*tmp;
 
         /* find if there are opaque colors, in case we're supposed to preserve opacity exactly (ie_bug) */

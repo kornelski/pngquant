@@ -218,8 +218,7 @@ int main(int argc, char *argv[])
             fflush(stderr);
         }
 
-        retval = pngquant(filename, newext, floyd, force, verbose, using_stdin,
-          reqcolors, ie_bug);
+        retval = pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors, ie_bug);
 
         if (retval) {
             latest_error = retval;
@@ -336,23 +335,220 @@ int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap
     return 0;
 }
 
+int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **input_pixels, ulg rows, ulg cols, uch **row_pointers, int newcolors, int* remap, acolorhist_vector acolormap)
+{
+    acolorhash_table acht;
+    int col;
+    uch *pQ;
+    rgb_pixel *pP;
+    int ind;
+    int limitcol;
+    uch *outrow;
+    int row;
+
+    acht = pam_allocacolorhash();
+    if (!acht) return OUT_OF_MEMORY_ERROR;
+
+    f_pixel *thiserr = NULL;
+    f_pixel *nexterr = NULL;
+    f_pixel *temperr;
+    float sr=0, sg=0, sb=0, sa=0, err;
+    int fs_direction = 0;
+
+    if (floyd) {
+        /* Initialize Floyd-Steinberg error vectors. */
+        thiserr = malloc((cols + 2) * sizeof(*thiserr));
+        nexterr = malloc((cols + 2) * sizeof(*thiserr));
+        srandom(12345); /** deterministic dithering is better for comparing results */
+        for (col = 0; (ulg)col < cols + 2; ++col) {
+            thiserr[col].r = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
+            thiserr[col].g = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
+            thiserr[col].b = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
+            thiserr[col].a = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
+            /* (random errors in [-1 .. 1]) */
+        }
+        fs_direction = 1;
+    }
+    for (row = 0; (ulg)row < rows; ++row) {
+        outrow = rwpng_info.interlaced? row_pointers[row] :
+                                        rwpng_info.indexed_data;
+        if (floyd)
+            for (col = 0; (ulg)col < cols + 2; ++col)
+                nexterr[col].r = nexterr[col].g =
+                nexterr[col].b = nexterr[col].a = 0;
+        if ((!floyd) || fs_direction) {
+            col = 0;
+            limitcol = cols;
+            pP = input_pixels[row];
+            pQ = outrow;
+        } else {
+            col = cols - 1;
+            limitcol = -1;
+            pP = &(input_pixels[row][col]);
+            pQ = &(outrow[col]);
+        }
+
+
+
+        do {
+            f_pixel px = to_f(*pP);
+
+            if (floyd) {
+                /* Use Floyd-Steinberg errors to adjust actual color. */
+                sr = px.r + thiserr[col + 1].r;
+                sg = px.g + thiserr[col + 1].g;
+                sb = px.b + thiserr[col + 1].b;
+                sa = px.a + thiserr[col + 1].a;
+
+                if (sr < 0) sr = 0;
+                else if (sr > 255) sr = 255;
+                if (sg < 0) sg = 0;
+                else if (sg > 255) sg = 255;
+                if (sb < 0) sb = 0;
+                else if (sb > 255) sb = 255;
+                if (sa < 0) sa = 0;
+                /* when fighting IE bug, dithering must not make opaque areas transparent */
+                else if (sa > 255 || (ie_bug && px.a == 255)) sa = 255;
+
+                /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
+                px = (f_pixel){sr, sg, sb, sa};
+            }
+
+
+            /* Check hash table to see if we have already matched this color. */
+            ind = pam_lookupacolor(acht, px);
+
+            double colorimp = colorimportance(px.a);
+
+            if (ind == -1) {
+                /* No; search acolormap for closest match. */
+                int i;
+                double a1, r1, g1, b1, r2, g2, b2, a2;
+                double dist = 1<<30, newdist;
+
+                a1 = px.a;
+                r1 = px.r;
+                g1 = px.g;
+                b1 = px.b;
+                /* a1 read few lines earlier */
+
+                for (i = 0; i < newcolors; ++i) {
+                    r2 = acolormap[i].acolor.r;
+                    g2 = acolormap[i].acolor.g;
+                    b2 = acolormap[i].acolor.b;
+                    a2 = acolormap[i].acolor.a;
+/* GRR POSSIBLE BUG */
+
+                    /* 8+1 shift is /256 for colorimportance and approx /3 for 3 channels vs 1 */
+                    newdist = ((a1 - a2) * (a1 - a2) * 512.0) +
+                              ((r1 - r2) * (r1 - r2) * colorimp +
+                               (g1 - g2) * (g1 - g2) * colorimp +
+                               (b1 - b2) * (b1 - b2) * colorimp);
+
+                    /* penalty for making holes in IE */
+                    if (a1 >= min_opaque_val && a2 < 255) newdist += 255*255/64;
+
+                    if (newdist < dist) {
+                        ind = i;
+                        dist = newdist;
+                    }
+                }
+
+                if (pam_addtoacolorhash(acht, px, ind) < 0) {
+                    return OUT_OF_MEMORY_ERROR;
+                }
+            }
+
+            if (floyd) {
+                /* Propagate Floyd-Steinberg error terms. */
+                if (fs_direction) {
+                    err = (sr - acolormap[ind].acolor.r) * colorimp/256.0;
+                    thiserr[col + 2].r += (err * 7) / 16.0;
+                    nexterr[col    ].r += (err * 3) / 16.0;
+                    nexterr[col + 1].r += (err * 5) / 16.0;
+                    nexterr[col + 2].r += (err    ) / 16.0;
+                    err = (sg - acolormap[ind].acolor.g) * colorimp/256.0;
+                    thiserr[col + 2].g += (err * 7) / 16.0;
+                    nexterr[col    ].g += (err * 3) / 16.0;
+                    nexterr[col + 1].g += (err * 5) / 16.0;
+                    nexterr[col + 2].g += (err    ) / 16.0;
+                    err = (sb - acolormap[ind].acolor.b) * colorimp/256.0;
+                    thiserr[col + 2].b += (err * 7) / 16.0;
+                    nexterr[col    ].b += (err * 3) / 16.0;
+                    nexterr[col + 1].b += (err * 5) / 16.0;
+                    nexterr[col + 2].b += (err    ) / 16.0;
+                    err = (sa - acolormap[ind].acolor.a);
+                    thiserr[col + 2].a += (err * 7) / 16.0;
+                    nexterr[col    ].a += (err * 3) / 16.0;
+                    nexterr[col + 1].a += (err * 5) / 16.0;
+                    nexterr[col + 2].a += (err    ) / 16.0;
+                } else {
+                    err = (sr - acolormap[ind].acolor.r) * colorimp/256.0;
+                    thiserr[col    ].r += (err * 7) / 16.0;
+                    nexterr[col + 2].r += (err * 3) / 16.0;
+                    nexterr[col + 1].r += (err * 5) / 16.0;
+                    nexterr[col    ].r += (err    ) / 16.0;
+                    err = (sg - acolormap[ind].acolor.g) * colorimp/256.0;
+                    thiserr[col    ].g += (err * 7) / 16.0;
+                    nexterr[col + 2].g += (err * 3) / 16.0;
+                    nexterr[col + 1].g += (err * 5) / 16.0;
+                    nexterr[col    ].g += (err    ) / 16.0;
+                    err = (sb - acolormap[ind].acolor.b) * colorimp/256.0;
+                    thiserr[col    ].b += (err * 7) / 16.0;
+                    nexterr[col + 2].b += (err * 3) / 16.0;
+                    nexterr[col + 1].b += (err * 5) / 16.0;
+                    nexterr[col    ].b += (err    ) / 16.0;
+                    err = (sa - acolormap[ind].acolor.a);
+                    thiserr[col    ].a += (err * 7) / 16.0;
+                    nexterr[col + 2].a += (err * 3) / 16.0;
+                    nexterr[col + 1].a += (err * 5) / 16.0;
+                    nexterr[col    ].a += (err    ) / 16.0;
+                }
+            }
+
+            *pQ = (uch)remap[ind];
+
+            if ((!floyd) || fs_direction) {
+                ++col;
+                ++pP;
+                ++pQ;
+            } else {
+                --col;
+                --pP;
+                --pQ;
+            }
+        }
+        while (col != limitcol);
+
+        if (floyd) {
+            temperr = thiserr;
+            thiserr = nexterr;
+            nexterr = temperr;
+            fs_direction = !fs_direction;
+        }
+
+        /* if non-interlaced PNG, write row now */
+        if (!rwpng_info.interlaced)
+            rwpng_write_image_row(&rwpng_info);
+    }
+
+    return 0;
+}
+
 pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
 {
     FILE *infile, *outfile;
     rgb_pixel **input_pixels;
     rgb_pixel *pP;
-    int col, limitcol;
-    int ind;
-    uch *pQ, *outrow, **row_pointers=NULL;
+    int col;
+    uch **row_pointers=NULL;
     ulg rows, cols;
     pixval min_opaque_val, almost_opaque_val;
     int ignorebits=0;
     acolorhist_vector achv, acolormap=NULL;
-    acolorhash_table acht;
     int row;
     int colors;
     int newcolors = 0;
-    int fs_direction = 0;
     int x;
     char outname[FNMAX];
 
@@ -578,8 +774,6 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         fprintf(stderr, "  mapping image to new colors...\n" );
         fflush(stderr);
     }
-    acht = pam_allocacolorhash();
-    if (!acht) return OUT_OF_MEMORY_ERROR;
 
     if (rwpng_write_image_init(outfile, &rwpng_info) != 0) {
         fprintf(stderr, "  rwpng_write_image_init() error\n");
@@ -597,192 +791,9 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         return rwpng_info.retval;
     }
 
-    f_pixel *thiserr = NULL;
-    f_pixel *nexterr = NULL;
-    f_pixel *temperr;
-    float sr=0, sg=0, sb=0, sa=0, err;
-
-    if (floyd) {
-        /* Initialize Floyd-Steinberg error vectors. */
-        thiserr = malloc((cols + 2) * sizeof(*thiserr));
-        nexterr = malloc((cols + 2) * sizeof(*thiserr));
-        srandom(12345); /** deterministic dithering is better for comparing results */
-        for (col = 0; (ulg)col < cols + 2; ++col) {
-            thiserr[col].r = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
-            thiserr[col].g = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
-            thiserr[col].b = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
-            thiserr[col].a = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
-            /* (random errors in [-1 .. 1]) */
-        }
-        fs_direction = 1;
+    if (remap_to_palette(floyd,min_opaque_val,ie_bug,input_pixels,rows,cols,row_pointers,newcolors,remap,acolormap)) {
+        return OUT_OF_MEMORY_ERROR;
     }
-    for (row = 0; (ulg)row < rows; ++row) {
-        outrow = rwpng_info.interlaced? row_pointers[row] :
-                                        rwpng_info.indexed_data;
-        if (floyd)
-            for (col = 0; (ulg)col < cols + 2; ++col)
-                nexterr[col].r = nexterr[col].g =
-                nexterr[col].b = nexterr[col].a = 0;
-        if ((!floyd) || fs_direction) {
-            col = 0;
-            limitcol = cols;
-            pP = input_pixels[row];
-            pQ = outrow;
-        } else {
-            col = cols - 1;
-            limitcol = -1;
-            pP = &(input_pixels[row][col]);
-            pQ = &(outrow[col]);
-        }
-
-
-
-        do {
-            f_pixel px = to_f(*pP);
-
-            if (floyd) {
-                /* Use Floyd-Steinberg errors to adjust actual color. */
-                sr = px.r + thiserr[col + 1].r;
-                sg = px.g + thiserr[col + 1].g;
-                sb = px.b + thiserr[col + 1].b;
-                sa = px.a + thiserr[col + 1].a;
-
-                if (sr < 0) sr = 0;
-                else if (sr > 255) sr = 255;
-                if (sg < 0) sg = 0;
-                else if (sg > 255) sg = 255;
-                if (sb < 0) sb = 0;
-                else if (sb > 255) sb = 255;
-                if (sa < 0) sa = 0;
-                /* when fighting IE bug, dithering must not make opaque areas transparent */
-                else if (sa > 255 || (ie_bug && px.a == 255)) sa = 255;
-
-                /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
-                px = (f_pixel){sr, sg, sb, sa};
-            }
-
-
-            /* Check hash table to see if we have already matched this color. */
-            ind = pam_lookupacolor(acht, px);
-
-            double colorimp = colorimportance(px.a);
-
-            if (ind == -1) {
-                /* No; search acolormap for closest match. */
-                int i;
-                double a1, r1, g1, b1, r2, g2, b2, a2;
-                double dist = 1<<30, newdist;
-
-                a1 = px.a;
-                r1 = px.r;
-                g1 = px.g;
-                b1 = px.b;
-                /* a1 read few lines earlier */
-
-                for (i = 0; i < newcolors; ++i) {
-                    r2 = acolormap[i].acolor.r;
-                    g2 = acolormap[i].acolor.g;
-                    b2 = acolormap[i].acolor.b;
-                    a2 = acolormap[i].acolor.a;
-/* GRR POSSIBLE BUG */
-
-                    /* 8+1 shift is /256 for colorimportance and approx /3 for 3 channels vs 1 */
-                    newdist = ((a1 - a2) * (a1 - a2) * 512.0) +
-                              ((r1 - r2) * (r1 - r2) * colorimp +
-                               (g1 - g2) * (g1 - g2) * colorimp +
-                               (b1 - b2) * (b1 - b2) * colorimp);
-
-                    /* penalty for making holes in IE */
-                    if (a1 >= min_opaque_val && a2 < 255) newdist += 255*255/64;
-
-                    if (newdist < dist) {
-                        ind = i;
-                        dist = newdist;
-                    }
-                }
-
-                if (pam_addtoacolorhash(acht, px, ind) < 0) {
-                    if (verbose) {
-                        fprintf(stderr, "  out of memory adding to hash");
-                        fflush(stderr);
-                    }
-                    return OUT_OF_MEMORY_ERROR;
-                }
-            }
-
-            if (floyd) {
-                /* Propagate Floyd-Steinberg error terms. */
-                if (fs_direction) {
-                    err = (sr - (float)acolormap[ind].acolor.r) * colorimp/256.0;
-                    thiserr[col + 2].r += (err * 7) / 16.0;
-                    nexterr[col    ].r += (err * 3) / 16.0;
-                    nexterr[col + 1].r += (err * 5) / 16.0;
-                    nexterr[col + 2].r += (err    ) / 16.0;
-                    err = (sg - (float)acolormap[ind].acolor.g) * colorimp/256.0;
-                    thiserr[col + 2].g += (err * 7) / 16.0;
-                    nexterr[col    ].g += (err * 3) / 16.0;
-                    nexterr[col + 1].g += (err * 5) / 16.0;
-                    nexterr[col + 2].g += (err    ) / 16.0;
-                    err = (sb - (float)acolormap[ind].acolor.b) * colorimp/256.0;
-                    thiserr[col + 2].b += (err * 7) / 16.0;
-                    nexterr[col    ].b += (err * 3) / 16.0;
-                    nexterr[col + 1].b += (err * 5) / 16.0;
-                    nexterr[col + 2].b += (err    ) / 16.0;
-                    err = (sa - (float)acolormap[ind].acolor.a);
-                    thiserr[col + 2].a += (err * 7) / 16.0;
-                    nexterr[col    ].a += (err * 3) / 16.0;
-                    nexterr[col + 1].a += (err * 5) / 16.0;
-                    nexterr[col + 2].a += (err    ) / 16.0;
-                } else {
-                    err = (sr - (float)acolormap[ind].acolor.r) * colorimp/256.0;
-                    thiserr[col    ].r += (err * 7) / 16.0;
-                    nexterr[col + 2].r += (err * 3) / 16.0;
-                    nexterr[col + 1].r += (err * 5) / 16.0;
-                    nexterr[col    ].r += (err    ) / 16.0;
-                    err = (sg - (float)acolormap[ind].acolor.g) * colorimp/256.0;
-                    thiserr[col    ].g += (err * 7) / 16.0;
-                    nexterr[col + 2].g += (err * 3) / 16.0;
-                    nexterr[col + 1].g += (err * 5) / 16.0;
-                    nexterr[col    ].g += (err    ) / 16.0;
-                    err = (sb - (float)acolormap[ind].acolor.b) * colorimp/256.0;
-                    thiserr[col    ].b += (err * 7) / 16.0;
-                    nexterr[col + 2].b += (err * 3) / 16.0;
-                    nexterr[col + 1].b += (err * 5) / 16.0;
-                    nexterr[col    ].b += (err    ) / 16.0;
-                    err = (sa - (float)acolormap[ind].acolor.a);
-                    thiserr[col    ].a += (err * 7) / 16.0;
-                    nexterr[col + 2].a += (err * 3) / 16.0;
-                    nexterr[col + 1].a += (err * 5) / 16.0;
-                    nexterr[col    ].a += (err    ) / 16.0;
-                }
-            }
-
-            *pQ = (uch)remap[ind];
-
-            if ((!floyd) || fs_direction) {
-                ++col;
-                ++pP;
-                ++pQ;
-            } else {
-                --col;
-                --pP;
-                --pQ;
-            }
-        }
-        while (col != limitcol);
-
-        if (floyd) {
-            temperr = thiserr;
-            thiserr = nexterr;
-            nexterr = temperr;
-            fs_direction = !fs_direction;
-        }
-
-        /* if non-interlaced PNG, write row now */
-        if (!rwpng_info.interlaced)
-            rwpng_write_image_row(&rwpng_info);
-    }
-
 
     /* now we're done with the INPUT data and row_pointers, so free 'em */
 

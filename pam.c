@@ -76,14 +76,14 @@ static acolorhash_table pam_allocacolorhash(void);
 
 inline static unsigned long pam_hashapixel(f_pixel p)
 {
-    return ( ( (long)(  (p).r * 33023 + \
-                 (p).g * 30013 + \
-                 (p).b * 27011 + \
-                 (p).a * 24007 ) \
+    return ( ( (long)(  (p).r * 33023.0f + \
+                 (p).g * 30013.0f + \
+                 (p).b * 27011.0f + \
+                 (p).a * 24007.0f ) \
               & 0x7fffffff ) % HASH_SIZE );
 }
 
-#define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) == (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
+#define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) >= (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
 
 acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP)
 {

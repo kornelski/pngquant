@@ -86,7 +86,7 @@ struct box {
 static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose,
                                int using_stdin, int reqcolors, int ie_bug);
 
-static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval min_opaque_val, int newcolors);
+static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, double min_opaque_val, int newcolors);
 static int redcompare (const void *ch1, const void *ch2);
 static int greencompare (const void *ch1, const void *ch2);
 static int bluecompare (const void *ch1, const void *ch2);
@@ -99,7 +99,7 @@ static char *pm_allocrow (int cols, int size);
 
 static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv);
-static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val);
+static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val);
 
 
 int main(int argc, char *argv[])
@@ -326,7 +326,7 @@ int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap
     return 0;
 }
 
-int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **input_pixels, ulg rows, ulg cols, uch **row_pointers, int newcolors, int* remap, acolorhist_vector acolormap)
+int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **input_pixels, ulg rows, ulg cols, uch **row_pointers, int newcolors, int* remap, acolorhist_vector acolormap)
 {
     int col;
     uch *pQ;
@@ -389,14 +389,14 @@ int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **i
                 sa = px.a + thiserr[col + 1].a;
 
                 if (sr < 0) sr = 0;
-                else if (sr > 255) sr = 255;
+                else if (sr > 1) sr = 1;
                 if (sg < 0) sg = 0;
-                else if (sg > 255) sg = 255;
+                else if (sg > 1) sg = 1;
                 if (sb < 0) sb = 0;
-                else if (sb > 255) sb = 255;
+                else if (sb > 1) sb = 1;
                 if (sa < 0) sa = 0;
                 /* when fighting IE bug, dithering must not make opaque areas transparent */
-                else if (sa > 255 || (ie_bug && px.a == 255)) sa = 255;
+                else if (sa > 1 || (ie_bug && px.a > 0.999)) sa = 1;
 
                 px = (f_pixel){sr, sg, sb, sa};
             }
@@ -419,16 +419,14 @@ int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **i
                     g2 = acolormap[i].acolor.g;
                     b2 = acolormap[i].acolor.b;
                     a2 = acolormap[i].acolor.a;
-/* GRR POSSIBLE BUG */
 
-                    /* 8+1 shift is /256 for colorimportance and approx /3 for 3 channels vs 1 */
-                    newdist = ((a1 - a2) * (a1 - a2) * 512.0) +
+                    newdist = ((a1 - a2) * (a1 - a2) * 2.0) +
                               ((r1 - r2) * (r1 - r2) * colorimp +
                                (g1 - g2) * (g1 - g2) * colorimp +
                                (b1 - b2) * (b1 - b2) * colorimp);
 
                     /* penalty for making holes in IE */
-                    if (a1 >= min_opaque_val && a2 < 255) newdist += 255*255/64;
+                    if (a1 >= min_opaque_val && a2 < 1) newdist += 1*512.0;
 
                     if (newdist < dist) {
                         ind = i;
@@ -440,47 +438,47 @@ int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **i
             if (floyd) {
                 /* Propagate Floyd-Steinberg error terms. */
                 if (fs_direction) {
-                    err = (sr - acolormap[ind].acolor.r) * colorimp/256.0;
-                    thiserr[col + 2].r += (err * 7) / 16.0;
-                    nexterr[col    ].r += (err * 3) / 16.0;
-                    nexterr[col + 1].r += (err * 5) / 16.0;
-                    nexterr[col + 2].r += (err    ) / 16.0;
-                    err = (sg - acolormap[ind].acolor.g) * colorimp/256.0;
-                    thiserr[col + 2].g += (err * 7) / 16.0;
-                    nexterr[col    ].g += (err * 3) / 16.0;
-                    nexterr[col + 1].g += (err * 5) / 16.0;
-                    nexterr[col + 2].g += (err    ) / 16.0;
-                    err = (sb - acolormap[ind].acolor.b) * colorimp/256.0;
-                    thiserr[col + 2].b += (err * 7) / 16.0;
-                    nexterr[col    ].b += (err * 3) / 16.0;
-                    nexterr[col + 1].b += (err * 5) / 16.0;
-                    nexterr[col + 2].b += (err    ) / 16.0;
+                    err = (sr - acolormap[ind].acolor.r) * colorimp;
+                    thiserr[col + 2].r += (err * 7.0f) / 16.0f;
+                    nexterr[col    ].r += (err * 3.0f) / 16.0f;
+                    nexterr[col + 1].r += (err * 5.0f) / 16.0f;
+                    nexterr[col + 2].r += (err    ) / 16.0f;
+                    err = (sg - acolormap[ind].acolor.g) * colorimp;
+                    thiserr[col + 2].g += (err * 7.0f) / 16.0f;
+                    nexterr[col    ].g += (err * 3.0f) / 16.0f;
+                    nexterr[col + 1].g += (err * 5.0f) / 16.0f;
+                    nexterr[col + 2].g += (err    ) / 16.0f;
+                    err = (sb - acolormap[ind].acolor.b) * colorimp;
+                    thiserr[col + 2].b += (err * 7.0f) / 16.0f;
+                    nexterr[col    ].b += (err * 3.0f) / 16.0f;
+                    nexterr[col + 1].b += (err * 5.0f) / 16.0f;
+                    nexterr[col + 2].b += (err    ) / 16.0f;
                     err = (sa - acolormap[ind].acolor.a);
-                    thiserr[col + 2].a += (err * 7) / 16.0;
-                    nexterr[col    ].a += (err * 3) / 16.0;
-                    nexterr[col + 1].a += (err * 5) / 16.0;
-                    nexterr[col + 2].a += (err    ) / 16.0;
+                    thiserr[col + 2].a += (err * 7.0f) / 16.0f;
+                    nexterr[col    ].a += (err * 3.0f) / 16.0f;
+                    nexterr[col + 1].a += (err * 5.0f) / 16.0f;
+                    nexterr[col + 2].a += (err    ) / 16.0f;
                 } else {
-                    err = (sr - acolormap[ind].acolor.r) * colorimp/256.0;
-                    thiserr[col    ].r += (err * 7) / 16.0;
-                    nexterr[col + 2].r += (err * 3) / 16.0;
-                    nexterr[col + 1].r += (err * 5) / 16.0;
-                    nexterr[col    ].r += (err    ) / 16.0;
-                    err = (sg - acolormap[ind].acolor.g) * colorimp/256.0;
-                    thiserr[col    ].g += (err * 7) / 16.0;
-                    nexterr[col + 2].g += (err * 3) / 16.0;
-                    nexterr[col + 1].g += (err * 5) / 16.0;
-                    nexterr[col    ].g += (err    ) / 16.0;
-                    err = (sb - acolormap[ind].acolor.b) * colorimp/256.0;
-                    thiserr[col    ].b += (err * 7) / 16.0;
-                    nexterr[col + 2].b += (err * 3) / 16.0;
-                    nexterr[col + 1].b += (err * 5) / 16.0;
-                    nexterr[col    ].b += (err    ) / 16.0;
+                    err = (sr - acolormap[ind].acolor.r) * colorimp;
+                    thiserr[col    ].r += (err * 7.0f) / 16.0f;
+                    nexterr[col + 2].r += (err * 3.0f) / 16.0f;
+                    nexterr[col + 1].r += (err * 5.0f) / 16.0f;
+                    nexterr[col    ].r += (err    ) / 16.0f;
+                    err = (sg - acolormap[ind].acolor.g) * colorimp;
+                    thiserr[col    ].g += (err * 7.0f) / 16.0f;
+                    nexterr[col + 2].g += (err * 3.0f) / 16.0f;
+                    nexterr[col + 1].g += (err * 5.0f) / 16.0f;
+                    nexterr[col    ].g += (err    ) / 16.0f;
+                    err = (sb - acolormap[ind].acolor.b) * colorimp;
+                    thiserr[col    ].b += (err * 7.0f) / 16.0f;
+                    nexterr[col + 2].b += (err * 3.0f) / 16.0f;
+                    nexterr[col + 1].b += (err * 5.0f) / 16.0f;
+                    nexterr[col    ].b += (err    ) / 16.0f;
                     err = (sa - acolormap[ind].acolor.a);
-                    thiserr[col    ].a += (err * 7) / 16.0;
-                    nexterr[col + 2].a += (err * 3) / 16.0;
-                    nexterr[col + 1].a += (err * 5) / 16.0;
-                    nexterr[col    ].a += (err    ) / 16.0;
+                    thiserr[col    ].a += (err * 7.0f) / 16.0f;
+                    nexterr[col + 2].a += (err * 3.0f) / 16.0f;
+                    nexterr[col + 1].a += (err * 5.0f) / 16.0f;
+                    nexterr[col    ].a += (err    ) / 16.0f;
                 }
             }
 
@@ -521,7 +519,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     int col;
     uch **row_pointers=NULL;
     ulg rows, cols;
-    pixval min_opaque_val, almost_opaque_val;
+    float min_opaque_val, almost_opaque_val;
     int ignorebits=0;
     acolorhist_vector achv, acolormap=NULL;
     int row;
@@ -630,37 +628,36 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
     if (ie_bug) {
-        min_opaque_val = 255 * 15 / 16; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
-        almost_opaque_val = min_opaque_val * 2 / 3;
+        min_opaque_val = 0.93; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
+        almost_opaque_val = min_opaque_val * 0.66;
 
         if (verbose) {
             fprintf(stderr, "  Working around IE6 bug by making image less transparent...\n");
             fflush(stderr);
         }
     } else {
-        min_opaque_val = almost_opaque_val = 255;
+        min_opaque_val = almost_opaque_val = 1;
     }
 
-    for (row = 0; (ulg)row < rows; ++row)
+    for (row = 0; (ulg)row < rows; ++row) {
         for (col = 0, pP = input_pixels[row]; (ulg)col < cols; ++col, ++pP) {
+
+            f_pixel px = to_f(*pP);
+
             /* set all completely transparent colors to black */
             if (!pP->a) {
                 *pP = (rgb_pixel){0,0,0,pP->a};
             }
             /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
-            else if (pP->a < 255 && pP->a > almost_opaque_val) {
+            else if (pP->a < 255 && px.a > almost_opaque_val) {
                 assert((min_opaque_val-almost_opaque_val)>0);
 
-                int al = almost_opaque_val + (pP->a-almost_opaque_val) * (255-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
-                if (al > 255) al = 255;
-                pP->a = al;
+                double al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
+                if (al > 1) al = 1;
+                px.a = al;
+                pP->a = to_rgb(px).a;
             }
         }
-
-    /* ie bug: despite increased opaqueness in the picture, color reduction could still produce
-        non-opaque colors. to prevent that, set a treshold (it'll be used when remapping too) */
-    if (min_opaque_val != 255) {
-        min_opaque_val = 255*15/16;
     }
 
    /*
@@ -822,7 +819,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
 static f_pixel background;
 
-static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval min_opaque_val, int newcolors)
+static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, double min_opaque_val, int newcolors)
 {
     acolorhist_vector acolormap;
     box_vector bv;
@@ -884,14 +881,14 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
             if (v > maxa) maxa = v;
 
             /* linear blending makes it too obsessed with accurate alpha, but the optimum unfortunately seems to depend on image */
-            int al = colorimportance(255-v);
-            v = (achv[indx + i].acolor.r * (256-al) + al * background.r)/256; /* 256 is deliberate */
+            int al = colorimportance(1-v)*256;
+            v = (achv[indx + i].acolor.r * (256.0-al) + al * background.r)/256.0; /* 256 is deliberate */
             if (v < minr) minr = v;
             if (v > maxr) maxr = v;
-            v = (achv[indx + i].acolor.g * (256-al) + al * background.g)/256;
+            v = (achv[indx + i].acolor.g * (256.0-al) + al * background.g)/256.0;
             if (v < ming) ming = v;
             if (v > maxg) maxg = v;
-            v = (achv[indx + i].acolor.b * (256-al) + al * background.b)/256;
+            v = (achv[indx + i].acolor.b * (256.0-al) + al * background.b)/256.0;
             if (v < minb) minb = v;
             if (v > maxb) maxb = v;
 
@@ -1018,11 +1015,11 @@ static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv)
     return (f_pixel){r, g, b, a};
 }
 
-static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val)
+static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val)
 {
     /* use floating-point to avoid overflow. unsigned long will suffice for small images. */
     double r = 0, g = 0, b = 0, a = 0, sum = 0, colorsum = 0;
-    unsigned int maxa = 0;
+    double maxa = 0;
     int i;
 
     for (i = 0; i < clrs; ++i) {
@@ -1047,7 +1044,7 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval 
         sum += achv[indx + i].value * weight;
 
         /* blend colors proportionally to their alpha. It has minor effect and doesn't need colorimportance() */
-        weight *= colorimportance(achv[indx + i].acolor.a);
+        weight *= 256*colorimportance(achv[indx + i].acolor.a);
 
         r += achv[indx + i].acolor.r * achv[indx + i].value * weight;
         g += achv[indx + i].acolor.g * achv[indx + i].value * weight;
@@ -1057,16 +1054,12 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval 
 
     if (!colorsum) colorsum=1;
     r /= colorsum;
-    if (r > 255) r = 255;        /* avoid math/rounding errors */
     g /= colorsum;
-    if (g > 255) g = 255;
     b /= colorsum;
-    if (b > 255) b = 255;
     a /= sum;
-    if (a >= 255) a = 255;
 
     /** if there was at least one completely opaque color, "round" final color to opaque */
-    if (a >= min_opaque_val && maxa == 255) a = 255;
+    if (a >= min_opaque_val && maxa >= 0.999) a = 1;
 
     return (f_pixel){r, g, b, a};
 }
@@ -1101,31 +1094,10 @@ static int sumcompare(const void *b1, const void *b2)
            ((box_vector)b1)->sum;
 }
 
-/** expects alpha in range 0-255.
- Returns importance of color in range 1-256 (off-by-one error is deliberate to allow >>8 optimisation) */
+/** expects alpha in range 0-1 */
 static double colorimportance(double alpha)
 {
-    return 256.0-(255.0-alpha)*(255.0-alpha)/256.0;
+    return (1.0-(1.0-alpha)*(1.0-alpha));
 }
 
-inline static unsigned long colordiff(rgb_pixel a, rgb_pixel b)
-{
-    unsigned long diff; long t;
-    t = a.r - b.r;
-    diff = t*t;
-    t = a.g - b.g;
-    diff += t*t;
-    t = a.b - b.b;
-    diff += t*t;
-
-    unsigned long colorimp = 256-(255-a.a)*(255-b.a)/256;
-    diff = diff * colorimp;
-
-    t = a.a - b.a;
-    diff += (t*t)<<9;
-
-    return diff;
-}
-
-/*===========================================================================*/
 

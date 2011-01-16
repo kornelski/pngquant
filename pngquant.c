@@ -74,30 +74,15 @@
 
 #include "png.h"    /* libpng header; includes zlib.h */
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
+#include "pam.h"
+
 typedef unsigned char   uch;
 typedef unsigned short  ush;
 typedef png_uint_32     ulg;
 
-typedef uch pixval; /* GRR: hardcoded for now; later add 16-bit support */
-
-
-/* from pam.h */
-
-typedef struct {
-    uch r, g, b, a;
-} apixel;
-
-/*
-typedef struct {
-    ush r, g, b, a;
-} apixel16;
- */
-
 #define pam_freearray(pixels,rows) pm_freearray((char **)pixels, rows)
 #define PAM_ASSIGN(p,red,grn,blu,alf) \
    do { (p).r = (red); (p).g = (grn); (p).b = (blu); (p).a = (alf); } while (0)
-#define PAM_EQUAL(p,q) \
-   ((p).r == (q).r && (p).g == (q).g && (p).b == (q).b && (p).a == (q).a)
 #define PAM_DEPTH(newp,p,oldmaxval,newmaxval) \
    PAM_ASSIGN( (newp), \
       ((int) (p).r * (newmaxval) + (oldmaxval) / 2) / (oldmaxval), \
@@ -105,23 +90,6 @@ typedef struct {
       ((int) (p).b * (newmaxval) + (oldmaxval) / 2) / (oldmaxval), \
       ((int) (p).a * (newmaxval) + (oldmaxval) / 2 ) / (oldmaxval))
 
-
-/* from pamcmap.h */
-
-typedef struct acolorhist_item *acolorhist_vector;
-struct acolorhist_item {
-    apixel acolor;
-    int value;
-/*    int contrast;*/
-};
-
-typedef struct acolorhist_list_item *acolorhist_list;
-struct acolorhist_list_item {
-    struct acolorhist_item ch;
-    acolorhist_list next;
-};
-
-typedef acolorhist_list *acolorhash_table;
 
 
 
@@ -176,19 +144,6 @@ static int alphacompare (const void *ch1, const void *ch2);
 static int sumcompare (const void *b1, const void *b2);
 
 static int colorimportance(int alpha);
-
-static acolorhist_vector pam_acolorhashtoacolorhist
-  (acolorhash_table acht, int maxacolors);
-static acolorhist_vector pam_computeacolorhist
-  (apixel **apixels, int cols, int rows, int maxacolors, int* acolorsP);
-static acolorhash_table pam_computeacolorhash
-  (apixel** apixels, int cols, int rows, int maxacolors, int* acolorsP);
-static acolorhash_table pam_allocacolorhash (void);
-static int pam_addtoacolorhash
-  (acolorhash_table acht, apixel *acolorP, int value);
-static int pam_lookupacolor (acolorhash_table acht, apixel* acolorP);
-static void pam_freeacolorhist (acolorhist_vector achv);
-static void pam_freeacolorhash (acolorhash_table acht);
 
 static char *pm_allocrow (int cols, int size);
 #ifdef SUPPORT_MAPFILE
@@ -1382,74 +1337,6 @@ static int colorimportance(int alpha)
     return 256-(255-alpha)*(255-alpha)/256;
 }
 
-/*
-
-libpam3.c:
-    pam_computeacolorhist( )
-NOTUSED pam_addtoacolorhist( )
-    pam_computeacolorhash( )
-    pam_allocacolorhash( )
-    pam_addtoacolorhash( )
-    pam_acolorhashtoacolorhist( )
-NOTUSED pam_acolorhisttoacolorhash( )
-    pam_lookupacolor( )
-    pam_freeacolorhist( )
-    pam_freeacolorhash( )
-
-libpbm1.c:
-    pm_freearray( )
-    pm_allocrow( )
-
-pam.h:
-    pam_freearray( )
- */
-
-
-/*===========================================================================*/
-
-
-/* libpam3.c - pam (portable alpha map) utility library part 3
-**
-** Colormap routines.
-**
-** Copyright (C) 1989, 1991 by Jef Poskanzer.
-** Copyright (C) 1997 by Greg Roelofs.
-**
-** Permission to use, copy, modify, and distribute this software and its
-** documentation for any purpose and without fee is hereby granted, provided
-** that the above copyright notice appear in all copies and that both that
-** copyright notice and this permission notice appear in supporting
-** documentation.  This software is provided "as is" without express or
-** implied warranty.
-*/
-
-/*
-#include "pam.h"
-#include "pamcmap.h"
- */
-
-#define HASH_SIZE 20023
-
-#define pam_hashapixel(p) ( ( ( (long) (p).r * 33023 + \
-                                (long) (p).g * 30013 + \
-                                (long) (p).b * 27011 + \
-                                (long) (p).a * 24007 ) \
-                              & 0x7fffffff ) % HASH_SIZE )
-
-static acolorhist_vector pam_computeacolorhist(apixel** apixels, int cols, int rows, int maxacolors, int* acolorsP)
-{
-    acolorhash_table acht;
-    acolorhist_vector achv;
-
-    acht = pam_computeacolorhash(apixels, cols, rows, maxacolors, acolorsP);
-    if (acht == (acolorhash_table) 0)
-    return (acolorhist_vector) 0;
-    achv = pam_acolorhashtoacolorhist(acht, maxacolors);
-    pam_freeacolorhash(acht);
-    return achv;
-}
-
-
 inline static unsigned long colordiff(apixel a, apixel b)
 {
     unsigned long diff; long t;
@@ -1468,178 +1355,6 @@ inline static unsigned long colordiff(apixel a, apixel b)
 
     return diff;
 }
-
-/*
-static int contrast(apixel *p, apixel *prevp, apixel *nextp,int col,int cols)
-{
-    unsigned int maxcontrast = colordiff(*p,*prevp);
-
-    unsigned int c = colordiff(*p,*nextp);
-    if (maxcontrast < c) maxcontrast = c;
-
-    if (col > 0) {
-        c = colordiff(*p,*(p-1));
-        if (maxcontrast < c) maxcontrast = c;
-    }
-    if (col < cols-1) {
-        c = colordiff(*p,*(p+1));
-        if (maxcontrast < c) maxcontrast = c;
-    }
-
-    return sqrt(maxcontrast);
-}
-*/
-
-static acolorhash_table pam_computeacolorhash(apixel** apixels,int cols,int rows,int maxacolors, int* acolorsP )
-{
-    acolorhash_table acht;
-    acolorhist_list achl;
-    int col, row, hash;
-
-    acht = pam_allocacolorhash( );
-    *acolorsP = 0;
-
-    /* Go through the entire image, building a hash table of colors. */
-    for (row = 0; row < rows; ++row) {
-        apixel* pP = apixels[row];
-        apixel* nextpP = apixels[row < rows-1?row+1:row];
-        /*apixel* prevpP = apixels[row > 0?row-1:0];*/
-
-        for (col = 0; col < cols; ++col, ++pP, ++nextpP) {
-            /*int contr = contrast(pP,prevpP,nextpP,col,cols);*/
-
-            hash = pam_hashapixel(*pP);
-            for (achl = acht[hash]; achl != (acolorhist_list) 0; achl = achl->next)
-            if (PAM_EQUAL(achl->ch.acolor, *pP))
-                break;
-            if (achl != (acolorhist_list) 0) {
-                ++(achl->ch.value);
-                /*achl->ch.contrast += contr;*/
-            } else {
-                if (++(*acolorsP) > maxacolors) {
-                    pam_freeacolorhash(acht);
-                    return (acolorhash_table) 0;
-                }
-                achl = (acolorhist_list) malloc(sizeof(struct acolorhist_list_item));
-                if (achl == 0) {
-                    fprintf(stderr, "  out of memory computing hash table\n");
-                    exit(7);
-                }
-                achl->ch.acolor = *pP;
-                achl->ch.value = 1;
-                /*achl->ch.contrast = contr;*/
-                achl->next = acht[hash];
-                acht[hash] = achl;
-            }
-        }
-
-    }
-    return acht;
-}
-
-
-
-static acolorhash_table pam_allocacolorhash( )
-{
-    acolorhash_table acht;
-    int i;
-
-    acht = (acolorhash_table) malloc(HASH_SIZE * sizeof(acolorhist_list));
-    if (acht == 0) {
-        fprintf(stderr, "  out of memory allocating hash table\n");
-        exit(8);
-    }
-
-    for (i = 0; i < HASH_SIZE; ++i)
-        acht[i] = (acolorhist_list) 0;
-
-    return acht;
-}
-
-
-
-static int pam_addtoacolorhash(acolorhash_table acht, apixel* acolorP, int value)
-{
-    int hash;
-    acolorhist_list achl;
-
-    achl = (acolorhist_list) malloc(sizeof(struct acolorhist_list_item));
-    if (achl == 0)
-    return -1;
-    hash = pam_hashapixel(*acolorP);
-    achl->ch.acolor = *acolorP;
-    achl->ch.value = value;
-    achl->next = acht[hash];
-    acht[hash] = achl;
-    return 0;
-}
-
-
-
-static acolorhist_vector pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors)
-{
-    acolorhist_vector achv;
-    acolorhist_list achl;
-    int i, j;
-
-    /* Now collate the hash table into a simple acolorhist array. */
-    achv = (acolorhist_vector) malloc(maxacolors * sizeof(struct acolorhist_item));
-    /* (Leave room for expansion by caller.) */
-    if (achv == (acolorhist_vector) 0) {
-        fprintf(stderr, "  out of memory generating histogram\n");
-        exit(9);
-    }
-
-    /* Loop through the hash table. */
-    j = 0;
-    for (i = 0; i < HASH_SIZE; ++i)
-        for (achl = acht[i]; achl != (acolorhist_list) 0; achl = achl->next) {
-            /* Add the new entry. */
-            achv[j] = achl->ch;
-            ++j;
-        }
-
-    /* All done. */
-    return achv;
-}
-
-
-
-static int pam_lookupacolor(acolorhash_table acht, apixel* acolorP)
-{
-    int hash;
-    acolorhist_list achl;
-
-    hash = pam_hashapixel(*acolorP);
-    for (achl = acht[hash]; achl != (acolorhist_list) 0; achl = achl->next)
-    if (PAM_EQUAL(achl->ch.acolor, *acolorP))
-        return achl->ch.value;
-
-    return -1;
-}
-
-
-
-static void pam_freeacolorhist(acolorhist_vector achv)
-{
-    free((char*) achv);
-}
-
-
-
-static void pam_freeacolorhash(acolorhash_table acht)
-{
-    int i;
-    acolorhist_list achl, achlnext;
-
-    for (i = 0; i < HASH_SIZE; ++i)
-        for (achl = acht[i]; achl != (acolorhist_list) 0; achl = achlnext) {
-            achlnext = achl->next;
-            free((char*) achl);
-        }
-    free((char*) acht);
-}
-
 
 /*===========================================================================*/
 

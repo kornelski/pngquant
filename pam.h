@@ -49,5 +49,5 @@ typedef unsigned char pixval; /* GRR: hardcoded for now; later add 16-bit suppor
 acolorhist_vector pam_computeacolorhist(apixel** apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP);
 void pam_freeacolorhist(acolorhist_vector achv);
 acolorhash_table pam_allocacolorhash(void);
-int pam_addtoacolorhash(acolorhash_table acht, apixel *acolorP, int value);
-int pam_lookupacolor(acolorhash_table acht, apixel* acolorP);
+int pam_addtoacolorhash(acolorhash_table acht, apixel acolorP, int value);
+int pam_lookupacolor(acolorhash_table acht, apixel acolorP);

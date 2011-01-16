@@ -149,7 +149,7 @@ acolorhash_table pam_allocacolorhash()
 
 
 
-int pam_addtoacolorhash(acolorhash_table acht, apixel* acolorP, int value)
+int pam_addtoacolorhash(acolorhash_table acht, apixel acolorP, int value)
 {
     int hash;
     acolorhist_list achl;
@@ -157,8 +157,8 @@ int pam_addtoacolorhash(acolorhash_table acht, apixel* acolorP, int value)
     achl = malloc(sizeof(struct acolorhist_list_item));
     if (achl == 0)
         return -1;
-    hash = pam_hashapixel(*acolorP);
-    achl->ch.acolor = *acolorP;
+    hash = pam_hashapixel(acolorP);
+    achl->ch.acolor = acolorP;
     achl->ch.value = value;
     achl->next = acht[hash];
     acht[hash] = achl;
@@ -212,14 +212,14 @@ static void pam_freeacolorhash(acolorhash_table acht)
 
 
 
-int pam_lookupacolor(acolorhash_table acht, apixel* acolorP)
+int pam_lookupacolor(acolorhash_table acht, apixel acolorP)
 {
     int hash;
     acolorhist_list achl;
 
-    hash = pam_hashapixel(*acolorP);
+    hash = pam_hashapixel(acolorP);
     for (achl = acht[hash]; achl != (acolorhist_list) 0; achl = achl->next)
-        if (PAM_EQUAL(achl->ch.acolor, *acolorP))
+        if (PAM_EQUAL(achl->ch.acolor, acolorP))
             return achl->ch.value;
 
     return -1;

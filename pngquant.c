@@ -770,12 +770,14 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 
 
         do {
+            apixel px = *pP;
+
             if (floyd) {
                 /* Use Floyd-Steinberg errors to adjust actual color. */
-                sr = pP->r + thisrerr[col + 1] / FS_SCALE;
-                sg = pP->g + thisgerr[col + 1] / FS_SCALE;
-                sb = pP->b + thisberr[col + 1] / FS_SCALE;
-                sa = pP->a + thisaerr[col + 1] / FS_SCALE;
+                sr = px.r + thisrerr[col + 1] / FS_SCALE;
+                sg = px.g + thisgerr[col + 1] / FS_SCALE;
+                sb = px.b + thisberr[col + 1] / FS_SCALE;
+                sa = px.a + thisaerr[col + 1] / FS_SCALE;
 
                 if (sr < 0) sr = 0;
                 else if (sr > 255) sr = 255;
@@ -785,16 +787,16 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 else if (sb > 255) sb = 255;
                 if (sa < 0) sa = 0;
                 /* when fighting IE bug, dithering must not make opaque areas transparent */
-                else if (sa > 255 || (ie_bug && pP->a == 255)) sa = 255;
+                else if (sa > 255 || (ie_bug && px.a == 255)) sa = 255;
 
                 /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
-                PAM_ASSIGN(*pP, (uch)sr, (uch)sg, (uch)sb, (uch)sa);
+                PAM_ASSIGN(px, (uch)sr, (uch)sg, (uch)sb, (uch)sa);
             }
 
             /* Check hash table to see if we have already matched this color. */
-            ind = pam_lookupacolor(acht, pP);
+            ind = pam_lookupacolor(acht, px);
 
-            int a1 = pP->a;
+            int a1 = px.a;
             int colorimp = colorimportance(a1);
 
             if (ind == -1) {
@@ -802,9 +804,9 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 int i, r1, g1, b1, r2, g2, b2, a2;
                 long dist = 1<<30, newdist;
 
-                r1 = pP->r;
-                g1 = pP->g;
-                b1 = pP->b;
+                r1 = px.r;
+                g1 = px.g;
+                b1 = px.b;
                 /* a1 read few lines earlier */
 
                 for (i = 0; i < newcolors; ++i) {
@@ -829,7 +831,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                     }
                 }
 
-                if (pam_addtoacolorhash(acht, pP, ind) < 0) {
+                if (pam_addtoacolorhash(acht, px, ind) < 0) {
                     if (verbose) {
                         fprintf(stderr, "  out of memory adding to hash");
                         fflush(stderr);
@@ -885,7 +887,6 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 }
             }
 
-/*          *pP = acolormap[ind].acolor;  */
             *pQ = (uch)remap[ind];
 
             if ((!floyd) || fs_direction) {

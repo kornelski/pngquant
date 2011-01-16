@@ -21,7 +21,7 @@
 ((p).r == (q).r && (p).g == (q).g && (p).b == (q).b && (p).a == (q).a)
 
 static acolorhist_vector pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
-static acolorhash_table pam_computeacolorhash(apixel** apixels, int cols, int rows, int maxacolors, int* acolorsP);
+static acolorhash_table pam_computeacolorhash(apixel** apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 
 
@@ -78,12 +78,14 @@ static void pam_freeacolorhash(acolorhash_table acht);
 (long) (p).b * 8009 + \
 (long) (p).a * 24133 ) ) % HASH_SIZE )
 
-acolorhist_vector pam_computeacolorhist(apixel** apixels, int cols, int rows, int maxacolors, int* acolorsP)
+#define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) == (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
+
+acolorhist_vector pam_computeacolorhist(apixel** apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP)
 {
     acolorhash_table acht;
     acolorhist_vector achv;
 
-    acht = pam_computeacolorhash(apixels, cols, rows, maxacolors, acolorsP);
+    acht = pam_computeacolorhash(apixels, cols, rows, maxacolors, ignorebits, acolorsP);
     if (acht == (acolorhash_table) 0)
         return (acolorhist_vector) 0;
     achv = pam_acolorhashtoacolorhist(acht, maxacolors);
@@ -91,24 +93,31 @@ acolorhist_vector pam_computeacolorhist(apixel** apixels, int cols, int rows, in
     return achv;
 }
 
-static acolorhash_table pam_computeacolorhash(apixel** apixels,int cols,int rows,int maxacolors, int* acolorsP )
+static acolorhash_table pam_computeacolorhash(apixel** apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP)
 {
     acolorhash_table acht;
     acolorhist_list achl;
     int col, row, hash;
-
+    int maxval = 255>>ignorebits;
     acht = pam_allocacolorhash( );
     *acolorsP = 0;
 
     /* Go through the entire image, building a hash table of colors. */
     for (row = 0; row < rows; ++row) {
-        apixel* pP = apixels[row];
+        for (col = 0; col < cols; ++col) {
 
-        for (col = 0; col < cols; ++col, ++pP) {
+            apixel px = apixels[row][col];
 
-            hash = pam_hashapixel(*pP);
+            if (maxval != 255) {
+                px.r = PAM_SCALE(px.r, 255, maxval); px.r = PAM_SCALE(px.r, maxval, 255);
+                px.g = PAM_SCALE(px.g, 255, maxval); px.g = PAM_SCALE(px.g, maxval, 255);
+                px.b = PAM_SCALE(px.b, 255, maxval); px.b = PAM_SCALE(px.b, maxval, 255);
+                px.a = PAM_SCALE(px.a, 255, maxval); px.a = PAM_SCALE(px.a, maxval, 255);
+            }
+
+            hash = pam_hashapixel(px);
             for (achl = acht[hash]; achl != (acolorhist_list) 0; achl = achl->next)
-                if (PAM_EQUAL(achl->ch.acolor, *pP))
+                if (PAM_EQUAL(achl->ch.acolor, px))
                     break;
             if (achl != (acolorhist_list) 0) {
                 ++(achl->ch.value);
@@ -122,7 +131,7 @@ static acolorhash_table pam_computeacolorhash(apixel** apixels,int cols,int rows
                     fprintf(stderr, "  out of memory computing hash table\n");
                     exit(7);
                 }
-                achl->ch.acolor = *pP;
+                achl->ch.acolor = px;
                 achl->ch.value = 1;
                 achl->next = acht[hash];
                 acht[hash] = achl;

@@ -353,7 +353,8 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
     int ind;
     uch *pQ, *outrow, **row_pointers=NULL;
     ulg rows, cols;
-    pixval maxval, newmaxval, min_opaque_val, almost_opaque_val;
+    pixval maxval, min_opaque_val, almost_opaque_val;
+    int ignorebits=0;
     acolorhist_vector achv, acolormap=NULL;
     acolorhash_table acht;
     long *thisrerr = NULL;
@@ -525,27 +526,17 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 fflush(stderr);
             }
             achv = pam_computeacolorhist(
-                apixels, cols, rows, MAXCOLORS, &colors );
+                apixels, cols, rows, MAXCOLORS, ignorebits, &colors );
             if (achv != (acolorhist_vector) 0)
                 break;
 
-            newmaxval = maxval / 2;
-            min_opaque_val /= 2;
+            ignorebits++;
 
             if (verbose) {
                 fprintf(stderr, "too many colors!\n");
-                fprintf(stderr, "  scaling colors from maxval=%d to maxval=%d"
-                  " to improve clustering...\n", maxval, newmaxval);
+                fprintf(stderr, "  scaling colors to improve clustering...\n");
                 fflush(stderr);
             }
-
-            assert(newmaxval >= 15);
-            assert(maxval >= 15);
-
-            for (row = 0; (ulg)row < rows; ++row)
-                for (col = 0, pP = apixels[row]; (ulg)col < cols; ++col, ++pP)
-                    PAM_DEPTH(*pP, *pP, maxval, newmaxval);
-            maxval = newmaxval;
         }
         if (verbose) {
             fprintf(stderr, "%d colors found\n", colors);

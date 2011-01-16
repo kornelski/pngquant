@@ -86,8 +86,8 @@ acolorhist_vector pam_computeacolorhist(apixel** apixels, int cols, int rows, in
     acolorhist_vector achv;
 
     acht = pam_computeacolorhash(apixels, cols, rows, maxacolors, ignorebits, acolorsP);
-    if (acht == (acolorhash_table) 0)
-        return (acolorhist_vector) 0;
+    if (!acht) return 0;
+
     achv = pam_acolorhashtoacolorhist(acht, maxacolors);
     pam_freeacolorhash(acht);
     return achv;
@@ -99,7 +99,7 @@ static acolorhash_table pam_computeacolorhash(apixel** apixels, int cols, int ro
     acolorhist_list achl;
     int col, row, hash;
     int maxval = 255>>ignorebits;
-    acht = pam_allocacolorhash( );
+    acht = pam_allocacolorhash();
     *acolorsP = 0;
 
     /* Go through the entire image, building a hash table of colors. */
@@ -126,11 +126,9 @@ static acolorhash_table pam_computeacolorhash(apixel** apixels, int cols, int ro
                     pam_freeacolorhash(acht);
                     return (acolorhash_table) 0;
                 }
-                achl = (acolorhist_list) malloc(sizeof(struct acolorhist_list_item));
-                if (achl == 0) {
-                    fprintf(stderr, "  out of memory computing hash table\n");
-                    exit(7);
-                }
+                achl = malloc(sizeof(struct acolorhist_list_item));
+                if (!achl) return 0;
+
                 achl->ch.acolor = px;
                 achl->ch.value = 1;
                 achl->next = acht[hash];
@@ -144,21 +142,9 @@ static acolorhash_table pam_computeacolorhash(apixel** apixels, int cols, int ro
 
 
 
-acolorhash_table pam_allocacolorhash( )
+acolorhash_table pam_allocacolorhash()
 {
-    acolorhash_table acht;
-    int i;
-
-    acht = (acolorhash_table) malloc(HASH_SIZE * sizeof(acolorhist_list));
-    if (acht == 0) {
-        fprintf(stderr, "  out of memory allocating hash table\n");
-        exit(8);
-    }
-
-    for (i = 0; i < HASH_SIZE; ++i)
-        acht[i] = (acolorhist_list) 0;
-
-    return acht;
+    return calloc(HASH_SIZE, sizeof(acolorhist_list));
 }
 
 
@@ -168,7 +154,7 @@ int pam_addtoacolorhash(acolorhash_table acht, apixel* acolorP, int value)
     int hash;
     acolorhist_list achl;
 
-    achl = (acolorhist_list) malloc(sizeof(struct acolorhist_list_item));
+    achl = malloc(sizeof(struct acolorhist_list_item));
     if (achl == 0)
         return -1;
     hash = pam_hashapixel(*acolorP);

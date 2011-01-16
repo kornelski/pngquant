@@ -709,7 +709,8 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         fprintf(stderr, "  mapping image to new colors...\n" );
         fflush(stderr);
     }
-    acht = pam_allocacolorhash( );
+    acht = pam_allocacolorhash();
+    if (!acht) return OUT_OF_MEMORY_ERROR;
 
     if (rwpng_write_image_init(outfile, &rwpng_info) != 0) {
         fprintf(stderr, "  rwpng_write_image_init() error\n");
@@ -978,14 +979,10 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
     int boxes;
 
     bv = malloc(sizeof(struct box) * newcolors);
-    acolormap = malloc( sizeof(struct acolorhist_item) * newcolors);
+    acolormap = calloc(newcolors, sizeof(struct acolorhist_item));
     if (!bv || !acolormap) {
-        fprintf(stderr, "  out of memory allocating box vector\n");
-        fflush(stderr);
-        exit(6);
+        return 0;
     }
-    for (i = 0; i < newcolors; ++i)
-        PAM_ASSIGN(acolormap[i].acolor, 0, 0, 0, 0);
 
     /*
     ** Set up the initial box.

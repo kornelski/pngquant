@@ -71,13 +71,12 @@ static void pam_freeacolorhash(acolorhash_table acht);
  #include "pamcmap.h"
  */
 
-#define HASH_SIZE 20023
+#define HASH_SIZE 24137
 
-#define pam_hashapixel(p) ( ( ( (long) (p).r * 33023 + \
-(long) (p).g * 30013 + \
-(long) (p).b * 27011 + \
-(long) (p).a * 24007 ) \
-& 0x7fffffff ) % HASH_SIZE )
+#define pam_hashapixel(p) ( ( ( (long) (p).r + \
+((long) (p).g << 13) + \
+(long) (p).b * 8009 + \
+(long) (p).a * 24133 ) ) % HASH_SIZE )
 
 acolorhist_vector pam_computeacolorhist(apixel** apixels, int cols, int rows, int maxacolors, int* acolorsP)
 {

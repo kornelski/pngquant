@@ -36,8 +36,8 @@ struct acolorhist_item {
 
 typedef struct acolorhist_list_item *acolorhist_list;
 struct acolorhist_list_item {
-    struct acolorhist_item ch;
     acolorhist_list next;
+    struct acolorhist_item ch;
 };
 
 typedef acolorhist_list *acolorhash_table;

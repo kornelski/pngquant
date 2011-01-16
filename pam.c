@@ -73,10 +73,11 @@ static void pam_freeacolorhash(acolorhash_table acht);
 
 #define HASH_SIZE 24137
 
-#define pam_hashapixel(p) ( ( ( (long) (p).r + \
-((long) (p).g << 13) + \
-(long) (p).b * 8009 + \
-(long) (p).a * 24133 ) ) % HASH_SIZE )
+inline static unsigned long pam_hashapixel(f_pixel p)
+{
+    unsigned long sum = p.r * 24133.0 + p.g * 8009.0 + p.b * 1111.0 + p.a;
+    return sum % HASH_SIZE;
+}
 
 #define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) == (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
 
@@ -115,9 +116,13 @@ static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols
                 px.a = PAM_SCALE(px.a, 255, maxval); px.a = PAM_SCALE(px.a, maxval, 255);
             }
 
-            hash = pam_hashapixel(px);
+            f_pixel fpx = to_f(px);
+
+            hash = pam_hashapixel(fpx);
+
+
             for (achl = acht[hash]; achl != (acolorhist_list) 0; achl = achl->next)
-                if (PAM_EQUAL(achl->ch.acolor, px))
+                if (PAM_EQUAL(achl->ch.acolor, fpx))
                     break;
             if (achl != (acolorhist_list) 0) {
                 ++(achl->ch.value);
@@ -129,7 +134,7 @@ static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols
                 achl = malloc(sizeof(struct acolorhist_list_item));
                 if (!achl) return 0;
 
-                achl->ch.acolor = px;
+                achl->ch.acolor = fpx;
                 achl->ch.value = 1;
                 achl->next = acht[hash];
                 acht[hash] = achl;
@@ -149,7 +154,7 @@ acolorhash_table pam_allocacolorhash()
 
 
 
-int pam_addtoacolorhash(acolorhash_table acht, rgb_pixel acolorP, int value)
+int pam_addtoacolorhash(acolorhash_table acht, f_pixel acolorP, int value)
 {
     int hash;
     acolorhist_list achl;
@@ -212,7 +217,7 @@ static void pam_freeacolorhash(acolorhash_table acht)
 
 
 
-int pam_lookupacolor(acolorhash_table acht, rgb_pixel acolorP)
+int pam_lookupacolor(acolorhash_table acht, f_pixel acolorP)
 {
     int hash;
     acolorhist_list achl;

@@ -142,13 +142,13 @@ static int bluecompare (const void *ch1, const void *ch2);
 static int alphacompare (const void *ch1, const void *ch2);
 static int sumcompare (const void *b1, const void *b2);
 
-static int colorimportance(int alpha);
+static double colorimportance(double alpha);
 
 static char *pm_allocrow (int cols, int size);
 #ifdef SUPPORT_MAPFILE
 static void pm_freearray (char **its, int rows);
 #endif
-static rgb_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val);
+static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val);
 
 
 int main(int argc, char *argv[])
@@ -757,7 +757,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 
 
         do {
-            rgb_pixel px = *pP;
+            f_pixel px = to_f(*pP);
 
             if (floyd) {
                 /* Use Floyd-Steinberg errors to adjust actual color. */
@@ -777,20 +777,22 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 else if (sa > 255 || (ie_bug && px.a == 255)) sa = 255;
 
                 /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
-                PAM_ASSIGN(px, (uch)sr, (uch)sg, (uch)sb, (uch)sa);
+                PAM_ASSIGN(px, sr, sg, sb, sa);
             }
+
 
             /* Check hash table to see if we have already matched this color. */
             ind = pam_lookupacolor(acht, px);
 
-            int a1 = px.a;
-            int colorimp = colorimportance(a1);
+            double colorimp = colorimportance(px.a);
 
             if (ind == -1) {
                 /* No; search acolormap for closest match. */
-                int i, r1, g1, b1, r2, g2, b2, a2;
-                long dist = 1<<30, newdist;
+                int i;
+                double a1, r1, g1, b1, r2, g2, b2, a2;
+                double dist = 1<<30, newdist;
 
+                a1 = px.a;
                 r1 = px.r;
                 g1 = px.g;
                 b1 = px.b;
@@ -804,7 +806,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 /* GRR POSSIBLE BUG */
 
                     /* 8+1 shift is /256 for colorimportance and approx /3 for 3 channels vs 1 */
-                    newdist = ((a1 - a2) * (a1 - a2) << 8+1) +
+                    newdist = ((a1 - a2) * (a1 - a2) * 512.0) +
                               ((r1 - r2) * (r1 - r2) * colorimp +
                                (g1 - g2) * (g1 - g2) * colorimp +
                                (b1 - b2) * (b1 - b2) * colorimp);
@@ -948,7 +950,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 ** Display," SIGGRAPH 1982 Proceedings, page 297.
 */
 
-static rgb_pixel background;
+static f_pixel background;
 
 static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval min_opaque_val, int newcolors)
 {
@@ -977,7 +979,7 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
     while (boxes < newcolors) {
         int indx, clrs;
         int sm;
-        int minr, maxr, ming, mina, maxg, minb, maxb, maxa, v;
+        double minr, maxr, ming, mina, maxg, minb, maxb, maxa, v;
         int halfsum, lowersum;
 
         /*
@@ -1128,7 +1130,7 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
 #ifdef REP_CENTER_BOX
         int indx = bv[bi].ind;
         int clrs = bv[bi].colors;
-        int minr, maxr, ming, maxg, minb, maxb, mina, maxa, v;
+        double minr, maxr, ming, maxg, minb, maxb, mina, maxa, v;
 
         minr = maxr = achv[indx].acolor.r;
         ming = maxg = achv[indx].acolor.g;
@@ -1155,7 +1157,7 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
 #ifdef REP_AVERAGE_COLORS
         int indx = bv[bi].ind;
         int clrs = bv[bi].colors;
-        long r = 0, g = 0, b = 0, a = 0;
+        double r = 0, g = 0, b = 0, a = 0;
 
         for (i = 0; i < clrs; ++i) {
             r += achv[indx + i].acolor.r;
@@ -1180,7 +1182,7 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
     return acolormap;
 }
 
-static rgb_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val)
+static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval min_opaque_val)
 {
     /* use floating-point to avoid overflow. unsigned long will suffice for small images. */
     double r = 0, g = 0, b = 0, a = 0, sum = 0, colorsum = 0;
@@ -1229,7 +1231,7 @@ static rgb_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixva
     /** if there was at least one completely opaque color, "round" final color to opaque */
     if (a >= min_opaque_val && maxa == 255) a = 255;
 
-    return (rgb_pixel){(uch)r, (uch)g, (uch)b, (uch)a};
+    return (f_pixel){(uch)r, (uch)g, (uch)b, (uch)a};
 }
 
 static int redcompare(const void *ch1, const void *ch2)
@@ -1264,9 +1266,9 @@ static int sumcompare(const void *b1, const void *b2)
 
 /** expects alpha in range 0-255.
  Returns importance of color in range 1-256 (off-by-one error is deliberate to allow >>8 optimisation) */
-static int colorimportance(int alpha)
+static double colorimportance(double alpha)
 {
-    return 256-(255-alpha)*(255-alpha)/256;
+    return 256.0-(255.0-alpha)*(255.0-alpha)/256.0;
 }
 
 inline static unsigned long colordiff(rgb_pixel a, rgb_pixel b)

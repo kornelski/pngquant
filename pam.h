@@ -23,6 +23,11 @@ typedef struct {
     float r, g, b, a;
 } f_pixel;
 
+inline static f_pixel to_f(rgb_pixel r)
+{
+    return (f_pixel){r.r,r.g,r.b,r.a};
+}
+
 /*
  typedef struct {
  ush r, g, b, a;
@@ -33,7 +38,7 @@ typedef struct {
 
 typedef struct acolorhist_item *acolorhist_vector;
 struct acolorhist_item {
-    rgb_pixel acolor;
+    f_pixel acolor;
     int value;
     /*    int contrast;*/
 };
@@ -53,5 +58,5 @@ typedef unsigned char pixval; /* GRR: hardcoded for now; later add 16-bit suppor
 acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP);
 void pam_freeacolorhist(acolorhist_vector achv);
 acolorhash_table pam_allocacolorhash(void);
-int pam_addtoacolorhash(acolorhash_table acht, rgb_pixel acolorP, int value);
-int pam_lookupacolor(acolorhash_table acht, rgb_pixel acolorP);
+int pam_addtoacolorhash(acolorhash_table acht, f_pixel acolorP, int value);
+int pam_lookupacolor(acolorhash_table acht, f_pixel acolorP);

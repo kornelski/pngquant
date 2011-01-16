@@ -1219,19 +1219,19 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval 
     }
 
     if (!colorsum) colorsum=1;
-    r = round(r / colorsum);
+    r /= colorsum;
     if (r > 255) r = 255;        /* avoid math/rounding errors */
-    g = round(g / colorsum);
+    g /= colorsum;
     if (g > 255) g = 255;
-    b = round(b / colorsum);
+    b /= colorsum;
     if (b > 255) b = 255;
-    a = round(a / sum);
+    a /= sum;
     if (a >= 255) a = 255;
 
     /** if there was at least one completely opaque color, "round" final color to opaque */
     if (a >= min_opaque_val && maxa == 255) a = 255;
 
-    return (f_pixel){(uch)r, (uch)g, (uch)b, (uch)a};
+    return (f_pixel){r, g, b, a};
 }
 
 static int redcompare(const void *ch1, const void *ch2)

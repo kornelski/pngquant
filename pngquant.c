@@ -924,21 +924,22 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
         ** by simply comparing the range in RGB space
         */
 
-        if (maxa - mina >= maxr - minr && maxa - mina >= maxg - ming && maxa - mina >= maxb - minb)
-            qsort(
-                (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
+        double adelta = (maxa-mina);
+        double rdelta = (maxr-minr);
+        double gdelta = (maxg-ming);
+        double bdelta = (maxb-minb);
+
+        if (adelta >= rdelta && adelta >= gdelta && adelta >= bdelta)
+            qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 alphacompare );
-        else if (maxr - minr >= maxg - ming && maxr - minr >= maxb - minb)
-            qsort(
-                (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
+        else if (rdelta >= gdelta && rdelta >= bdelta)
+            qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 redcompare );
-        else if (maxg - ming >= maxb - minb)
-            qsort(
-                (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
+        else if (gdelta >= bdelta)
+            qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 greencompare );
         else
-            qsort(
-                (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
+            qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 bluecompare );
 
         /*
@@ -962,7 +963,7 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
         bv[boxes].colors = clrs - i;
         bv[boxes].sum = sm - lowersum;
         ++boxes;
-        qsort((char*) bv, boxes, sizeof(struct box), sumcompare);
+        qsort(bv, boxes, sizeof(struct box), sumcompare);
     }
 
     /*
@@ -1091,28 +1092,28 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval 
     return (f_pixel){r, g, b, a};
 }
 
+#define compare(ch1,ch2,r) ( \
+    ((acolorhist_vector)ch1)->acolor.r > ((acolorhist_vector)ch2)->acolor.r ? 1 : \
+   (((acolorhist_vector)ch1)->acolor.r < ((acolorhist_vector)ch2)->acolor.r ? -1 : 0))
+
 static int redcompare(const void *ch1, const void *ch2)
 {
-    return ((int) ((acolorhist_vector)ch1)->acolor.r) -
-           ((int) ((acolorhist_vector)ch2)->acolor.r);
+    return compare(ch1,ch2,r);
 }
 
 static int greencompare(const void *ch1, const void *ch2)
 {
-    return ((int) ((acolorhist_vector)ch1)->acolor.g) -
-           ((int) ((acolorhist_vector)ch2)->acolor.g);
+    return compare(ch1,ch2,g);
 }
 
 static int bluecompare(const void *ch1, const void *ch2)
 {
-    return ((int) ((acolorhist_vector)ch1)->acolor.b) -
-           ((int) ((acolorhist_vector)ch2)->acolor.b);
+    return compare(ch1,ch2,b);
 }
 
 static int alphacompare(const void *ch1, const void *ch2)
 {
-    return (int) ((acolorhist_vector)ch1)->acolor.a -
-           (int) ((acolorhist_vector)ch2)->acolor.a;
+    return compare(ch1,ch2,a);
 }
 
 static int sumcompare(const void *b1, const void *b2)

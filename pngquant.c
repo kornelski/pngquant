@@ -100,7 +100,6 @@ static mainprog_info rwpng_info;
 
 #define FNMAX      1024     /* max filename length */
 #define MAXCOLORS  (32767*8)
-#define FS_SCALE   4096     /* Floyd-Steinberg scaling factor */
 
 #define LARGE_NORM
 /* #define LARGE_LUM */   /* GRR 19970727:  this isn't well-defined for RGBA */
@@ -357,16 +356,16 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
     int ignorebits=0;
     acolorhist_vector achv, acolormap=NULL;
     acolorhash_table acht;
-    long *thisrerr = NULL;
-    long *nextrerr = NULL;
-    long *thisgerr = NULL;
-    long *nextgerr = NULL;
-    long *thisberr = NULL;
-    long *nextberr = NULL;
-    long *thisaerr = NULL;
-    long *nextaerr = NULL;
-    long *temperr;
-    long sr=0, sg=0, sb=0, sa=0, err;
+    float *thisrerr = NULL;
+    float *nextrerr = NULL;
+    float *thisgerr = NULL;
+    float *nextgerr = NULL;
+    float *thisberr = NULL;
+    float *nextberr = NULL;
+    float *thisaerr = NULL;
+    float *nextaerr = NULL;
+    float *temperr;
+    float sr=0, sg=0, sb=0, sa=0, err;
     int row;
     int colors;
     int newcolors = 0;
@@ -729,20 +728,20 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 
     if (floyd) {
         /* Initialize Floyd-Steinberg error vectors. */
-        thisrerr = malloc((cols + 2) * sizeof(long));
-        nextrerr = malloc((cols + 2) * sizeof(long));
-        thisgerr = malloc((cols + 2) * sizeof(long));
-        nextgerr = malloc((cols + 2) * sizeof(long));
-        thisberr = malloc((cols + 2) * sizeof(long));
-        nextberr = malloc((cols + 2) * sizeof(long));
-        thisaerr = malloc((cols + 2) * sizeof(long));
-        nextaerr = malloc((cols + 2) * sizeof(long));
+        thisrerr = malloc((cols + 2) * sizeof(float));
+        nextrerr = malloc((cols + 2) * sizeof(float));
+        thisgerr = malloc((cols + 2) * sizeof(float));
+        nextgerr = malloc((cols + 2) * sizeof(float));
+        thisberr = malloc((cols + 2) * sizeof(float));
+        nextberr = malloc((cols + 2) * sizeof(float));
+        thisaerr = malloc((cols + 2) * sizeof(float));
+        nextaerr = malloc((cols + 2) * sizeof(float));
         srandom(12345); /** deterministic dithering is better for comparing results */
         for (col = 0; (ulg)col < cols + 2; ++col) {
-            thisrerr[col] = random() % (FS_SCALE * 2) - FS_SCALE;
-            thisgerr[col] = random() % (FS_SCALE * 2) - FS_SCALE;
-            thisberr[col] = random() % (FS_SCALE * 2) - FS_SCALE;
-            thisaerr[col] = random() % (FS_SCALE * 2) - FS_SCALE;
+            thisrerr[col] = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
+            thisgerr[col] = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
+            thisberr[col] = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
+            thisaerr[col] = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
             /* (random errors in [-1 .. 1]) */
         }
         fs_direction = 1;
@@ -773,10 +772,10 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 
             if (floyd) {
                 /* Use Floyd-Steinberg errors to adjust actual color. */
-                sr = px.r + thisrerr[col + 1] / FS_SCALE;
-                sg = px.g + thisgerr[col + 1] / FS_SCALE;
-                sb = px.b + thisberr[col + 1] / FS_SCALE;
-                sa = px.a + thisaerr[col + 1] / FS_SCALE;
+                sr = px.r + thisrerr[col + 1];
+                sg = px.g + thisgerr[col + 1];
+                sb = px.b + thisberr[col + 1];
+                sa = px.a + thisaerr[col + 1];
 
                 if (sr < 0) sr = 0;
                 else if (sr > 255) sr = 255;
@@ -842,47 +841,47 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
             if (floyd) {
                 /* Propagate Floyd-Steinberg error terms. */
                 if (fs_direction) {
-                    err = (sr - (long)acolormap[ind].acolor.r)*FS_SCALE * colorimp/256;
-                    thisrerr[col + 2] += (err * 7) / 16;
-                    nextrerr[col    ] += (err * 3) / 16;
-                    nextrerr[col + 1] += (err * 5) / 16;
-                    nextrerr[col + 2] += (err    ) / 16;
-                    err = (sg - (long)acolormap[ind].acolor.g)*FS_SCALE * colorimp/256;
-                    thisgerr[col + 2] += (err * 7) / 16;
-                    nextgerr[col    ] += (err * 3) / 16;
-                    nextgerr[col + 1] += (err * 5) / 16;
-                    nextgerr[col + 2] += (err    ) / 16;
-                    err = (sb - (long)acolormap[ind].acolor.b)*FS_SCALE * colorimp/256;
-                    thisberr[col + 2] += (err * 7) / 16;
-                    nextberr[col    ] += (err * 3) / 16;
-                    nextberr[col + 1] += (err * 5) / 16;
-                    nextberr[col + 2] += (err    ) / 16;
-                    err = (sa - (long)acolormap[ind].acolor.a)*FS_SCALE;
-                    thisaerr[col + 2] += (err * 7) / 16;
-                    nextaerr[col    ] += (err * 3) / 16;
-                    nextaerr[col + 1] += (err * 5) / 16;
-                    nextaerr[col + 2] += (err    ) / 16;
+                    err = (sr - (float)acolormap[ind].acolor.r) * colorimp/256.0;
+                    thisrerr[col + 2] += (err * 7) / 16.0;
+                    nextrerr[col    ] += (err * 3) / 16.0;
+                    nextrerr[col + 1] += (err * 5) / 16.0;
+                    nextrerr[col + 2] += (err    ) / 16.0;
+                    err = (sg - (float)acolormap[ind].acolor.g) * colorimp/256.0;
+                    thisgerr[col + 2] += (err * 7) / 16.0;
+                    nextgerr[col    ] += (err * 3) / 16.0;
+                    nextgerr[col + 1] += (err * 5) / 16.0;
+                    nextgerr[col + 2] += (err    ) / 16.0;
+                    err = (sb - (float)acolormap[ind].acolor.b) * colorimp/256.0;
+                    thisberr[col + 2] += (err * 7) / 16.0;
+                    nextberr[col    ] += (err * 3) / 16.0;
+                    nextberr[col + 1] += (err * 5) / 16.0;
+                    nextberr[col + 2] += (err    ) / 16.0;
+                    err = (sa - (float)acolormap[ind].acolor.a);
+                    thisaerr[col + 2] += (err * 7) / 16.0;
+                    nextaerr[col    ] += (err * 3) / 16.0;
+                    nextaerr[col + 1] += (err * 5) / 16.0;
+                    nextaerr[col + 2] += (err    ) / 16.0;
                 } else {
-                    err = (sr - (long)acolormap[ind].acolor.r)*FS_SCALE * colorimp/256;
-                    thisrerr[col    ] += (err * 7) / 16;
-                    nextrerr[col + 2] += (err * 3) / 16;
-                    nextrerr[col + 1] += (err * 5) / 16;
-                    nextrerr[col    ] += (err    ) / 16;
-                    err = (sg - (long)acolormap[ind].acolor.g)*FS_SCALE * colorimp/256;
-                    thisgerr[col    ] += (err * 7) / 16;
-                    nextgerr[col + 2] += (err * 3) / 16;
-                    nextgerr[col + 1] += (err * 5) / 16;
-                    nextgerr[col    ] += (err    ) / 16;
-                    err = (sb - (long)acolormap[ind].acolor.b)*FS_SCALE * colorimp/256;
-                    thisberr[col    ] += (err * 7) / 16;
-                    nextberr[col + 2] += (err * 3) / 16;
-                    nextberr[col + 1] += (err * 5) / 16;
-                    nextberr[col    ] += (err    ) / 16;
-                    err = (sa - (long)acolormap[ind].acolor.a)*FS_SCALE;
-                    thisaerr[col    ] += (err * 7) / 16;
-                    nextaerr[col + 2] += (err * 3) / 16;
-                    nextaerr[col + 1] += (err * 5) / 16;
-                    nextaerr[col    ] += (err    ) / 16;
+                    err = (sr - (float)acolormap[ind].acolor.r) * colorimp/256.0;
+                    thisrerr[col    ] += (err * 7) / 16.0;
+                    nextrerr[col + 2] += (err * 3) / 16.0;
+                    nextrerr[col + 1] += (err * 5) / 16.0;
+                    nextrerr[col    ] += (err    ) / 16.0;
+                    err = (sg - (float)acolormap[ind].acolor.g) * colorimp/256.0;
+                    thisgerr[col    ] += (err * 7) / 16.0;
+                    nextgerr[col + 2] += (err * 3) / 16.0;
+                    nextgerr[col + 1] += (err * 5) / 16.0;
+                    nextgerr[col    ] += (err    ) / 16.0;
+                    err = (sb - (float)acolormap[ind].acolor.b) * colorimp/256.0;
+                    thisberr[col    ] += (err * 7) / 16.0;
+                    nextberr[col + 2] += (err * 3) / 16.0;
+                    nextberr[col + 1] += (err * 5) / 16.0;
+                    nextberr[col    ] += (err    ) / 16.0;
+                    err = (sa - (float)acolormap[ind].acolor.a);
+                    thisaerr[col    ] += (err * 7) / 16.0;
+                    nextaerr[col + 2] += (err * 3) / 16.0;
+                    nextaerr[col + 1] += (err * 5) / 16.0;
+                    nextaerr[col    ] += (err    ) / 16.0;
                 }
             }
 

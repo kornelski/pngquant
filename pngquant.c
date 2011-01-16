@@ -128,12 +128,12 @@ typedef enum {
 #ifdef SUPPORT_MAPFILE
    static pngquant_error pngquant
      (char *filename, char *newext, int floyd, int force, int verbose,
-      int using_stdin, int reqcolors, apixel **mapapixels, ulg maprows,
+      int using_stdin, int reqcolors, rgb_pixel **mapapixels, ulg maprows,
       ulg mapcols, pixval mapmaxval, int ie_bug);
 #else
    static pngquant_error pngquant
      (char *filename, char *newext, int floyd, int force, int verbose,
-      int using_stdin, int reqcolors, apixel **mapapixels, int ie_bug);
+      int using_stdin, int reqcolors, rgb_pixel **mapapixels, int ie_bug);
 #endif
 
 static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval min_opaque_val, int newcolors);
@@ -149,7 +149,7 @@ static char *pm_allocrow (int cols, int size);
 #ifdef SUPPORT_MAPFILE
 static void pm_freearray (char **its, int rows);
 #endif
-static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector achv, pixval min_opaque_val);
+static void averagepixels(int indx, int clrs, rgb_pixel *pixel, acolorhist_vector achv, pixval min_opaque_val);
 
 
 int main(int argc, char *argv[])
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
     ulg maprows, mapcols;
     pixval mapmaxval;
 #endif
-    apixel **mapapixels;
+    rgb_pixel **mapapixels;
     int argn;
     int reqcolors;
     int floyd = TRUE;
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 #endif
 
     argn = 1;
-    mapapixels = (apixel **)0;
+    mapapixels = (rgb_pixel **)0;
 
     while (argn < argc && argv[argn][0] == '-' && argv[argn][1] != '\0') {
         if (0 == strcmp(argv[argn], "--")) { ++argn;break; }
@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
         ++argn;
     }
 
-    if (mapapixels == (apixel**) 0) {
+    if (mapapixels == (rgb_pixel**) 0) {
         if (argn == argc) {
             fprintf(stderr, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n",
               PNGQUANT_VERSION);
@@ -340,15 +340,15 @@ int main(int argc, char *argv[])
 }
 
 #ifdef SUPPORT_MAPFILE
-pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, apixel **mapapixels,
+pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, rgb_pixel **mapapixels,
             ulg maprows, ulg mapcols, pixval mapmaxval, int ie_bug)
 #else
-pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, apixel **mapapixels, int ie_bug)
+pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, rgb_pixel **mapapixels, int ie_bug)
 #endif
 {
     FILE *infile, *outfile;
-    apixel **apixels;
-    apixel *pP;
+    rgb_pixel **input_pixels;
+    rgb_pixel *pP;
     int col, limitcol;
     int ind;
     uch *pQ, *outrow, **row_pointers=NULL;
@@ -468,7 +468,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 
     /* NOTE:  rgba_data and row_pointers are allocated but not freed in
      *        rwpng_read_image() */
-    apixels = (apixel **)rwpng_info.row_pointers;
+    input_pixels = (rgb_pixel **)rwpng_info.row_pointers;
     cols = rwpng_info.width;
     rows = rwpng_info.height;
     /* channels = rwpng_info.channels; */
@@ -489,7 +489,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
     }
 
     for (row = 0; (ulg)row < rows; ++row)
-        for (col = 0, pP = apixels[row]; (ulg)col < cols; ++col, ++pP) {
+        for (col = 0, pP = input_pixels[row]; (ulg)col < cols; ++col, ++pP) {
             /* set all completely transparent colors to black */
             if (!pP->a) {
                 PAM_ASSIGN(*pP,0,0,0,pP->a);
@@ -510,7 +510,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         min_opaque_val = 255*15/16;
     }
 
-    if (mapapixels == (apixel**) 0) {
+    if (mapapixels == (rgb_pixel**) 0) {
        /*
         ** Step 2: attempt to make a histogram of the colors, unclustered.
         ** If at first we don't succeed, increase ignorebits to increase color
@@ -522,7 +522,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 fflush(stderr);
             }
             achv = pam_computeacolorhist(
-                apixels, cols, rows, MAXCOLORS, ignorebits, &colors );
+                input_pixels, cols, rows, MAXCOLORS, ignorebits, &colors );
             if (achv != (acolorhist_vector) 0)
                 break;
 
@@ -758,19 +758,19 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         if ((!floyd) || fs_direction) {
             col = 0;
             limitcol = cols;
-            pP = apixels[row];
+            pP = input_pixels[row];
             pQ = outrow;
         } else {
             col = cols - 1;
             limitcol = -1;
-            pP = &(apixels[row][col]);
+            pP = &(input_pixels[row][col]);
             pQ = &(outrow[col]);
         }
 
 
 
         do {
-            apixel px = *pP;
+            rgb_pixel px = *pP;
 
             if (floyd) {
                 /* Use Floyd-Steinberg errors to adjust actual color. */
@@ -970,7 +970,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
 ** Display," SIGGRAPH 1982 Proceedings, page 297.
 */
 
-static apixel background;
+static rgb_pixel background;
 
 static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval min_opaque_val, int newcolors)
 {
@@ -1075,7 +1075,7 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
 #endif /*LARGE_NORM*/
 #ifdef LARGE_LUM
         {
-        apixel p;
+        rgb_pixel p;
         float rl, gl, bl, al;
 
         PAM_ASSIGN(p, maxr - minr, 0, 0, 0);
@@ -1202,7 +1202,7 @@ GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
     return acolormap;
 }
 
-static void averagepixels(int indx, int clrs, apixel *pixel, acolorhist_vector achv, pixval min_opaque_val)
+static void averagepixels(int indx, int clrs, rgb_pixel *pixel, acolorhist_vector achv, pixval min_opaque_val)
 {
     /* use floating-point to avoid overflow. unsigned long will suffice for small images. */
     double r = 0, g = 0, b = 0, a = 0, sum = 0, colorsum = 0;
@@ -1291,7 +1291,7 @@ static int colorimportance(int alpha)
     return 256-(255-alpha)*(255-alpha)/256;
 }
 
-inline static unsigned long colordiff(apixel a, apixel b)
+inline static unsigned long colordiff(rgb_pixel a, rgb_pixel b)
 {
     unsigned long diff; long t;
     t = a.r - b.r;

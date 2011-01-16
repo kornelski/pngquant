@@ -52,22 +52,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#ifdef unix
-#  include <unistd.h>   /* getpid() */
-#endif
 #ifdef WIN32        /* defined in Makefile.w32 (or use _MSC_VER for MSVC) */
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
-#  include <process.h>  /* _getpid() */
-#  ifndef getpid
-#    define getpid _getpid
-#  endif
-#  ifndef srandom
-#    define srandom srand
-#  endif
-#  ifndef random
-#    define random rand
-#  endif
 #endif
 
 #include <math.h>
@@ -80,29 +67,10 @@ typedef unsigned char   uch;
 typedef unsigned short  ush;
 typedef png_uint_32     ulg;
 
-#define pam_freearray(pixels,rows) pm_freearray((char **)pixels, rows)
-#define PAM_ASSIGN(p,red,grn,blu,alf) \
-   do { (p).r = (red); (p).g = (grn); (p).b = (blu); (p).a = (alf); } while (0)
-#define PAM_DEPTH(newp,p,oldmaxval,newmaxval) \
-   PAM_ASSIGN( (newp), \
-      PAM_DEPTH_SCALE((p).r, (oldmaxval), (newmaxval)), \
-      PAM_DEPTH_SCALE((p).g, (oldmaxval), (newmaxval)), \
-      PAM_DEPTH_SCALE((p).b, (oldmaxval), (newmaxval)), \
-      PAM_DEPTH_SCALE((p).a, (oldmaxval), (newmaxval)))
-
-#define PAM_DEPTH_SCALE(p, old, new) ((int)(p) * (new) / (old))
-
-
-
 static mainprog_info rwpng_info;
-
-
 
 #define FNMAX      1024     /* max filename length */
 #define MAXCOLORS  (32767*8)
-
-#define LARGE_NORM
-/* #define LARGE_LUM */   /* GRR 19970727:  this isn't well-defined for RGBA */
 
 /* #define REP_CENTER_BOX */
 /* #define REP_AVERAGE_COLORS */
@@ -124,16 +92,8 @@ typedef enum {
     INTERNAL_LOGIC_ERROR = 18,
 } pngquant_error;
 
-#ifdef SUPPORT_MAPFILE
-   static pngquant_error pngquant
-     (char *filename, char *newext, int floyd, int force, int verbose,
-      int using_stdin, int reqcolors, rgb_pixel **mapapixels, ulg maprows,
-      ulg mapcols, pixval mapmaxval, int ie_bug);
-#else
-   static pngquant_error pngquant
-     (char *filename, char *newext, int floyd, int force, int verbose,
-      int using_stdin, int reqcolors, rgb_pixel **mapapixels, int ie_bug);
-#endif
+static pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose,
+                               int using_stdin, int reqcolors, int ie_bug);
 
 static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval min_opaque_val, int newcolors);
 static int redcompare (const void *ch1, const void *ch2);
@@ -145,9 +105,6 @@ static int sumcompare (const void *b1, const void *b2);
 static double colorimportance(double alpha);
 
 static char *pm_allocrow (int cols, int size);
-#ifdef SUPPORT_MAPFILE
-static void pm_freearray (char **its, int rows);
-#endif
 
 static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv);
@@ -156,12 +113,6 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, pixval 
 
 int main(int argc, char *argv[])
 {
-#ifdef SUPPORT_MAPFILE
-    FILE *infile;
-    ulg maprows, mapcols;
-    pixval mapmaxval;
-#endif
-    rgb_pixel **mapapixels;
     int argn;
     int reqcolors;
     int floyd = TRUE;
@@ -173,13 +124,7 @@ int main(int argc, char *argv[])
     char *filename, *newext = NULL;
     char *pq_usage = PNGQUANT_USAGE;
 
-
-#ifdef __EMX__
-    _wildcard(&argc, &argv);   /* Unix-like globbing for OS/2 and DOS */
-#endif
-
     argn = 1;
-    mapapixels = (rgb_pixel **)0;
 
     while (argn < argc && argv[argn][0] == '-' && argv[argn][1] != '\0') {
         if (0 == strcmp(argv[argn], "--")) { ++argn;break; }
@@ -213,32 +158,6 @@ int main(int argc, char *argv[])
             }
             newext = argv[argn];
         }
-#ifdef SUPPORT_MAPFILE
-        else if (0 == strcmp(argv[argn], "-map")) {
-            ++argn;
-            if (argn == argc) {
-                fprintf(stderr, pq_usage);
-                fflush(stderr);
-                return 1;
-            }
-            if ((infile = fopen(argv[argn], "rb")) == NULL) {
-                fprintf(stderr, "cannot open mapfile %s for reading\n",
-                  argv[argn]);
-                fflush(stderr);
-                return 2;
-            }
-            mapapixels = pam_readpam(infile, &mapcols, &maprows, &mapmaxval);
-            fclose(infile);
-            if (mapcols == 0 || maprows == 0) {
-                fputs("null colormap??\n", stderr);
-                fflush(stderr);
-                return 3;
-            }
-        }
-/* GRR TO DO:  really want to build entire mapfile palette right here and
-               pass that (and *only* that) to pngquant()
- */
-#endif /* SUPPORT_MAPFILE */
         else {
             fprintf(stderr, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n",
               PNGQUANT_VERSION);
@@ -251,31 +170,29 @@ int main(int argc, char *argv[])
         ++argn;
     }
 
-    if (mapapixels == (rgb_pixel**) 0) {
-        if (argn == argc) {
-            fprintf(stderr, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n",
-              PNGQUANT_VERSION);
-            rwpng_version_info();
-            fputs("\n", stderr);
-            fputs(pq_usage, stderr);
-            fflush(stderr);
-            return 1;
-        }
-        if (sscanf(argv[argn], "%d", &reqcolors) != 1) {
-            reqcolors = 256; argn--;
-        }
-        if (reqcolors <= 1) {
-            fputs("number of colors must be greater than 1\n", stderr);
-            fflush(stderr);
-            return 4;
-        }
-        if (reqcolors > 256) {
-            fputs("number of colors cannot be more than 256\n", stderr);
-            fflush(stderr);
-            return 4;
-        }
-        ++argn;
+    if (argn == argc) {
+        fprintf(stderr, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n",
+          PNGQUANT_VERSION);
+        rwpng_version_info();
+        fputs("\n", stderr);
+        fputs(pq_usage, stderr);
+        fflush(stderr);
+        return 1;
     }
+    if (sscanf(argv[argn], "%d", &reqcolors) != 1) {
+        reqcolors = 256; argn--;
+    }
+    if (reqcolors <= 1) {
+        fputs("number of colors must be greater than 1\n", stderr);
+        fflush(stderr);
+        return 4;
+    }
+    if (reqcolors > 256) {
+        fputs("number of colors cannot be more than 256\n", stderr);
+        fflush(stderr);
+        return 4;
+    }
+    ++argn;
 
     if (newext == NULL) {
         newext = floyd? "-ie-fs8.png" : "-ie-or8.png";
@@ -301,13 +218,9 @@ int main(int argc, char *argv[])
             fflush(stderr);
         }
 
-#ifdef SUPPORT_MAPFILE
         retval = pngquant(filename, newext, floyd, force, verbose, using_stdin,
-          reqcolors, mapapixels, maprows, mapcols, mapmaxval, ie_bug);
-#else
-        retval = pngquant(filename, newext, floyd, force, verbose, using_stdin,
-          reqcolors, mapapixels, ie_bug);
-#endif
+          reqcolors, ie_bug);
+
         if (retval) {
             latest_error = retval;
             ++error_count;
@@ -341,12 +254,7 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-#ifdef SUPPORT_MAPFILE
-pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, rgb_pixel **mapapixels,
-            ulg maprows, ulg mapcols, pixval mapmaxval, int ie_bug)
-#else
-pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, rgb_pixel **mapapixels, int ie_bug)
-#endif
+pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
 {
     FILE *infile, *outfile;
     rgb_pixel **input_pixels;
@@ -484,7 +392,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         for (col = 0, pP = input_pixels[row]; (ulg)col < cols; ++col, ++pP) {
             /* set all completely transparent colors to black */
             if (!pP->a) {
-                PAM_ASSIGN(*pP,0,0,0,pP->a);
+                *pP = (rgb_pixel){0,0,0,pP->a};
             }
             /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
             else if (pP->a < 255 && pP->a > almost_opaque_val) {
@@ -502,81 +410,43 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
         min_opaque_val = 255*15/16;
     }
 
-    if (mapapixels == (rgb_pixel**) 0) {
-       /*
-        ** Step 2: attempt to make a histogram of the colors, unclustered.
-        ** If at first we don't succeed, increase ignorebits to increase color
-        ** coherence and try again.
-        */
-        for (; ;) {
-            if (verbose) {
-                fprintf(stderr, "  making histogram...");
-                fflush(stderr);
-            }
-            achv = pam_computeacolorhist(input_pixels, cols, rows, MAXCOLORS, ignorebits, &colors);
-            if (achv != (acolorhist_vector) 0)
-                break;
-
-            ignorebits++;
-
-            if (verbose) {
-                fprintf(stderr, "too many colors!\n");
-                fprintf(stderr, "  scaling colors to improve clustering...\n");
-                fflush(stderr);
-            }
-        }
+   /*
+    ** Step 2: attempt to make a histogram of the colors, unclustered.
+    ** If at first we don't succeed, increase ignorebits to increase color
+    ** coherence and try again.
+    */
+    for (; ;) {
         if (verbose) {
-            fprintf(stderr, "%d colors found\n", colors);
+            fprintf(stderr, "  making histogram...");
             fflush(stderr);
         }
-        newcolors = MIN(colors, reqcolors);
+        achv = pam_computeacolorhist(input_pixels, cols, rows, MAXCOLORS, ignorebits, &colors);
+        if (achv != (acolorhist_vector) 0)
+            break;
 
-        /*
-        ** Step 3: apply median-cut to histogram, making the new acolormap.
-        */
-        if (verbose && colors > reqcolors) {
-            fprintf(stderr, "  choosing %d colors...\n", newcolors);
-            fflush(stderr);
-        }
-        acolormap = mediancut(achv, colors, rows * cols, min_opaque_val, newcolors);
-        pam_freeacolorhist(achv);
-    }
-#ifdef SUPPORT_MAPFILE
-    else {
-        /*
-        ** Reverse steps 2 & 3 : Turn mapapixels into an acolormap.
-        */
-        if (mapmaxval != 255) {
-            if (mapmaxval > 255) {
-                fprintf(stderr, "  rescaling colormap colors\n");
-                fflush(stderr);
-            }
-            for (row = 0; row < maprows; ++row)
-                for (col = 0, pP = mapapixels[row]; col < mapcols; ++col, ++pP)
-                    PAM_DEPTH(*pP, *pP, mapmaxval, 255);
-            mapmaxval = 255;
-        }
-        acolormap = pam_computeacolorhist(
-            mapapixels, mapcols, maprows, MAXCOLORS, &newcolors );
-        if (acolormap == (acolorhist_vector) 0) {
-            fprintf(stderr, "  too many colors in acolormap!\n");
-            fflush(stderr);
-            if (rwpng_info.row_pointers)
-                free(rwpng_info.row_pointers);
-            if (rwpng_info.rgba_data)
-                free(rwpng_info.rgba_data);
-            if (!using_stdin)
-                fclose(outfile);
-            return TOO_MANY_COLORS;
-        }
-        pam_freearray(mapapixels, maprows);
+        ignorebits++;
+
         if (verbose) {
-            fprintf(stderr, "  %d colors found in acolormap\n", newcolors);
+            fprintf(stderr, "too many colors!\n");
+            fprintf(stderr, "  scaling colors to improve clustering...\n");
             fflush(stderr);
-            /* GRR TO DO:  eliminate unused colors from mapfile */
         }
     }
-#endif /* SUPPORT_MAPFILE */
+    if (verbose) {
+        fprintf(stderr, "%d colors found\n", colors);
+        fflush(stderr);
+    }
+    newcolors = MIN(colors, reqcolors);
+
+    /*
+    ** Step 3: apply median-cut to histogram, making the new acolormap.
+    */
+    if (verbose && colors > reqcolors) {
+        fprintf(stderr, "  choosing %d colors...\n", newcolors);
+        fflush(stderr);
+    }
+    acolormap = mediancut(achv, colors, rows * cols, min_opaque_val, newcolors);
+    pam_freeacolorhist(achv);
 
 
     /*
@@ -780,7 +650,7 @@ pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int 
                 else if (sa > 255 || (ie_bug && px.a == 255)) sa = 255;
 
                 /* GRR 20001228:  added casts to quiet warnings; 255 DEPENDENCY */
-                PAM_ASSIGN(px, sr, sg, sb, sa);
+                px = (f_pixel){sr, sg, sb, sa};
             }
 
 
@@ -1031,14 +901,10 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
         }
 
         /*
-        ** Find the largest dimension, and sort by that component.  I have
-        ** included two methods for determining the "largest" dimension;
-        ** first by simply comparing the range in RGB space, and second
-        ** by transforming into luminosities before the comparison.  You
-        ** can switch which method is used by switching the commenting on
-        ** the LARGE_ defines at the beginning of this source file.
+        ** Find the largest dimension, and sort by that component
+        ** by simply comparing the range in RGB space
         */
-#ifdef LARGE_NORM
+
         if (maxa - mina >= maxr - minr && maxa - mina >= maxg - ming && maxa - mina >= maxb - minb)
             qsort(
                 (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
@@ -1055,45 +921,6 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
             qsort(
                 (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 bluecompare );
-#endif /*LARGE_NORM*/
-#ifdef LARGE_LUM
-        {
-        rgb_pixel p;
-        float rl, gl, bl, al;
-
-        PAM_ASSIGN(p, maxr - minr, 0, 0, 0);
-        rl = PPM_LUMIN(p);
-        PAM_ASSIGN(p, 0, maxg - ming, 0, 0);
-        gl = PPM_LUMIN(p);
-        PAM_ASSIGN(p, 0, 0, maxb - minb, 0);
-        bl = PPM_LUMIN(p);
-
-/*
-GRR: treat alpha as grayscale and assign (maxa - mina) to each of R, G, B?
-     assign (maxa - mina)/3 to each?
-     use alpha-fractional luminosity?  (normalized_alpha * lum(r,g,b))
-        al = dunno ...
-     [probably should read Heckbert's paper to decide]
- */
-
-        if (al >= rl && al >= gl && al >= bl)
-            qsort(
-                (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
-                alphacompare );
-        else if (rl >= gl && rl >= bl)
-            qsort(
-                (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
-                redcompare );
-        else if (gl >= bl)
-            qsort(
-                (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
-                greencompare );
-        else
-            qsort(
-                (char*) &(achv[indx]), clrs, sizeof(struct acolorhist_item),
-                bluecompare );
-        }
-#endif /*LARGE_LUM*/
 
         /*
         ** Now find the median based on the counts, so that about half the
@@ -1303,10 +1130,3 @@ inline static unsigned long colordiff(rgb_pixel a, rgb_pixel b)
 
 /*===========================================================================*/
 
-#ifdef SUPPORT_MAPFILE
-static void pm_freearray(char** its, int rows)
-{
-    free(its[0]);
-    free(its);
-}
-#endif

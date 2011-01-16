@@ -19,6 +19,10 @@ typedef struct {
     unsigned char r, g, b, a;
 } rgb_pixel;
 
+typedef struct {
+    float r, g, b, a;
+} f_pixel;
+
 /*
  typedef struct {
  ush r, g, b, a;

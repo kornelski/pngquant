@@ -71,12 +71,15 @@ static void pam_freeacolorhash(acolorhash_table acht);
  #include "pamcmap.h"
  */
 
-#define HASH_SIZE 24137
+#define HASH_SIZE 20023
 
 inline static unsigned long pam_hashapixel(f_pixel p)
 {
-    unsigned long sum = p.r * 24133.0 + p.g * 8009.0 + p.b * 1111.0 + p.a;
-    return sum % HASH_SIZE;
+    return ( ( (long)(  (p).r * 33023 + \
+                 (p).g * 30013 + \
+                 (p).b * 27011 + \
+                 (p).a * 24007 ) \
+              & 0x7fffffff ) % HASH_SIZE );
 }
 
 #define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) == (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))

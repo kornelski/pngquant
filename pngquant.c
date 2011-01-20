@@ -337,17 +337,14 @@ int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap
 
 int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **input_pixels, ulg rows, ulg cols, uch **row_pointers, int newcolors, int* remap, acolorhist_vector acolormap)
 {
-    acolorhash_table acht;
     int col;
     uch *pQ;
     rgb_pixel *pP;
-    int ind;
+    int ind=0;
     int limitcol;
     uch *outrow;
     int row;
 
-    acht = pam_allocacolorhash();
-    if (!acht) return OUT_OF_MEMORY_ERROR;
 
     f_pixel *thiserr = NULL;
     f_pixel *nexterr = NULL;
@@ -414,13 +411,9 @@ int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **i
             }
 
 
-            /* Check hash table to see if we have already matched this color. */
-            ind = pam_lookupacolor(acht, px);
-
             double colorimp = colorimportance(px.a);
 
-            if (ind == -1) {
-                /* No; search acolormap for closest match. */
+            if (1) {
                 int i;
                 double a1, r1, g1, b1, r2, g2, b2, a2;
                 double dist = 1<<30, newdist;
@@ -450,10 +443,6 @@ int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **i
                         ind = i;
                         dist = newdist;
                     }
-                }
-
-                if (pam_addtoacolorhash(acht, px, ind) < 0) {
-                    return OUT_OF_MEMORY_ERROR;
                 }
             }
 

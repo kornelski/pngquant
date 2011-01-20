@@ -23,6 +23,7 @@
 static acolorhist_vector pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
 static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
+static acolorhash_table pam_allocacolorhash(void);
 
 
 /*
@@ -150,27 +151,9 @@ static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols
 
 
 
-acolorhash_table pam_allocacolorhash()
+static acolorhash_table pam_allocacolorhash()
 {
     return calloc(HASH_SIZE, sizeof(acolorhist_list));
-}
-
-
-
-int pam_addtoacolorhash(acolorhash_table acht, f_pixel acolorP, int value)
-{
-    int hash;
-    acolorhist_list achl;
-
-    achl = malloc(sizeof(struct acolorhist_list_item));
-    if (achl == 0)
-        return -1;
-    hash = pam_hashapixel(acolorP);
-    achl->ch.acolor = acolorP;
-    achl->ch.value = value;
-    achl->next = acht[hash];
-    acht[hash] = achl;
-    return 0;
 }
 
 
@@ -203,8 +186,6 @@ static acolorhist_vector pam_acolorhashtoacolorhist(acolorhash_table acht, int m
 }
 
 
-
-
 static void pam_freeacolorhash(acolorhash_table acht)
 {
     int i;
@@ -216,21 +197,6 @@ static void pam_freeacolorhash(acolorhash_table acht)
             free((char*) achl);
         }
     free((char*) acht);
-}
-
-
-
-int pam_lookupacolor(acolorhash_table acht, f_pixel acolorP)
-{
-    int hash;
-    acolorhist_list achl;
-
-    hash = pam_hashapixel(acolorP);
-    for (achl = acht[hash]; achl != (acolorhist_list) 0; achl = achl->next)
-        if (PAM_EQUAL(achl->ch.acolor, acolorP))
-            return achl->ch.value;
-
-    return -1;
 }
 
 

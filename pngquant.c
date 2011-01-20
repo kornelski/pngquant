@@ -92,7 +92,7 @@ typedef enum {
     INTERNAL_LOGIC_ERROR = 18,
 } pngquant_error;
 
-static pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose,
+static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose,
                                int using_stdin, int reqcolors, int ie_bug);
 
 static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, pixval min_opaque_val, int newcolors);
@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
     int verbose = FALSE;
     int using_stdin = FALSE;
     int latest_error=0, error_count=0, file_count=0;
-    char *filename, *newext = NULL;
-    char *pq_usage = PNGQUANT_USAGE;
+    const char *filename, *newext = NULL;
+    const char *pq_usage = PNGQUANT_USAGE;
 
     argn = 1;
 
@@ -522,7 +522,7 @@ int remap_to_palette(int floyd, pixval min_opaque_val, int ie_bug, rgb_pixel **i
     return 0;
 }
 
-pngquant_error pngquant(char *filename, char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
+pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
 {
     FILE *infile, *outfile;
     rgb_pixel **input_pixels;

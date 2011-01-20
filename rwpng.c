@@ -78,7 +78,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
 
     fread(sig, 1, 8, infile);
     if (png_sig_cmp(sig, 0, 8)) {
-        mainprog_ptr->retval = 21;   /* bad signature */
+        mainprog_ptr->retval = BAD_SIGNATURE_ERROR;   /* bad signature */
         return mainprog_ptr->retval;
     }
 
@@ -86,7 +86,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
     png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, mainprog_ptr,
       rwpng_error_handler, NULL);
     if (!png_ptr) {
-        mainprog_ptr->retval = 24;   /* out of memory */
+        mainprog_ptr->retval = PNG_OUT_OF_MEMORY_ERROR;   /* out of memory */
         return mainprog_ptr->retval;
     }
     mainprog_ptr->png_ptr = png_ptr;
@@ -94,7 +94,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
     info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
         png_destroy_read_struct(&png_ptr, NULL, NULL);
-        mainprog_ptr->retval = 24;   /* out of memory */
+        mainprog_ptr->retval = PNG_OUT_OF_MEMORY_ERROR;   /* out of memory */
         return mainprog_ptr->retval;
     }
     mainprog_ptr->info_ptr = info_ptr;
@@ -111,7 +111,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
 
     if (setjmp(mainprog_ptr->jmpbuf)) {
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        mainprog_ptr->retval = 25;   /* fatal libpng error (via longjmp()) */
+        mainprog_ptr->retval = LIBPNG_FATAL_ERROR;   /* fatal libpng error (via longjmp()) */
         return mainprog_ptr->retval;
     }
 
@@ -184,7 +184,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
     if ((mainprog_ptr->rgba_data = malloc(rowbytes*mainprog_ptr->height)) == NULL) {
         fprintf(stderr, "pngquant readpng:  unable to allocate image data\n");
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        mainprog_ptr->retval = 24;
+        mainprog_ptr->retval = PNG_OUT_OF_MEMORY_ERROR;
         return mainprog_ptr->retval;
     }
     if ((mainprog_ptr->row_pointers = (png_bytepp)malloc(mainprog_ptr->height*sizeof(png_bytep))) == NULL) {
@@ -192,7 +192,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         free(mainprog_ptr->rgba_data);
         mainprog_ptr->rgba_data = NULL;
-        mainprog_ptr->retval = 24;
+        mainprog_ptr->retval = PNG_OUT_OF_MEMORY_ERROR;
         return mainprog_ptr->retval;
     }
 
@@ -220,7 +220,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
     mainprog_ptr->info_ptr = NULL;
 
 
-    mainprog_ptr->retval = 0;
+    mainprog_ptr->retval = SUCCESS;
     return 0;
 }
 
@@ -246,7 +246,7 @@ int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
     png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, mainprog_ptr,
       rwpng_error_handler, NULL);
     if (!png_ptr) {
-        mainprog_ptr->retval = 34;   /* out of memory */
+        mainprog_ptr->retval = INIT_OUT_OF_MEMORY_ERROR;   /* out of memory */
         return mainprog_ptr->retval;
     }
     mainprog_ptr->png_ptr = png_ptr;
@@ -254,7 +254,7 @@ int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
     info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
         png_destroy_write_struct(&png_ptr, NULL);
-        mainprog_ptr->retval = 34;   /* out of memory */
+        mainprog_ptr->retval = INIT_OUT_OF_MEMORY_ERROR;   /* out of memory */
         return mainprog_ptr->retval;
     }
 
@@ -266,7 +266,7 @@ int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
 
     if (setjmp(mainprog_ptr->jmpbuf)) {
         png_destroy_write_struct(&png_ptr, &info_ptr);
-        mainprog_ptr->retval = 35;   /* libpng error (via longjmp()) */
+        mainprog_ptr->retval = LIBPNG_INIT_ERROR;   /* libpng error (via longjmp()) */
         return mainprog_ptr->retval;
     }
 
@@ -402,7 +402,7 @@ int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
 
     /* OK, that's all we need to do for now; return happy */
 
-    mainprog_ptr->retval = 0;
+    mainprog_ptr->retval = SUCCESS;
     return 0;
 }
 
@@ -426,7 +426,7 @@ int rwpng_write_image_whole(mainprog_info *mainprog_ptr)
         png_destroy_write_struct(&png_ptr, &info_ptr);
         mainprog_ptr->png_ptr = NULL;
         mainprog_ptr->info_ptr = NULL;
-        mainprog_ptr->retval = 45;   /* libpng error (via longjmp()) */
+        mainprog_ptr->retval = LIBPNG_WRITE_WHOLE_ERROR;   /* libpng error (via longjmp()) */
         return mainprog_ptr->retval;
     }
 
@@ -447,7 +447,7 @@ int rwpng_write_image_whole(mainprog_info *mainprog_ptr)
     mainprog_ptr->png_ptr = NULL;
     mainprog_ptr->info_ptr = NULL;
 
-    mainprog_ptr->retval = 0;
+    mainprog_ptr->retval = SUCCESS;
     return 0;
 }
 
@@ -471,7 +471,7 @@ int rwpng_write_image_row(mainprog_info *mainprog_ptr)
         png_destroy_write_struct(&png_ptr, &info_ptr);
         mainprog_ptr->png_ptr = NULL;
         mainprog_ptr->info_ptr = NULL;
-        mainprog_ptr->retval = 55;   /* libpng error (via longjmp()) */
+        mainprog_ptr->retval = LIBPNG_WRITE_ERROR;   /* libpng error (via longjmp()) */
         return mainprog_ptr->retval;
     }
 
@@ -480,7 +480,7 @@ int rwpng_write_image_row(mainprog_info *mainprog_ptr)
 
     png_write_row(png_ptr, mainprog_ptr->indexed_data);
 
-    mainprog_ptr->retval = 0;
+    mainprog_ptr->retval = SUCCESS;
     return 0;
 }
 
@@ -504,7 +504,7 @@ int rwpng_write_image_finish(mainprog_info *mainprog_ptr)
         png_destroy_write_struct(&png_ptr, &info_ptr);
         mainprog_ptr->png_ptr = NULL;
         mainprog_ptr->info_ptr = NULL;
-        mainprog_ptr->retval = 55;   /* libpng error (via longjmp()) */
+        mainprog_ptr->retval = LIBPNG_WRITE_ERROR;   /* libpng error (via longjmp()) */
         return mainprog_ptr->retval;
     }
 
@@ -518,7 +518,7 @@ int rwpng_write_image_finish(mainprog_info *mainprog_ptr)
     mainprog_ptr->png_ptr = NULL;
     mainprog_ptr->info_ptr = NULL;
 
-    mainprog_ptr->retval = 0;
+    mainprog_ptr->retval = SUCCESS;
     return 0;
 }
 

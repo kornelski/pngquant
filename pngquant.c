@@ -83,15 +83,6 @@ struct box {
     int sum;
 };
 
-typedef enum {
-    READ_ERROR = 2,
-    TOO_MANY_COLORS = 5,
-    NOT_OVERWRITING_ERROR = 15,
-    CANT_WRITE_ERROR = 16,
-    OUT_OF_MEMORY_ERROR = 17,
-    INTERNAL_LOGIC_ERROR = 18,
-} pngquant_error;
-
 static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose,
                                int using_stdin, int reqcolors, int ie_bug);
 
@@ -818,7 +809,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     }
 
 
-    return 0;   /* success! */
+    return SUCCESS;
 }
 
 

@@ -420,10 +420,10 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
                     b2 = acolormap[i].acolor.b;
                     a2 = acolormap[i].acolor.a;
 
-                    newdist = ((a1 - a2) * (a1 - a2) * 2.0) +
-                              ((r1 - r2) * (r1 - r2) * colorimp +
+                    newdist =  (a1 - a2) * (a1 - a2) +
+                               (r1 - r2) * (r1 - r2) * colorimp +
                                (g1 - g2) * (g1 - g2) * colorimp +
-                               (b1 - b2) * (b1 - b2) * colorimp);
+                               (b1 - b2) * (b1 - b2) * colorimp;
 
                     /* penalty for making holes in IE */
                     if (a1 > min_opaque_val && a2 < 1) newdist += 1.0;

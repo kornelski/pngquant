@@ -426,7 +426,7 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
                                (b1 - b2) * (b1 - b2) * colorimp);
 
                     /* penalty for making holes in IE */
-                    if (a1 >= min_opaque_val && a2 < 1) newdist += 1*512.0;
+                    if (a1 > min_opaque_val && a2 < 1) newdist += 1.0;
 
                     if (newdist < dist) {
                         ind = i;

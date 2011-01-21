@@ -348,12 +348,13 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
         thiserr = malloc((cols + 2) * sizeof(*thiserr));
         nexterr = malloc((cols + 2) * sizeof(*thiserr));
         srandom(12345); /** deterministic dithering is better for comparing results */
-        for (col = 0; (ulg)col < cols + 2; ++col) {
-            thiserr[col].r = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
-            thiserr[col].g = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
-            thiserr[col].b = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
-            thiserr[col].a = (float)random() / ((float)RAND_MAX/2.0) - 1.0;
-            /* (random errors in [-1 .. 1]) */
+
+        for (col = 0; col < cols + 2; ++col) {
+            const double rand_max = RAND_MAX;
+            thiserr[col].r = ((double)random() - rand_max/2.0)/rand_max/255.0;
+            thiserr[col].g = ((double)random() - rand_max/2.0)/rand_max/255.0;
+            thiserr[col].b = ((double)random() - rand_max/2.0)/rand_max/255.0;
+            thiserr[col].a = ((double)random() - rand_max/2.0)/rand_max/255.0;
         }
         fs_direction = 1;
     }

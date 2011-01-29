@@ -31,13 +31,12 @@ inline static f_pixel to_f(rgb_pixel r)
 
 inline static rgb_pixel to_rgb(f_pixel px)
 {
-    float r = px.r,g = px.g,b = px.b,a = px.a;
-    if (r>1) r=1; else if (r<0) r=0;
-    if (g>1) g=1; else if (g<0) g=0;
-    if (b>1) b=1; else if (b<0) b=0;
-    if (a>1) a=1; else if (a<0) a=0;
-
-    return (rgb_pixel){r*255.9999,g*255.9999,b*255.9999,a*255.9999};
+    return (rgb_pixel){
+        px.r>=1.0 ? 255 : (px.r<0 ? 0 : px.r*256.0),
+        px.g>=1.0 ? 255 : (px.g<0 ? 0 : px.g*256.0),
+        px.b>=1.0 ? 255 : (px.b<0 ? 0 : px.b*256.0),
+        px.a>=1.0 ? 255 : (px.a<0 ? 0 : px.a*256.0),
+    };
 }
 
 /*

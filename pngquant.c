@@ -65,7 +65,6 @@
 
 typedef unsigned char   uch;
 typedef unsigned short  ush;
-typedef png_uint_32     ulg;
 
 static mainprog_info rwpng_info;
 
@@ -326,7 +325,7 @@ int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap
     return 0;
 }
 
-int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **input_pixels, ulg rows, ulg cols, uch **row_pointers, int newcolors, int* remap, acolorhist_vector acolormap)
+int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **input_pixels, int rows, int cols, uch **row_pointers, int newcolors, int* remap, acolorhist_vector acolormap)
 {
     int col;
     uch *pQ;
@@ -358,11 +357,11 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
         }
         fs_direction = 1;
     }
-    for (row = 0; (ulg)row < rows; ++row) {
+    for (row = 0; row < rows; ++row) {
         outrow = rwpng_info.interlaced? row_pointers[row] :
                                         rwpng_info.indexed_data;
         if (floyd)
-            for (col = 0; (ulg)col < cols + 2; ++col)
+            for (col = 0; col < cols + 2; ++col)
                 nexterr[col].r = nexterr[col].g =
                 nexterr[col].b = nexterr[col].a = 0;
         if ((!floyd) || fs_direction) {
@@ -519,7 +518,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     rgb_pixel *pP;
     int col;
     uch **row_pointers=NULL;
-    ulg rows, cols;
+    int rows, cols;
     float min_opaque_val, almost_opaque_val;
     int ignorebits=0;
     acolorhist_vector achv, acolormap=NULL;
@@ -640,8 +639,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         min_opaque_val = almost_opaque_val = 1;
     }
 
-    for (row = 0; (ulg)row < rows; ++row) {
-        for (col = 0, pP = input_pixels[row]; (ulg)col < cols; ++col, ++pP) {
+    for (row = 0; row < rows; ++row) {
+        for (col = 0, pP = input_pixels[row]; col < cols; ++col, ++pP) {
 
             f_pixel px = to_f(*pP);
 
@@ -716,7 +715,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     if (rwpng_info.interlaced) {
         if ((rwpng_info.indexed_data = malloc(rows * cols)) != NULL) {
             if ((row_pointers = (uch **)malloc(rows * sizeof(uch *))) != NULL) {
-                for (row = 0;  (ulg)row < rows;  ++row)
+                for (row = 0;  row < rows;  ++row)
                     row_pointers[row] = rwpng_info.indexed_data + row*cols;
             }
         }

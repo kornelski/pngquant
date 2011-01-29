@@ -24,12 +24,12 @@ typedef struct {
     float r, g, b, a;
 } f_pixel;
 
-inline static f_pixel to_f(rgb_pixel r)
+inline static f_pixel to_f(double gamma, rgb_pixel r)
 {
     return (f_pixel){r.r/255.0,r.g/255.0,r.b/255.0,r.a/255.0};
 }
 
-inline static rgb_pixel to_rgb(f_pixel px)
+inline static rgb_pixel to_rgb(double gamma, f_pixel px)
 {
     return (rgb_pixel){
         px.r>=1.0 ? 255 : (px.r<0 ? 0 : px.r*256.0),
@@ -66,5 +66,5 @@ typedef acolorhist_list *acolorhash_table;
 typedef unsigned char pixval; /* GRR: hardcoded for now; later add 16-bit support */
 
 
-acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP);
+acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, float gamma, int maxacolors, int ignorebits, int* acolorsP);
 void pam_freeacolorhist(acolorhist_vector achv);

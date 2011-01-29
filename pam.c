@@ -21,7 +21,7 @@
 ((p).r == (q).r && (p).g == (q).g && (p).b == (q).b && (p).a == (q).a)
 
 static acolorhist_vector pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
-static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP);
+static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
 
@@ -85,12 +85,12 @@ inline static unsigned long pam_hashapixel(f_pixel p)
 
 #define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) >= (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
 
-acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP)
+acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
 {
     acolorhash_table acht;
     acolorhist_vector achv;
 
-    acht = pam_computeacolorhash(apixels, cols, rows, maxacolors, ignorebits, acolorsP);
+    acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, acolorsP);
     if (!acht) return 0;
 
     achv = pam_acolorhashtoacolorhist(acht, maxacolors);
@@ -98,7 +98,7 @@ acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int 
     return achv;
 }
 
-static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, int maxacolors, int ignorebits, int* acolorsP)
+static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
 {
     acolorhash_table acht;
     acolorhist_list achl;
@@ -120,7 +120,7 @@ static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols
                 px.a = PAM_SCALE(px.a, 255, maxval); px.a = PAM_SCALE(px.a, maxval, 255);
             }
 
-            f_pixel fpx = to_f(px);
+            f_pixel fpx = to_f(gamma, px);
 
             hash = pam_hashapixel(fpx);
 

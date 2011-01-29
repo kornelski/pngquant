@@ -282,7 +282,7 @@ int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap
     }
     int x=0;
     for (top_idx = newcolors-1, bot_idx = 0;  x < newcolors;  ++x) {
-        rgb_pixel px = to_rgb(acolormap[x].acolor);
+        rgb_pixel px = to_rgb(rwpng_info.gamma, acolormap[x].acolor);
 
         if (px.a == 255)
             remap[x] = top_idx--;
@@ -313,8 +313,8 @@ int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap
     */
 
     for (x = 0; x < newcolors; ++x) {
-        rgb_pixel px = to_rgb(acolormap[x].acolor);
-        acolormap[x].acolor = to_f(px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
+        rgb_pixel px = to_rgb(rwpng_info.gamma, acolormap[x].acolor);
+        acolormap[x].acolor = to_f(rwpng_info.gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
         rwpng_info.palette[remap[x]].red   = px.r;
         rwpng_info.palette[remap[x]].green = px.g;
@@ -379,7 +379,7 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
 
 
         do {
-            f_pixel px = to_f(*pP);
+            f_pixel px = to_f(rwpng_info.gamma, *pP);
 
             if (floyd) {
                 /* Use Floyd-Steinberg errors to adjust actual color. */
@@ -599,9 +599,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     }
 
 
-
     /*
-    ** Step 1: read in the alpha-channel image.
+     ** Step 1: read in the alpha-channel image.
     */
     /* GRR:  returns RGBA (4 channels), 8 bps */
     rwpng_read_image(infile, &rwpng_info);
@@ -642,7 +641,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     for (row = 0; row < rows; ++row) {
         for (col = 0, pP = input_pixels[row]; col < cols; ++col, ++pP) {
 
-            f_pixel px = to_f(*pP);
+            f_pixel px = to_f(rwpng_info.gamma, *pP);
 
             /* set all completely transparent colors to black */
             if (!pP->a) {
@@ -655,7 +654,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
                 double al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
                 if (al > 1) al = 1;
                 px.a = al;
-                pP->a = to_rgb(px).a;
+                pP->a = to_rgb(rwpng_info.gamma, px).a;
             }
         }
     }
@@ -670,7 +669,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
             fprintf(stderr, "  making histogram...");
             fflush(stderr);
         }
-        achv = pam_computeacolorhist(input_pixels, cols, rows, MAXCOLORS, ignorebits, &colors);
+        achv = pam_computeacolorhist(input_pixels, cols, rows, rwpng_info.gamma, MAXCOLORS, ignorebits, &colors);
         if (achv != (acolorhist_vector) 0)
             break;
 
@@ -1029,7 +1028,7 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double 
         /* give more weight to colors that are further away from average (128,128,128)
             this is intended to prevent desaturation of images and fading of whites
          */
-        rgb_pixel rgbpx = to_rgb(achv[indx + i].acolor);
+        rgb_pixel rgbpx = to_rgb(rwpng_info.gamma, achv[indx + i].acolor);
         tmp = 128 - rgbpx.r;
         weight += tmp*tmp;
         tmp = 128 - rgbpx.g;

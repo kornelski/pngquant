@@ -26,16 +26,25 @@ typedef struct {
 
 inline static f_pixel to_f(double gamma, rgb_pixel r)
 {
-    return (f_pixel){r.r/255.0,r.g/255.0,r.b/255.0,r.a/255.0};
+    return (f_pixel){
+        powf(r.r/255.0f, 1.0f/gamma),
+        powf(r.g/255.0f, 1.0f/gamma),
+        powf(r.b/255.0f, 1.0f/gamma),
+        r.a/255.0f
+    };
 }
 
 inline static rgb_pixel to_rgb(double gamma, f_pixel px)
 {
+    float r = powf(px.r, gamma),
+          g = powf(px.g, gamma),
+          b = powf(px.b, gamma);
+
     return (rgb_pixel){
-        px.r>=1.0 ? 255 : (px.r<0 ? 0 : px.r*256.0),
-        px.g>=1.0 ? 255 : (px.g<0 ? 0 : px.g*256.0),
-        px.b>=1.0 ? 255 : (px.b<0 ? 0 : px.b*256.0),
-        px.a>=1.0 ? 255 : (px.a<0 ? 0 : px.a*256.0),
+        r>=1.0f ? 255 : (r<=0 ? 0 : r*256.0f),
+        g>=1.0f ? 255 : (g<=0 ? 0 : g*256.0f),
+        b>=1.0f ? 255 : (b<=0 ? 0 : b*256.0f),
+        px.a>=1.0f ? 255 : (px.a<=0 ? 0 : px.a*256.0f),
     };
 }
 
@@ -66,5 +75,5 @@ typedef acolorhist_list *acolorhash_table;
 typedef unsigned char pixval; /* GRR: hardcoded for now; later add 16-bit support */
 
 
-acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, float gamma, int maxacolors, int ignorebits, int* acolorsP);
+acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
 void pam_freeacolorhist(acolorhist_vector achv);

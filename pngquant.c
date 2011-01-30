@@ -669,6 +669,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
             fprintf(stderr, "  making histogram...");
             fflush(stderr);
         }
+        assert(rwpng_info.gamma > 0);
         achv = pam_computeacolorhist(input_pixels, cols, rows, rwpng_info.gamma, MAXCOLORS, ignorebits, &colors);
         if (achv != (acolorhist_vector) 0)
             break;

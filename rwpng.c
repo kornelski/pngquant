@@ -169,8 +169,9 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
 
     /* get and save the gamma info (if any) for writing */
 
-    mainprog_ptr->gamma = 0.0;
-    png_get_gAMA(png_ptr, info_ptr, &mainprog_ptr->gamma);
+    if (!png_get_gAMA(png_ptr, info_ptr, &mainprog_ptr->gamma)) {
+        mainprog_ptr->gamma = 0.45455;
+    }
 
 
     /* all transformations have been registered; now update info_ptr data,

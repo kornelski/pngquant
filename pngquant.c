@@ -90,6 +90,7 @@ static int redcompare (const void *ch1, const void *ch2);
 static int greencompare (const void *ch1, const void *ch2);
 static int bluecompare (const void *ch1, const void *ch2);
 static int alphacompare (const void *ch1, const void *ch2);
+static int valuecompare(const void *ch1, const void *ch2);
 static int sumcompare (const void *b1, const void *b2);
 
 static double colorimportance(double alpha);
@@ -243,7 +244,7 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-int set_palette(int newcolors,int verbose,int* remap,acolorhist_vector acolormap)
+int set_palette(int newcolors, int verbose, int* remap, acolorhist_vector acolormap)
 {
     /*
     ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
@@ -698,8 +699,10 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     acolormap = mediancut(achv, colors, rows * cols, min_opaque_val, newcolors);
     pam_freeacolorhist(achv);
 
-    int remap[256];
+    /* sort palette by (estimated) popularity */
+    qsort(acolormap, newcolors, sizeof(acolormap[0]), valuecompare);
 
+    int remap[256];
     if (set_palette(newcolors,verbose,remap,acolormap)) {
         return INTERNAL_LOGIC_ERROR;
     }
@@ -961,6 +964,11 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
 #ifdef REP_AVERAGE_PIXELS
         acolormap[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 #endif /*REP_AVERAGE_PIXELS*/
+
+        /* store total color popularity */
+        for(int i=0; i < bv[bi].colors; i++) {
+            acolormap[bi].value += achv[bv[bi].ind + i].value;
+        }
     }
 
     /*
@@ -1090,6 +1098,11 @@ static int alphacompare(const void *ch1, const void *ch2)
 {
     return compare(ch1,ch2,a, compare(ch1,ch2,r,0));
 }
+
+static int valuecompare(const void *ch1, const void *ch2)
+{
+    return ((acolorhist_vector)ch1)->value > ((acolorhist_vector)ch2)->value ? -1 :
+          (((acolorhist_vector)ch1)->value < ((acolorhist_vector)ch2)->value ? 1 : compare(ch1,ch2,g,0));
 }
 
 static int sumcompare(const void *b1, const void *b2)

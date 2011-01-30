@@ -1023,24 +1023,22 @@ static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv)
 
 static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val)
 {
-    /* use floating-point to avoid overflow. unsigned long will suffice for small images. */
     double r = 0, g = 0, b = 0, a = 0, sum = 0, colorsum = 0;
     double maxa = 0;
     int i;
 
     for (i = 0; i < clrs; ++i) {
-        unsigned long weight = 1;
-        int tmp;
+        double weight = 1;
+        float tmp;
 
-        /* give more weight to colors that are further away from average (128,128,128)
+        /* give more weight to colors that are further away from average
             this is intended to prevent desaturation of images and fading of whites
          */
-        rgb_pixel rgbpx = to_rgb(rwpng_info.gamma, achv[indx + i].acolor);
-        tmp = 128 - rgbpx.r;
+        tmp = (0.5f - achv[indx + i].acolor.r);
         weight += tmp*tmp;
-        tmp = 128 - rgbpx.g;
+        tmp = (0.5f - achv[indx + i].acolor.g);
         weight += tmp*tmp;
-        tmp = 128 - rgbpx.b;
+        tmp = (0.5f - achv[indx + i].acolor.b);
         weight += tmp*tmp;
 
         /* find if there are opaque colors, in case we're supposed to preserve opacity exactly (ie_bug) */
@@ -1049,8 +1047,8 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double 
         a += achv[indx + i].acolor.a * achv[indx + i].value * weight;
         sum += achv[indx + i].value * weight;
 
-        /* blend colors proportionally to their alpha. It has minor effect and doesn't need colorimportance() */
-        weight *= 256*colorimportance(achv[indx + i].acolor.a);
+        /* blend colors proportionally to their alpha */
+        weight *= 1.0+colorimportance(achv[indx + i].acolor.a);
 
         r += achv[indx + i].acolor.r*achv[indx + i].acolor.a * achv[indx + i].value * weight;
         g += achv[indx + i].acolor.g*achv[indx + i].acolor.a * achv[indx + i].value * weight;
@@ -1068,7 +1066,7 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double 
 
 
     /** if there was at least one completely opaque color, "round" final color to opaque */
-    if (a >= min_opaque_val && maxa >= 0.999) a = 1;
+    if (a >= min_opaque_val && maxa >= (255.0/256.0)) a = 1;
 
     return (f_pixel){r, g, b, a};
 }

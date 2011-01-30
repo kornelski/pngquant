@@ -1067,28 +1067,29 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double 
     return (f_pixel){r, g, b, a};
 }
 
-#define compare(ch1,ch2,r) ( \
+#define compare(ch1,ch2,r,fallback) ( \
     ((acolorhist_vector)ch1)->acolor.r > ((acolorhist_vector)ch2)->acolor.r ? 1 : \
-   (((acolorhist_vector)ch1)->acolor.r < ((acolorhist_vector)ch2)->acolor.r ? -1 : 0))
+   (((acolorhist_vector)ch1)->acolor.r < ((acolorhist_vector)ch2)->acolor.r ? -1 : fallback))
 
 static int redcompare(const void *ch1, const void *ch2)
 {
-    return compare(ch1,ch2,r);
+    return compare(ch1,ch2,r, compare(ch1,ch2,g,0));
 }
 
 static int greencompare(const void *ch1, const void *ch2)
 {
-    return compare(ch1,ch2,g);
+    return compare(ch1,ch2,g, compare(ch1,ch2,b,0));
 }
 
 static int bluecompare(const void *ch1, const void *ch2)
 {
-    return compare(ch1,ch2,b);
+    return compare(ch1,ch2,b, compare(ch1,ch2,a,0));
 }
 
 static int alphacompare(const void *ch1, const void *ch2)
 {
-    return compare(ch1,ch2,a);
+    return compare(ch1,ch2,a, compare(ch1,ch2,r,0));
+}
 }
 
 static int sumcompare(const void *b1, const void *b2)

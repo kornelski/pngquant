@@ -401,7 +401,7 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
             }
 
 
-            double colorimp = colorimportance(px.a);
+            double colorimp = (1.0/256.0) + colorimportance(px.a);
 
             if (1) {
                 int i;

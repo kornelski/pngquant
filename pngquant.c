@@ -882,14 +882,14 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
             if (v > maxa) maxa = v;
 
             /* linear blending makes it too obsessed with accurate alpha, but the optimum unfortunately seems to depend on image */
-            int al = colorimportance(1-v)*256;
-            v = (achv[indx + i].acolor.r * (256.0-al) + al * background.r)/256.0; /* 256 is deliberate */
+            int al = colorimportance(1-v);
+            v = (achv[indx + i].acolor.r * (1.0-al) + al * background.r); /* 256 is deliberate */
             if (v < minr) minr = v;
             if (v > maxr) maxr = v;
-            v = (achv[indx + i].acolor.g * (256.0-al) + al * background.g)/256.0;
+            v = (achv[indx + i].acolor.g * (1.0-al) + al * background.g);
             if (v < ming) ming = v;
             if (v > maxg) maxg = v;
-            v = (achv[indx + i].acolor.b * (256.0-al) + al * background.b)/256.0;
+            v = (achv[indx + i].acolor.b * (1.0-al) + al * background.b);
             if (v < minb) minb = v;
             if (v > maxb) maxb = v;
 

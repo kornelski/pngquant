@@ -36,14 +36,10 @@ inline static f_pixel to_f(double gamma, rgb_pixel r)
 
 inline static rgb_pixel to_rgb(double gamma, f_pixel px)
 {
-    float r = powf(px.r, gamma),
-          g = powf(px.g, gamma),
-          b = powf(px.b, gamma);
-
     return (rgb_pixel){
-        r>=1.0f ? 255 : (r<=0 ? 0 : r*256.0f),
-        g>=1.0f ? 255 : (g<=0 ? 0 : g*256.0f),
-        b>=1.0f ? 255 : (b<=0 ? 0 : b*256.0f),
+        px.r>=1.0f ? 255 : (px.r<=0 ? 0 : powf(px.r, gamma)*256.0f),
+        px.g>=1.0f ? 255 : (px.g<=0 ? 0 : powf(px.g, gamma)*256.0f),
+        px.b>=1.0f ? 255 : (px.b<=0 ? 0 : powf(px.b, gamma)*256.0f),
         px.a>=1.0f ? 255 : (px.a<=0 ? 0 : px.a*256.0f),
     };
 }

@@ -95,8 +95,6 @@ static int sumcompare (const void *b1, const void *b2);
 
 static double colorimportance(double alpha);
 
-static char *pm_allocrow (int cols, int size);
-
 static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val);

@@ -64,7 +64,6 @@
 #include "pam.h"
 
 typedef unsigned char   uch;
-typedef unsigned short  ush;
 
 static mainprog_info rwpng_info;
 

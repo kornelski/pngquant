@@ -401,7 +401,7 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
 
 
                 float a1, r1, g1, b1, r2, g2, b2, a2;
-                float dist = 1<<30, newdist;
+            float dist = 1<<30, newdist;
 
                 r1 = px.r;
                 g1 = px.g;
@@ -880,14 +880,14 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
             if (v > maxa) maxa = v;
 
             /* linear blending makes it too obsessed with accurate alpha, but the optimum unfortunately seems to depend on image */
-            float al = colorimportance(1-v);
-            v = (achv[indx + i].acolor.r * (1.0-al) + al * background.r);
+            float a = achv[indx + i].acolor.a;
+            v = (achv[indx + i].acolor.r + (1-a) * background.r);
             if (v < minr) minr = v;
             if (v > maxr) maxr = v;
-            v = (achv[indx + i].acolor.g * (1.0-al) + al * background.g);
+            v = (achv[indx + i].acolor.g + (1-a) * background.g);
             if (v < ming) ming = v;
             if (v > maxg) maxg = v;
-            v = (achv[indx + i].acolor.b * (1.0-al) + al * background.b);
+            v = (achv[indx + i].acolor.b + (1-a) * background.b);
             if (v < minb) minb = v;
             if (v > maxb) maxb = v;
 

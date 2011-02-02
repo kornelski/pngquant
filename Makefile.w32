@@ -42,7 +42,7 @@ LIBS = $(PNGLIB) $(ZLIB)
 CC = cl
 LD = link
 RM = del
-CFLAGS = -nologo -O -W3 $(INCS) -DWIN32 $(cvars)
+CFLAGS = -nologo -std=c99 -O -W3 $(INCS) -DWIN32 $(cvars)
 # [note that -W3 is an MSVC-specific compilation flag ("all warnings on")]
 # [see %devstudio%\vc\include\win32.mak for cvars macro definition]
 O = .obj
@@ -52,7 +52,7 @@ LDFLAGS = -nologo
 
 PROG = pngquant
 
-OBJS  = $(PROG)$(O) rwpng$(O)
+OBJS  = $(PROG)$(O) rwpng$(O) pam$(O)
 
 EXES = $(PROG)$(E)
 

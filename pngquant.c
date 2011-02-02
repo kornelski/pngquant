@@ -92,7 +92,7 @@ static int alphacompare (const void *ch1, const void *ch2);
 static int valuecompare(const void *ch1, const void *ch2);
 static int sumcompare (const void *b1, const void *b2);
 
-static double colorimportance(double alpha);
+static float colorimportance(float alpha);
 
 static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv);
@@ -400,16 +400,16 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
             }
 
 
-                double a1, r1, g1, b1, r2, g2, b2, a2;
-                double dist = 1<<30, newdist;
+                float a1, r1, g1, b1, r2, g2, b2, a2;
+                float dist = 1<<30, newdist;
 
                 r1 = px.r;
                 g1 = px.g;
                 b1 = px.b;
-                a1 = px.a;
+            a1 = px.a;
 
             for (int i = 0; i < newcolors; ++i) {
-                double colorimp = colorimportance(MAX(acolormap[i].acolor.a, px.a));
+                float colorimp = colorimportance(MAX(acolormap[i].acolor.a, px.a));
 
                 r2 = acolormap[i].acolor.r;
                 g2 = acolormap[i].acolor.g;
@@ -1106,9 +1106,9 @@ static int sumcompare(const void *b1, const void *b2)
 }
 
 /** expects alpha in range 0-1 */
-static double colorimportance(double alpha)
+static float colorimportance(float alpha)
 {
-    return (1.0-(1.0-alpha)*(1.0-alpha));
+    return (1.0f-(1.0f-alpha)*(1.0f-alpha));
 }
 
 

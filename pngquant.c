@@ -400,10 +400,6 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
             }
 
 
-            double colorimp = (1.0/256.0) + colorimportance(px.a);
-
-            if (1) {
-                int i;
                 double a1, r1, g1, b1, r2, g2, b2, a2;
                 double dist = 1<<30, newdist;
 
@@ -412,28 +408,31 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
                 b1 = px.b;
                 a1 = px.a;
 
-                for (i = 0; i < newcolors; ++i) {
-                    r2 = acolormap[i].acolor.r;
-                    g2 = acolormap[i].acolor.g;
-                    b2 = acolormap[i].acolor.b;
-                    a2 = acolormap[i].acolor.a;
+            for (int i = 0; i < newcolors; ++i) {
+                double colorimp = colorimportance(MAX(acolormap[i].acolor.a, px.a));
 
-                    newdist =  (a1 - a2) * (a1 - a2) +
+                r2 = acolormap[i].acolor.r;
+                g2 = acolormap[i].acolor.g;
+                b2 = acolormap[i].acolor.b;
+                a2 = acolormap[i].acolor.a;
+
+                newdist =  (a1 - a2) * (a1 - a2) +
                                (r1 - r2) * (r1 - r2) * colorimp +
                                (g1 - g2) * (g1 - g2) * colorimp +
                                (b1 - b2) * (b1 - b2) * colorimp;
 
-                    /* penalty for making holes in IE */
-                    if (a1 > min_opaque_val && a2 < 1) newdist += 1.0;
+                /* penalty for making holes in IE */
+                if (a1 > min_opaque_val && a2 < 1) newdist += 1.0;
 
-                    if (newdist < dist) {
-                        ind = i;
-                        dist = newdist;
-                    }
+                if (newdist < dist) {
+                    ind = i;
+                    dist = newdist;
                 }
             }
 
             if (floyd) {
+                double colorimp = (1.0/256.0) + colorimportance(acolormap[ind].acolor.a);
+
                 /* Propagate Floyd-Steinberg error terms. */
                 if (fs_direction) {
                     err = (sr - acolormap[ind].acolor.r) * colorimp;
@@ -881,8 +880,8 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
             if (v > maxa) maxa = v;
 
             /* linear blending makes it too obsessed with accurate alpha, but the optimum unfortunately seems to depend on image */
-            int al = colorimportance(1-v);
-            v = (achv[indx + i].acolor.r * (1.0-al) + al * background.r); /* 256 is deliberate */
+            float al = colorimportance(1-v);
+            v = (achv[indx + i].acolor.r * (1.0-al) + al * background.r);
             if (v < minr) minr = v;
             if (v > maxr) maxr = v;
             v = (achv[indx + i].acolor.g * (1.0-al) + al * background.g);
@@ -1027,7 +1026,7 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double 
     int i;
 
     for (i = 0; i < clrs; ++i) {
-        double weight = 1;
+        float weight = 1.0f;
         float tmp;
 
         /* give more weight to colors that are further away from average

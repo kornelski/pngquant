@@ -5,13 +5,13 @@ Follow the steps below to build pngquant from source on Linux or UNIX systems
    http://www.zlib.net/
 
       $ cd ..
-      $ wget http://prdownloads.sourceforge.net/libpng/zlib-1.2.3.tar.gz?download
+      $ wget http://prdownloads.sourceforge.net/libpng/zlib-1.2.5.tar.gz?download
 
    Unpack it into the parent directory of the 'pngquant' directory and rename
    it to 'zlib' - e.g.:
 
-      $ tar zxf zlib-1.2.3.tar.gz
-      $ mv zlib-1.2.3 zlib
+      $ tar zxf zlib-1.2.5.tar.gz
+      $ mv zlib-1.2.5 zlib
 
    Build it:
 
@@ -21,13 +21,13 @@ Follow the steps below to build pngquant from source on Linux or UNIX systems
    http://www.libpng.org/pub/png/libpng.html - e.g.:
 
       $ cd ..
-      $ wget http://prdownloads.sourceforge.net/libpng/libpng-1.2.40.tar.gz?download
+      $ wget http://prdownloads.sourceforge.net/libpng/libpng-1.2.44.tar.gz?download
 
    Unpack it into the parent directory of the 'pngquant' directory and rename
    it to 'libpng' - e.g.:
 
-      $ tar zxf libpng-1.2.40.tar.gz
-      $ mv libpng-1.2.40 libpng
+      $ tar zxf libpng-1.2.44.tar.gz
+      $ mv libpng-1.2.44 libpng
 
    Build libpng:
 

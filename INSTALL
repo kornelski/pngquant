@@ -1,7 +1,23 @@
 Follow the steps below to build pngquant from source on Linux or UNIX systems
 (including Mac OS X):
 
-1. Download the libpng source code from:
+1. Download the zlib source code from:
+   http://www.zlib.net/
+
+      $ cd ..
+      $ wget http://prdownloads.sourceforge.net/libpng/zlib-1.2.3.tar.gz?download
+
+   Unpack it into the parent directory of the 'pngquant' directory and rename
+   it to 'zlib' - e.g.:
+
+      $ tar zxf zlib-1.2.3.tar.gz
+      $ mv zlib-1.2.3 zlib
+
+   Build it:
+
+      $ make
+
+2. Download the libpng source code from:
    http://www.libpng.org/pub/png/libpng.html - e.g.:
 
       $ cd ..
@@ -18,25 +34,9 @@ Follow the steps below to build pngquant from source on Linux or UNIX systems
       $ cd libpng
       $ ./configure && make libpng.a
 
-2. Download the zlib source code from:
-   http://www.zlib.net/
-
-      $ cd ..
-      $ wget http://prdownloads.sourceforge.net/libpng/zlib-1.2.3.tar.gz?download
-
-   Unpack it into the parent directory of the 'pngquant' directory and rename
-   it to 'zlib' - e.g.:
-
-      $ tar zxf zlib-1.2.3.tar.gz
-      $ mv zlib-1.2.3 zlib
-
-   Build it:
-
-      $ make
-
 3. Go back to the pngquant directory and make using the Makefile.unx make file:
 
       $ cd ../pngquant/
-      $ make -f Makefile.unx
+      $ make
 
 That's it, you should now have a 'pngquant' executable in the current directory.

@@ -24,23 +24,35 @@ typedef struct {
     float r, g, b, a;
 } f_pixel;
 
-inline static f_pixel to_f(double gamma, rgb_pixel r)
+inline static f_pixel to_f(double gamma, rgb_pixel px)
 {
-    return (f_pixel){
-        powf(r.r/255.0f, 1.0f/gamma),
-        powf(r.g/255.0f, 1.0f/gamma),
-        powf(r.b/255.0f, 1.0f/gamma),
-        r.a/255.0f
-    };
+    double r = pow((1.0+px.r)/256.0, 1.0/gamma), // Division by 255 creates rounding errors
+           g = pow((1.0+px.g)/256.0, 1.0/gamma),
+           b = pow((1.0+px.b)/256.0, 1.0/gamma),
+           a = (1+px.a)/256.0;
+
+    return (f_pixel){r,g,b,a};
 }
 
 inline static rgb_pixel to_rgb(double gamma, f_pixel px)
 {
+    if (px.a < 1.0/257.0) {   // px.a = 1+a/256
+        return (rgb_pixel){0,0,0,0};
+    }
+
+    double r,g,b,a;
+
+    // 257, because numbers are in range 1..256.9999… rounded down
+    r = pow(px.r, gamma)*257.0 - 1.0;
+    g = pow(px.g, gamma)*257.0 - 1.0;
+    b = pow(px.b, gamma)*257.0 - 1.0;
+    a = px.a*257.0 - 1.0;
+
     return (rgb_pixel){
-        px.r>=1.0f ? 255 : (px.r<=0 ? 0 : powf(px.r, gamma)*256.0f),
-        px.g>=1.0f ? 255 : (px.g<=0 ? 0 : powf(px.g, gamma)*256.0f),
-        px.b>=1.0f ? 255 : (px.b<=0 ? 0 : powf(px.b, gamma)*256.0f),
-        px.a>=1.0f ? 255 : (px.a<=0 ? 0 : px.a*256.0f),
+        r>=255 ? 255 : (r<=0 ? 0 : r),
+        g>=255 ? 255 : (g<=0 ? 0 : g),
+        b>=255 ? 255 : (b<=0 ? 0 : b),
+        a>=255 ? 255 : a,
     };
 }
 

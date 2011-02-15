@@ -356,8 +356,8 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
         fs_direction = 1;
     }
     for (row = 0; row < rows; ++row) {
-        outrow = rwpng_info.interlaced? row_pointers[row] :
-                                        rwpng_info.indexed_data;
+        outrow = row_pointers[row];
+
         if (floyd)
             for (col = 0; col < cols + 2; ++col)
                 nexterr[col].r = nexterr[col].g =
@@ -373,7 +373,6 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
             pP = &(input_pixels[row][col]);
             pQ = &(outrow[col]);
         }
-
 
 
         do {
@@ -499,12 +498,7 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
             nexterr = temperr;
             fs_direction = !fs_direction;
         }
-
-        /* if non-interlaced PNG, write row now */
-        if (!rwpng_info.interlaced)
-            rwpng_write_image_row(&rwpng_info);
     }
-
     return 0;
 }
 
@@ -712,27 +706,17 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
 
     /*
-    ** Step 3.7 [GRR]: allocate memory for either a single row (non-
-    ** interlaced -> progressive write) or the entire indexed image
-    ** (interlaced -> all at once); note that rwpng_info.row_pointers
+    ** Step 3.7 [GRR]: allocate memory for the entire indexed image
+    ** note that rwpng_info.row_pointers
     ** is still in use via apixels (INPUT data).
     */
 
-    if (rwpng_info.interlaced) {
-        if ((rwpng_info.indexed_data = malloc(rows * cols)) != NULL) {
-            if ((row_pointers = (uch **)malloc(rows * sizeof(uch *))) != NULL) {
-                for (row = 0;  row < rows;  ++row)
-                    row_pointers[row] = rwpng_info.indexed_data + row*cols;
-            }
-        }
-    } else {
-        rwpng_info.indexed_data = malloc(cols);
-    }
+    rwpng_info.indexed_data = malloc(rows * cols);
+    row_pointers = malloc(rows * sizeof(row_pointers[0]));
 
-    if (rwpng_info.indexed_data == NULL ||
-        (rwpng_info.interlaced && row_pointers == NULL)) {
+    if (!rwpng_info.indexed_data || !row_pointers) {
         fprintf(stderr,
-          "  insufficient memory for indexed data and/or row pointers\n");
+                "  insufficient memory for indexed data and/or row pointers\n");
         fflush(stderr);
         if (rwpng_info.row_pointers)
             free(rwpng_info.row_pointers);
@@ -745,6 +729,9 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         return OUT_OF_MEMORY_ERROR;
     }
 
+    for (row = 0;  row < rows;  ++row) {
+        row_pointers[row] = rwpng_info.indexed_data + row*cols;
+    }
 
 
     /*
@@ -788,13 +775,10 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     }
 
 
-    /* write entire interlaced palette PNG, or finish/flush noninterlaced one */
+    /* write entire interlaced palette PNG */
 
-    if (rwpng_info.interlaced) {
-        rwpng_info.row_pointers = row_pointers;   /* now for OUTPUT data */
-        rwpng_write_image_whole(&rwpng_info);
-    } else
-        rwpng_write_image_finish(&rwpng_info);
+    rwpng_info.row_pointers = row_pointers;   /* now for OUTPUT data */
+    rwpng_write_image_whole(&rwpng_info);
 
     if (!using_stdin)
         fclose(outfile);
@@ -810,7 +794,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         free(row_pointers);
         rwpng_info.row_pointers = NULL;
     }
-
 
     return SUCCESS;
 }

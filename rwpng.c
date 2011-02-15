@@ -35,12 +35,6 @@
 #include "png.h"        /* libpng header; includes zlib.h */
 #include "rwpng.h"      /* typedefs, common macros, public prototypes */
 
-/* future versions of libpng will provide this macro: */
-/* GRR NOTUSED */
-#ifndef png_jmpbuf
-#  define png_jmpbuf(png_ptr)   ((png_ptr)->jmpbuf)
-#endif
-
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
 
 
@@ -411,7 +405,7 @@ int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
 
 
 
-/* this routine is called only for interlaced images */
+
 /* returns 0 for success, 45 for libpng (longjmp) problem */
 
 int rwpng_write_image_whole(mainprog_info *mainprog_ptr)
@@ -489,7 +483,7 @@ int rwpng_write_image_row(mainprog_info *mainprog_ptr)
 
 
 
-/* this routine is called only for non-interlaced images */
+/* this routine is called only after rwpng_write_image_row() */
 /* returns 0 if succeeds, 65 if libpng problem */
 
 int rwpng_write_image_finish(mainprog_info *mainprog_ptr)

@@ -67,7 +67,6 @@ typedef unsigned char   uch;
 
 static mainprog_info rwpng_info;
 
-#define FNMAX      1024     /* max filename length */
 #define MAXCOLORS  (32767*8)
 
 /* #define REP_CENTER_BOX */
@@ -502,6 +501,21 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
     return 0;
 }
 
+char *add_filename_extension(const char *filename, const char *newext)
+{
+    int x = strlen(filename);
+
+    char* outname = malloc(x+4+strlen(newext)+1);
+
+    strncpy(outname, filename, x);
+    if (strncmp(outname+x-4, ".png", 4) == 0)
+        strcpy(outname+x-4, newext);
+    else
+        strcpy(outname+x, newext);
+
+    return outname;
+}
+
 pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
 {
     FILE *infile, *outfile;
@@ -516,9 +530,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     int row;
     int colors;
     int newcolors = 0;
-    int x;
-    char outname[FNMAX];
-
 
     /* can't do much if we don't have an input file...but don't reopen stdin */
 
@@ -561,18 +572,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         outfile = stdout;   /* GRR:  see comment above about fdopen() */
 
     } else {
-        x = strlen(filename);
-        if (x > FNMAX-strlen(newext)-1) {
-            fprintf(stderr,
-              "  warning:  base filename [%s] will be truncated\n", filename);
-            fflush(stderr);
-            x = FNMAX-strlen(newext)-1;
-        }
-        strncpy(outname, filename, x);
-        if (strncmp(outname+x-4, ".png", 4) == 0)
-            strcpy(outname+x-4, newext);
-        else
-            strcpy(outname+x, newext);
         if (!force) {
             if ((outfile = fopen(outname, "rb")) != NULL) {
                 fprintf(stderr, "  error:  %s exists; not overwriting\n",

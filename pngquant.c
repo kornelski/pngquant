@@ -516,9 +516,83 @@ char *add_filename_extension(const char *filename, const char *newext)
     return outname;
 }
 
+pngquant_error write_image(uch **row_pointers,const char *filename,const char *newext,int force,int using_stdin)
+{
+    FILE *outfile;
+    if (using_stdin) {
+
+#if defined(MSDOS) || defined(FLEXOS) || defined(OS2) || defined(WIN32)
+#if (defined(__HIGHC__) && !defined(FLEXOS))
+        setmode(stdout, _BINARY);
+#else
+        setmode(1, O_BINARY);
+#endif
+#endif
+        outfile = stdout;   /* GRR:  see comment above about fdopen() */
+
+    } else {
+        char *outname = add_filename_extension(filename,newext);
+
+        if (!force) {
+            if ((outfile = fopen(outname, "rb")) != NULL) {
+                fprintf(stderr, "  error:  %s exists; not overwriting\n",
+                        outname);
+                fflush(stderr);
+                fclose(outfile);
+                free(outname);
+                return NOT_OVERWRITING_ERROR;
+            }
+        }
+        if ((outfile = fopen(outname, "wb")) == NULL) {
+            fprintf(stderr, "  error:  cannot open %s for writing\n", outname);
+            fflush(stderr);
+            free(outname);
+            return CANT_WRITE_ERROR;
+        }
+        free(outname);
+    }
+
+    if (rwpng_write_image_init(outfile, &rwpng_info) != 0) {
+        fprintf(stderr, "  rwpng_write_image_init() error\n");
+        fflush(stderr);
+        if (rwpng_info.rgba_data)
+            free(rwpng_info.rgba_data);
+        if (rwpng_info.row_pointers)
+            free(rwpng_info.row_pointers);
+        if (rwpng_info.indexed_data)
+            free(rwpng_info.indexed_data);
+        if (row_pointers)
+            free(row_pointers);
+        if (!using_stdin)
+            fclose(outfile);
+        return rwpng_info.retval;
+    }
+
+    /* write entire interlaced palette PNG */
+
+    rwpng_info.row_pointers = row_pointers;   /* now for OUTPUT data */
+    rwpng_write_image_whole(&rwpng_info);
+
+    if (!using_stdin)
+        fclose(outfile);
+
+    /* now we're done with the OUTPUT data and row_pointers, too */
+
+    if (rwpng_info.indexed_data) {
+        free(rwpng_info.indexed_data);
+        rwpng_info.indexed_data = NULL;
+    }
+    if (row_pointers) {
+        free(row_pointers);
+        rwpng_info.row_pointers = NULL;
+    }
+
+    return rwpng_info.retval;
+}
+
 pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
 {
-    FILE *infile, *outfile;
+    FILE *infile;
     rgb_pixel **input_pixels;
     rgb_pixel *pP;
     int col;
@@ -560,35 +634,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
      * "-or8" before the ".png" extension (or by appending that plus ".png" if
      * there isn't any extension), then make sure it doesn't exist already */
 
-    if (using_stdin) {
-
-#if defined(MSDOS) || defined(FLEXOS) || defined(OS2) || defined(WIN32)
-#if (defined(__HIGHC__) && !defined(FLEXOS))
-        setmode(stdout, _BINARY);
-#else
-        setmode(1, O_BINARY);
-#endif
-#endif
-        outfile = stdout;   /* GRR:  see comment above about fdopen() */
-
-    } else {
-        if (!force) {
-            if ((outfile = fopen(outname, "rb")) != NULL) {
-                fprintf(stderr, "  error:  %s exists; not overwriting\n",
-                  outname);
-                fflush(stderr);
-                fclose(outfile);
-                return NOT_OVERWRITING_ERROR;
-            }
-        }
-        if ((outfile = fopen(outname, "wb")) == NULL) {
-            fprintf(stderr, "  error:  cannot open %s for writing\n", outname);
-            fflush(stderr);
-            return CANT_WRITE_ERROR;
-        }
-    }
-
-
     /*
      ** Step 1: read in the alpha-channel image.
     */
@@ -601,8 +646,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     if (rwpng_info.retval) {
         fprintf(stderr, "  rwpng_read_image() error\n");
         fflush(stderr);
-        if (!using_stdin)
-            fclose(outfile);
         return rwpng_info.retval;
     }
 
@@ -723,8 +766,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
             free(rwpng_info.rgba_data);
         if (rwpng_info.indexed_data)
             free(rwpng_info.indexed_data);
-        if (!using_stdin)
-            fclose(outfile);
         return OUT_OF_MEMORY_ERROR;
     }
 
@@ -742,21 +783,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         fflush(stderr);
     }
 
-    if (rwpng_write_image_init(outfile, &rwpng_info) != 0) {
-        fprintf(stderr, "  rwpng_write_image_init() error\n");
-        fflush(stderr);
-        if (rwpng_info.rgba_data)
-            free(rwpng_info.rgba_data);
-        if (rwpng_info.row_pointers)
-            free(rwpng_info.row_pointers);
-        if (rwpng_info.indexed_data)
-            free(rwpng_info.indexed_data);
-        if (row_pointers)
-            free(row_pointers);
-        if (!using_stdin)
-            fclose(outfile);
-        return rwpng_info.retval;
-    }
 
     if (remap_to_palette(floyd,min_opaque_val,ie_bug,input_pixels,rows,cols,row_pointers,newcolors,remap,acolormap)) {
         return OUT_OF_MEMORY_ERROR;
@@ -773,28 +799,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         rwpng_info.row_pointers = NULL;
     }
 
-
-    /* write entire interlaced palette PNG */
-
-    rwpng_info.row_pointers = row_pointers;   /* now for OUTPUT data */
-    rwpng_write_image_whole(&rwpng_info);
-
-    if (!using_stdin)
-        fclose(outfile);
-
-
-    /* now we're done with the OUTPUT data and row_pointers, too */
-
-    if (rwpng_info.indexed_data) {
-        free(rwpng_info.indexed_data);
-        rwpng_info.indexed_data = NULL;
-    }
-    if (row_pointers) {
-        free(row_pointers);
-        rwpng_info.row_pointers = NULL;
-    }
-
-    return SUCCESS;
+    return write_image(row_pointers,filename,newext,force,using_stdin);
 }
 
 

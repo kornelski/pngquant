@@ -47,7 +47,7 @@ static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
 void rwpng_version_info(void)
 {
     fprintf(stderr, "   Compiled with libpng %s; using libpng %s.\n",
-      PNG_LIBPNG_VER_STRING, png_libpng_ver);
+      PNG_LIBPNG_VER_STRING, png_get_header_ver(NULL));
     fprintf(stderr, "   Compiled with zlib %s; using zlib %s.\n",
       ZLIB_VERSION, zlib_version);
 }
@@ -512,7 +512,6 @@ int rwpng_write_image_finish(mainprog_info *mainprog_ptr)
 
     /* close out PNG file; if we had any text or time info to write after
      * the IDATs, second argument would be info_ptr */
-
     png_write_end(png_ptr, NULL);
 
     png_destroy_write_struct(&png_ptr, &info_ptr);

@@ -241,17 +241,8 @@ int set_palette(write_info *rwpng_info, int newcolors, int* remap, acolorhist_ve
 
     int top_idx,bot_idx;
 
-    if (newcolors <= 2)
-        rwpng_info->sample_depth = 1;
-    else if (newcolors <= 4)
-        rwpng_info->sample_depth = 2;
-    else if (newcolors <= 16)
-        rwpng_info->sample_depth = 4;
-    else
-        rwpng_info->sample_depth = 8;
-
-    verbose_printf("  writing %d-bit colormapped image\n",
-          rwpng_info->sample_depth);
+    verbose_printf("  writing %d-color image\n",
+          newcolors);
 
     /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with

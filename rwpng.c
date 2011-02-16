@@ -81,14 +81,12 @@ int rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
     if (!png_ptr) {
         return PNG_OUT_OF_MEMORY_ERROR;   /* out of memory */
     }
-    mainprog_ptr->png_ptr = png_ptr;
 
     info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
         png_destroy_read_struct(&png_ptr, NULL, NULL);
         return PNG_OUT_OF_MEMORY_ERROR;   /* out of memory */
     }
-    mainprog_ptr->info_ptr = info_ptr;
 
 
     /* GRR TO DO:  use end_info struct */
@@ -205,8 +203,6 @@ int rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
     png_read_end(png_ptr, NULL);
 
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-    mainprog_ptr->png_ptr = NULL;
-    mainprog_ptr->info_ptr = NULL;
 
     return SUCCESS;
 }
@@ -280,19 +276,27 @@ int rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
 
     /* set the image parameters appropriately */
 
+    int sample_depth;
+    if (mainprog_ptr->num_palette <= 2)
+        sample_depth = 1;
+    else if (mainprog_ptr->num_palette <= 4)
+        sample_depth = 2;
+    else if (mainprog_ptr->num_palette <= 16)
+        sample_depth = 4;
+    else
+        sample_depth = 8;
+
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,
-      mainprog_ptr->sample_depth, PNG_COLOR_TYPE_PALETTE,
+      sample_depth, PNG_COLOR_TYPE_PALETTE,
       mainprog_ptr->interlaced, PNG_COMPRESSION_TYPE_DEFAULT,
       PNG_FILTER_TYPE_DEFAULT);
 
     /* GRR WARNING:  cast of rwpng_colorp to png_colorp could fail in future
      * major revisions of libpng (but png_ptr/info_ptr will fail, regardless) */
-    png_set_PLTE(png_ptr, info_ptr, (png_colorp)mainprog_ptr->palette,
-      mainprog_ptr->num_palette);
+    png_set_PLTE(png_ptr, info_ptr, &mainprog_ptr->palette[0], mainprog_ptr->num_palette);
 
     if (mainprog_ptr->num_trans > 0)
-        png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans,
-          mainprog_ptr->num_trans, NULL);
+        png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans, mainprog_ptr->num_trans, NULL);
 
     if (mainprog_ptr->gamma > 0.0)
         png_set_gAMA(png_ptr, info_ptr, mainprog_ptr->gamma);
@@ -496,13 +500,9 @@ int rwpng_write_image_finish(write_info *mainprog_ptr)
     return SUCCESS;
 }
 
-
-
-
-
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg)
 {
-    write_info  *mainprog_ptr;
+    read_or_write_info  *mainprog_ptr;
 
     /* This function, aside from the extra step of retrieving the "error
      * pointer" (below) and the fact that it exists within the application

@@ -45,13 +45,6 @@
 #  define Trace(x)  ;
 #endif
 
-typedef struct _rwpng_color_struct {
-   png_byte red;
-   png_byte green;
-   png_byte blue;
-} rwpng_color;
-
-
 typedef enum {
     SUCCESS = 0,
     READ_ERROR = 2,
@@ -70,35 +63,37 @@ typedef enum {
 } pngquant_error;
 
 typedef struct {
-    jmp_buf jmpbuf;		/* read/write */
+    jmp_buf jmpbuf;
+    png_uint_32 width;
+    png_uint_32 height;
+    png_uint_32 rowbytes;
     double gamma;
-    void *png_ptr;		/* read/write */
-    void *info_ptr;		/* read/write */
-    int interlaced;		/* read/write */
-    png_uint_32 width;      /* read/write */
-    png_uint_32 height;     /* read/write */
-    png_uint_32 rowbytes;   /* read */
-    unsigned char *rgba_data;   /* read */
-    unsigned char **row_pointers;   /* read/write */
+    int interlaced;
+    unsigned char *rgba_data;
+    unsigned char **row_pointers;
 } read_info;
 
 typedef struct {
-    jmp_buf jmpbuf;		/* read/write */
+    jmp_buf jmpbuf;
+    void *png_ptr;
+    void *info_ptr;
+    png_uint_32 width;
+    png_uint_32 height;
     double gamma;
-    void *png_ptr;		/* read/write */
-    void *info_ptr;		/* read/write */
-    rwpng_color palette[256];	/* write */
-    int interlaced;		/* read/write */
-    int sample_depth;		/* write */
-    int num_palette;		/* write */
-    int num_trans;		/* write */
-    png_uint_32 width;      /* read/write */
-    png_uint_32 height;     /* read/write */
-    unsigned char trans[256];   /* write */
-    unsigned char *indexed_data;    /* write */
-    unsigned char **row_pointers;   /* read/write */
+    int interlaced;
+    int num_palette;
+    int num_trans;
+    png_color palette[256];
+    unsigned char trans[256];
+    unsigned char *indexed_data;
+    unsigned char **row_pointers;
 } write_info;
 
+typedef union {
+    jmp_buf jmpbuf;
+    read_info read;
+    write_info write;
+} read_or_write_info;
 
 /* prototypes for public functions in rwpng.c */
 

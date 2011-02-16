@@ -80,7 +80,6 @@ typedef struct _mainprog_info {
     int sample_depth;		/* write */
     int num_palette;		/* write */
     int num_trans;		/* write */
-    pngquant_error retval;			/* read/write */
     png_uint_32 width;      /* read/write */
     png_uint_32 height;     /* read/write */
     png_uint_32 rowbytes;   /* read */

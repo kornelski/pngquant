@@ -384,12 +384,12 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
             }
 
 
-                float a1, r1, g1, b1, r2, g2, b2, a2;
+            float a1, r1, g1, b1, r2, g2, b2, a2;
             float dist = 1<<30, newdist;
 
-                r1 = px.r;
-                g1 = px.g;
-                b1 = px.b;
+            r1 = px.r;
+            g1 = px.g;
+            b1 = px.b;
             a1 = px.a;
 
             for (int i = 0; i < newcolors; ++i) {
@@ -521,8 +521,7 @@ pngquant_error write_image(uch **row_pointers,const char *filename,const char *n
 
         if (!force) {
             if ((outfile = fopen(outname, "rb")) != NULL) {
-                fprintf(stderr, "  error:  %s exists; not overwriting\n",
-                        outname);
+                fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
                 fclose(outfile);
                 free(outname);
                 return NOT_OVERWRITING_ERROR;
@@ -536,7 +535,8 @@ pngquant_error write_image(uch **row_pointers,const char *filename,const char *n
         free(outname);
     }
 
-    if (rwpng_write_image_init(outfile, &rwpng_info) != 0) {
+    pngquant_error retval = rwpng_write_image_init(outfile, &rwpng_info);
+    if (retval) {
         fprintf(stderr, "  rwpng_write_image_init() error\n");
         if (rwpng_info.rgba_data)
             free(rwpng_info.rgba_data);
@@ -548,13 +548,13 @@ pngquant_error write_image(uch **row_pointers,const char *filename,const char *n
             free(row_pointers);
         if (!using_stdin)
             fclose(outfile);
-        return rwpng_info.retval;
+        return retval;
     }
 
     /* write entire interlaced palette PNG */
 
     rwpng_info.row_pointers = row_pointers;   /* now for OUTPUT data */
-    rwpng_write_image_whole(&rwpng_info);
+    retval = rwpng_write_image_whole(&rwpng_info);
 
     if (!using_stdin)
         fclose(outfile);
@@ -570,7 +570,7 @@ pngquant_error write_image(uch **row_pointers,const char *filename,const char *n
         rwpng_info.row_pointers = NULL;
     }
 
-    return rwpng_info.retval;
+    return retval;
 }
 
 pngquant_error read_image(const char *filename, int using_stdin)
@@ -608,12 +608,12 @@ pngquant_error read_image(const char *filename, int using_stdin)
      ** Step 1: read in the alpha-channel image.
     */
     /* GRR:  returns RGBA (4 channels), 8 bps */
-    rwpng_read_image(infile, &rwpng_info);
+    pngquant_error retval = rwpng_read_image(infile, &rwpng_info);
 
     if (!using_stdin)
         fclose(infile);
 
-    return rwpng_info.retval;
+    return retval;
 }
 
 acolorhist_vector histogram(double gamma, rgb_pixel **input_pixels,int rows,int cols,int reqcolors, int *colors)
@@ -702,11 +702,11 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     float min_opaque_val;
     int row;
 
-    read_image(filename,using_stdin);
+    pngquant_error retval = read_image(filename,using_stdin);
 
-    if (rwpng_info.retval) {
+    if (retval) {
         fprintf(stderr, "  rwpng_read_image() error\n");
-        return rwpng_info.retval;
+        return retval;
     }
 
     /* NOTE:  rgba_data and row_pointers are allocated but not freed in
@@ -793,7 +793,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     }
 
     return write_image(row_pointers,filename,newext,force,using_stdin);
-}
+    }
 
 
 

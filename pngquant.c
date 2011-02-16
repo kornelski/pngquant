@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-int set_palette(write_info *rwpng_info, int newcolors, int* remap, acolorhist_vector acolormap)
+int set_palette(write_info *output_image, int newcolors, int* remap, acolorhist_vector acolormap)
 {
     /*
     ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
@@ -256,7 +256,7 @@ int set_palette(write_info *rwpng_info, int newcolors, int* remap, acolorhist_ve
 
     int x=0;
     for (top_idx = newcolors-1, bot_idx = 0;  x < newcolors;  ++x) {
-        rgb_pixel px = to_rgb(rwpng_info->gamma, acolormap[x].acolor);
+        rgb_pixel px = to_rgb(output_image->gamma, acolormap[x].acolor);
 
         if (px.a == 255)
             remap[x] = top_idx--;
@@ -272,8 +272,8 @@ int set_palette(write_info *rwpng_info, int newcolors, int* remap, acolorhist_ve
         return INTERNAL_LOGIC_ERROR;
     }
 
-    rwpng_info->num_palette = newcolors;
-    rwpng_info->num_trans = bot_idx;
+    output_image->num_palette = newcolors;
+    output_image->num_trans = bot_idx;
 
     /* GRR TO DO:  if bot_idx == 0, check whether all RGB samples are gray
                    and if so, whether grayscale sample_depth would be same
@@ -285,13 +285,13 @@ int set_palette(write_info *rwpng_info, int newcolors, int* remap, acolorhist_ve
     */
 
     for (x = 0; x < newcolors; ++x) {
-        rgb_pixel px = to_rgb(rwpng_info->gamma, acolormap[x].acolor);
-        acolormap[x].acolor = to_f(rwpng_info->gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
+        rgb_pixel px = to_rgb(output_image->gamma, acolormap[x].acolor);
+        acolormap[x].acolor = to_f(output_image->gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
-        rwpng_info->palette[remap[x]].red   = px.r;
-        rwpng_info->palette[remap[x]].green = px.g;
-        rwpng_info->palette[remap[x]].blue  = px.b;
-        rwpng_info->trans[remap[x]]         = px.a;
+        output_image->palette[remap[x]].red   = px.r;
+        output_image->palette[remap[x]].green = px.g;
+        output_image->palette[remap[x]].blue  = px.b;
+        output_image->trans[remap[x]]         = px.a;
     }
 
     return 0;
@@ -709,13 +709,12 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     write_info output_image = {0};
     output_image.width = input_image.width;
     output_image.height = input_image.height;
-    output_image.gamma = input_image.gamma;
+    output_image.gamma = 1/2.2;
 
     int remap[256];
     if (set_palette(&output_image, newcolors, remap, acolormap)) {
         return INTERNAL_LOGIC_ERROR;
     }
-
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image

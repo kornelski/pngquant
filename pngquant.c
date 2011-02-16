@@ -52,6 +52,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdarg.h>
 #ifdef WIN32        /* defined in Makefile.w32 (or use _MSC_VER for MSVC) */
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
@@ -80,8 +81,7 @@ struct box {
     int sum;
 };
 
-static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose,
-                               int using_stdin, int reqcolors, int ie_bug);
+static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug);
 
 static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, double min_opaque_val, int newcolors);
 static int redcompare (const void *ch1, const void *ch2);
@@ -98,6 +98,15 @@ static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val);
 
 
+static int verbose=0;
+void verbose_printf(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    if (verbose) vfprintf(stderr, fmt, va);
+    va_end(va);
+}
+
 int main(int argc, char *argv[])
 {
     int argn;
@@ -105,7 +114,6 @@ int main(int argc, char *argv[])
     int floyd = TRUE;
     int force = FALSE;
     int ie_bug = FALSE;
-    int verbose = FALSE;
     int using_stdin = FALSE;
     int latest_error=0, error_count=0, file_count=0;
     const char *filename, *newext = NULL;
@@ -140,7 +148,6 @@ int main(int argc, char *argv[])
             ++argn;
             if (argn == argc) {
                 fprintf(stderr, "%s", pq_usage);
-                fflush(stderr);
                 return 1;
             }
             newext = argv[argn];
@@ -151,7 +158,6 @@ int main(int argc, char *argv[])
             rwpng_version_info();
             fputs("\n", stderr);
             fputs(pq_usage, stderr);
-            fflush(stderr);
             return 1;
         }
         ++argn;
@@ -163,7 +169,6 @@ int main(int argc, char *argv[])
         rwpng_version_info();
         fputs("\n", stderr);
         fputs(pq_usage, stderr);
-        fflush(stderr);
         return 1;
     }
     if (sscanf(argv[argn], "%d", &reqcolors) != 1) {
@@ -171,12 +176,10 @@ int main(int argc, char *argv[])
     }
     if (reqcolors <= 1) {
         fputs("number of colors must be greater than 1\n", stderr);
-        fflush(stderr);
         return 4;
     }
     if (reqcolors > 256) {
         fputs("number of colors cannot be more than 256\n", stderr);
-        fflush(stderr);
         return 4;
     }
     ++argn;
@@ -200,12 +203,9 @@ int main(int argc, char *argv[])
     while (argn <= argc) {
         int retval;
 
-        if (verbose) {
-            fprintf(stderr, "%s:\n", filename);
-            fflush(stderr);
-        }
+        verbose_printf("%s:\n", filename);
 
-        retval = pngquant(filename, newext, floyd, force, verbose, using_stdin, reqcolors, ie_bug);
+        retval = pngquant(filename, newext, floyd, force, using_stdin, reqcolors, ie_bug);
 
         if (retval) {
             latest_error = retval;
@@ -213,10 +213,7 @@ int main(int argc, char *argv[])
         }
         ++file_count;
 
-        if (verbose) {
-            fprintf(stderr, "\n");
-            fflush(stderr);
-        }
+        verbose_printf("\n");
 
         filename = argv[argn];
         ++argn;
@@ -225,22 +222,19 @@ int main(int argc, char *argv[])
     /*=======================================================================*/
 
 
-    if (verbose) {
-        if (error_count)
-            fprintf(stderr, "There were errors quantizing %d file%s out of a"
-              " total of %d file%s.\n",
-              error_count, (error_count == 1)? "" : "s",
-              file_count, (file_count == 1)? "" : "s");
-        else
-            fprintf(stderr, "No errors detected while quantizing %d image%s.\n",
-              file_count, (file_count == 1)? "" : "s");
-        fflush(stderr);
-    }
+    if (error_count)
+        verbose_printf("There were errors quantizing %d file%s out of a"
+          " total of %d file%s.\n",
+          error_count, (error_count == 1)? "" : "s",
+          file_count, (file_count == 1)? "" : "s");
+    else
+        verbose_printf("No errors detected while quantizing %d image%s.\n",
+          file_count, (file_count == 1)? "" : "s");
 
     return latest_error;
 }
 
-int set_palette(int newcolors, int verbose, int* remap, acolorhist_vector acolormap)
+int set_palette(int newcolors, int* remap, acolorhist_vector acolormap)
 {
     /*
     ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
@@ -258,11 +252,8 @@ int set_palette(int newcolors, int verbose, int* remap, acolorhist_vector acolor
     else
         rwpng_info.sample_depth = 8;
 
-    if (verbose) {
-        fprintf(stderr, "  writing %d-bit colormapped image\n",
+    verbose_printf("  writing %d-bit colormapped image\n",
           rwpng_info.sample_depth);
-        fflush(stderr);
-    }
 
     /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with
@@ -272,11 +263,8 @@ int set_palette(int newcolors, int verbose, int* remap, acolorhist_vector acolor
     ** this should matter to anyone.
     */
 
-    if (verbose) {
-        fprintf(stderr,
-          "  remapping colormap to eliminate opaque tRNS-chunk entries...");
-        fflush(stderr);
-    }
+    verbose_printf("  remapping colormap to eliminate opaque tRNS-chunk entries...");
+
     int x=0;
     for (top_idx = newcolors-1, bot_idx = 0;  x < newcolors;  ++x) {
         rgb_pixel px = to_rgb(rwpng_info.gamma, acolormap[x].acolor);
@@ -286,11 +274,9 @@ int set_palette(int newcolors, int verbose, int* remap, acolorhist_vector acolor
         else
             remap[x] = bot_idx++;
     }
-    if (verbose) {
-        fprintf(stderr, "%d entr%s left\n", bot_idx,
+
+    verbose_printf("%d entr%s left\n", bot_idx,
           (bot_idx == 1)? "y" : "ies");
-        fflush(stderr);
-    }
 
     /* sanity check:  top and bottom indices should have just crossed paths */
     if (bot_idx != top_idx + 1) {
@@ -537,7 +523,6 @@ pngquant_error write_image(uch **row_pointers,const char *filename,const char *n
             if ((outfile = fopen(outname, "rb")) != NULL) {
                 fprintf(stderr, "  error:  %s exists; not overwriting\n",
                         outname);
-                fflush(stderr);
                 fclose(outfile);
                 free(outname);
                 return NOT_OVERWRITING_ERROR;
@@ -545,7 +530,6 @@ pngquant_error write_image(uch **row_pointers,const char *filename,const char *n
         }
         if ((outfile = fopen(outname, "wb")) == NULL) {
             fprintf(stderr, "  error:  cannot open %s for writing\n", outname);
-            fflush(stderr);
             free(outname);
             return CANT_WRITE_ERROR;
         }
@@ -554,7 +538,6 @@ pngquant_error write_image(uch **row_pointers,const char *filename,const char *n
 
     if (rwpng_write_image_init(outfile, &rwpng_info) != 0) {
         fprintf(stderr, "  rwpng_write_image_init() error\n");
-        fflush(stderr);
         if (rwpng_info.rgba_data)
             free(rwpng_info.rgba_data);
         if (rwpng_info.row_pointers)
@@ -613,7 +596,6 @@ pngquant_error read_image(const char *filename, int using_stdin)
 
     } else if ((infile = fopen(filename, "rb")) == NULL) {
         fprintf(stderr, "  error:  cannot open %s for reading\n", filename);
-        fflush(stderr);
         return READ_ERROR;
     }
 
@@ -634,7 +616,7 @@ pngquant_error read_image(const char *filename, int using_stdin)
     return rwpng_info.retval;
 }
 
-int histogram(acolorhist_vector *achv_p,rgb_pixel **input_pixels,int rows,int cols,int reqcolors,int verbose)
+int histogram(acolorhist_vector *achv_p,rgb_pixel **input_pixels,int rows,int cols,int reqcolors)
 {
    /*
     ** Step 2: attempt to make a histogram of the colors, unclustered.
@@ -644,10 +626,9 @@ int histogram(acolorhist_vector *achv_p,rgb_pixel **input_pixels,int rows,int co
     int ignorebits=0, colors = 0;
 
     for (; ;) {
-        if (verbose) {
-            fprintf(stderr, "  making histogram...");
-            fflush(stderr);
-        }
+
+        verbose_printf("  making histogram...");
+
         assert(rwpng_info.gamma > 0);
         *achv_p = pam_computeacolorhist(input_pixels, cols, rows, rwpng_info.gamma, MAXCOLORS, ignorebits, &colors);
         if (*achv_p != (acolorhist_vector) 0)
@@ -655,40 +636,31 @@ int histogram(acolorhist_vector *achv_p,rgb_pixel **input_pixels,int rows,int co
 
         ignorebits++;
 
-        if (verbose) {
-            fprintf(stderr, "too many colors!\n");
-            fprintf(stderr, "  scaling colors to improve clustering...\n");
-            fflush(stderr);
-        }
+        verbose_printf("too many colors!\n  scaling colors to improve clustering...\n");
     }
-    if (verbose) {
-        fprintf(stderr, "%d colors found\n", colors);
-        fflush(stderr);
-    }
+
+    verbose_printf("%d colors found\n", colors);
 
     return colors;
 }
 
-float modify_alpha(rgb_pixel **input_pixels,int rows,int cols,int ie_bug,int verbose)
+float modify_alpha(rgb_pixel **input_pixels,int rows,int cols,int ie_bug)
 {
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
 
-  float almost_opaque_val;
-  rgb_pixel *pP;
-  int col;
-  int row;
-  float min_opaque_val;
+    float almost_opaque_val;
+    rgb_pixel *pP;
+    int col;
+    int row;
+    float min_opaque_val;
 
-  if (ie_bug) {
+    if (ie_bug) {
         min_opaque_val = 0.93; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
         almost_opaque_val = min_opaque_val * 0.66;
 
-        if (verbose) {
-            fprintf(stderr, "  Working around IE6 bug by making image less transparent...\n");
-            fflush(stderr);
-        }
+        verbose_printf("  Working around IE6 bug by making image less transparent...\n");
     } else {
         min_opaque_val = almost_opaque_val = 1;
     }
@@ -724,7 +696,7 @@ float modify_alpha(rgb_pixel **input_pixels,int rows,int cols,int ie_bug,int ver
     return min_opaque_val;
 }
 
-pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
+pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug)
 {
     rgb_pixel **input_pixels;
     uch **row_pointers=NULL;
@@ -737,7 +709,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
     if (rwpng_info.retval) {
         fprintf(stderr, "  rwpng_read_image() error\n");
-        fflush(stderr);
         return rwpng_info.retval;
     }
 
@@ -748,21 +719,21 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     rows = rwpng_info.height;
     /* channels = rwpng_info.channels; */
 
-    min_opaque_val = modify_alpha(input_pixels,rows,cols,ie_bug,verbose);
+    min_opaque_val = modify_alpha(input_pixels,rows,cols,ie_bug);
     if (0==min_opaque_val) {
         return INTERNAL_LOGIC_ERROR;
     }
 
-    int colors = histogram(&achv,input_pixels,rows,cols,reqcolors,verbose);
+    int colors = histogram(&achv,input_pixels,rows,cols,reqcolors);
     int newcolors = MIN(colors, reqcolors);
 
     /*
     ** Step 3: apply median-cut to histogram, making the new acolormap.
     */
-    if (verbose && colors > reqcolors) {
-        fprintf(stderr, "  choosing %d colors...\n", newcolors);
-        fflush(stderr);
+    if (colors > reqcolors) {
+        verbose_printf("  choosing %d colors...\n", newcolors);
     }
+
     acolormap = mediancut(achv, colors, rows * cols, min_opaque_val, newcolors);
     pam_freeacolorhist(achv);
 
@@ -770,7 +741,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     qsort(acolormap, newcolors, sizeof(acolormap[0]), valuecompare);
 
     int remap[256];
-    if (set_palette(newcolors,verbose,remap,acolormap)) {
+    if (set_palette(newcolors,remap,acolormap)) {
         return INTERNAL_LOGIC_ERROR;
     }
 
@@ -787,7 +758,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     if (!rwpng_info.indexed_data || !row_pointers) {
         fprintf(stderr,
                 "  insufficient memory for indexed data and/or row pointers\n");
-        fflush(stderr);
+
         if (rwpng_info.row_pointers)
             free(rwpng_info.row_pointers);
         if (rwpng_info.rgba_data)
@@ -806,11 +777,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     ** Step 4: map the colors in the image to their closest match in the
     ** new colormap, and write 'em out.
     */
-    if (verbose) {
-        fprintf(stderr, "  mapping image to new colors...\n" );
-        fflush(stderr);
-    }
-
+    verbose_printf("  mapping image to new colors...\n" );
 
     if (remap_to_palette(floyd,min_opaque_val,ie_bug,input_pixels,rows,cols,row_pointers,newcolors,remap,acolormap)) {
         return OUT_OF_MEMORY_ERROR;

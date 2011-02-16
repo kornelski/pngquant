@@ -590,24 +590,12 @@ pngquant_error write_image(uch **row_pointers,const char *filename,const char *n
     return rwpng_info.retval;
 }
 
-pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
+pngquant_error read_image(const char *filename, int using_stdin)
 {
-    FILE *infile;
-    rgb_pixel **input_pixels;
-    rgb_pixel *pP;
-    int col;
-    uch **row_pointers=NULL;
-    int rows, cols;
-    float min_opaque_val, almost_opaque_val;
-    int ignorebits=0;
-    acolorhist_vector achv, acolormap=NULL;
-    int row;
-    int colors;
-    int newcolors = 0;
-
     /* can't do much if we don't have an input file...but don't reopen stdin */
 
-    if (using_stdin) {
+      FILE *infile;
+  if (using_stdin) {
 
 #if defined(MSDOS) || defined(FLEXOS) || defined(OS2) || defined(WIN32)
 #if (defined(__HIGHC__) && !defined(FLEXOS))
@@ -643,23 +631,57 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     if (!using_stdin)
         fclose(infile);
 
-    if (rwpng_info.retval) {
-        fprintf(stderr, "  rwpng_read_image() error\n");
+    return rwpng_info.retval;
+}
+
+int histogram(acolorhist_vector *achv_p,rgb_pixel **input_pixels,int rows,int cols,int reqcolors,int verbose)
+{
+   /*
+    ** Step 2: attempt to make a histogram of the colors, unclustered.
+    ** If at first we don't succeed, increase ignorebits to increase color
+    ** coherence and try again.
+    */
+    int ignorebits=0, colors = 0;
+
+    for (; ;) {
+        if (verbose) {
+            fprintf(stderr, "  making histogram...");
+            fflush(stderr);
+        }
+        assert(rwpng_info.gamma > 0);
+        *achv_p = pam_computeacolorhist(input_pixels, cols, rows, rwpng_info.gamma, MAXCOLORS, ignorebits, &colors);
+        if (*achv_p != (acolorhist_vector) 0)
+            break;
+
+        ignorebits++;
+
+        if (verbose) {
+            fprintf(stderr, "too many colors!\n");
+            fprintf(stderr, "  scaling colors to improve clustering...\n");
+            fflush(stderr);
+        }
+    }
+    if (verbose) {
+        fprintf(stderr, "%d colors found\n", colors);
         fflush(stderr);
-        return rwpng_info.retval;
     }
 
-    /* NOTE:  rgba_data and row_pointers are allocated but not freed in
-     *        rwpng_read_image() */
-    input_pixels = (rgb_pixel **)rwpng_info.row_pointers;
-    cols = rwpng_info.width;
-    rows = rwpng_info.height;
-    /* channels = rwpng_info.channels; */
+    return colors;
+}
 
+float modify_alpha(rgb_pixel **input_pixels,int rows,int cols,int ie_bug,int verbose)
+{
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
-    if (ie_bug) {
+
+  float almost_opaque_val;
+  rgb_pixel *pP;
+  int col;
+  int row;
+  float min_opaque_val;
+
+  if (ie_bug) {
         min_opaque_val = 0.93; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
         almost_opaque_val = min_opaque_val * 0.66;
 
@@ -680,7 +702,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
             if (pP->r != rgbcheck.r || pP->g != rgbcheck.g || pP->b != rgbcheck.b || pP->a != rgbcheck.a) {
                 fprintf(stderr, "Conversion error: expected %d,%d,%d,%d got %d,%d,%d,%d\n",
                         pP->r,pP->g,pP->b,pP->a, rgbcheck.r,rgbcheck.g,rgbcheck.b,rgbcheck.a);
-                return INTERNAL_LOGIC_ERROR;
+                return 0;
             }
 
             /* set all completely transparent colors to black */
@@ -699,34 +721,40 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         }
     }
 
-   /*
-    ** Step 2: attempt to make a histogram of the colors, unclustered.
-    ** If at first we don't succeed, increase ignorebits to increase color
-    ** coherence and try again.
-    */
-    for (; ;) {
-        if (verbose) {
-            fprintf(stderr, "  making histogram...");
-            fflush(stderr);
-        }
-        assert(rwpng_info.gamma > 0);
-        achv = pam_computeacolorhist(input_pixels, cols, rows, rwpng_info.gamma, MAXCOLORS, ignorebits, &colors);
-        if (achv != (acolorhist_vector) 0)
-            break;
+    return min_opaque_val;
+}
 
-        ignorebits++;
+pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int verbose, int using_stdin, int reqcolors, int ie_bug)
+{
+    rgb_pixel **input_pixels;
+    uch **row_pointers=NULL;
+    int rows, cols;
+    float min_opaque_val;
+    acolorhist_vector achv, acolormap=NULL;
+    int row;
 
-        if (verbose) {
-            fprintf(stderr, "too many colors!\n");
-            fprintf(stderr, "  scaling colors to improve clustering...\n");
-            fflush(stderr);
-        }
-    }
-    if (verbose) {
-        fprintf(stderr, "%d colors found\n", colors);
+    read_image(filename,using_stdin);
+
+    if (rwpng_info.retval) {
+        fprintf(stderr, "  rwpng_read_image() error\n");
         fflush(stderr);
+        return rwpng_info.retval;
     }
-    newcolors = MIN(colors, reqcolors);
+
+    /* NOTE:  rgba_data and row_pointers are allocated but not freed in
+     *        rwpng_read_image() */
+    input_pixels = (rgb_pixel **)rwpng_info.row_pointers;
+    cols = rwpng_info.width;
+    rows = rwpng_info.height;
+    /* channels = rwpng_info.channels; */
+
+    min_opaque_val = modify_alpha(input_pixels,rows,cols,ie_bug,verbose);
+    if (0==min_opaque_val) {
+        return INTERNAL_LOGIC_ERROR;
+    }
+
+    int colors = histogram(&achv,input_pixels,rows,cols,reqcolors,verbose);
+    int newcolors = MIN(colors, reqcolors);
 
     /*
     ** Step 3: apply median-cut to histogram, making the new acolormap.

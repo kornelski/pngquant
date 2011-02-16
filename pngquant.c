@@ -616,32 +616,30 @@ pngquant_error read_image(const char *filename, int using_stdin)
     return rwpng_info.retval;
 }
 
-int histogram(acolorhist_vector *achv_p,rgb_pixel **input_pixels,int rows,int cols,int reqcolors)
+acolorhist_vector histogram(double gamma, rgb_pixel **input_pixels,int rows,int cols,int reqcolors, int *colors)
 {
+    acolorhist_vector achv;
+    int ignorebits=0;
+    assert(gamma > 0); assert(colors);
+
    /*
     ** Step 2: attempt to make a histogram of the colors, unclustered.
     ** If at first we don't succeed, increase ignorebits to increase color
     ** coherence and try again.
     */
-    int ignorebits=0, colors = 0;
 
+    verbose_printf("  making histogram...");
     for (; ;) {
 
-        verbose_printf("  making histogram...");
-
-        assert(rwpng_info.gamma > 0);
-        *achv_p = pam_computeacolorhist(input_pixels, cols, rows, rwpng_info.gamma, MAXCOLORS, ignorebits, &colors);
-        if (*achv_p != (acolorhist_vector) 0)
-            break;
+        achv = pam_computeacolorhist(input_pixels, cols, rows, gamma, MAXCOLORS, ignorebits, colors);
+        if (achv) break;
 
         ignorebits++;
-
         verbose_printf("too many colors!\n  scaling colors to improve clustering...\n");
     }
 
-    verbose_printf("%d colors found\n", colors);
-
-    return colors;
+    verbose_printf("%d colors found\n", *colors);
+    return achv;
 }
 
 float modify_alpha(rgb_pixel **input_pixels,int rows,int cols,int ie_bug)
@@ -702,7 +700,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     uch **row_pointers=NULL;
     int rows, cols;
     float min_opaque_val;
-    acolorhist_vector achv, acolormap=NULL;
     int row;
 
     read_image(filename,using_stdin);
@@ -724,7 +721,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         return INTERNAL_LOGIC_ERROR;
     }
 
-    int colors = histogram(&achv,input_pixels,rows,cols,reqcolors);
+    int colors;
+    acolorhist_vector achv = histogram(rwpng_info.gamma,input_pixels,rows,cols,reqcolors,&colors);
     int newcolors = MIN(colors, reqcolors);
 
     /*
@@ -734,7 +732,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         verbose_printf("  choosing %d colors...\n", newcolors);
     }
 
-    acolormap = mediancut(achv, colors, rows * cols, min_opaque_val, newcolors);
+    acolorhist_vector acolormap = mediancut(achv, colors, rows * cols, min_opaque_val, newcolors);
     pam_freeacolorhist(achv);
 
     /* sort palette by (estimated) popularity */

@@ -66,8 +66,6 @@
 
 typedef unsigned char   uch;
 
-static mainprog_info rwpng_info;
-
 #define MAXCOLORS  (32767*8)
 
 /* #define REP_CENTER_BOX */
@@ -234,7 +232,7 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-int set_palette(int newcolors, int* remap, acolorhist_vector acolormap)
+int set_palette(mainprog_info *rwpng_info, int newcolors, int* remap, acolorhist_vector acolormap)
 {
     /*
     ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
@@ -244,16 +242,16 @@ int set_palette(int newcolors, int* remap, acolorhist_vector acolormap)
     int top_idx,bot_idx;
 
     if (newcolors <= 2)
-        rwpng_info.sample_depth = 1;
+        rwpng_info->sample_depth = 1;
     else if (newcolors <= 4)
-        rwpng_info.sample_depth = 2;
+        rwpng_info->sample_depth = 2;
     else if (newcolors <= 16)
-        rwpng_info.sample_depth = 4;
+        rwpng_info->sample_depth = 4;
     else
-        rwpng_info.sample_depth = 8;
+        rwpng_info->sample_depth = 8;
 
     verbose_printf("  writing %d-bit colormapped image\n",
-          rwpng_info.sample_depth);
+          rwpng_info->sample_depth);
 
     /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with
@@ -267,7 +265,7 @@ int set_palette(int newcolors, int* remap, acolorhist_vector acolormap)
 
     int x=0;
     for (top_idx = newcolors-1, bot_idx = 0;  x < newcolors;  ++x) {
-        rgb_pixel px = to_rgb(rwpng_info.gamma, acolormap[x].acolor);
+        rgb_pixel px = to_rgb(rwpng_info->gamma, acolormap[x].acolor);
 
         if (px.a == 255)
             remap[x] = top_idx--;
@@ -283,8 +281,8 @@ int set_palette(int newcolors, int* remap, acolorhist_vector acolormap)
         return INTERNAL_LOGIC_ERROR;
     }
 
-    rwpng_info.num_palette = newcolors;
-    rwpng_info.num_trans = bot_idx;
+    rwpng_info->num_palette = newcolors;
+    rwpng_info->num_trans = bot_idx;
 
     /* GRR TO DO:  if bot_idx == 0, check whether all RGB samples are gray
                    and if so, whether grayscale sample_depth would be same
@@ -296,28 +294,30 @@ int set_palette(int newcolors, int* remap, acolorhist_vector acolormap)
     */
 
     for (x = 0; x < newcolors; ++x) {
-        rgb_pixel px = to_rgb(rwpng_info.gamma, acolormap[x].acolor);
-        acolormap[x].acolor = to_f(rwpng_info.gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
+        rgb_pixel px = to_rgb(rwpng_info->gamma, acolormap[x].acolor);
+        acolormap[x].acolor = to_f(rwpng_info->gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
-        rwpng_info.palette[remap[x]].red   = px.r;
-        rwpng_info.palette[remap[x]].green = px.g;
-        rwpng_info.palette[remap[x]].blue  = px.b;
-        rwpng_info.trans[remap[x]]         = px.a;
+        rwpng_info->palette[remap[x]].red   = px.r;
+        rwpng_info->palette[remap[x]].green = px.g;
+        rwpng_info->palette[remap[x]].blue  = px.b;
+        rwpng_info->trans[remap[x]]         = px.a;
     }
 
     return 0;
 }
 
-int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **input_pixels, int rows, int cols, uch **row_pointers, int newcolors, int* remap, acolorhist_vector acolormap)
+int remap_to_palette(mainprog_info *input_image, mainprog_info *output_image, int floyd, double min_opaque_val, int ie_bug, int newcolors, int* remap, acolorhist_vector acolormap)
 {
-    int col;
     uch *pQ;
     rgb_pixel *pP;
     int ind=0;
     int limitcol;
     uch *outrow;
-    int row;
 
+    rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
+    uch **row_pointers = output_image->row_pointers;
+    int rows = input_image->height, cols = input_image->width;
+    double gamma = input_image->gamma;
 
     f_pixel *thiserr = NULL;
     f_pixel *nexterr = NULL;
@@ -331,7 +331,7 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
         nexterr = malloc((cols + 2) * sizeof(*thiserr));
         srandom(12345); /** deterministic dithering is better for comparing results */
 
-        for (col = 0; col < cols + 2; ++col) {
+        for (int col = 0; col < cols + 2; ++col) {
             const double rand_max = RAND_MAX;
             thiserr[col].r = ((double)random() - rand_max/2.0)/rand_max/255.0;
             thiserr[col].g = ((double)random() - rand_max/2.0)/rand_max/255.0;
@@ -340,13 +340,17 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
         }
         fs_direction = 1;
     }
-    for (row = 0; row < rows; ++row) {
+    for (int row = 0; row < rows; ++row) {
+        int col;
         outrow = row_pointers[row];
 
-        if (floyd)
-            for (col = 0; col < cols + 2; ++col)
+        if (floyd) {
+            for (col = 0; col < cols + 2; ++col) {
                 nexterr[col].r = nexterr[col].g =
                 nexterr[col].b = nexterr[col].a = 0;
+            }
+        }
+
         if ((!floyd) || fs_direction) {
             col = 0;
             limitcol = cols;
@@ -359,9 +363,8 @@ int remap_to_palette(int floyd, double min_opaque_val, int ie_bug, rgb_pixel **i
             pQ = &(outrow[col]);
         }
 
-
         do {
-            f_pixel px = to_f(rwpng_info.gamma, *pP);
+            f_pixel px = to_f(gamma, *pP);
 
             if (floyd) {
                 /* Use Floyd-Steinberg errors to adjust actual color. */
@@ -502,7 +505,7 @@ char *add_filename_extension(const char *filename, const char *newext)
     return outname;
 }
 
-pngquant_error write_image(uch **row_pointers,const char *filename,const char *newext,int force,int using_stdin)
+pngquant_error write_image(mainprog_info *output_image,const char *filename,const char *newext,int force,int using_stdin)
 {
     FILE *outfile;
     if (using_stdin) {
@@ -535,45 +538,25 @@ pngquant_error write_image(uch **row_pointers,const char *filename,const char *n
         free(outname);
     }
 
-    pngquant_error retval = rwpng_write_image_init(outfile, &rwpng_info);
+    pngquant_error retval = rwpng_write_image_init(outfile, output_image);
     if (retval) {
         fprintf(stderr, "  rwpng_write_image_init() error\n");
-        if (rwpng_info.rgba_data)
-            free(rwpng_info.rgba_data);
-        if (rwpng_info.row_pointers)
-            free(rwpng_info.row_pointers);
-        if (rwpng_info.indexed_data)
-            free(rwpng_info.indexed_data);
-        if (row_pointers)
-            free(row_pointers);
         if (!using_stdin)
             fclose(outfile);
         return retval;
     }
 
     /* write entire interlaced palette PNG */
-
-    rwpng_info.row_pointers = row_pointers;   /* now for OUTPUT data */
-    retval = rwpng_write_image_whole(&rwpng_info);
+    retval = rwpng_write_image_whole(output_image);
 
     if (!using_stdin)
         fclose(outfile);
 
     /* now we're done with the OUTPUT data and row_pointers, too */
-
-    if (rwpng_info.indexed_data) {
-        free(rwpng_info.indexed_data);
-        rwpng_info.indexed_data = NULL;
-    }
-    if (row_pointers) {
-        free(row_pointers);
-        rwpng_info.row_pointers = NULL;
-    }
-
     return retval;
 }
 
-pngquant_error read_image(const char *filename, int using_stdin)
+pngquant_error read_image(mainprog_info *input_image, const char *filename, int using_stdin)
 {
     /* can't do much if we don't have an input file...but don't reopen stdin */
 
@@ -608,7 +591,7 @@ pngquant_error read_image(const char *filename, int using_stdin)
      ** Step 1: read in the alpha-channel image.
     */
     /* GRR:  returns RGBA (4 channels), 8 bps */
-    pngquant_error retval = rwpng_read_image(infile, &rwpng_info);
+    pngquant_error retval = rwpng_read_image(infile, input_image);
 
     if (!using_stdin)
         fclose(infile);
@@ -616,10 +599,13 @@ pngquant_error read_image(const char *filename, int using_stdin)
     return retval;
 }
 
-acolorhist_vector histogram(double gamma, rgb_pixel **input_pixels,int rows,int cols,int reqcolors, int *colors)
+acolorhist_vector histogram(mainprog_info *input_image, int reqcolors, int *colors)
 {
     acolorhist_vector achv;
     int ignorebits=0;
+    rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
+    int cols = input_image->width, rows = input_image->height;
+    double gamma = input_image->gamma;
     assert(gamma > 0); assert(colors);
 
    /*
@@ -642,17 +628,17 @@ acolorhist_vector histogram(double gamma, rgb_pixel **input_pixels,int rows,int 
     return achv;
 }
 
-float modify_alpha(rgb_pixel **input_pixels,int rows,int cols,int ie_bug)
+float modify_alpha(mainprog_info *input_image, int ie_bug)
 {
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
 
-    float almost_opaque_val;
+    rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     rgb_pixel *pP;
-    int col;
-    int row;
-    float min_opaque_val;
+    int rows= input_image->height, cols = input_image->width;
+    double gamma = input_image->gamma;
+    float min_opaque_val, almost_opaque_val;
 
     if (ie_bug) {
         min_opaque_val = 0.93; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
@@ -663,11 +649,12 @@ float modify_alpha(rgb_pixel **input_pixels,int rows,int cols,int ie_bug)
         min_opaque_val = almost_opaque_val = 1;
     }
 
-    for (row = 0; row < rows; ++row) {
-        for (col = 0, pP = input_pixels[row]; col < cols; ++col, ++pP) {
+    for(int row = 0; row < rows; ++row) {
+        pP = input_pixels[row];
+        for(int col = 0; col < cols; ++col, ++pP) {
 
-            f_pixel px = to_f(rwpng_info.gamma, *pP);
-            rgb_pixel rgbcheck = to_rgb(rwpng_info.gamma, px);
+            f_pixel px = to_f(gamma, *pP);
+            rgb_pixel rgbcheck = to_rgb(gamma, px);
 
             if (pP->r != rgbcheck.r || pP->g != rgbcheck.g || pP->b != rgbcheck.b || pP->a != rgbcheck.a) {
                 fprintf(stderr, "Conversion error: expected %d,%d,%d,%d got %d,%d,%d,%d\n",
@@ -686,7 +673,7 @@ float modify_alpha(rgb_pixel **input_pixels,int rows,int cols,int ie_bug)
                 double al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
                 if (al > 1) al = 1;
                 px.a = al;
-                pP->a = to_rgb(rwpng_info.gamma, px).a;
+                pP->a = to_rgb(gamma, px).a;
             }
         }
     }
@@ -696,33 +683,23 @@ float modify_alpha(rgb_pixel **input_pixels,int rows,int cols,int ie_bug)
 
 pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug)
 {
-    rgb_pixel **input_pixels;
-    uch **row_pointers=NULL;
-    int rows, cols;
+    mainprog_info input_image = {0};
     float min_opaque_val;
-    int row;
 
-    pngquant_error retval = read_image(filename,using_stdin);
+    pngquant_error retval = read_image(&input_image, filename,using_stdin);
 
     if (retval) {
         fprintf(stderr, "  rwpng_read_image() error\n");
         return retval;
     }
 
-    /* NOTE:  rgba_data and row_pointers are allocated but not freed in
-     *        rwpng_read_image() */
-    input_pixels = (rgb_pixel **)rwpng_info.row_pointers;
-    cols = rwpng_info.width;
-    rows = rwpng_info.height;
-    /* channels = rwpng_info.channels; */
-
-    min_opaque_val = modify_alpha(input_pixels,rows,cols,ie_bug);
+    min_opaque_val = modify_alpha(&input_image,ie_bug);
     if (0==min_opaque_val) {
         return INTERNAL_LOGIC_ERROR;
     }
 
     int colors;
-    acolorhist_vector achv = histogram(rwpng_info.gamma,input_pixels,rows,cols,reqcolors,&colors);
+    acolorhist_vector achv = histogram(&input_image,reqcolors,&colors);
     int newcolors = MIN(colors, reqcolors);
 
     /*
@@ -732,14 +709,19 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         verbose_printf("  choosing %d colors...\n", newcolors);
     }
 
-    acolorhist_vector acolormap = mediancut(achv, colors, rows * cols, min_opaque_val, newcolors);
+    acolorhist_vector acolormap = mediancut(achv, colors, input_image.width * input_image.height, min_opaque_val, newcolors);
     pam_freeacolorhist(achv);
 
     /* sort palette by (estimated) popularity */
     qsort(acolormap, newcolors, sizeof(acolormap[0]), valuecompare);
 
+    mainprog_info output_image = {0};
+    output_image.width = input_image.width;
+    output_image.height = input_image.height;
+    output_image.gamma = input_image.gamma;
+
     int remap[256];
-    if (set_palette(newcolors,remap,acolormap)) {
+    if (set_palette(&output_image, newcolors, remap, acolormap)) {
         return INTERNAL_LOGIC_ERROR;
     }
 
@@ -750,24 +732,24 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     ** is still in use via apixels (INPUT data).
     */
 
-    rwpng_info.indexed_data = malloc(rows * cols);
-    row_pointers = malloc(rows * sizeof(row_pointers[0]));
+    output_image.indexed_data = malloc(output_image.height * output_image.width);
+    output_image.row_pointers = malloc(output_image.height * sizeof(output_image.row_pointers[0]));
 
-    if (!rwpng_info.indexed_data || !row_pointers) {
+    if (!output_image.indexed_data || !output_image.row_pointers) {
         fprintf(stderr,
                 "  insufficient memory for indexed data and/or row pointers\n");
 
-        if (rwpng_info.row_pointers)
-            free(rwpng_info.row_pointers);
-        if (rwpng_info.rgba_data)
-            free(rwpng_info.rgba_data);
-        if (rwpng_info.indexed_data)
-            free(rwpng_info.indexed_data);
+        if (input_image.row_pointers)
+            free(input_image.row_pointers);
+        if (input_image.rgba_data)
+            free(input_image.rgba_data);
+        if (input_image.indexed_data)
+            free(input_image.indexed_data);
         return OUT_OF_MEMORY_ERROR;
     }
 
-    for (row = 0;  row < rows;  ++row) {
-        row_pointers[row] = rwpng_info.indexed_data + row*cols;
+    for (int row = 0;  row < output_image.height;  ++row) {
+        output_image.row_pointers[row] = output_image.indexed_data + row*output_image.width;
     }
 
 
@@ -777,23 +759,31 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     */
     verbose_printf("  mapping image to new colors...\n" );
 
-    if (remap_to_palette(floyd,min_opaque_val,ie_bug,input_pixels,rows,cols,row_pointers,newcolors,remap,acolormap)) {
+    if (remap_to_palette(&input_image,&output_image,floyd,min_opaque_val,ie_bug,newcolors,remap,acolormap)) {
         return OUT_OF_MEMORY_ERROR;
     }
 
     /* now we're done with the INPUT data and row_pointers, so free 'em */
 
-    if (rwpng_info.rgba_data) {
-        free(rwpng_info.rgba_data);
-        rwpng_info.rgba_data = NULL;
+    if (input_image.rgba_data) {
+        free(input_image.rgba_data);
     }
-    if (rwpng_info.row_pointers) {
-        free(rwpng_info.row_pointers);
-        rwpng_info.row_pointers = NULL;
+    if (input_image.row_pointers) {
+        free(input_image.row_pointers);
     }
 
-    return write_image(row_pointers,filename,newext,force,using_stdin);
+    retval = write_image(&output_image,filename,newext,force,using_stdin);
+
+
+    if (output_image.indexed_data) {
+        free(output_image.indexed_data);
     }
+    if (output_image.row_pointers) {
+        free(output_image.row_pointers);
+    }
+
+    return retval;
+}
 
 
 

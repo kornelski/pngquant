@@ -69,37 +69,47 @@ typedef enum {
     LIBPNG_WRITE_WHOLE_ERROR = 45,
 } pngquant_error;
 
-typedef struct _mainprog_info {
+typedef struct {
+    jmp_buf jmpbuf;		/* read/write */
+    double gamma;
+    void *png_ptr;		/* read/write */
+    void *info_ptr;		/* read/write */
+    int interlaced;		/* read/write */
+    png_uint_32 width;      /* read/write */
+    png_uint_32 height;     /* read/write */
+    png_uint_32 rowbytes;   /* read */
+    unsigned char *rgba_data;   /* read */
+    unsigned char **row_pointers;   /* read/write */
+} read_info;
+
+typedef struct {
+    jmp_buf jmpbuf;		/* read/write */
     double gamma;
     void *png_ptr;		/* read/write */
     void *info_ptr;		/* read/write */
     rwpng_color palette[256];	/* write */
-    jmp_buf jmpbuf;		/* read/write */
     int interlaced;		/* read/write */
-    int channels;		/* read (currently not used) */
     int sample_depth;		/* write */
     int num_palette;		/* write */
     int num_trans;		/* write */
     png_uint_32 width;      /* read/write */
     png_uint_32 height;     /* read/write */
-    png_uint_32 rowbytes;   /* read */
     unsigned char trans[256];   /* write */
-    unsigned char *rgba_data;   /* read */
     unsigned char *indexed_data;    /* write */
     unsigned char **row_pointers;   /* read/write */
-} mainprog_info;
+} write_info;
 
 
 /* prototypes for public functions in rwpng.c */
 
 void rwpng_version_info(void);
 
-int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr);
+int rwpng_read_image(FILE *infile, read_info *mainprog_ptr);
 
-int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr);
+int rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr);
 
-int rwpng_write_image_whole(mainprog_info *mainprog_ptr);
+int rwpng_write_image_whole(write_info *mainprog_ptr);
 
-int rwpng_write_image_row(mainprog_info *mainprog_ptr);
+int rwpng_write_image_row(write_info *mainprog_ptr);
 
-int rwpng_write_image_finish(mainprog_info *mainprog_ptr);
+int rwpng_write_image_finish(write_info *mainprog_ptr);

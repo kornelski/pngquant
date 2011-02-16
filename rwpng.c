@@ -58,7 +58,7 @@ void rwpng_version_info(void)
     26 = wrong PNG color type (no alpha channel)
  */
 
-int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
+int rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
 {
     png_structp  png_ptr = NULL;
     png_infop    info_ptr = NULL;
@@ -170,7 +170,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
     png_read_update_info(png_ptr, info_ptr);
 
     mainprog_ptr->rowbytes = rowbytes = png_get_rowbytes(png_ptr, info_ptr);
-    mainprog_ptr->channels = (int)png_get_channels(png_ptr, info_ptr);
+    //mainprog_ptr->channels = (int)png_get_channels(png_ptr, info_ptr);
 
     if ((mainprog_ptr->rgba_data = malloc(rowbytes*mainprog_ptr->height)) == NULL) {
         fprintf(stderr, "pngquant readpng:  unable to allocate image data\n");
@@ -222,7 +222,7 @@ int rwpng_read_image(FILE *infile, mainprog_info *mainprog_ptr)
     35 = libpng error (via longjmp())
  */
 
-int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
+int rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
 {
     png_structp png_ptr;       /* note:  temporary variables! */
     png_infop info_ptr;
@@ -395,7 +395,7 @@ int rwpng_write_image_init(FILE *outfile, mainprog_info *mainprog_ptr)
 
 /* returns 0 for success, 45 for libpng (longjmp) problem */
 
-int rwpng_write_image_whole(mainprog_info *mainprog_ptr)
+int rwpng_write_image_whole(write_info *mainprog_ptr)
 {
     png_structp png_ptr = (png_structp)mainprog_ptr->png_ptr;
     png_infop info_ptr = (png_infop)mainprog_ptr->info_ptr;
@@ -437,7 +437,7 @@ int rwpng_write_image_whole(mainprog_info *mainprog_ptr)
 /* this routine is called only for non-interlaced images */
 /* returns 0 if succeeds, 55 if libpng problem */
 
-int rwpng_write_image_row(mainprog_info *mainprog_ptr)
+int rwpng_write_image_row(write_info *mainprog_ptr)
 {
     png_structp png_ptr = (png_structp)mainprog_ptr->png_ptr;
     png_infop info_ptr = (png_infop)mainprog_ptr->info_ptr;
@@ -468,7 +468,7 @@ int rwpng_write_image_row(mainprog_info *mainprog_ptr)
 /* this routine is called only after rwpng_write_image_row() */
 /* returns 0 if succeeds, 65 if libpng problem */
 
-int rwpng_write_image_finish(mainprog_info *mainprog_ptr)
+int rwpng_write_image_finish(write_info *mainprog_ptr)
 {
     png_structp png_ptr = (png_structp)mainprog_ptr->png_ptr;
     png_infop info_ptr = (png_infop)mainprog_ptr->info_ptr;
@@ -502,7 +502,7 @@ int rwpng_write_image_finish(mainprog_info *mainprog_ptr)
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg)
 {
-    mainprog_info  *mainprog_ptr;
+    write_info  *mainprog_ptr;
 
     /* This function, aside from the extra step of retrieving the "error
      * pointer" (below) and the fact that it exists within the application

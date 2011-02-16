@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-int set_palette(mainprog_info *rwpng_info, int newcolors, int* remap, acolorhist_vector acolormap)
+int set_palette(write_info *rwpng_info, int newcolors, int* remap, acolorhist_vector acolormap)
 {
     /*
     ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
@@ -306,7 +306,7 @@ int set_palette(mainprog_info *rwpng_info, int newcolors, int* remap, acolorhist
     return 0;
 }
 
-int remap_to_palette(mainprog_info *input_image, mainprog_info *output_image, int floyd, double min_opaque_val, int ie_bug, int newcolors, int* remap, acolorhist_vector acolormap)
+int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, double min_opaque_val, int ie_bug, int newcolors, int* remap, acolorhist_vector acolormap)
 {
     uch *pQ;
     rgb_pixel *pP;
@@ -505,7 +505,7 @@ char *add_filename_extension(const char *filename, const char *newext)
     return outname;
 }
 
-pngquant_error write_image(mainprog_info *output_image,const char *filename,const char *newext,int force,int using_stdin)
+pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin)
 {
     FILE *outfile;
     if (using_stdin) {
@@ -556,7 +556,7 @@ pngquant_error write_image(mainprog_info *output_image,const char *filename,cons
     return retval;
 }
 
-pngquant_error read_image(mainprog_info *input_image, const char *filename, int using_stdin)
+pngquant_error read_image(read_info *input_image, const char *filename, int using_stdin)
 {
     /* can't do much if we don't have an input file...but don't reopen stdin */
 
@@ -599,7 +599,7 @@ pngquant_error read_image(mainprog_info *input_image, const char *filename, int 
     return retval;
 }
 
-acolorhist_vector histogram(mainprog_info *input_image, int reqcolors, int *colors)
+acolorhist_vector histogram(read_info *input_image, int reqcolors, int *colors)
 {
     acolorhist_vector achv;
     int ignorebits=0;
@@ -628,7 +628,7 @@ acolorhist_vector histogram(mainprog_info *input_image, int reqcolors, int *colo
     return achv;
 }
 
-float modify_alpha(mainprog_info *input_image, int ie_bug)
+float modify_alpha(read_info *input_image, int ie_bug)
 {
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
@@ -683,7 +683,7 @@ float modify_alpha(mainprog_info *input_image, int ie_bug)
 
 pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug)
 {
-    mainprog_info input_image = {0};
+    read_info input_image = {0};
     float min_opaque_val;
 
     pngquant_error retval = read_image(&input_image, filename,using_stdin);
@@ -715,7 +715,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     /* sort palette by (estimated) popularity */
     qsort(acolormap, newcolors, sizeof(acolormap[0]), valuecompare);
 
-    mainprog_info output_image = {0};
+    write_info output_image = {0};
     output_image.width = input_image.width;
     output_image.height = input_image.height;
     output_image.gamma = input_image.gamma;
@@ -736,15 +736,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     output_image.row_pointers = malloc(output_image.height * sizeof(output_image.row_pointers[0]));
 
     if (!output_image.indexed_data || !output_image.row_pointers) {
-        fprintf(stderr,
-                "  insufficient memory for indexed data and/or row pointers\n");
-
-        if (input_image.row_pointers)
-            free(input_image.row_pointers);
-        if (input_image.rgba_data)
-            free(input_image.rgba_data);
-        if (input_image.indexed_data)
-            free(input_image.indexed_data);
+        fprintf(stderr, "  insufficient memory for indexed data and/or row pointers\n");
         return OUT_OF_MEMORY_ERROR;
     }
 

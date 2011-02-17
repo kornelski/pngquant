@@ -81,7 +81,7 @@ struct box {
 
 static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug);
 
-static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, double min_opaque_val, int newcolors);
+static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val, int reqcolors, int *newcolors);
 static int redcompare (const void *ch1, const void *ch2);
 static int greencompare (const void *ch1, const void *ch2);
 static int bluecompare (const void *ch1, const void *ch2);
@@ -234,15 +234,16 @@ int main(int argc, char *argv[])
 
 int set_palette(write_info *output_image, int newcolors, int* remap, acolorhist_vector acolormap)
 {
+    assert(remap); assert(acolormap); assert(output_image);
+
     /*
     ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
     ** number of colors that will be used in the output image.
     */
 
-    int top_idx,bot_idx;
+    int top_idx, bot_idx;
 
-    verbose_printf("  writing %d-color image\n",
-          newcolors);
+    verbose_printf("  writing %d-color image\n", newcolors);
 
     /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with
@@ -689,19 +690,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         return INTERNAL_LOGIC_ERROR;
     }
 
-    int colors;
-    acolorhist_vector achv = histogram(&input_image,reqcolors,&colors);
-    int newcolors = MIN(colors, reqcolors);
-
-    /*
-    ** Step 3: apply median-cut to histogram, making the new acolormap.
-    */
-    if (colors > reqcolors) {
-        verbose_printf("  choosing %d colors...\n", newcolors);
-    }
-
-    acolorhist_vector acolormap = mediancut(achv, colors, input_image.width * input_image.height, min_opaque_val, newcolors);
-    pam_freeacolorhist(achv);
+    int newcolors;
+    acolorhist_vector acolormap = mediancut(&input_image, min_opaque_val, reqcolors, &newcolors);
 
     /* sort palette by (estimated) popularity */
     qsort(acolormap, newcolors, sizeof(acolormap[0]), valuecompare);
@@ -777,15 +767,22 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
 static f_pixel background;
 
-static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, double min_opaque_val, int newcolors)
+static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val, int reqcolors, int *newcolors_p)
 {
-    acolorhist_vector acolormap;
-    box_vector bv;
-    int bi, i;
-    int boxes;
+    int colors;
+    acolorhist_vector achv = histogram(input_image,reqcolors,&colors);
 
-    bv = malloc(sizeof(struct box) * newcolors);
-    acolormap = calloc(newcolors, sizeof(struct acolorhist_item));
+    /*
+     ** Step 3: apply median-cut to histogram, making the new acolormap.
+     */
+    if (colors > reqcolors) {
+        verbose_printf("  choosing %d colors...\n", reqcolors);
+    }
+
+    int newcolors = *newcolors_p = MIN(colors, reqcolors);
+
+    box_vector bv = malloc(sizeof(struct box) * newcolors);
+    acolorhist_vector acolormap = calloc(newcolors, sizeof(struct acolorhist_item));
     if (!bv || !acolormap) {
         return 0;
     }
@@ -795,14 +792,14 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
     */
     bv[0].ind = 0;
     bv[0].colors = colors;
-    bv[0].sum = sum;
-    boxes = 1;
+    bv[0].sum = input_image->width * input_image->height;
+    int boxes = 1;
 
     /*
     ** Main loop: split boxes until we have enough.
     */
     while (boxes < newcolors) {
-        int indx, clrs;
+        int bi, indx, clrs;
         int sm;
         double minr, maxr, ming, mina, maxg, minb, maxb, maxa, v;
         int halfsum, lowersum;
@@ -833,7 +830,7 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
         minb = maxb = achv[indx].acolor.b;
         mina = maxa = achv[indx].acolor.a;
 
-        for (i = 0; i < clrs; ++i) {
+        for (int i = 0; i < clrs; ++i) {
             v = achv[indx + i].acolor.a;
             if (v < mina) mina = v;
             if (v > maxa) maxa = v;
@@ -881,6 +878,7 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
         */
         lowersum = achv[indx].value;
         halfsum = sm / 2;
+        int i;
         for (i = 1; i < clrs - 1; ++i) {
             if (lowersum >= halfsum)
                 break;
@@ -909,7 +907,7 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
     ** method is used by switching the commenting on the REP_ defines at
     ** the beginning of this source file.
     */
-    for (bi = 0; bi < boxes; ++bi) {
+    for (int bi = 0; bi < boxes; ++bi) {
 #ifdef REP_CENTER_BOX
         acolormap[bi].acolor = centerbox(bv[bi].ind, bv[bi].colors);
 #endif /*REP_CENTER_BOX*/
@@ -925,6 +923,8 @@ static acolorhist_vector mediancut(acolorhist_vector achv, int colors, int sum, 
             acolormap[bi].value += achv[bv[bi].ind + i].value;
         }
     }
+
+    pam_freeacolorhist(achv);
 
     /*
     ** All done.

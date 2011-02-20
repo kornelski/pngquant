@@ -494,20 +494,23 @@ char *add_filename_extension(const char *filename, const char *newext)
     return outname;
 }
 
+static void set_binary_mode(FILE *fp)
+{
+#if defined(MSDOS) || defined(FLEXOS) || defined(OS2) || defined(WIN32)
+#if (defined(__HIGHC__) && !defined(FLEXOS))
+    setmode(fp, _BINARY);
+#else
+    setmode(fp == stdout ? 1 : 0, O_BINARY);
+#endif
+#endif
+}
+
 pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin)
 {
     FILE *outfile;
     if (using_stdin) {
-
-#if defined(MSDOS) || defined(FLEXOS) || defined(OS2) || defined(WIN32)
-#if (defined(__HIGHC__) && !defined(FLEXOS))
-        setmode(stdout, _BINARY);
-#else
-        setmode(1, O_BINARY);
-#endif
-#endif
+        set_binary_mode(stdout);
         outfile = stdout;   /* GRR:  see comment above about fdopen() */
-
     } else {
         char *outname = add_filename_extension(filename,newext);
 
@@ -542,49 +545,6 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
         fclose(outfile);
 
     /* now we're done with the OUTPUT data and row_pointers, too */
-    return retval;
-}
-
-pngquant_error read_image(read_info *input_image, const char *filename, int using_stdin)
-{
-    /* can't do much if we don't have an input file...but don't reopen stdin */
-
-      FILE *infile;
-  if (using_stdin) {
-
-#if defined(MSDOS) || defined(FLEXOS) || defined(OS2) || defined(WIN32)
-#if (defined(__HIGHC__) && !defined(FLEXOS))
-        setmode(stdin, _BINARY);
-#else
-        setmode(0, O_BINARY);
-#endif
-#endif
-        /* GRR:  Reportedly "some buggy C libraries require BOTH the setmode()
-         *       call AND fdopen() in binary mode," but it's not clear which
-         *       ones or that any of them are still in use as of 2000.  Until
-         *       someone reports a specific problem, we're skipping the fdopen
-         *       part...  */
-        infile = stdin;
-
-    } else if ((infile = fopen(filename, "rb")) == NULL) {
-        fprintf(stderr, "  error:  cannot open %s for reading\n", filename);
-        return READ_ERROR;
-    }
-
-
-    /* build the output filename from the input name by inserting "-fs8" or
-     * "-or8" before the ".png" extension (or by appending that plus ".png" if
-     * there isn't any extension), then make sure it doesn't exist already */
-
-    /*
-     ** Step 1: read in the alpha-channel image.
-    */
-    /* GRR:  returns RGBA (4 channels), 8 bps */
-    pngquant_error retval = rwpng_read_image(infile, input_image);
-
-    if (!using_stdin)
-        fclose(infile);
-
     return retval;
 }
 
@@ -675,7 +635,28 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     read_info input_image = {0};
     float min_opaque_val;
 
-    pngquant_error retval = read_image(&input_image, filename,using_stdin);
+    FILE *infile;
+
+    if (using_stdin) {
+        set_binary_mode(stdin);
+        infile = stdin;
+    } else if ((infile = fopen(filename, "rb")) == NULL) {
+        fprintf(stderr, "  error:  cannot open %s for reading\n", filename);
+        return READ_ERROR;
+    }
+
+    /* build the output filename from the input name by inserting "-fs8" or
+     * "-or8" before the ".png" extension (or by appending that plus ".png" if
+     * there isn't any extension), then make sure it doesn't exist already */
+
+    /*
+     ** Step 1: read in the alpha-channel image.
+     */
+    /* GRR:  returns RGBA (4 channels), 8 bps */
+    pngquant_error retval = rwpng_read_image(infile, &input_image);
+
+    if (!using_stdin)
+        fclose(infile);
 
     if (retval) {
         fprintf(stderr, "  rwpng_read_image() error\n");

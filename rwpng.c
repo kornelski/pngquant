@@ -70,7 +70,10 @@ int rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
     /* first do a quick check that the file really is a PNG image; could
      * have used slightly more general png_sig_cmp() function instead */
 
-    fread(sig, 1, 8, infile);
+    if (!fread(sig, 8, 1, infile)) {
+        return READ_ERROR;
+    }
+
     if (png_sig_cmp(sig, 0, 8)) {
         return BAD_SIGNATURE_ERROR;   /* bad signature */
     }

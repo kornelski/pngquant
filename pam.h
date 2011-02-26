@@ -24,14 +24,20 @@ typedef struct {
     float r, g, b, a;
 } f_pixel;
 
+/*
+ Converts 8-bit RGB to linear RGB premultiplied by alpha.
+ Premultiplied color space is much better for blending of semitransparent colors.
+
+ RGB colors use slighly odd range from 1/256 to 1, which avoids rounding error created by /255 division.
+ */
 inline static f_pixel to_f(double gamma, rgb_pixel px)
 {
-    double r = pow((1.0+px.r)/256.0, 1.0/gamma), // Division by 255 creates rounding errors
+    double r = pow((1.0+px.r)/256.0, 1.0/gamma),
            g = pow((1.0+px.g)/256.0, 1.0/gamma),
            b = pow((1.0+px.b)/256.0, 1.0/gamma),
            a = (1+px.a)/256.0;
 
-    return (f_pixel){r,g,b,a};
+    return (f_pixel){r*a,g*a,b*a,a};
 }
 
 inline static rgb_pixel to_rgb(double gamma, f_pixel px)
@@ -43,9 +49,9 @@ inline static rgb_pixel to_rgb(double gamma, f_pixel px)
     double r,g,b,a;
 
     // 257, because numbers are in range 1..256.9999… rounded down
-    r = pow(px.r, gamma)*257.0 - 1.0;
-    g = pow(px.g, gamma)*257.0 - 1.0;
-    b = pow(px.b, gamma)*257.0 - 1.0;
+    r = pow(px.r/px.a, gamma)*257.0 - 1.0;
+    g = pow(px.g/px.a, gamma)*257.0 - 1.0;
+    b = pow(px.b/px.a, gamma)*257.0 - 1.0;
     a = px.a*257.0 - 1.0;
 
     return (rgb_pixel){

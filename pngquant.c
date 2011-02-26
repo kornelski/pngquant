@@ -743,7 +743,6 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 ** Display," SIGGRAPH 1982 Proceedings, page 297.
 */
 
-static f_pixel background;
 
 static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val, int reqcolors, int *newcolors_p)
 {
@@ -800,7 +799,7 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
 
         /* colors are blended with background color, to prevent transparent colors from widening range unneccesarily */
         /* background is global - used when sorting too */
-        background = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
+        f_pixel background = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 
         minr = maxr = achv[indx].acolor.r;
         ming = maxg = achv[indx].acolor.g;
@@ -814,13 +813,13 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
 
             /* linear blending makes it too obsessed with accurate alpha, but the optimum unfortunately seems to depend on image */
             float a = achv[indx + i].acolor.a;
-            v = (achv[indx + i].acolor.r * a + (1.0f-a) * background.r);
+            v = (achv[indx + i].acolor.r + (1.0f-a) * background.r);
             if (v < minr) minr = v;
             if (v > maxr) maxr = v;
-            v = (achv[indx + i].acolor.g * a + (1.0f-a) * background.g);
+            v = (achv[indx + i].acolor.g + (1.0f-a) * background.g);
             if (v < ming) ming = v;
             if (v > maxg) maxg = v;
-            v = (achv[indx + i].acolor.b * a + (1.0f-a) * background.b);
+            v = (achv[indx + i].acolor.b + (1.0f-a) * background.b);
             if (v < minb) minb = v;
             if (v > maxb) maxb = v;
 

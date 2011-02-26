@@ -901,8 +901,8 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
 
 static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val)
 {
-    double r = 0, g = 0, b = 0, a = 0, sum = 0, colorsum = 0;
-    double maxa = 0;
+    float r = 0, g = 0, b = 0, a = 0, sum = 0;
+    float maxa = 0;
     int i;
 
     for (i = 0; i < clrs; ++i) {
@@ -919,28 +919,25 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double 
         tmp = (0.5f - achv[indx + i].acolor.b);
         weight += tmp*tmp;
 
+        weight *= achv[indx + i].value;
+        sum += weight;
+
+        r += achv[indx + i].acolor.r * weight;
+        g += achv[indx + i].acolor.g * weight;
+        b += achv[indx + i].acolor.b * weight;
+        a += achv[indx + i].acolor.a * weight;
+
         /* find if there are opaque colors, in case we're supposed to preserve opacity exactly (ie_bug) */
         if (achv[indx + i].acolor.a > maxa) maxa = achv[indx + i].acolor.a;
-
-        a += achv[indx + i].acolor.a * achv[indx + i].value * weight;
-        sum += achv[indx + i].value * weight;
-
-        /* blend colors proportionally to their alpha */
-        weight *= 1.0+colorimportance(achv[indx + i].acolor.a);
-
-        r += achv[indx + i].acolor.r*achv[indx + i].acolor.a * achv[indx + i].value * weight;
-        g += achv[indx + i].acolor.g*achv[indx + i].acolor.a * achv[indx + i].value * weight;
-        b += achv[indx + i].acolor.b*achv[indx + i].acolor.a * achv[indx + i].value * weight;
-        colorsum += achv[indx + i].value * weight;
     }
 
+    /* Colors are in premultiplied alpha colorspace, so they'll blend OK
+       even if different opacities were mixed together */
     if (!sum) sum=1;
     a /= sum;
-
-    if (!colorsum) colorsum=1;
-    r /= colorsum*a;
-    g /= colorsum*a;
-    b /= colorsum*a;
+    r /= sum;
+    g /= sum;
+    b /= sum;
 
 
     /** if there was at least one completely opaque color, "round" final color to opaque */

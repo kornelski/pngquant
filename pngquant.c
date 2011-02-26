@@ -68,9 +68,6 @@ typedef unsigned char   uch;
 
 #define MAXCOLORS  (1<<20)
 
-/* #define REP_CENTER_BOX */
-/* #define REP_AVERAGE_COLORS */
-#define REP_AVERAGE_PIXELS
 
 typedef struct box *box_vector;
 struct box {
@@ -802,7 +799,6 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
         int bi, indx, clrs;
         int sm;
         double minr, maxr, ming, mina, maxg, minb, maxb, maxa, v;
-        int halfsum, lowersum;
 
         /*
         ** Find the first splittable box.
@@ -876,22 +872,21 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
         ** Now find the median based on the counts, so that about half the
         ** pixels (not colors, pixels) are in each subdivision.
         */
-        lowersum = achv[indx].value;
-        halfsum = sm / 2;
-        int i;
-        for (i = 1; i < clrs - 1; ++i) {
+        int halfsum = sm / 2, lowersum = achv[indx].value;
+        int break_at;
+        for (break_at = 1; break_at < clrs - 1; ++break_at) {
             if (lowersum >= halfsum)
                 break;
-            lowersum += achv[indx + i].value;
+            lowersum += achv[indx + break_at].value;
         }
 
         /*
         ** Split the box, and sort to bring the biggest boxes to the top.
         */
-        bv[bi].colors = i;
+        bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
-        bv[boxes].ind = indx + i;
-        bv[boxes].colors = clrs - i;
+        bv[boxes].ind = indx + break_at;
+        bv[boxes].colors = clrs - break_at;
         bv[boxes].sum = sm - lowersum;
         ++boxes;
         qsort(bv, boxes, sizeof(struct box), sumcompare);
@@ -908,15 +903,7 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
     ** the beginning of this source file.
     */
     for (int bi = 0; bi < boxes; ++bi) {
-#ifdef REP_CENTER_BOX
-        acolormap[bi].acolor = centerbox(bv[bi].ind, bv[bi].colors);
-#endif /*REP_CENTER_BOX*/
-#ifdef REP_AVERAGE_COLORS
-        acolormap[bi].acolor = averagecolors(bv[bi].ind, bv[bi].colors);
-#endif /*REP_AVERAGE_COLORS*/
-#ifdef REP_AVERAGE_PIXELS
         acolormap[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
-#endif /*REP_AVERAGE_PIXELS*/
 
         /* store total color popularity */
         for(int i=0; i < bv[bi].colors; i++) {
@@ -930,52 +917,6 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
     ** All done.
     */
     return acolormap;
-}
-
-static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv)
-{
-    double minr, maxr, ming, maxg, minb, maxb, mina, maxa, v;
-
-    minr = maxr = achv[indx].acolor.r;
-    ming = maxg = achv[indx].acolor.g;
-    minb = maxb = achv[indx].acolor.b;
-    mina = maxa = achv[indx].acolor.a;
-    for (int i = 1; i < clrs; ++i) {
-        v = achv[indx + i].acolor.r;
-        minr = MIN(minr, v);
-        maxr = MAX(maxr, v);
-        v = achv[indx + i].acolor.g;
-        ming = MIN(ming, v);
-        maxg = MAX(maxg, v);
-        v = achv[indx + i].acolor.b;
-        minb = MIN(minb, v);
-        maxb = MAX(maxb, v);
-        v = achv[indx + i].acolor.a;
-        mina = MIN(mina, v);
-        maxa = MAX(maxa, v);
-    }
-
-    return (f_pixel){ (minr + maxr) / 2, (ming + maxg) / 2,
-                      (minb + maxb) / 2, (mina + maxa) / 2 };
-}
-
-static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv)
-{
-    double r = 0, g = 0, b = 0, a = 0;
-
-    for (int i = 0; i < clrs; ++i) {
-        r += achv[indx + i].acolor.r;
-        g += achv[indx + i].acolor.g;
-        b += achv[indx + i].acolor.b;
-        a += achv[indx + i].acolor.a;
-    }
-
-    r = r / clrs;
-    g = g / clrs;
-    b = b / clrs;
-    a = a / clrs;
-
-    return (f_pixel){r, g, b, a};
 }
 
 static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val)

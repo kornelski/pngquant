@@ -86,8 +86,6 @@ static int alphacompare (const void *ch1, const void *ch2);
 static int valuecompare(const void *ch1, const void *ch2);
 static int sumcompare (const void *b1, const void *b2);
 
-static float colorimportance(float alpha);
-
 static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val);
@@ -385,7 +383,7 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
             a1 = px.a;
 
             for (int i = 0; i < newcolors; ++i) {
-                float colorimp = colorimportance(MAX(acolormap[i].acolor.a, px.a));
+                float colorimp = MAX(acolormap[i].acolor.a, px.a);
 
                 r2 = acolormap[i].acolor.r;
                 g2 = acolormap[i].acolor.g;
@@ -393,9 +391,9 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
                 a2 = acolormap[i].acolor.a;
 
                 newdist =  (a1 - a2) * (a1 - a2) +
-                               (r1 - r2) * (r1 - r2) * colorimp +
-                               (g1 - g2) * (g1 - g2) * colorimp +
-                               (b1 - b2) * (b1 - b2) * colorimp;
+                           (r1 - r2) * (r1 - r2) * colorimp +
+                           (g1 - g2) * (g1 - g2) * colorimp +
+                           (b1 - b2) * (b1 - b2) * colorimp;
 
                 /* penalty for making holes in IE */
                 if (a1 > min_opaque_val && a2 < 1) newdist += 1.0;
@@ -407,7 +405,7 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
             }
 
             if (floyd) {
-                double colorimp = (1.0/256.0) + colorimportance(acolormap[ind].acolor.a);
+                double colorimp = (1.0/256.0) + acolormap[ind].acolor.a;
 
                 /* Propagate Floyd-Steinberg error terms. */
                 if (fs_direction) {
@@ -982,10 +980,5 @@ static int sumcompare(const void *b1, const void *b2)
            ((box_vector)b1)->sum;
 }
 
-/** expects alpha in range 0-1 */
-static float colorimportance(float alpha)
-{
-    return (1.0f-(1.0f-alpha)*(1.0f-alpha));
-}
 
 

@@ -293,6 +293,16 @@ int set_palette(write_info *output_image, int newcolors, int* remap, acolorhist_
     return 0;
 }
 
+inline static float colordifference(f_pixel px, f_pixel py)
+{
+    float colorimp = MAX(px.a, py.a);
+
+    return (px.a - py.a) * (px.a - py.a) +
+           (px.r - py.r) * (px.r - py.r) * colorimp +
+           (px.g - py.g) * (px.g - py.g) * colorimp +
+           (px.b - py.b) * (px.b - py.b) * colorimp;
+}
+
 int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, double min_opaque_val, int ie_bug, int newcolors, int* remap, acolorhist_vector acolormap)
 {
     uch *pQ;
@@ -373,30 +383,12 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
                 px = (f_pixel){sr, sg, sb, sa};
             }
 
-
-            float a1, r1, g1, b1, r2, g2, b2, a2;
-            float dist = 1<<30, newdist;
-
-            r1 = px.r;
-            g1 = px.g;
-            b1 = px.b;
-            a1 = px.a;
-
+            float dist = 1<<30;
             for (int i = 0; i < newcolors; ++i) {
-                float colorimp = MAX(acolormap[i].acolor.a, px.a);
-
-                r2 = acolormap[i].acolor.r;
-                g2 = acolormap[i].acolor.g;
-                b2 = acolormap[i].acolor.b;
-                a2 = acolormap[i].acolor.a;
-
-                newdist =  (a1 - a2) * (a1 - a2) +
-                           (r1 - r2) * (r1 - r2) * colorimp +
-                           (g1 - g2) * (g1 - g2) * colorimp +
-                           (b1 - b2) * (b1 - b2) * colorimp;
+                float newdist = colordifference(px,acolormap[i].acolor);
 
                 /* penalty for making holes in IE */
-                if (a1 > min_opaque_val && a2 < 1) newdist += 1.0;
+                if (px.a > min_opaque_val && acolormap[i].acolor.a < 1) newdist += 1.0;
 
                 if (newdist < dist) {
                     ind = i;

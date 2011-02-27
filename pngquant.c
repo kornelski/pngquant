@@ -26,7 +26,7 @@
 /* GRR TO DO:  if all samples are 0 or maxval, eliminate gAMA chunk (rwpng.c) */
 
 
-#define PNGQUANT_VERSION "1.2b (2011)"
+#define PNGQUANT_VERSION "1.3a (February 2011)"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\

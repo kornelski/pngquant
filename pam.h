@@ -56,19 +56,12 @@ inline static rgb_pixel to_rgb(double gamma, f_pixel px)
     };
 }
 
-/*
- typedef struct {
- ush r, g, b, a;
- } apixel16;
- */
-
 /* from pamcmap.h */
 
 typedef struct acolorhist_item *acolorhist_vector;
 struct acolorhist_item {
     f_pixel acolor;
     int value;
-    /*    int contrast;*/
 };
 
 typedef struct acolorhist_list_item *acolorhist_list;

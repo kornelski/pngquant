@@ -66,7 +66,7 @@
 
 typedef unsigned char   uch;
 
-#define MAXCOLORS  (32767*8)
+#define MAXCOLORS  (1<<20)
 
 /* #define REP_CENTER_BOX */
 /* #define REP_AVERAGE_COLORS */

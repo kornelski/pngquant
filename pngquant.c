@@ -842,15 +842,28 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
             qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 bluecompare );
 
+
         /*
-        ** Now find the median based on the counts, so that about half the
-        ** pixels (not colors, pixels) are in each subdivision.
-        */
-        int halfsum = sm / 2, lowersum = achv[indx].value;
+         Classic implementation tries to get even number of colors or pixels in each subdivision.
+
+         Here, instead of popularity I use (sqrt(popularity)*variance) metric.
+         Each subdivision balances number of pixels (popular colors) and low variance -
+         boxes can be large if they have similar colors. Later boxes with high variance
+         will be more likely to be split.
+         */
+        int lowersum = 0;
+        float halfvar = 0, lowervar = 0;
+        for(int i=0; i < clrs -1; i++) {
+            halfvar += (1.0f-sqrtf(colordifference(background, achv[indx+i].acolor))) * sqrtf(achv[indx+i].value);
+        }
+        halfvar /= 2.0f;
+
         int break_at;
-        for (break_at = 1; break_at < clrs - 1; ++break_at) {
-            if (lowersum >= halfsum)
+        for (break_at = 0; break_at < clrs - 1; ++break_at) {
+            if (lowervar >= halfvar)
                 break;
+
+            lowervar += (1.0f-sqrtf(colordifference(background, achv[indx+break_at].acolor))) * sqrtf(achv[indx+break_at].value);
             lowersum += achv[indx + break_at].value;
         }
 

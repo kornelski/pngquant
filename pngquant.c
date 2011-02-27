@@ -842,19 +842,23 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
             qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 bluecompare );
 
-
         /*
-         Classic implementation tries to get even number of colors or pixels in each subdivision.
+            Classic implementation tries to get even number of colors or pixels in each subdivision.
 
-         Here, instead of popularity I use (sqrt(popularity)*variance) metric.
-         Each subdivision balances number of pixels (popular colors) and low variance -
-         boxes can be large if they have similar colors. Later boxes with high variance
-         will be more likely to be split.
-         */
+            Here, instead of popularity I use (sqrt(popularity)*variance) metric.
+            Each subdivision balances number of pixels (popular colors) and low variance -
+            boxes can be large if they have similar colors. Later boxes with high variance
+            will be more likely to be split.
+
+            Median used as expected value gives much better results than mean.
+        */
+
+        f_pixel median = averagepixels(indx+(clrs-1)/2, clrs&1 ? 1 : 2, achv, min_opaque_val);
+
         int lowersum = 0;
         float halfvar = 0, lowervar = 0;
         for(int i=0; i < clrs -1; i++) {
-            halfvar += (1.0f-sqrtf(colordifference(background, achv[indx+i].acolor))) * sqrtf(achv[indx+i].value);
+            halfvar += sqrtf(colordifference(median, achv[indx+i].acolor)) * sqrtf(achv[indx+i].value);
         }
         halfvar /= 2.0f;
 
@@ -863,7 +867,7 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
             if (lowervar >= halfvar)
                 break;
 
-            lowervar += (1.0f-sqrtf(colordifference(background, achv[indx+break_at].acolor))) * sqrtf(achv[indx+break_at].value);
+            lowervar += sqrtf(colordifference(median, achv[indx+break_at].acolor)) * sqrtf(achv[indx+break_at].value);
             lowersum += achv[indx + break_at].value;
         }
 

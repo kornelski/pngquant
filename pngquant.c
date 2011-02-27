@@ -78,7 +78,7 @@ struct box {
 
 static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug);
 
-static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val, int reqcolors, int *newcolors);
+static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val, int reqcolors, int *newcolors);
 static int redcompare (const void *ch1, const void *ch2);
 static int greencompare (const void *ch1, const void *ch2);
 static int bluecompare (const void *ch1, const void *ch2);
@@ -88,7 +88,7 @@ static int sumcompare (const void *b1, const void *b2);
 
 static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv);
 static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv);
-static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val);
+static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, float min_opaque_val);
 
 
 static int verbose=0;
@@ -303,7 +303,7 @@ inline static float colordifference(f_pixel px, f_pixel py)
            (px.b - py.b) * (px.b - py.b) * colorimp;
 }
 
-int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, double min_opaque_val, int ie_bug, int newcolors, int* remap, acolorhist_vector acolormap)
+int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, float min_opaque_val, int ie_bug, int newcolors, int* remap, acolorhist_vector acolormap)
 {
     uch *pQ;
     rgb_pixel *pP;
@@ -397,7 +397,7 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
             }
 
             if (floyd) {
-                double colorimp = (1.0/256.0) + acolormap[ind].acolor.a;
+                float colorimp = (1.0/256.0) + acolormap[ind].acolor.a;
 
                 /* Propagate Floyd-Steinberg error terms. */
                 if (fs_direction) {
@@ -610,7 +610,7 @@ float modify_alpha(read_info *input_image, int ie_bug)
             else if (pP->a < 255 && px.a > almost_opaque_val) {
                 assert((min_opaque_val-almost_opaque_val)>0);
 
-                double al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
+                float al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
                 if (al > 1) al = 1;
                 px.a = al;
                 pP->a = to_rgb(gamma, px).a;
@@ -735,7 +735,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 */
 
 
-static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val, int reqcolors, int *newcolors_p)
+static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val, int reqcolors, int *newcolors_p)
 {
     int colors;
     acolorhist_vector achv = histogram(input_image,reqcolors,&colors);
@@ -769,7 +769,8 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
     while (boxes < newcolors) {
         int bi, indx, clrs;
         int sm;
-        double minr, maxr, ming, mina, maxg, minb, maxb, maxa, v;
+        float minr, maxr, ming, mina, maxg, minb, maxb, maxa, v;
+
 
         /*
         ** Find the first splittable box.
@@ -821,10 +822,10 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
         ** by simply comparing the range in RGB space
         */
 
-        double adelta = (maxa-mina);
-        double rdelta = (maxr-minr);
-        double gdelta = (maxg-ming);
-        double bdelta = (maxb-minb);
+        float adelta = (maxa-mina);
+        float rdelta = (maxr-minr);
+        float gdelta = (maxg-ming);
+        float bdelta = (maxb-minb);
 
         if (adelta >= rdelta && adelta >= gdelta && adelta >= bdelta)
             qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
@@ -890,7 +891,7 @@ static acolorhist_vector mediancut(read_info *input_image, double min_opaque_val
     return acolormap;
 }
 
-static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, double min_opaque_val)
+static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, float min_opaque_val)
 {
     float r = 0, g = 0, b = 0, a = 0, sum = 0;
     float maxa = 0;

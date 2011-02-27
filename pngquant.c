@@ -74,6 +74,7 @@ struct box {
     int ind;
     int colors;
     int sum;
+    float weight;
 };
 
 static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug);
@@ -760,6 +761,7 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
     */
     bv[0].ind = 0;
     bv[0].colors = colors;
+    bv[0].weight = 1.0;
     bv[0].sum = input_image->width * input_image->height;
     int boxes = 1;
 
@@ -853,13 +855,15 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
         }
 
         /*
-        ** Split the box, and sort to bring the biggest boxes to the top.
+        ** Split the box, and sort to bring the biggest and/or very varying boxes to the top.
         */
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
+        bv[bi].weight = powf(colordifference(background, averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val)),0.25f);
         bv[boxes].ind = indx + break_at;
         bv[boxes].colors = clrs - break_at;
         bv[boxes].sum = sm - lowersum;
+        bv[boxes].weight = powf(colordifference(background, averagepixels(bv[boxes].ind, bv[boxes].colors, achv, min_opaque_val)),0.25f);
         ++boxes;
         qsort(bv, boxes, sizeof(struct box), sumcompare);
     }
@@ -970,8 +974,8 @@ static int valuecompare(const void *ch1, const void *ch2)
 
 static int sumcompare(const void *b1, const void *b2)
 {
-    return ((box_vector)b2)->sum -
-           ((box_vector)b1)->sum;
+    return ((box_vector)b2)->sum*((box_vector)b2)->weight -
+           ((box_vector)b1)->sum*((box_vector)b1)->weight;
 }
 
 

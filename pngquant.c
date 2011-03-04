@@ -771,7 +771,6 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
     while (boxes < newcolors) {
         int bi, indx, clrs;
         int sm;
-        float minr, maxr, ming, mina, maxg, minb, maxb, maxa, v;
 
 
         /*
@@ -795,28 +794,22 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
         /* background is global - used when sorting too */
         f_pixel background = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 
-        minr = maxr = achv[indx].acolor.r;
-        ming = maxg = achv[indx].acolor.g;
-        minb = maxb = achv[indx].acolor.b;
-        mina = maxa = achv[indx].acolor.a;
+        float varr = 0;
+        float varg = 0;
+        float varb = 0;
+        float vara = 0;
 
         for (int i = 0; i < clrs; ++i) {
-            v = achv[indx + i].acolor.a;
-            if (v < mina) mina = v;
-            if (v > maxa) maxa = v;
+            float v = achv[indx + i].acolor.a;
+            vara += (background.a - v)*(background.a - v);
 
-            /* linear blending makes it too obsessed with accurate alpha, but the optimum unfortunately seems to depend on image */
             float a = achv[indx + i].acolor.a;
             v = (achv[indx + i].acolor.r + (1.0f-a) * background.r);
-            if (v < minr) minr = v;
-            if (v > maxr) maxr = v;
+            varr += (background.r - v)*(background.r - v);
             v = (achv[indx + i].acolor.g + (1.0f-a) * background.g);
-            if (v < ming) ming = v;
-            if (v > maxg) maxg = v;
+            varg += (background.g - v)*(background.g - v);
             v = (achv[indx + i].acolor.b + (1.0f-a) * background.b);
-            if (v < minb) minb = v;
-            if (v > maxb) maxb = v;
-
+            varb += (background.b - v)*(background.b - v);
         }
 
         /*
@@ -824,18 +817,13 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
         ** by simply comparing the range in RGB space
         */
 
-        float adelta = (maxa-mina);
-        float rdelta = (maxr-minr);
-        float gdelta = (maxg-ming);
-        float bdelta = (maxb-minb);
-
-        if (adelta >= rdelta && adelta >= gdelta && adelta >= bdelta)
+        if (vara >= varr && vara >= varg && vara >= varb)
             qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 alphacompare );
-        else if (rdelta >= gdelta && rdelta >= bdelta)
+        else if (varr >= varg && varr >= varb)
             qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 redcompare );
-        else if (gdelta >= bdelta)
+        else if (varg >= varb)
             qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
                 greencompare );
         else

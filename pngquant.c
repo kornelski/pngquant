@@ -802,13 +802,11 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
         for (int i = 0; i < clrs; ++i) {
             float v = achv[indx + i].acolor.a;
             vara += (background.a - v)*(background.a - v);
-
-            float a = achv[indx + i].acolor.a;
-            v = (achv[indx + i].acolor.r + (1.0f-a) * background.r);
+            v = achv[indx + i].acolor.r;
             varr += (background.r - v)*(background.r - v);
-            v = (achv[indx + i].acolor.g + (1.0f-a) * background.g);
+            v = achv[indx + i].acolor.g;
             varg += (background.g - v)*(background.g - v);
-            v = (achv[indx + i].acolor.b + (1.0f-a) * background.b);
+            v = achv[indx + i].acolor.b;
             varb += (background.b - v)*(background.b - v);
         }
 

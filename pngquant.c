@@ -603,7 +603,8 @@ float modify_alpha(read_info *input_image, int ie_bug)
             f_pixel px = to_f(gamma, *pP);
             rgb_pixel rgbcheck = to_rgb(gamma, px);
 
-            if (pP->r != rgbcheck.r || pP->g != rgbcheck.g || pP->b != rgbcheck.b || pP->a != rgbcheck.a) {
+
+            if (pP->a && (pP->r != rgbcheck.r || pP->g != rgbcheck.g || pP->b != rgbcheck.b || pP->a != rgbcheck.a)) {
                 fprintf(stderr, "Conversion error: expected %d,%d,%d,%d got %d,%d,%d,%d\n",
                         pP->r,pP->g,pP->b,pP->a, rgbcheck.r,rgbcheck.g,rgbcheck.b,rgbcheck.a);
                 return 0;

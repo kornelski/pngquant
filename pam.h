@@ -27,32 +27,30 @@ typedef struct {
 /*
  Converts 8-bit RGB to linear RGB premultiplied by alpha.
  Premultiplied color space is much better for blending of semitransparent colors.
-
- RGB colors use slighly odd range from 1/256 to 1, which avoids rounding error created by /255 division.
  */
 inline static f_pixel to_f(double gamma, rgb_pixel px)
 {
-    double r = pow((1.0+px.r)/256.0, 1.0/gamma),
-           g = pow((1.0+px.g)/256.0, 1.0/gamma),
-           b = pow((1.0+px.b)/256.0, 1.0/gamma),
-           a = (1+px.a)/256.0;
+    double r = pow((px.r)/255.0, 1.0/gamma),
+           g = pow((px.g)/255.0, 1.0/gamma),
+           b = pow((px.b)/255.0, 1.0/gamma),
+           a = px.a/255.0;
 
     return (f_pixel){r*a,g*a,b*a,a};
 }
 
 inline static rgb_pixel to_rgb(double gamma, f_pixel px)
 {
-    if (px.a < 1.0/257.0) {   // px.a = 1+a/256
+    if (px.a < 1.0/256.0) {
         return (rgb_pixel){0,0,0,0};
     }
 
     double r,g,b,a;
 
-    // 257, because numbers are in range 1..256.9999… rounded down
-    r = pow(px.r/px.a, gamma)*257.0 - 1.0;
-    g = pow(px.g/px.a, gamma)*257.0 - 1.0;
-    b = pow(px.b/px.a, gamma)*257.0 - 1.0;
-    a = px.a*257.0 - 1.0;
+    // 256, because numbers are in range 1..255.9999… rounded down
+    r = pow(px.r/px.a, gamma)*256.0;
+    g = pow(px.g/px.a, gamma)*256.0;
+    b = pow(px.b/px.a, gamma)*256.0;
+    a = px.a*256.0;
 
     return (rgb_pixel){
         r>=255 ? 255 : (r<=0 ? 0 : r),

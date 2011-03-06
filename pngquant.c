@@ -844,7 +844,7 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
 
         qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), compareweight);
 
-        qsort(&(achv[indx]), clrs, sizeof(achv[0]), weightedcompare);
+        mergesort(&(achv[indx]), clrs, sizeof(achv[0]), weightedcompare);
 
         /*
             Classic implementation tries to get even number of colors or pixels in each subdivision.
@@ -886,7 +886,7 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         bv[boxes].sum = sm - lowersum;
         bv[boxes].weight = powf(colordifference(background, averagepixels(bv[boxes].ind, bv[boxes].colors, achv, min_opaque_val)),0.25f);
         ++boxes;
-        qsort(bv, boxes, sizeof(struct box), sumcompare);
+        mergesort(bv, boxes, sizeof(struct box), sumcompare);
     }
 
     /*

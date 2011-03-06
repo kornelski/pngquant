@@ -84,7 +84,6 @@ static int redcompare (const void *ch1, const void *ch2);
 static int greencompare (const void *ch1, const void *ch2);
 static int bluecompare (const void *ch1, const void *ch2);
 static int alphacompare (const void *ch1, const void *ch2);
-static int valuecompare(const void *ch1, const void *ch2);
 static int sumcompare (const void *b1, const void *b2);
 
 static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opaque_val);
@@ -957,12 +956,6 @@ static int bluecompare(const void *ch1, const void *ch2)
 static int alphacompare(const void *ch1, const void *ch2)
 {
     return compare(ch1,ch2,a, compare(ch1,ch2,r,0));
-}
-
-static int valuecompare(const void *ch1, const void *ch2)
-{
-    return ((hist_item *)ch1)->value > ((hist_item *)ch2)->value ? -1 :
-          (((hist_item *)ch1)->value < ((hist_item *)ch2)->value ? 1 : compare(ch1,ch2,g,0));
 }
 
 static int sumcompare(const void *b1, const void *b2)

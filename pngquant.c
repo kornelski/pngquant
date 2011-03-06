@@ -79,7 +79,7 @@ struct box {
 
 static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug);
 
-static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val, int reqcolors, int *newcolors);
+static acolorhist_vector mediancut(acolorhist_vector achv, float min_opaque_val, int colors, int reqcolors);
 static int redcompare (const void *ch1, const void *ch2);
 static int greencompare (const void *ch1, const void *ch2);
 static int bluecompare (const void *ch1, const void *ch2);
@@ -660,11 +660,13 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         return INTERNAL_LOGIC_ERROR;
     }
 
-    int newcolors;
-    acolorhist_vector acolormap = mediancut(&input_image, min_opaque_val, reqcolors, &newcolors);
+    int colors=0;
+    acolorhist_vector achv = histogram(&input_image,reqcolors,&colors);
 
-    /* sort palette by (estimated) popularity */
-    qsort(acolormap, newcolors, sizeof(acolormap[0]), valuecompare);
+    int newcolors = MIN(colors, reqcolors);
+    acolorhist_vector acolormap = mediancut(achv, min_opaque_val, colors, newcolors);
+
+    pam_freeacolorhist(achv);
 
     write_info output_image = {0};
     output_image.width = input_image.width;
@@ -736,20 +738,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 */
 
 
-static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val, int reqcolors, int *newcolors_p)
+static acolorhist_vector mediancut(acolorhist_vector achv, float min_opaque_val, int colors, int newcolors)
 {
-    int colors;
-    acolorhist_vector achv = histogram(input_image,reqcolors,&colors);
-
-    /*
-     ** Step 3: apply median-cut to histogram, making the new acolormap.
-     */
-    if (colors > reqcolors) {
-        verbose_printf("  choosing %d colors...\n", reqcolors);
-    }
-
-    int newcolors = *newcolors_p = MIN(colors, reqcolors);
-
     box_vector bv = malloc(sizeof(struct box) * newcolors);
     acolorhist_vector acolormap = calloc(newcolors, sizeof(struct acolorhist_item));
     if (!bv || !acolormap) {
@@ -762,7 +752,11 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
     bv[0].ind = 0;
     bv[0].colors = colors;
     bv[0].weight = 1.0;
-    bv[0].sum = input_image->width * input_image->height;
+
+    int allcolors=0;
+    for(int i=0; i < colors; i++) allcolors += achv[i].value;
+    bv[0].sum = allcolors;
+
     int boxes = 1;
 
     /*
@@ -889,8 +883,6 @@ static acolorhist_vector mediancut(read_info *input_image, float min_opaque_val,
             acolormap[bi].value += achv[bv[bi].ind + i].value;
         }
     }
-
-    pam_freeacolorhist(achv);
 
     /*
     ** All done.

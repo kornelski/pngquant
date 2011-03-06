@@ -675,7 +675,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     write_info output_image = {0};
     output_image.width = input_image.width;
     output_image.height = input_image.height;
-    output_image.gamma = 1/2.2;
+    output_image.gamma = 1.0/2.2;
 
     int remap[256];
     if (set_palette(&output_image, newcolors, remap, acolormap)) {

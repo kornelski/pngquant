@@ -59,6 +59,7 @@
 #endif
 
 #include <math.h>
+#include <stddef.h>
 
 #include "png.h"    /* libpng header; includes zlib.h */
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
@@ -80,10 +81,7 @@ struct box {
 static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug);
 
 static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int reqcolors);
-static int redcompare (const void *ch1, const void *ch2);
-static int greencompare (const void *ch1, const void *ch2);
-static int bluecompare (const void *ch1, const void *ch2);
-static int alphacompare (const void *ch1, const void *ch2);
+static int weightedcompare(const void *ch1, const void *ch2);
 static int sumcompare (const void *b1, const void *b2);
 
 static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opaque_val);
@@ -728,12 +726,45 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
 
 
+typedef struct {
+    int chan; float weight;
+} channelweight;
+
+static int compareweight(const void *ch1, const void *ch2)
+{
+    return ((channelweight*)ch1)->weight > ((channelweight*)ch2)->weight ? -1 :
+    (((channelweight*)ch1)->weight < ((channelweight*)ch2)->weight ? 1 : 0);
+};
+
+static channelweight channel_sort_order[4];
+
+static int weightedcompare(const void *ch1, const void *ch2)
+{
+    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
+    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
+
+    if (c1p[channel_sort_order[0].chan] > c2p[channel_sort_order[0].chan]) return 1;
+    if (c1p[channel_sort_order[0].chan] < c2p[channel_sort_order[0].chan]) return -1;
+
+    // other channels are sorted backwards
+    if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
+    if (c1p[channel_sort_order[1].chan] < c2p[channel_sort_order[1].chan]) return 1;
+
+    if (c1p[channel_sort_order[2].chan] > c2p[channel_sort_order[2].chan]) return -1;
+    if (c1p[channel_sort_order[2].chan] < c2p[channel_sort_order[2].chan]) return 1;
+
+    if (c1p[channel_sort_order[3].chan] > c2p[channel_sort_order[3].chan]) return -1;
+    if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
+
+    return 0;
+}
+
+
 /*
 ** Here is the fun part, the median-cut colormap generator.  This is based
 ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
 ** Display," SIGGRAPH 1982 Proceedings, page 297.
 */
-
 
 static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int newcolors)
 {
@@ -806,18 +837,14 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         ** by simply comparing the range in RGB space
         */
 
-        if (vara >= varr && vara >= varg && vara >= varb)
-            qsort(&(achv[indx]), clrs, sizeof(achv[0]),
-                alphacompare );
-        else if (varr >= varg && varr >= varb)
-            qsort(&(achv[indx]), clrs, sizeof(achv[0]),
-                redcompare );
-        else if (varg >= varb)
-            qsort(&(achv[indx]), clrs, sizeof(achv[0]),
-                greencompare );
-        else
-            qsort(&(achv[indx]), clrs, sizeof(achv[0]),
-                bluecompare );
+        channel_sort_order[0] = (channelweight){offsetof(f_pixel,r)/sizeof(float), varr};
+        channel_sort_order[1] = (channelweight){offsetof(f_pixel,g)/sizeof(float), varg};
+        channel_sort_order[2] = (channelweight){offsetof(f_pixel,b)/sizeof(float), varb};
+        channel_sort_order[3] = (channelweight){offsetof(f_pixel,a)/sizeof(float), vara};
+
+        qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), compareweight);
+
+        qsort(&(achv[indx]), clrs, sizeof(achv[0]), weightedcompare);
 
         /*
             Classic implementation tries to get even number of colors or pixels in each subdivision.
@@ -934,29 +961,6 @@ static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opa
     return (f_pixel){r, g, b, a};
 }
 
-#define compare(ch1,ch2,r,fallback) ( \
-    ((hist_item *)ch1)->acolor.r > ((hist_item *)ch2)->acolor.r ? 1 : \
-   (((hist_item *)ch1)->acolor.r < ((hist_item *)ch2)->acolor.r ? -1 : fallback))
-
-static int redcompare(const void *ch1, const void *ch2)
-{
-    return compare(ch1,ch2,r, compare(ch1,ch2,g,0));
-}
-
-static int greencompare(const void *ch1, const void *ch2)
-{
-    return compare(ch1,ch2,g, compare(ch1,ch2,b,0));
-}
-
-static int bluecompare(const void *ch1, const void *ch2)
-{
-    return compare(ch1,ch2,b, compare(ch1,ch2,a,0));
-}
-
-static int alphacompare(const void *ch1, const void *ch2)
-{
-    return compare(ch1,ch2,a, compare(ch1,ch2,r,0));
-}
 
 static int sumcompare(const void *b1, const void *b2)
 {

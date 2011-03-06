@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "pam.h"
 
@@ -74,13 +75,30 @@ static acolorhash_table pam_allocacolorhash(void);
 
 #define HASH_SIZE 20023
 
-inline static unsigned long pam_hashapixel(f_pixel p)
+#define ROTL(x, n) ( (u_register_t)((x) << (n)) | (u_register_t)((x) >> (sizeof(u_register_t)*8-(n))) )
+inline static  unsigned long pam_hashapixel(f_pixel p)
 {
-    return ( ( (long)(  (p).r * 33023.0f + \
-                 (p).g * 30013.0f + \
-                 (p).b * 27011.0f + \
-                 (p).a * 24007.0f ) \
-              & 0x7fffffff ) % HASH_SIZE );
+    assert(sizeof(u_register_t) == sizeof(register_t));
+
+#ifdef __LP64__
+    union {
+        f_pixel f;
+        struct {register_t l1, l2;} l;
+    } h = {p};
+
+    assert(sizeof(h.l) == sizeof(f_pixel));
+
+    return (ROTL(h.l.l1,13) ^ h.l.l2) % HASH_SIZE;
+#else
+    union {
+        f_pixel f;
+        struct {register_t l1, l2, l3, l4;} l;
+    } h = {p};
+
+    assert(sizeof(h.l) == sizeof(f_pixel));
+
+    return (ROTL(h.l.l1,3) ^ ROTL(h.l.l2,7) ^ ROTL(h.l.l3,11) ^ h.l.l4) % HASH_SIZE;
+#endif
 }
 
 #define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) >= (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))

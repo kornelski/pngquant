@@ -1,24 +1,20 @@
-This is pngquant, a quantization utility for PNG images. Image quantization
-is the process of the reducing the number of colors in an image.
+This is a modified version of pngquant (http://pornel.net/pngquant)
 
 Typically, pngquant is used to convert 32-bit RGBA PNGs to 8-bit RGBA-palette
 PNGs in order to save file space. For example, for the web.
 
-Currently the following quantization algorithms are supported:
-- ordered
-- diffusion (Floyd-Steinberg)
-
-This utility works on Linux and UNIX systems (including Mac OS X) as well as
-modern Windows platforms.
+This utility works on Linux and UNIX systems (including Mac OS X) and should
+work on modern Windows platforms.
 
 Pngquant provides the following features:
 - reduction of all PNG image types to a palette with 256 colors or less
+- diffusion (Floyd-Steinberg)
 - automatic optimization of tRNS chunks
 - batch conversion of multiple files, e.g.: pngquant 256 *.png
 - Unix-style stdin/stdout chaining, e.g.: ... | pngquant 16 | ...
 
 These features are currently lacking:
-- no ancillary chunk preservation (except gAMA)
+- no ancillary chunk preservation
 - no preservation of significant-bits info after rescaling (sBIT chunk)
 - no mapfile support
 - no "native" handling of 16-bit-per-sample files or gray+alpha files
@@ -39,5 +35,5 @@ change log, see the CHANGELOG file.
 
 The INSTALL file explains how to build pngquant from source.
 
-NOTE: This is a modified version of the regular 'pngquant' tool. The homepage of
-      the latter is: http://www.libpng.org/pub/png/apps/pngquant.html
+The homepage of original pngquant is:
+http://www.libpng.org/pub/png/apps/pngquant.html

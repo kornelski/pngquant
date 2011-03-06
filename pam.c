@@ -20,7 +20,7 @@
 #define PAM_EQUAL(p,q) \
 ((p).r == (q).r && (p).g == (q).g && (p).b == (q).b && (p).a == (q).a)
 
-static acolorhist_vector pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
+static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
 static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
@@ -85,10 +85,10 @@ inline static unsigned long pam_hashapixel(f_pixel p)
 
 #define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) >= (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
 
-acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
+hist_item *pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
 {
     acolorhash_table acht;
-    acolorhist_vector achv;
+    hist_item *achv;
 
     acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, acolorsP);
     if (!acht) return 0;
@@ -158,16 +158,16 @@ static acolorhash_table pam_allocacolorhash()
 
 
 
-static acolorhist_vector pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors)
+static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors)
 {
-    acolorhist_vector achv;
+    hist_item *achv;
     acolorhist_list achl;
     int i, j;
 
     /* Now collate the hash table into a simple acolorhist array. */
-    achv = (acolorhist_vector) malloc(maxacolors * sizeof(struct acolorhist_item));
+    achv = (hist_item *) malloc(maxacolors * sizeof(achv[0]));
     /* (Leave room for expansion by caller.) */
-    if (achv == (acolorhist_vector) 0) {
+    if (!achv) {
         fprintf(stderr, "  out of memory generating histogram\n");
         exit(9);
     }
@@ -201,7 +201,7 @@ static void pam_freeacolorhash(acolorhash_table acht)
 
 
 
-void pam_freeacolorhist(acolorhist_vector achv)
+void pam_freeacolorhist(hist_item *achv)
 {
     free((char*) achv);
 }

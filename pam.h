@@ -62,16 +62,15 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
 
 /* from pamcmap.h */
 
-typedef struct acolorhist_item *acolorhist_vector;
-struct acolorhist_item {
+typedef struct {
     f_pixel acolor;
     int value;
-};
+} hist_item;
 
 typedef struct acolorhist_list_item *acolorhist_list;
 struct acolorhist_list_item {
     acolorhist_list next;
-    struct acolorhist_item ch;
+    hist_item ch;
 };
 
 typedef acolorhist_list *acolorhash_table;
@@ -80,5 +79,5 @@ typedef acolorhist_list *acolorhash_table;
 typedef unsigned char pixval; /* GRR: hardcoded for now; later add 16-bit support */
 
 
-acolorhist_vector pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
-void pam_freeacolorhist(acolorhist_vector achv);
+hist_item *pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
+void pam_freeacolorhist(hist_item *achv);

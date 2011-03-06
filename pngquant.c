@@ -79,7 +79,7 @@ struct box {
 
 static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug);
 
-static acolorhist_vector mediancut(acolorhist_vector achv, float min_opaque_val, int colors, int reqcolors);
+static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int reqcolors);
 static int redcompare (const void *ch1, const void *ch2);
 static int greencompare (const void *ch1, const void *ch2);
 static int bluecompare (const void *ch1, const void *ch2);
@@ -87,9 +87,7 @@ static int alphacompare (const void *ch1, const void *ch2);
 static int valuecompare(const void *ch1, const void *ch2);
 static int sumcompare (const void *b1, const void *b2);
 
-static f_pixel centerbox(int indx, int clrs, acolorhist_vector achv);
-static f_pixel averagecolors(int indx, int clrs, acolorhist_vector achv);
-static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, float min_opaque_val);
+static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opaque_val);
 
 
 static int verbose=0;
@@ -228,7 +226,7 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-int set_palette(write_info *output_image, int newcolors, int* remap, acolorhist_vector acolormap)
+int set_palette(write_info *output_image, int newcolors, int* remap, hist_item acolormap[])
 {
     assert(remap); assert(acolormap); assert(output_image);
 
@@ -304,7 +302,7 @@ inline static float colordifference(f_pixel px, f_pixel py)
            (px.b - py.b) * (px.b - py.b) * colorimp;
 }
 
-int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, float min_opaque_val, int ie_bug, int newcolors, int* remap, acolorhist_vector acolormap)
+int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, float min_opaque_val, int ie_bug, int newcolors, int* remap, hist_item acolormap[])
 {
     uch *pQ;
     rgb_pixel *pP;
@@ -539,9 +537,9 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
     return retval;
 }
 
-acolorhist_vector histogram(read_info *input_image, int reqcolors, int *colors)
+hist_item *histogram(read_info *input_image, int reqcolors, int *colors)
 {
-    acolorhist_vector achv;
+    hist_item *achv;
     int ignorebits=0;
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     int cols = input_image->width, rows = input_image->height;
@@ -661,10 +659,10 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     }
 
     int colors=0;
-    acolorhist_vector achv = histogram(&input_image,reqcolors,&colors);
+    hist_item *achv = histogram(&input_image, reqcolors, &colors);
 
     int newcolors = MIN(colors, reqcolors);
-    acolorhist_vector acolormap = mediancut(achv, min_opaque_val, colors, newcolors);
+    hist_item *acolormap = mediancut(achv, min_opaque_val, colors, newcolors);
 
     pam_freeacolorhist(achv);
 
@@ -738,10 +736,10 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 */
 
 
-static acolorhist_vector mediancut(acolorhist_vector achv, float min_opaque_val, int colors, int newcolors)
+static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int newcolors)
 {
     box_vector bv = malloc(sizeof(struct box) * newcolors);
-    acolorhist_vector acolormap = calloc(newcolors, sizeof(struct acolorhist_item));
+    hist_item *acolormap = calloc(newcolors, sizeof(hist_item));
     if (!bv || !acolormap) {
         return 0;
     }
@@ -810,16 +808,16 @@ static acolorhist_vector mediancut(acolorhist_vector achv, float min_opaque_val,
         */
 
         if (vara >= varr && vara >= varg && vara >= varb)
-            qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
+            qsort(&(achv[indx]), clrs, sizeof(achv[0]),
                 alphacompare );
         else if (varr >= varg && varr >= varb)
-            qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
+            qsort(&(achv[indx]), clrs, sizeof(achv[0]),
                 redcompare );
         else if (varg >= varb)
-            qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
+            qsort(&(achv[indx]), clrs, sizeof(achv[0]),
                 greencompare );
         else
-            qsort(&(achv[indx]), clrs, sizeof(struct acolorhist_item),
+            qsort(&(achv[indx]), clrs, sizeof(achv[0]),
                 bluecompare );
 
         /*
@@ -890,7 +888,7 @@ static acolorhist_vector mediancut(acolorhist_vector achv, float min_opaque_val,
     return acolormap;
 }
 
-static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, float min_opaque_val)
+static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opaque_val)
 {
     float r = 0, g = 0, b = 0, a = 0, sum = 0;
     float maxa = 0;
@@ -938,8 +936,8 @@ static f_pixel averagepixels(int indx, int clrs, acolorhist_vector achv, float m
 }
 
 #define compare(ch1,ch2,r,fallback) ( \
-    ((acolorhist_vector)ch1)->acolor.r > ((acolorhist_vector)ch2)->acolor.r ? 1 : \
-   (((acolorhist_vector)ch1)->acolor.r < ((acolorhist_vector)ch2)->acolor.r ? -1 : fallback))
+    ((hist_item *)ch1)->acolor.r > ((hist_item *)ch2)->acolor.r ? 1 : \
+   (((hist_item *)ch1)->acolor.r < ((hist_item *)ch2)->acolor.r ? -1 : fallback))
 
 static int redcompare(const void *ch1, const void *ch2)
 {
@@ -963,8 +961,8 @@ static int alphacompare(const void *ch1, const void *ch2)
 
 static int valuecompare(const void *ch1, const void *ch2)
 {
-    return ((acolorhist_vector)ch1)->value > ((acolorhist_vector)ch2)->value ? -1 :
-          (((acolorhist_vector)ch1)->value < ((acolorhist_vector)ch2)->value ? 1 : compare(ch1,ch2,g,0));
+    return ((hist_item *)ch1)->value > ((hist_item *)ch2)->value ? -1 :
+          (((hist_item *)ch1)->value < ((hist_item *)ch2)->value ? 1 : compare(ch1,ch2,g,0));
 }
 
 static int sumcompare(const void *b1, const void *b2)

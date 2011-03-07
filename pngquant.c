@@ -650,6 +650,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         return retval;
     }
 
+    verbose_printf("  Reading file corrected for gamma %2.1f\n", 1.0/input_image.gamma);
+
     min_opaque_val = modify_alpha(&input_image,ie_bug);
     if (0==min_opaque_val) {
         return INTERNAL_LOGIC_ERROR;
@@ -666,7 +668,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     write_info output_image = {0};
     output_image.width = input_image.width;
     output_image.height = input_image.height;
-    output_image.gamma = 1.0/2.2;
+    output_image.gamma = 0.45455;
 
     int remap[256];
     if (set_palette(&output_image, newcolors, remap, acolormap)) {

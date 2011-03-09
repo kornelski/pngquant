@@ -2,7 +2,7 @@
  ** Copyright (C) 1989, 1991 by Jef Poskanzer.
  ** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
  **                                Stefan Schneider.
- ** Copyright (C) 2009 by Kornel Lesinski.
+ ** (C) 2011 by Kornel Lesinski.
  **
  ** Permission to use, copy, modify, and distribute this software and its
  ** documentation for any purpose and without fee is hereby granted, provided

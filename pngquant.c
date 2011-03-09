@@ -3,7 +3,7 @@
 ** Copyright (C) 1989, 1991 by Jef Poskanzer.
 ** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
 **                                Stefan Schneider.
-** Copyright (C) 2009 by Kornel Lesinski.
+** (C) 2011 by Kornel Lesinski.
 **
 ** Permission to use, copy, modify, and distribute this software and its
 ** documentation for any purpose and without fee is hereby granted, provided
@@ -13,20 +13,16 @@
 ** implied warranty.
 */
 
-/* GRR TO DO:  set sBIT flag appropriately for maxval-scaled images */
 /* GRR TO DO:  "original file size" and "quantized file size" if verbose? */
 /* GRR TO DO:  add option to preserve background color (if any) exactly */
 /* GRR TO DO:  add mapfile support, but cleanly (build palette in main()) */
-/* GRR TO DO:  default to 256 colors if number not specified on command line */
 /* GRR TO DO:  support 16 bps without down-conversion */
-/* GRR TO DO:  replace PBMPLUS mem-management routines? */
 /* GRR TO DO:  if all samples are gray and image is opaque and sample depth
                 would be no bigger than palette and user didn't explicitly
                 specify a mapfile, switch to grayscale */
 /* GRR TO DO:  if all samples are 0 or maxval, eliminate gAMA chunk (rwpng.c) */
 
-
-#define PNGQUANT_VERSION "1.3b (March 2011)"
+#define PNGQUANT_VERSION "1.4b (March 2011)"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\

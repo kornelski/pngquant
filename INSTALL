@@ -1,5 +1,7 @@
-Follow the steps below to build pngquant from source on Linux or UNIX systems
-(including Mac OS X):
+Follow the steps below to build pngquant from source on Linux or UNIX systems.
+
+You can skip first two steps if you have libpng installed on your system
+(although you may need to change paths in the Makefile)
 
 1. Download the zlib source code from:
    http://www.zlib.net/

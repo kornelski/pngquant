@@ -1,19 +1,17 @@
 # Makefile for pngquant
-# GRR 20020405
 
 CC=gcc
 
-PNGINC = ../libpng
-PNGLIB = ../libpng
+# Change this to point to directory where include/png.h can be found:
+SYSTEMLIBPNG=/usr/X11
 
-ZINC = ../zlib
-ZLIB = ../zlib
+# Alternatively, build libpng and zlib in these directories:
+CUSTOMLIBPNG = ../libpng
+CUSTOMZLIB = ../zlib
 
-CFLAGS = -std=c99 -O3 -Wall -I. -I$(PNGINC) -I$(ZINC) -funroll-loops -fomit-frame-pointer
+CFLAGS = -std=c99 -O3 -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I$(SYSTEMLIBPNG)/include/ -funroll-loops -fomit-frame-pointer
 
-#LDFLAGS = -L$(PNGLIB) -lpng -L$(ZLIB) -lz -lm
-LDFLAGS = $(PNGLIB)/libpng.a -L$(ZLIB) -lz -lm
-#LDFLAGS = $(PNGLIB)/libpng.a $(ZLIB)/libz.a -lm
+LDFLAGS = -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L$(SYSTEMLIBPNG)/lib/ -L/usr/lib/ -lz -lpng -lm
 
 OBJS = pngquant.o rwpng.o pam.o
 
@@ -24,4 +22,4 @@ pngquant: $(OBJS)
 
 clean:
 	rm -f pngquant $(OBJS)
-# DO NOT DELETE
+

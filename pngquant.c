@@ -295,6 +295,25 @@ inline static float colordifference(f_pixel px, f_pixel py)
            (px.b - py.b) * (px.b - py.b) * colorimp;
 }
 
+int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_opaque_val)
+{
+    int ind=0;
+    float dist = colordifference(px,acolormap[0].acolor);
+
+    for(int i = 1; i < numcolors; i++) {
+        float newdist = colordifference(px,acolormap[i].acolor);
+
+        /* penalty for making holes in IE */
+        if (px.a > min_opaque_val && acolormap[i].acolor.a < 1) newdist += 1.0;
+
+        if (newdist < dist) {
+            ind = i;
+            dist = newdist;
+        }
+    }
+    return ind;
+}
+
 int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, float min_opaque_val, int ie_bug, int newcolors, int* remap, hist_item acolormap[])
 {
     uch *pQ;
@@ -375,18 +394,7 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
                 px = (f_pixel){sr, sg, sb, sa};
             }
 
-            float dist = 1<<30;
-            for (int i = 0; i < newcolors; ++i) {
-                float newdist = colordifference(px,acolormap[i].acolor);
-
-                /* penalty for making holes in IE */
-                if (px.a > min_opaque_val && acolormap[i].acolor.a < 1) newdist += 1.0;
-
-                if (newdist < dist) {
-                    ind = i;
-                    dist = newdist;
-                }
-            }
+            ind = best_color_index(px,acolormap,newcolors,min_opaque_val);
 
             if (floyd) {
                 float colorimp = (1.0/256.0) + acolormap[ind].acolor.a;

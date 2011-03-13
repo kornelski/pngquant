@@ -663,19 +663,43 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
     int colors=0;
     hist_item *achv = histogram(&input_image, reqcolors, &colors);
-
     int newcolors = MIN(colors, reqcolors);
-    hist_item *acolormap = mediancut(achv, min_opaque_val, colors, newcolors);
 
+    // backup numbers in achv
     for(int i=0; i < colors; i++) {
-        int match = best_color_index(achv[i].acolor, acolormap, newcolors, min_opaque_val);
-        float diff = sqrtf(colordifference(achv[i].acolor, acolormap[match].acolor));
-        achv[i].value = ceilf(achv[i].value * 0.66+diff);
+        achv[i].num_pixels = achv[i].value;
     }
 
-    free(acolormap);
-    acolormap = mediancut(achv, min_opaque_val, colors, newcolors);
+    hist_item *acolormap = NULL;
+    float least_error = -1;
+    int maxmaps = 30;
+    do
+    {
+        hist_item *newmap = mediancut(achv, min_opaque_val, colors, newcolors);
 
+        float total_error=0;
+
+        for(int i=0; i < colors; i++) {
+            int match = best_color_index(achv[i].acolor, newmap, newcolors, min_opaque_val);
+            float diff = colordifference(achv[i].acolor, newmap[match].acolor);
+            assert(diff >= 0);
+            assert(achv[i].num_pixels > 0);
+            total_error += diff * achv[i].num_pixels;
+
+            achv[i].value = (achv[i].num_pixels+achv[i].value) * (1.0+sqrtf(diff));
+        }
+
+        if (total_error < least_error || !acolormap) {
+            if (acolormap) free(acolormap);
+            acolormap = newmap;
+            least_error = total_error;
+            maxmaps -= 1; // asymptotic improvement could make it go on forever
+        } else {
+            maxmaps -= 7;
+            free(newmap);
+        }
+    }
+    while(maxmaps > 0);
 
     pam_freeacolorhist(achv);
 

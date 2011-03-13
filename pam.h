@@ -70,7 +70,7 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
 
 typedef struct {
     f_pixel acolor;
-    int value;
+    float value, num_pixels;
 } hist_item;
 
 typedef struct acolorhist_list_item *acolorhist_list;

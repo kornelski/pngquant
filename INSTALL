@@ -34,7 +34,7 @@ You can skip first two steps if you have libpng installed on your system
    Build libpng:
 
       $ cd libpng
-      $ ./configure && make libpng.a
+      $ ./configure && make
 
 3. Go back to the pngquant directory and make using the Makefile.unx make file:
 

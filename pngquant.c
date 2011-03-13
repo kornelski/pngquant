@@ -667,6 +667,16 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     int newcolors = MIN(colors, reqcolors);
     hist_item *acolormap = mediancut(achv, min_opaque_val, colors, newcolors);
 
+    for(int i=0; i < colors; i++) {
+        int match = best_color_index(achv[i].acolor, acolormap, newcolors, min_opaque_val);
+        float diff = sqrtf(colordifference(achv[i].acolor, acolormap[match].acolor));
+        achv[i].value = ceilf(achv[i].value * 0.66+diff);
+    }
+
+    free(acolormap);
+    acolormap = mediancut(achv, min_opaque_val, colors, newcolors);
+
+
     pam_freeacolorhist(achv);
 
     write_info output_image = {0};
@@ -719,6 +729,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
     retval = write_image(&output_image,filename,newext,force,using_stdin);
 
+    free(acolormap);
 
     if (output_image.indexed_data) {
         free(output_image.indexed_data);

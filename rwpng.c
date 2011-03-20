@@ -58,7 +58,7 @@ void rwpng_version_info(void)
     26 = wrong PNG color type (no alpha channel)
  */
 
-int rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
+pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
 {
     png_structp  png_ptr = NULL;
     png_infop    info_ptr = NULL;
@@ -220,7 +220,7 @@ int rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
     35 = libpng error (via longjmp())
  */
 
-int rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
+pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
 {
     png_structp png_ptr;       /* note:  temporary variables! */
     png_infop info_ptr;
@@ -401,7 +401,7 @@ int rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
 
 /* returns 0 for success, 45 for libpng (longjmp) problem */
 
-int rwpng_write_image_whole(write_info *mainprog_ptr)
+pngquant_error rwpng_write_image_whole(write_info *mainprog_ptr)
 {
     png_structp png_ptr = (png_structp)mainprog_ptr->png_ptr;
     png_infop info_ptr = (png_infop)mainprog_ptr->info_ptr;

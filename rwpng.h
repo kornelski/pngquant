@@ -99,11 +99,11 @@ typedef union {
 
 void rwpng_version_info(void);
 
-int rwpng_read_image(FILE *infile, read_info *mainprog_ptr);
+pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr);
 
-int rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr);
+pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr);
 
-int rwpng_write_image_whole(write_info *mainprog_ptr);
+pngquant_error rwpng_write_image_whole(write_info *mainprog_ptr);
 
 int rwpng_write_image_row(write_info *mainprog_ptr);
 

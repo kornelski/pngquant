@@ -675,11 +675,16 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     int maxmaps = 30;
     do
     {
+        verbose_printf("  selecting colors");
+
         hist_item *newmap = mediancut(achv, min_opaque_val, colors, newcolors);
+
+        verbose_printf("...");
 
         float total_error=0;
 
         for(int i=0; i < colors; i++) {
+
             int match = best_color_index(achv[i].acolor, newmap, newcolors, min_opaque_val);
             float diff = colordifference(achv[i].acolor, newmap[match].acolor);
             assert(diff >= 0);
@@ -698,6 +703,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
             maxmaps -= 7;
             free(newmap);
         }
+
+        verbose_printf(" %d%%\n",100-MAX(0,(int)(maxmaps/0.3)));
     }
     while(maxmaps > 0);
 

@@ -77,7 +77,11 @@ struct box {
 static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug);
 
 static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int reqcolors);
-static int weightedcompare(const void *ch1, const void *ch2);
+typedef int (*comparefunc)(const void *, const void *);
+static int weightedcompare_r(const void *ch1, const void *ch2);
+static int weightedcompare_g(const void *ch1, const void *ch2);
+static int weightedcompare_b(const void *ch1, const void *ch2);
+static int weightedcompare_a(const void *ch1, const void *ch2);
 static int sumcompare (const void *b1, const void *b2);
 
 static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opaque_val);
@@ -786,13 +790,13 @@ static int compareweight(const void *ch1, const void *ch2)
 
 static channelweight channel_sort_order[4];
 
-static int weightedcompare(const void *ch1, const void *ch2)
+static int weightedcompare_r(const void *ch1, const void *ch2)
 {
     const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
     const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
 
-    if (c1p[channel_sort_order[0].chan] > c2p[channel_sort_order[0].chan]) return 1;
-    if (c1p[channel_sort_order[0].chan] < c2p[channel_sort_order[0].chan]) return -1;
+    if (c1p[0] > c2p[0]) return 1;
+    if (c1p[0] < c2p[0]) return -1;
 
     // other channels are sorted backwards
     if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
@@ -807,6 +811,68 @@ static int weightedcompare(const void *ch1, const void *ch2)
     return 0;
 }
 
+static int weightedcompare_g(const void *ch1, const void *ch2)
+{
+    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
+    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
+
+    if (c1p[1] > c2p[1]) return 1;
+    if (c1p[1] < c2p[1]) return -1;
+
+    // other channels are sorted backwards
+    if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
+    if (c1p[channel_sort_order[1].chan] < c2p[channel_sort_order[1].chan]) return 1;
+
+    if (c1p[channel_sort_order[2].chan] > c2p[channel_sort_order[2].chan]) return -1;
+    if (c1p[channel_sort_order[2].chan] < c2p[channel_sort_order[2].chan]) return 1;
+
+    if (c1p[channel_sort_order[3].chan] > c2p[channel_sort_order[3].chan]) return -1;
+    if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
+
+    return 0;
+}
+
+static int weightedcompare_b(const void *ch1, const void *ch2)
+{
+    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
+    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
+
+    if (c1p[2] > c2p[2]) return 1;
+    if (c1p[2] < c2p[2]) return -1;
+
+    // other channels are sorted backwards
+    if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
+    if (c1p[channel_sort_order[1].chan] < c2p[channel_sort_order[1].chan]) return 1;
+
+    if (c1p[channel_sort_order[2].chan] > c2p[channel_sort_order[2].chan]) return -1;
+    if (c1p[channel_sort_order[2].chan] < c2p[channel_sort_order[2].chan]) return 1;
+
+    if (c1p[channel_sort_order[3].chan] > c2p[channel_sort_order[3].chan]) return -1;
+    if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
+
+    return 0;
+}
+
+static int weightedcompare_a(const void *ch1, const void *ch2)
+{
+    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
+    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
+
+    if (c1p[3] > c2p[3]) return 1;
+    if (c1p[3] < c2p[3]) return -1;
+
+    // other channels are sorted backwards
+    if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
+    if (c1p[channel_sort_order[1].chan] < c2p[channel_sort_order[1].chan]) return 1;
+
+    if (c1p[channel_sort_order[2].chan] > c2p[channel_sort_order[2].chan]) return -1;
+    if (c1p[channel_sort_order[2].chan] < c2p[channel_sort_order[2].chan]) return 1;
+
+    if (c1p[channel_sort_order[3].chan] > c2p[channel_sort_order[3].chan]) return -1;
+    if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
+
+    return 0;
+}
 
 /*
 ** Here is the fun part, the median-cut colormap generator.  This is based
@@ -892,10 +958,17 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
 
         qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), compareweight);
 
+
+        comparefunc comp;
+        if (channel_sort_order[0].chan == 0) comp = weightedcompare_r;
+        else if (channel_sort_order[0].chan == 1) comp = weightedcompare_g;
+        else if (channel_sort_order[0].chan == 2) comp = weightedcompare_b;
+        else comp = weightedcompare_a;
+
         if (clrs < 1<<10) {
-            qsort(&(achv[indx]), clrs, sizeof(achv[0]), weightedcompare);
+            qsort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
         } else {
-            mergesort(&(achv[indx]), clrs, sizeof(achv[0]), weightedcompare);
+            mergesort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
         }
 
         /*

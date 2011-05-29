@@ -65,6 +65,12 @@ typedef unsigned char   uch;
 
 #define MAXCOLORS  (1<<20)
 
+#if defined(DARWIN) || defined(BSD) /* mergesort() in stdlib is a bsd thing */
+#  define USE_MERGESORT 1
+#else
+#  define USE_MERGESORT 0
+#  define mergesort(a,b,c,d) qsort(a,b,c,d)
+#endif
 
 typedef struct box *box_vector;
 struct box {
@@ -965,7 +971,7 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         else if (channel_sort_order[0].chan == 2) comp = weightedcompare_b;
         else comp = weightedcompare_a;
 
-        if (clrs < 1<<10) {
+        if (!USE_MERGESORT || clrs < 1<<10) {
             qsort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
         } else {
             mergesort(&(achv[indx]), clrs, sizeof(achv[0]), comp);

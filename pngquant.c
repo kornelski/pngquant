@@ -61,13 +61,6 @@
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "pam.h"
 
-#if defined(__DARWIN_UNIX03) || defined(BSD) /* mergesort() in stdlib is a bsd thing */
-#  define USE_MERGESORT 1
-#else
-#  define USE_MERGESORT 0
-#  define mergesort(a,b,c,d) qsort(a,b,c,d)
-#endif
-
 #ifdef __SSE3__
 #define USE_SSE
 #endif
@@ -94,7 +87,6 @@ static int weightedcompare_r(const void *ch1, const void *ch2);
 static int weightedcompare_g(const void *ch1, const void *ch2);
 static int weightedcompare_b(const void *ch1, const void *ch2);
 static int weightedcompare_a(const void *ch1, const void *ch2);
-static int sumcompare (const void *b1, const void *b2);
 
 static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opaque_val);
 
@@ -937,21 +929,24 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
     ** Main loop: split boxes until we have enough.
     */
     while (boxes < newcolors) {
-        int bi, indx, clrs;
-        int sm;
-
 
         /*
         ** Find the first splittable box.
         */
-        for (bi = 0; bi < boxes; ++bi)
-            if (bv[bi].colors >= 2)
-                break;
-        if (bi == boxes)
+        int bi=-1; float maxsum=0;
+        for (int i=0; i < boxes; i++) {
+            if (bv[i].colors < 2) continue;
+
+            if (bv[i].sum*bv[i].weight > maxsum) {
+                maxsum = bv[i].sum*bv[i].weight;
+                bi = i;
+            }
+        }
+        if (bi < 0)
             break;        /* ran out of colors! */
-        indx = bv[bi].ind;
-        clrs = bv[bi].colors;
-        sm = bv[bi].sum;
+        int indx = bv[bi].ind;
+        int clrs = bv[bi].colors;
+        int sm = bv[bi].sum;
 
         /*
         ** Go through the box finding the minimum and maximum of each
@@ -1039,7 +1034,6 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         bv[boxes].sum = sm - lowersum;
         bv[boxes].weight = powf(colordifference(background, averagepixels(bv[boxes].ind, bv[boxes].colors, achv, min_opaque_val)),0.25f);
         ++boxes;
-        mergesort(bv, boxes, sizeof(struct box), sumcompare);
     }
 
     /*
@@ -1117,13 +1111,4 @@ static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opa
 
     return (f_pixel){.r=r, .g=g, .b=b, .a=a};
 }
-
-
-static int sumcompare(const void *b1, const void *b2)
-{
-    return ((box_vector)b2)->sum*((box_vector)b2)->weight -
-           ((box_vector)b1)->sum*((box_vector)b1)->weight;
-}
-
-
 

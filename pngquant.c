@@ -22,7 +22,7 @@
                 specify a mapfile, switch to grayscale */
 /* GRR TO DO:  if all samples are 0 or maxval, eliminate gAMA chunk (rwpng.c) */
 
-#define PNGQUANT_VERSION "1.4b (March 2011)"
+#define PNGQUANT_VERSION "1.4.1 (August 2011)"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -314,6 +314,7 @@ inline static float colordifference(f_pixel px, f_pixel py)
 int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_opaque_val)
 {
     int ind=0;
+
     float dist = colordifference(px,acolormap[0].acolor);
 
     for(int i = 1; i < numcolors; i++) {

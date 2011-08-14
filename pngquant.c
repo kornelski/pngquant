@@ -70,6 +70,14 @@ typedef unsigned char   uch;
 #  define mergesort(a,b,c,d) qsort(a,b,c,d)
 #endif
 
+#ifdef __SSE2__
+#define USE_SSE
+#endif
+
+#ifdef USE_SSE
+#include <xmmintrin.h>
+#endif
+
 typedef struct box *box_vector;
 struct box {
     int ind;
@@ -305,10 +313,25 @@ inline static float colordifference(f_pixel px, f_pixel py)
 {
     float colorimp = MAX(px.a, py.a);
 
+#ifdef USE_SSE
+    __m128 colorv = _mm_set_ps(1.0, colorimp, colorimp, colorimp);
+
+    __m128 vpx = _mm_load_ps((const float*)&px);
+    __m128 vpy = _mm_load_ps((const float*)&py);
+
+    __m128 tmp = _mm_sub_ps(vpx, vpy); // t = px - py
+    tmp = _mm_mul_ps(tmp, tmp); // t = t * t
+    tmp = _mm_mul_ps(tmp, colorv); // t = t * colorimp (except alpha)
+
+    float res[4]; _mm_store_ps(res, tmp);
+
+    return res[0]+res[1]+res[2]+res[3];
+#else
     return (px.a - py.a) * (px.a - py.a) +
            (px.r - py.r) * (px.r - py.r) * colorimp +
            (px.g - py.g) * (px.g - py.g) * colorimp +
            (px.b - py.b) * (px.b - py.b) * colorimp;
+#endif
 }
 
 int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_opaque_val)

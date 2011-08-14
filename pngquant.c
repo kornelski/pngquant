@@ -61,7 +61,7 @@
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "pam.h"
 
-#if defined(DARWIN) || defined(BSD) /* mergesort() in stdlib is a bsd thing */
+#if defined(__DARWIN_UNIX03) || defined(BSD) /* mergesort() in stdlib is a bsd thing */
 #  define USE_MERGESORT 1
 #else
 #  define USE_MERGESORT 0

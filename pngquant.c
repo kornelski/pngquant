@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
             ++argn;
             if (argn == argc) {
                 fprintf(stderr, "%s", pq_usage);
-                return 1;
+                return MISSING_ARGUMENT;
             }
             newext = argv[argn];
         }
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
             rwpng_version_info();
             fputs("\n", stderr);
             fputs(pq_usage, stderr);
-            return 1;
+            return MISSING_ARGUMENT;
         }
         ++argn;
     }
@@ -164,18 +164,18 @@ int main(int argc, char *argv[])
         rwpng_version_info();
         fputs("\n", stderr);
         fputs(pq_usage, stderr);
-        return 1;
+        return MISSING_ARGUMENT;
     }
     if (sscanf(argv[argn], "%d", &reqcolors) != 1) {
         reqcolors = 256; argn--;
     }
     if (reqcolors <= 1) {
         fputs("number of colors must be greater than 1\n", stderr);
-        return 4;
+        return INVALID_ARGUMENT;
     }
     if (reqcolors > 256) {
         fputs("number of colors cannot be more than 256\n", stderr);
-        return 4;
+        return INVALID_ARGUMENT;
     }
     ++argn;
 
@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-int set_palette(write_info *output_image, int newcolors, int* remap, hist_item acolormap[])
+void set_palette(write_info *output_image, int newcolors, int* remap, hist_item acolormap[])
 {
     assert(remap); assert(acolormap); assert(output_image);
 
@@ -262,13 +262,10 @@ int set_palette(write_info *output_image, int newcolors, int* remap, hist_item a
             remap[x] = bot_idx++;
     }
 
-    verbose_printf("%d entr%s left\n", bot_idx,
-          (bot_idx == 1)? "y" : "ies");
+    verbose_printf("%d entr%s left\n", bot_idx, (bot_idx == 1)? "y" : "ies");
 
     /* sanity check:  top and bottom indices should have just crossed paths */
-    if (bot_idx != top_idx + 1) {
-        return INTERNAL_LOGIC_ERROR;
-    }
+    assert(bot_idx == top_idx + 1);
 
     output_image->num_palette = newcolors;
     output_image->num_trans = bot_idx;
@@ -291,8 +288,6 @@ int set_palette(write_info *output_image, int newcolors, int* remap, hist_item a
         output_image->palette[remap[x]].blue  = px.b;
         output_image->trans[remap[x]]         = px.a;
     }
-
-    return 0;
 }
 
 inline static float colordifference(f_pixel px, f_pixel py)
@@ -667,9 +662,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     verbose_printf("  Reading file corrected for gamma %2.1f\n", 1.0/input_image.gamma);
 
     min_opaque_val = modify_alpha(&input_image,ie_bug);
-    if (0==min_opaque_val) {
-        return INTERNAL_LOGIC_ERROR;
-    }
+    assert(min_opaque_val>0);
 
     int colors=0;
     hist_item *achv = histogram(&input_image, reqcolors, &colors);
@@ -726,9 +719,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     output_image.gamma = 0.45455;
 
     int remap[256];
-    if (set_palette(&output_image, newcolors, remap, acolormap)) {
-        return INTERNAL_LOGIC_ERROR;
-    }
+    set_palette(&output_image, newcolors, remap, acolormap);
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image

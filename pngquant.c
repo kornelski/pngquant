@@ -840,14 +840,8 @@ static int compareweight(const void *ch1, const void *ch2)
 
 static channelweight channel_sort_order[4];
 
-static int weightedcompare_r(const void *ch1, const void *ch2)
+inline static int weightedcompare_other(const float *restrict c1p, const float *restrict c2p)
 {
-    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
-    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
-
-    if (c1p[0] > c2p[0]) return 1;
-    if (c1p[0] < c2p[0]) return -1;
-
     // other channels are sorted backwards
     if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
     if (c1p[channel_sort_order[1].chan] < c2p[channel_sort_order[1].chan]) return 1;
@@ -859,6 +853,17 @@ static int weightedcompare_r(const void *ch1, const void *ch2)
     if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
 
     return 0;
+}
+
+static int weightedcompare_r(const void *ch1, const void *ch2)
+{
+    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
+    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
+
+    if (c1p[index_of_channel(r)] > c2p[index_of_channel(r)]) return 1;
+    if (c1p[index_of_channel(r)] < c2p[index_of_channel(r)]) return -1;
+
+    return weightedcompare_other(c1p, c2p);
 }
 
 static int weightedcompare_g(const void *ch1, const void *ch2)
@@ -866,20 +871,10 @@ static int weightedcompare_g(const void *ch1, const void *ch2)
     const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
     const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
 
-    if (c1p[1] > c2p[1]) return 1;
-    if (c1p[1] < c2p[1]) return -1;
+    if (c1p[index_of_channel(g)] > c2p[index_of_channel(g)]) return 1;
+    if (c1p[index_of_channel(g)] < c2p[index_of_channel(g)]) return -1;
 
-    // other channels are sorted backwards
-    if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
-    if (c1p[channel_sort_order[1].chan] < c2p[channel_sort_order[1].chan]) return 1;
-
-    if (c1p[channel_sort_order[2].chan] > c2p[channel_sort_order[2].chan]) return -1;
-    if (c1p[channel_sort_order[2].chan] < c2p[channel_sort_order[2].chan]) return 1;
-
-    if (c1p[channel_sort_order[3].chan] > c2p[channel_sort_order[3].chan]) return -1;
-    if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
-
-    return 0;
+    return weightedcompare_other(c1p, c2p);
 }
 
 static int weightedcompare_b(const void *ch1, const void *ch2)
@@ -887,20 +882,10 @@ static int weightedcompare_b(const void *ch1, const void *ch2)
     const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
     const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
 
-    if (c1p[2] > c2p[2]) return 1;
-    if (c1p[2] < c2p[2]) return -1;
+    if (c1p[index_of_channel(b)] > c2p[index_of_channel(b)]) return 1;
+    if (c1p[index_of_channel(b)] < c2p[index_of_channel(b)]) return -1;
 
-    // other channels are sorted backwards
-    if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
-    if (c1p[channel_sort_order[1].chan] < c2p[channel_sort_order[1].chan]) return 1;
-
-    if (c1p[channel_sort_order[2].chan] > c2p[channel_sort_order[2].chan]) return -1;
-    if (c1p[channel_sort_order[2].chan] < c2p[channel_sort_order[2].chan]) return 1;
-
-    if (c1p[channel_sort_order[3].chan] > c2p[channel_sort_order[3].chan]) return -1;
-    if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
-
-    return 0;
+    return weightedcompare_other(c1p, c2p);
 }
 
 static int weightedcompare_a(const void *ch1, const void *ch2)
@@ -908,20 +893,10 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
     const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
     const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
 
-    if (c1p[3] > c2p[3]) return 1;
-    if (c1p[3] < c2p[3]) return -1;
+    if (c1p[index_of_channel(a)] > c2p[index_of_channel(a)]) return 1;
+    if (c1p[index_of_channel(a)] < c2p[index_of_channel(a)]) return -1;
 
-    // other channels are sorted backwards
-    if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
-    if (c1p[channel_sort_order[1].chan] < c2p[channel_sort_order[1].chan]) return 1;
-
-    if (c1p[channel_sort_order[2].chan] > c2p[channel_sort_order[2].chan]) return -1;
-    if (c1p[channel_sort_order[2].chan] < c2p[channel_sort_order[2].chan]) return 1;
-
-    if (c1p[channel_sort_order[3].chan] > c2p[channel_sort_order[3].chan]) return -1;
-    if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
-
-    return 0;
+    return weightedcompare_other(c1p, c2p);
 }
 
 /*

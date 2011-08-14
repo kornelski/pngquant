@@ -616,8 +616,9 @@ float modify_alpha(read_info *input_image, int ie_bug)
     for(int row = 0; row < rows; ++row) {
         pP = input_pixels[row];
         for(int col = 0; col < cols; ++col, ++pP) {
-
             f_pixel px = to_f(gamma, *pP);
+
+#ifndef NDEBUG
             rgb_pixel rgbcheck = to_rgb(gamma, px);
 
 
@@ -626,7 +627,7 @@ float modify_alpha(read_info *input_image, int ie_bug)
                         pP->r,pP->g,pP->b,pP->a, rgbcheck.r,rgbcheck.g,rgbcheck.b,rgbcheck.a);
                 return 0;
             }
-
+#endif
             /* set all completely transparent colors to black */
             if (!pP->a) {
                 *pP = (rgb_pixel){0,0,0,pP->a};

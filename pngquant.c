@@ -25,14 +25,14 @@
 #define PNGQUANT_VERSION "1.4b (March 2011)"
 
 #define PNGQUANT_USAGE "\
-   usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\
-                    [options] -map mapfile [pngfile [pngfile ...]]\n\
+   usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
    options:\n\
       -force         overwrite existing output files\n\
       -ext new.png   set custom extension for output filename\n\
       -nofs          disable dithering (synonyms: -nofloyd, -ordered)\n\
       -verbose       print status messages (synonyms: -noquiet)\n\
       -iebug         increase opacity to work around Internet Explorer 6 bug\n\
+      -s N           speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
 \n\
    Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
    PNGs using Floyd-Steinberg diffusion dithering (unless disabled).\n\
@@ -63,8 +63,6 @@
 
 typedef unsigned char   uch;
 
-#define MAXCOLORS  (1<<20)
-
 #if defined(DARWIN) || defined(BSD) /* mergesort() in stdlib is a bsd thing */
 #  define USE_MERGESORT 1
 #else
@@ -80,7 +78,7 @@ struct box {
     float weight;
 };
 
-static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug);
+static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug, int speed_tradeoff);
 
 static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int reqcolors);
 typedef int (*comparefunc)(const void *, const void *);
@@ -109,6 +107,7 @@ int main(int argc, char *argv[])
     int floyd = TRUE;
     int force = FALSE;
     int ie_bug = FALSE;
+    int speed_tradeoff = 3; // 1 max quality, 10 rough & fast. 3 is optimum.
     int using_stdin = FALSE;
     int latest_error=0, error_count=0, file_count=0;
     const char *filename, *newext = NULL;
@@ -147,6 +146,14 @@ int main(int argc, char *argv[])
             }
             newext = argv[argn];
         }
+        else if (0 == strcmp(argv[argn], "-s")) {
+            ++argn;
+            if (argn == argc) {
+                fprintf(stderr, "%s", pq_usage);
+                return MISSING_ARGUMENT;
+            }
+            speed_tradeoff = atoi(argv[argn]);
+        }
         else {
             fprintf(stderr, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n",
               PNGQUANT_VERSION);
@@ -177,6 +184,10 @@ int main(int argc, char *argv[])
         fputs("number of colors cannot be more than 256\n", stderr);
         return INVALID_ARGUMENT;
     }
+    if (speed_tradeoff < 1 || speed_tradeoff > 10) {
+        fputs("speed should be between 1 (slow) and 10 (fast)\n", stderr);
+        return INVALID_ARGUMENT;
+    }
     ++argn;
 
     if (newext == NULL) {
@@ -200,7 +211,7 @@ int main(int argc, char *argv[])
 
         verbose_printf("%s:\n", filename);
 
-        retval = pngquant(filename, newext, floyd, force, using_stdin, reqcolors, ie_bug);
+        retval = pngquant(filename, newext, floyd, force, using_stdin, reqcolors, ie_bug, speed_tradeoff);
 
         if (retval) {
             latest_error = retval;
@@ -548,7 +559,7 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
     return retval;
 }
 
-hist_item *histogram(read_info *input_image, int reqcolors, int *colors)
+hist_item *histogram(read_info *input_image, int reqcolors, int *colors, int speed_tradeoff)
 {
     hist_item *achv;
     int ignorebits=0;
@@ -563,10 +574,13 @@ hist_item *histogram(read_info *input_image, int reqcolors, int *colors)
     ** coherence and try again.
     */
 
+    if (speed_tradeoff > 7) ignorebits++;
+    int maxcolors = (1<<15) + (1<<17)*(10-speed_tradeoff);
+
     verbose_printf("  making histogram...");
     for (; ;) {
 
-        achv = pam_computeacolorhist(input_pixels, cols, rows, gamma, MAXCOLORS, ignorebits, colors);
+        achv = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, colors);
         if (achv) break;
 
         ignorebits++;
@@ -631,7 +645,7 @@ float modify_alpha(read_info *input_image, int ie_bug)
     return min_opaque_val;
 }
 
-pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug)
+pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug, int speed_tradeoff)
 {
     read_info input_image = {0};
     float min_opaque_val;
@@ -670,7 +684,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     assert(min_opaque_val>0);
 
     int colors=0;
-    hist_item *achv = histogram(&input_image, reqcolors, &colors);
+    hist_item *achv = histogram(&input_image, reqcolors, &colors, speed_tradeoff);
     int newcolors = MIN(colors, reqcolors);
 
     // backup numbers in achv
@@ -680,7 +694,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
     hist_item *acolormap = NULL;
     float least_error = -1;
-    int maxmaps = 30;
+    int feedback_loop_trials = 90/speed_tradeoff;
+    const double percent = (double)feedback_loop_trials/100.0;
     do
     {
         verbose_printf("  selecting colors");
@@ -706,15 +721,15 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
             if (acolormap) free(acolormap);
             acolormap = newmap;
             least_error = total_error;
-            maxmaps -= 1; // asymptotic improvement could make it go on forever
+            feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
-            maxmaps -= 7;
+            feedback_loop_trials -= 7;
             free(newmap);
         }
 
-        verbose_printf(" %d%%\n",100-MAX(0,(int)(maxmaps/0.3)));
+        verbose_printf(" %d%%\n",100-MAX(0,(int)(feedback_loop_trials/percent)));
     }
-    while(maxmaps > 0);
+    while(feedback_loop_trials > 0);
 
     pam_freeacolorhist(achv);
 

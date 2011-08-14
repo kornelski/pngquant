@@ -1030,12 +1030,12 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
             Median used as expected value gives much better results than mean.
         */
 
-        f_pixel average = averagepixels(indx+(clrs-1)/2, clrs&1 ? 1 : 2, achv, min_opaque_val);
+        f_pixel median = averagepixels(indx+(clrs-1)/2, clrs&1 ? 1 : 2, achv, min_opaque_val);
 
         int lowersum = 0;
         float halfvar = 0, lowervar = 0;
         for(int i=0; i < clrs -1; i++) {
-            halfvar += sqrtf(colordifference(average, achv[indx+i].acolor)) * sqrtf(achv[indx+i].value);
+            halfvar += sqrtf(colordifference(median, achv[indx+i].acolor)) * sqrtf(achv[indx+i].value);
         }
         halfvar /= 2.0f;
 
@@ -1044,7 +1044,7 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
             if (lowervar >= halfvar)
                 break;
 
-            lowervar += sqrtf(colordifference(average, achv[indx+break_at].acolor)) * sqrtf(achv[indx+break_at].value);
+            lowervar += sqrtf(colordifference(median, achv[indx+break_at].acolor)) * sqrtf(achv[indx+break_at].value);
             lowersum += achv[indx + break_at].value;
         }
 

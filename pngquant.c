@@ -997,11 +997,7 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         else if (channel_sort_order[0].chan == index_of_channel(b)) comp = weightedcompare_b;
         else comp = weightedcompare_a;
 
-        if (!USE_MERGESORT || clrs < 1<<2) {
-            qsort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
-        } else {
-            mergesort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
-        }
+        qsort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
 
         /*
             Classic implementation tries to get even number of colors or pixels in each subdivision.

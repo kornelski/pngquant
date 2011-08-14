@@ -22,7 +22,7 @@
                 specify a mapfile, switch to grayscale */
 /* GRR TO DO:  if all samples are 0 or maxval, eliminate gAMA chunk (rwpng.c) */
 
-#define PNGQUANT_VERSION "1.4.1 (August 2011)"
+#define PNGQUANT_VERSION "1.4.2 (August 2011)"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -68,12 +68,12 @@
 #  define mergesort(a,b,c,d) qsort(a,b,c,d)
 #endif
 
-#ifdef __SSE2__
+#ifdef __SSE3__
 #define USE_SSE
 #endif
 
 #ifdef USE_SSE
-#include <xmmintrin.h>
+#include <pmmintrin.h>
 #endif
 
 #define index_of_channel(ch) (offsetof(f_pixel,ch)/sizeof(float))
@@ -311,22 +311,26 @@ void set_palette(write_info *output_image, int newcolors, int* remap, hist_item 
 
 inline static float colordifference(f_pixel px, f_pixel py)
 {
-    float colorimp = MAX(px.a, py.a);
-
 #ifdef USE_SSE
-    __m128 colorv = _mm_set_ps(1.0, colorimp, colorimp, colorimp);
-
     __m128 vpx = _mm_load_ps((const float*)&px);
     __m128 vpy = _mm_load_ps((const float*)&py);
 
+    __m128 colorimp = _mm_max_ss(vpx,vpy); // max ? ? ?
+    colorimp = _mm_shuffle_ps(colorimp, colorimp, 0); // max max max max
+    colorimp = _mm_move_ss(colorimp, _mm_set_ss(1.0)); // 1.0 max max max
+
     __m128 tmp = _mm_sub_ps(vpx, vpy); // t = px - py
     tmp = _mm_mul_ps(tmp, tmp); // t = t * t
-    tmp = _mm_mul_ps(tmp, colorv); // t = t * colorimp (except alpha)
+    tmp = _mm_mul_ps(tmp, colorimp); // t = t * colorimp (except alpha)
 
-    float res[4]; _mm_store_ps(res, tmp);
+    tmp = _mm_hadd_ps(tmp,tmp); // 0+1 2+3 0+1 2+3
+    __m128 rev = _mm_shuffle_ps(tmp, tmp, 0x1B); // reverses vector 2+3 0+1 2+3 0+1
+    tmp = _mm_add_ss(tmp, rev); // 0+1 + 2+3
 
-    return res[0]+res[1]+res[2]+res[3];
+    return _mm_cvtss_f32(tmp);
 #else
+    float colorimp = MAX(px.a, py.a);
+
     return (px.a - py.a) * (px.a - py.a) +
            (px.r - py.r) * (px.r - py.r) * colorimp +
            (px.g - py.g) * (px.g - py.g) * colorimp +

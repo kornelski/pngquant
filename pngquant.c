@@ -61,8 +61,6 @@
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "pam.h"
 
-typedef unsigned char   uch;
-
 #if defined(DARWIN) || defined(BSD) /* mergesort() in stdlib is a bsd thing */
 #  define USE_MERGESORT 1
 #else
@@ -359,21 +357,18 @@ int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_
 
 int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, float min_opaque_val, int ie_bug, int newcolors, int* remap, hist_item acolormap[])
 {
-    uch *pQ;
-    rgb_pixel *pP;
     int ind=0;
     int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val);
-    int limitcol;
-    uch *outrow;
 
+    rgb_pixel *pP;
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
-    uch **row_pointers = output_image->row_pointers;
+    unsigned char **row_pointers = output_image->row_pointers;
+    unsigned char *outrow, *pQ;
     int rows = input_image->height, cols = input_image->width;
     double gamma = input_image->gamma;
 
     f_pixel *thiserr = NULL;
     f_pixel *nexterr = NULL;
-    f_pixel *temperr;
     float sr=0, sg=0, sb=0, sa=0, err;
     int fs_direction = 0;
 
@@ -405,12 +400,10 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
 
         if ((!floyd) || fs_direction) {
             col = 0;
-            limitcol = cols;
             pP = input_pixels[row];
             pQ = outrow;
         } else {
             col = cols - 1;
-            limitcol = -1;
             pP = &(input_pixels[row][col]);
             pQ = &(outrow[col]);
         }
@@ -433,7 +426,7 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
                 else if (sb > 1) sb = 1;
                 if (sa < 0) sa = 0;
                 /* when fighting IE bug, dithering must not make opaque areas transparent */
-                else if (sa > 1 || (ie_bug && px.a > 0.999)) sa = 1;
+                else if (sa > 1 || (ie_bug && px.a > 255.0/256.0)) sa = 1;
 
                 px = (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa};
             }
@@ -493,21 +486,24 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
                 }
             }
 
-            *pQ = (uch)remap[ind];
+            *pQ = (unsigned char)remap[ind];
 
             if ((!floyd) || fs_direction) {
                 ++col;
                 ++pP;
                 ++pQ;
+                if (col >= cols) break;
             } else {
                 --col;
                 --pP;
                 --pQ;
+                if (col < 0) break;
             }
         }
-        while (col != limitcol);
+        while(1);
 
         if (floyd) {
+            f_pixel *temperr;
             temperr = thiserr;
             thiserr = nexterr;
             nexterr = temperr;

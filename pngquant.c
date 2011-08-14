@@ -603,7 +603,7 @@ hist_item *histogram(read_info *input_image, int reqcolors, int *colors, int spe
     */
 
     if (speed_tradeoff > 7) ignorebits++;
-    int maxcolors = (1<<15) + (1<<17)*(10-speed_tradeoff);
+    int maxcolors = (1<<16) + (1<<17)*(10-speed_tradeoff);
 
     verbose_printf("  making histogram...");
     for (; ;) {

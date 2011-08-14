@@ -99,7 +99,7 @@ static acolorhash_table pam_allocacolorhash(void);
  #include "pamcmap.h"
  */
 
-#define HASH_SIZE 20023
+#define HASH_SIZE 30029
 
 #define ROTL(x, n) ( (u_register_t)((x) << (n)) | (u_register_t)((x) >> (sizeof(u_register_t)*8-(n))) )
 inline static  unsigned long pam_hashapixel(f_pixel p)

@@ -412,7 +412,7 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
                 /* when fighting IE bug, dithering must not make opaque areas transparent */
                 else if (sa > 1 || (ie_bug && px.a > 0.999)) sa = 1;
 
-                px = (f_pixel){sr, sg, sb, sa};
+                px = (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa};
             }
 
             if (px.a < 1.0/256.0) {
@@ -1109,7 +1109,7 @@ static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opa
     /** if there was at least one completely opaque color, "round" final color to opaque */
     if (a >= min_opaque_val && maxa >= (255.0/256.0)) a = 1;
 
-    return (f_pixel){r, g, b, a};
+    return (f_pixel){.r=r, .g=g, .b=b, .a=a};
 }
 
 

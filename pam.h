@@ -21,7 +21,7 @@ typedef struct {
 } rgb_pixel;
 
 typedef struct {
-    float r, g, b, a;
+    float a, r, g, b;
 } f_pixel;
 
 static const float internal_gamma = 0.45455;
@@ -39,7 +39,7 @@ inline static f_pixel to_f(float gamma, rgb_pixel px)
           b = powf(px.b/255.0f, 1.0f/gamma),
           a = px.a/255.0f;
 
-    return (f_pixel){r*a,g*a,b*a,a};
+    return (f_pixel){.r=r*a, .g=g*a, .b=b*a, .a=a};
 }
 
 inline static rgb_pixel to_rgb(float gamma, f_pixel px)
@@ -59,10 +59,10 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
     a = px.a*256.0;
 
     return (rgb_pixel){
-        r>=255 ? 255 : (r<=0 ? 0 : r),
-        g>=255 ? 255 : (g<=0 ? 0 : g),
-        b>=255 ? 255 : (b<=0 ? 0 : b),
-        a>=255 ? 255 : a,
+        .r = r>=255 ? 255 : (r<=0 ? 0 : r),
+        .g = g>=255 ? 255 : (g<=0 ? 0 : g),
+        .b = b>=255 ? 255 : (b<=0 ? 0 : b),
+        .a = a>=255 ? 255 : a,
     };
 }
 

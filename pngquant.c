@@ -324,6 +324,7 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
     uch *pQ;
     rgb_pixel *pP;
     int ind=0;
+    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val);
     int limitcol;
     uch *outrow;
 
@@ -399,7 +400,11 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
                 px = (f_pixel){sr, sg, sb, sa};
             }
 
-            ind = best_color_index(px,acolormap,newcolors,min_opaque_val);
+            if (px.a < 1.0/256.0) {
+                ind = transparent_ind;
+            } else {
+                ind = best_color_index(px,acolormap,newcolors,min_opaque_val);
+            }
 
             if (floyd) {
                 float colorimp = (1.0/256.0) + acolormap[ind].acolor.a;

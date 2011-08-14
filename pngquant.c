@@ -76,6 +76,8 @@
 #include <xmmintrin.h>
 #endif
 
+#define index_of_channel(ch) (offsetof(f_pixel,ch)/sizeof(float))
+
 typedef struct box *box_vector;
 struct box {
     int ind;
@@ -995,21 +997,21 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         ** by simply comparing the range in RGB space
         */
 
-        channel_sort_order[0] = (channelweight){offsetof(f_pixel,r)/sizeof(float), varr};
-        channel_sort_order[1] = (channelweight){offsetof(f_pixel,g)/sizeof(float), varg};
-        channel_sort_order[2] = (channelweight){offsetof(f_pixel,b)/sizeof(float), varb};
-        channel_sort_order[3] = (channelweight){offsetof(f_pixel,a)/sizeof(float), vara};
+        channel_sort_order[0] = (channelweight){index_of_channel(r), varr};
+        channel_sort_order[1] = (channelweight){index_of_channel(g), varg};
+        channel_sort_order[2] = (channelweight){index_of_channel(b), varb};
+        channel_sort_order[3] = (channelweight){index_of_channel(a), vara};
 
         qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), compareweight);
 
 
         comparefunc comp;
-        if (channel_sort_order[0].chan == 0) comp = weightedcompare_r;
-        else if (channel_sort_order[0].chan == 1) comp = weightedcompare_g;
-        else if (channel_sort_order[0].chan == 2) comp = weightedcompare_b;
+             if (channel_sort_order[0].chan == index_of_channel(r)) comp = weightedcompare_r;
+        else if (channel_sort_order[0].chan == index_of_channel(g)) comp = weightedcompare_g;
+        else if (channel_sort_order[0].chan == index_of_channel(b)) comp = weightedcompare_b;
         else comp = weightedcompare_a;
 
-        if (!USE_MERGESORT || clrs < 1<<10) {
+        if (!USE_MERGESORT || clrs < 1<<2) {
             qsort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
         } else {
             mergesort(&(achv[indx]), clrs, sizeof(achv[0]), comp);

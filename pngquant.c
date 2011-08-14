@@ -320,10 +320,13 @@ int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_
     for(int i = 1; i < numcolors; i++) {
         float newdist = colordifference(px,acolormap[i].acolor);
 
-        /* penalty for making holes in IE */
-        if (px.a > min_opaque_val && acolormap[i].acolor.a < 1) newdist += 1.0;
-
         if (newdist < dist) {
+
+            /* penalty for making holes in IE */
+            if (px.a > min_opaque_val && acolormap[i].acolor.a < 1) {
+                if (newdist+1.0 > dist) continue;
+            }
+
             ind = i;
             dist = newdist;
         }

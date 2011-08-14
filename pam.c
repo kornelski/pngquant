@@ -101,6 +101,44 @@ static acolorhash_table pam_allocacolorhash(void);
 
 #define HASH_SIZE 30029
 
+typedef struct mempool {
+    struct mempool *next;
+    size_t used;
+} *mempool;
+
+#define MEMPOOL_RESERVED ((sizeof(struct mempool)+15) & ~0xF)
+#define MEMPOOL_SIZE (1<<18)
+
+static void* mempool_new(mempool *mptr, size_t size)
+{
+    assert(size < MEMPOOL_SIZE-MEMPOOL_RESERVED);
+
+    if (*mptr && ((*mptr)->used+size) <= MEMPOOL_SIZE) {
+        int prevused = (*mptr)->used;
+        (*mptr)->used += (size+15) & ~0xF;
+        return ((char*)(*mptr)) + prevused;
+    }
+
+    mempool old = mptr ? *mptr : NULL;
+    char *mem = calloc(MEMPOOL_SIZE, 1);
+
+    (*mptr) = (mempool)mem;
+    (*mptr)->used = MEMPOOL_RESERVED;
+    (*mptr)->next = old;
+
+    return mempool_new(mptr, size);
+}
+
+static void mempool_free(mempool m)
+{
+    while (m) {
+        mempool next = m->next;
+        free(m);
+        m = next;
+    }
+}
+
+
 #define ROTL(x, n) ( (u_register_t)((x) << (n)) | (u_register_t)((x) >> (sizeof(u_register_t)*8-(n))) )
 inline static  unsigned long pam_hashapixel(f_pixel p)
 {
@@ -144,11 +182,12 @@ hist_item *pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, d
 
 static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
 {
-    acolorhash_table acht;
+    acolorhash_table acht; acolorhist_list *buckets;
     acolorhist_list achl;
     int col, row, hash;
     const int maxval = 255>>ignorebits;
     acht = pam_allocacolorhash();
+    buckets = acht->buckets;
     *acolorsP = 0;
 
     /* Go through the entire image, building a hash table of colors. */
@@ -168,24 +207,22 @@ static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols
 
             hash = pam_hashapixel(fpx);
 
-
-            for (achl = acht[hash]; achl != (acolorhist_list) 0; achl = achl->next)
+            for (achl = buckets[hash]; achl != NULL; achl = achl->next)
                 if (PAM_EQUAL(achl->ch.acolor, fpx))
                     break;
-            if (achl != (acolorhist_list) 0) {
+            if (achl != NULL) {
                 ++(achl->ch.value);
             } else {
                 if (++(*acolorsP) > maxacolors) {
                     pam_freeacolorhash(acht);
-                    return (acolorhash_table) 0;
+                    return NULL;
                 }
-                achl = malloc(sizeof(struct acolorhist_list_item));
-                if (!achl) return 0;
+                achl = mempool_new(&acht->mempool, sizeof(struct acolorhist_list_item));
 
                 achl->ch.acolor = fpx;
                 achl->ch.value = 1;
-                achl->next = acht[hash];
-                acht[hash] = achl;
+                achl->next = buckets[hash];
+                buckets[hash] = achl;
             }
         }
 
@@ -193,14 +230,14 @@ static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols
     return acht;
 }
 
-
-
 static acolorhash_table pam_allocacolorhash()
 {
-    return calloc(HASH_SIZE, sizeof(acolorhist_list));
+    mempool m = NULL;
+    acolorhash_table t = mempool_new(&m, sizeof(*t));
+    t->buckets = mempool_new(&m, HASH_SIZE * sizeof(t->buckets[0]));
+    t->mempool = m;
+    return t;
 }
-
-
 
 static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors)
 {
@@ -210,16 +247,11 @@ static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolo
 
     /* Now collate the hash table into a simple acolorhist array. */
     achv = (hist_item *) malloc(maxacolors * sizeof(achv[0]));
-    /* (Leave room for expansion by caller.) */
-    if (!achv) {
-        fprintf(stderr, "  out of memory generating histogram\n");
-        exit(9);
-    }
 
     /* Loop through the hash table. */
     j = 0;
     for (i = 0; i < HASH_SIZE; ++i)
-        for (achl = acht[i]; achl != (acolorhist_list) 0; achl = achl->next) {
+        for (achl = acht->buckets[i]; achl != NULL; achl = achl->next) {
             /* Add the new entry. */
             achv[j] = achl->ch;
             ++j;
@@ -232,22 +264,14 @@ static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolo
 
 static void pam_freeacolorhash(acolorhash_table acht)
 {
-    int i;
-    acolorhist_list achl, achlnext;
-
-    for (i = 0; i < HASH_SIZE; ++i)
-        for (achl = acht[i]; achl != (acolorhist_list) 0; achl = achlnext) {
-            achlnext = achl->next;
-            free((char*) achl);
-        }
-    free((char*) acht);
+    mempool_free(acht->mempool);
 }
 
 
 
 void pam_freeacolorhist(hist_item *achv)
 {
-    free((char*) achv);
+    free(achv);
 }
 
 

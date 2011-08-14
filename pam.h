@@ -79,7 +79,10 @@ struct acolorhist_list_item {
     hist_item ch;
 };
 
-typedef acolorhist_list *acolorhash_table;
+typedef struct {
+    struct mempool *mempool;
+    acolorhist_list *buckets;
+} *acolorhash_table;
 
 
 typedef unsigned char pixval; /* GRR: hardcoded for now; later add 16-bit support */

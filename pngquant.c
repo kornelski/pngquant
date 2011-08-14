@@ -309,6 +309,16 @@ void set_palette(write_info *output_image, int newcolors, int* remap, hist_item 
     }
 }
 
+inline static float colordifference_stdc(f_pixel px, f_pixel py)
+{
+    float colorimp = MAX(px.a, py.a);
+
+    return (px.a - py.a) * (px.a - py.a) +
+           (px.r - py.r) * (px.r - py.r) * colorimp +
+           (px.g - py.g) * (px.g - py.g) * colorimp +
+           (px.b - py.b) * (px.b - py.b) * colorimp;
+}
+
 inline static float colordifference(f_pixel px, f_pixel py)
 {
 #ifdef USE_SSE
@@ -327,14 +337,11 @@ inline static float colordifference(f_pixel px, f_pixel py)
     __m128 rev = _mm_shuffle_ps(tmp, tmp, 0x1B); // reverses vector 2+3 0+1 2+3 0+1
     tmp = _mm_add_ss(tmp, rev); // 0+1 + 2+3
 
-    return _mm_cvtss_f32(tmp);
+    float res = _mm_cvtss_f32(tmp);
+    assert(fabs(res - colordifference_stdc(px,py)) < 0.001);
+    return res;
 #else
-    float colorimp = MAX(px.a, py.a);
-
-    return (px.a - py.a) * (px.a - py.a) +
-           (px.r - py.r) * (px.r - py.r) * colorimp +
-           (px.g - py.g) * (px.g - py.g) * colorimp +
-           (px.b - py.b) * (px.b - py.b) * colorimp;
+    return colordifference_stdc(px,py);
 #endif
 }
 

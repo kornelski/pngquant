@@ -722,8 +722,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
     hist_item *acolormap = NULL;
     float least_error = -1;
-    int feedback_loop_trials = 90/speed_tradeoff;
-    const double percent = (double)feedback_loop_trials/100.0;
+    int feedback_loop_trials = 9*(6-speed_tradeoff);
+    const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
     do
     {
         verbose_printf("  selecting colors");
@@ -734,15 +734,17 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
 
         float total_error=0;
 
-        for(int i=0; i < colors; i++) {
+        if (feedback_loop_trials || acolormap) {
+            for(int i=0; i < colors; i++) {
 
-            int match = best_color_index(achv[i].acolor, newmap, newcolors, min_opaque_val);
-            float diff = colordifference(achv[i].acolor, newmap[match].acolor);
-            assert(diff >= 0);
-            assert(achv[i].num_pixels > 0);
-            total_error += diff * achv[i].num_pixels;
+                int match = best_color_index(achv[i].acolor, newmap, newcolors, min_opaque_val);
+                float diff = colordifference(achv[i].acolor, newmap[match].acolor);
+                assert(diff >= 0);
+                assert(achv[i].num_pixels > 0);
+                total_error += diff * achv[i].num_pixels;
 
-            achv[i].value = (achv[i].num_pixels+achv[i].value) * (1.0+sqrtf(diff));
+                achv[i].value = (achv[i].num_pixels+achv[i].value) * (1.0+sqrtf(diff));
+            }
         }
 
         if (total_error < least_error || !acolormap) {
@@ -751,7 +753,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
             least_error = total_error;
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
-            feedback_loop_trials -= 7;
+            feedback_loop_trials -= 6;
+            if (total_error > least_error*4) feedback_loop_trials -= 3;
             free(newmap);
         }
 

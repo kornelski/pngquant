@@ -22,7 +22,7 @@ typedef struct {
 
 typedef struct {
     float a, r, g, b;
-} f_pixel;
+}  __attribute__ ((aligned (16))) f_pixel;
 
 static const float internal_gamma = 0.45455;
 

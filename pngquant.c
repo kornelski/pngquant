@@ -79,8 +79,9 @@ struct box {
     float weight;
 };
 
-pngquant_error pngquant(read_info *input_image, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug, int speed_tradeoff);
+pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff);
 pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
+pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin);
 
 static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int reqcolors);
 typedef int (*comparefunc)(const void *, const void *);
@@ -213,18 +214,30 @@ int main(int argc, char *argv[])
         verbose_printf("%s:\n", filename);
 
         read_info input_image = {0};
+        write_info output_image = {0};
         retval = read_image(filename,using_stdin,&input_image);
 
         if (!retval) {
-            retval = pngquant(&input_image, newext, floyd, force, using_stdin, reqcolors, ie_bug, speed_tradeoff);
+            retval = pngquant(&input_image, &output_image, floyd, reqcolors, ie_bug, speed_tradeoff);
         }
 
+        /* now we're done with the INPUT data and row_pointers, so free 'em */
         if (input_image.rgba_data) {
             free(input_image.rgba_data);
         }
-
         if (input_image.row_pointers) {
             free(input_image.row_pointers);
+        }
+
+        if (!retval) {
+            retval = write_image(&output_image,filename,newext,force,using_stdin);
+        }
+
+        if (output_image.indexed_data) {
+            free(output_image.indexed_data);
+        }
+        if (output_image.row_pointers) {
+            free(output_image.row_pointers);
         }
 
         if (retval) {
@@ -721,11 +734,9 @@ pngquant_error read_image(const char *filename, int using_stdin, read_info *inpu
     return 0;
 }
 
-pngquant_error pngquant(read_info *input_image, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug, int speed_tradeoff)
+pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff)
 {
     float min_opaque_val;
-
-    pngquant_error retval;
 
     verbose_printf("  Reading file corrected for gamma %2.1f\n", 1.0/input_image->gamma);
 
@@ -785,12 +796,11 @@ pngquant_error pngquant(read_info *input_image, const char *newext, int floyd, i
 
     pam_freeacolorhist(achv);
 
-    write_info output_image = {0};
-    output_image.width = input_image->width;
-    output_image.height = input_image->height;
-    output_image.gamma = 0.45455;
+    output_image->width = input_image->width;
+    output_image->height = input_image->height;
+    output_image->gamma = 0.45455;
 
-    set_palette(&output_image, newcolors, acolormap);
+    set_palette(output_image, newcolors, acolormap);
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image
@@ -798,16 +808,16 @@ pngquant_error pngquant(read_info *input_image, const char *newext, int floyd, i
     ** is still in use via apixels (INPUT data).
     */
 
-    output_image.indexed_data = malloc(output_image.height * output_image.width);
-    output_image.row_pointers = malloc(output_image.height * sizeof(output_image.row_pointers[0]));
+    output_image->indexed_data = malloc(output_image->height * output_image->width);
+    output_image->row_pointers = malloc(output_image->height * sizeof(output_image->row_pointers[0]));
 
-    if (!output_image.indexed_data || !output_image.row_pointers) {
+    if (!output_image->indexed_data || !output_image->row_pointers) {
         fprintf(stderr, "  insufficient memory for indexed data and/or row pointers\n");
         return OUT_OF_MEMORY_ERROR;
     }
 
-    for (int row = 0;  row < output_image.height;  ++row) {
-        output_image.row_pointers[row] = output_image.indexed_data + row*output_image.width;
+    for (int row = 0;  row < output_image->height;  ++row) {
+        output_image->row_pointers[row] = output_image->indexed_data + row*output_image->width;
     }
 
 
@@ -817,22 +827,11 @@ pngquant_error pngquant(read_info *input_image, const char *newext, int floyd, i
     */
     verbose_printf("  mapping image to new colors...\n" );
 
-    remap_to_palette(input_image,&output_image,floyd,min_opaque_val,ie_bug,newcolors,acolormap);
-
-    /* now we're done with the INPUT data and row_pointers, so free 'em */
-
-    retval = write_image(&output_image,filename,newext,force,using_stdin);
+    remap_to_palette(input_image,output_image,floyd,min_opaque_val,ie_bug,newcolors,acolormap);
 
     free(acolormap);
 
-    if (output_image.indexed_data) {
-        free(output_image.indexed_data);
-    }
-    if (output_image.row_pointers) {
-        free(output_image.row_pointers);
-    }
-
-    return retval;
+    return 0;
 }
 
 

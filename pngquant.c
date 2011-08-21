@@ -240,6 +240,13 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
+static int popularity(const void *ch1, const void *ch2)
+{
+    const float v1 = ((const hist_item*)ch1)->value;
+    const float v2 = ((const hist_item*)ch2)->value;
+    return v2-v1;
+}
+
 void set_palette(write_info *output_image, int newcolors, int* remap, hist_item acolormap[])
 {
     assert(remap); assert(acolormap); assert(output_image);
@@ -248,8 +255,6 @@ void set_palette(write_info *output_image, int newcolors, int* remap, hist_item 
     ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
     ** number of colors that will be used in the output image.
     */
-
-    int top_idx, bot_idx;
 
     verbose_printf("  writing %d-color image\n", newcolors);
 
@@ -263,6 +268,10 @@ void set_palette(write_info *output_image, int newcolors, int* remap, hist_item 
 
     verbose_printf("  remapping colormap to eliminate opaque tRNS-chunk entries...");
 
+    /* colors sorted by popularity make pngs slightly more compressible */
+    qsort(acolormap, newcolors, sizeof(acolormap[0]), popularity);
+
+    int top_idx, bot_idx;
     int x=0;
     for (top_idx = newcolors-1, bot_idx = 0;  x < newcolors;  ++x) {
         rgb_pixel px = to_rgb(output_image->gamma, acolormap[x].acolor);
@@ -1052,6 +1061,9 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         for(int i=0; i < bv[bi].colors; i++) {
             /* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */
             achv[bv[bi].ind + i].value *= 1.0 + sqrt(colordifference(acolormap[bi].acolor, achv[bv[bi].ind + i].acolor))/2.0;
+
+            /* store total color popularity */
+            acolormap[bi].value += achv[bv[bi].ind + i].value;
         }
     }
 

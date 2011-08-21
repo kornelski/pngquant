@@ -21,6 +21,7 @@
       --ext new.png  set custom suffix/extension for output filename\n\
       --force        overwrite existing output files (synonym: -f)\n\
       --iebug        increase opacity to work around Internet Explorer 6 bug\n\
+      --transbug     transparent color will be placed at the end of the palette\n\
       --nofs         disable Floyd-Steinberg dithering\n\
       --speed N      speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
       --verbose      print status messages (synonym: -v)\n\
@@ -61,6 +62,7 @@ struct pngquant_options {
     int reqcolors;
     int floyd;
     int speed_tradeoff;
+    int last_index_transparent;
     float min_opaque_val;
 };
 
@@ -155,6 +157,7 @@ int main(int argc, char *argv[])
         .floyd = TRUE, // floyd-steinberg dithering
         .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
         .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
+        .last_index_transparent = FALSE, // puts transparent color at last index. This is workaround for blu-ray subtitles.
     };
 
     int force = FALSE; // force overwrite
@@ -186,6 +189,9 @@ int main(int argc, char *argv[])
             verbose = TRUE;
         else if ( 0 == strcmp(argv[argn], "--quiet") )
             verbose = FALSE;
+
+        else if ( 0 == strcmp(argv[argn], "--transbug"))
+            options.last_index_transparent = TRUE;
 
         else if ( 0 == strcmp(argv[argn], "-V") ||
 		  0 == strcmp(argv[argn], "--version")) {
@@ -348,7 +354,7 @@ static int compare_popularity(const void *ch1, const void *ch2)
     return v1 > v2 ? 1 : -1;
 }
 
-static void sort_palette(write_info *output_image, colormap *map)
+static void sort_palette(write_info *output_image, colormap *map, int last_index_transparent)
 {
     assert(map); assert(output_image);
 
@@ -359,6 +365,23 @@ static void sort_palette(write_info *output_image, colormap *map)
     */
 
     verbose_printf("  eliminating opaque tRNS-chunk entries...");
+    output_image->num_palette = map->colors;
+
+    if (last_index_transparent) for(int i=0; i < map->colors; i++) {
+        if (map->palette[i].acolor.a < 1.0/256.0) {
+            const int old = i;
+            const int transparent_dest = map->colors-1;
+            const colormap_item tmp = map->palette[transparent_dest];
+            map->palette[transparent_dest] = map->palette[old];
+            map->palette[old] = tmp;
+
+            /* colors sorted by popularity make pngs slightly more compressible */
+            qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
+
+            output_image->num_trans = map->colors;
+            return;
+        }
+    }
 
     /* move transparent colors to the beginning to shrink trns chunk */
     int num_transparent=0;
@@ -384,7 +407,6 @@ static void sort_palette(write_info *output_image, colormap *map)
     qsort(map->palette, num_transparent, sizeof(map->palette[0]), compare_popularity);
     qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
 
-    output_image->num_palette = map->colors;
     output_image->num_trans = num_transparent;
 }
 
@@ -1026,7 +1048,7 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
     }
 
     // tRNS, etc.
-    sort_palette(output_image, acolormap);
+    sort_palette(output_image, acolormap, options->last_index_transparent);
 
     /*
      ** Step 4: map the colors in the image to their closest match in the

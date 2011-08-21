@@ -361,7 +361,7 @@ int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_
     return ind;
 }
 
-int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, float min_opaque_val, int ie_bug, int newcolors, hist_item acolormap[])
+void remap_to_palette(read_info *input_image, write_info *output_image, int floyd, float min_opaque_val, int ie_bug, int newcolors, hist_item acolormap[])
 {
     int ind=0;
     int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val);
@@ -516,7 +516,6 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
             fs_direction = !fs_direction;
         }
     }
-    return 0;
 }
 
 char *add_filename_extension(const char *filename, const char *newext)
@@ -798,9 +797,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     */
     verbose_printf("  mapping image to new colors...\n" );
 
-    if (remap_to_palette(&input_image,&output_image,floyd,min_opaque_val,ie_bug,newcolors,acolormap)) {
-        return OUT_OF_MEMORY_ERROR;
-    }
+    remap_to_palette(&input_image,&output_image,floyd,min_opaque_val,ie_bug,newcolors,acolormap);
 
     /* now we're done with the INPUT data and row_pointers, so free 'em */
 

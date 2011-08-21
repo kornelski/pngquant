@@ -27,12 +27,12 @@
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
    options:\n\
-      -force         overwrite existing output files\n\
-      -ext new.png   set custom extension for output filename\n\
-      -nofs          disable dithering (synonyms: -nofloyd, -ordered)\n\
-      -verbose       print status messages (synonyms: -noquiet)\n\
-      -iebug         increase opacity to work around Internet Explorer 6 bug\n\
-      -s N           speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
+      -force        overwrite existing output files (synonym: -f)\n\
+      -ext new.png  set custom extension for output filename\n\
+      -nofs         disable dithering (synonyms: -nofloyd, -ordered)\n\
+      -verbose      print status messages (synonyms: -noquiet)\n\
+      -speed N      speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
+      -iebug        increase opacity to work around Internet Explorer 6 bug\n\
 \n\
    Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
    PNGs using Floyd-Steinberg diffusion dithering (unless disabled).\n\
@@ -40,8 +40,7 @@
    it ends in \"-fs8.png\", \"-or8.png\" or your custom extension (unless the\n\
    input is stdin, in which case the quantized image will go to stdout).\n\
    The default behavior if the output file exists is to skip the conversion;\n\
-   use -force to overwrite.\n\
-   NOTE:  the -map option is NOT YET SUPPORTED.\n"
+   use -force to overwrite.\n"
 
 
 #include <stdio.h>
@@ -148,7 +147,8 @@ int main(int argc, char *argv[])
             }
             newext = argv[argn];
         }
-        else if (0 == strcmp(argv[argn], "-s")) {
+        else if (0 == strcmp(argv[argn], "-s") ||
+                 0 == strcmp(argv[argn], "-speed")) {
             ++argn;
             if (argn == argc) {
                 fprintf(stderr, "%s", pq_usage);

@@ -1,6 +1,7 @@
-build
-*.pbxuser
-*.pbxproj
+*.dylib
 *.mode1v3
 *.o
-*.dylib
+*.pbxproj
+*.pbxuser
+build
+DerivedData

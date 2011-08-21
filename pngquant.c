@@ -244,12 +244,12 @@ static int popularity(const void *ch1, const void *ch2)
 {
     const float v1 = ((const hist_item*)ch1)->value;
     const float v2 = ((const hist_item*)ch2)->value;
-    return v2-v1;
+    return v1-v2;
 }
 
-void set_palette(write_info *output_image, int newcolors, int* remap, hist_item acolormap[])
+void set_palette(write_info *output_image, int newcolors, hist_item acolormap[])
 {
-    assert(remap); assert(acolormap); assert(output_image);
+    assert(acolormap); assert(output_image);
 
     /*
     ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
@@ -261,52 +261,44 @@ void set_palette(write_info *output_image, int newcolors, int* remap, hist_item 
     /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with
     ** the maximal alpha value (i.e., fully opaque) are at the end and can
-    ** therefore be omitted from the tRNS chunk.  Note that the ordering of
-    ** opaque entries is reversed from how Step 3 arranged them--not that
-    ** this should matter to anyone.
+    ** therefore be omitted from the tRNS chunk.
     */
 
     verbose_printf("  remapping colormap to eliminate opaque tRNS-chunk entries...");
 
-    /* colors sorted by popularity make pngs slightly more compressible */
-    qsort(acolormap, newcolors, sizeof(acolormap[0]), popularity);
-
-    int top_idx, bot_idx;
-    int x=0;
-    for (top_idx = newcolors-1, bot_idx = 0;  x < newcolors;  ++x) {
-        rgb_pixel px = to_rgb(output_image->gamma, acolormap[x].acolor);
-
-        if (px.a == 255)
-            remap[x] = top_idx--;
-        else
-            remap[x] = bot_idx++;
+    /* move transparent colors to the beginning to shrink trns chunk */
+    int num_transparent=0;
+    for(int i=0; i < newcolors; i++)
+    {
+        rgb_pixel px = to_rgb(output_image->gamma, acolormap[i].acolor);
+        if (px.a != 255) {
+            if (i != num_transparent) {
+                hist_item tmp = acolormap[num_transparent];
+                acolormap[num_transparent] = acolormap[i];
+                acolormap[i] = tmp;
+                i--;
+            }
+            num_transparent++;
+        }
     }
 
-    verbose_printf("%d entr%s left\n", bot_idx, (bot_idx == 1)? "y" : "ies");
+    verbose_printf("%d entr%s transparent\n", num_transparent, (num_transparent == 1)? "y" : "ies");
 
-    /* sanity check:  top and bottom indices should have just crossed paths */
-    assert(bot_idx == top_idx + 1);
+    /* colors sorted by popularity make pngs slightly more compressible */
+    qsort(acolormap, num_transparent, sizeof(acolormap[0]), popularity);
+    qsort(acolormap+num_transparent, newcolors-num_transparent, sizeof(acolormap[0]), popularity);
 
     output_image->num_palette = newcolors;
-    output_image->num_trans = bot_idx;
+    output_image->num_trans = num_transparent;
 
-    /* GRR TO DO:  if bot_idx == 0, check whether all RGB samples are gray
-                   and if so, whether grayscale sample_depth would be same
-                   => skip following palette section and go grayscale */
-
-
-    /*
-    ** Step 3.6 [GRR]: (Technically, the actual remapping happens in here)
-    */
-
-    for (x = 0; x < newcolors; ++x) {
+    for (int x = 0; x < newcolors; ++x) {
         rgb_pixel px = to_rgb(output_image->gamma, acolormap[x].acolor);
         acolormap[x].acolor = to_f(output_image->gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
-        output_image->palette[remap[x]].red   = px.r;
-        output_image->palette[remap[x]].green = px.g;
-        output_image->palette[remap[x]].blue  = px.b;
-        output_image->trans[remap[x]]         = px.a;
+        output_image->palette[x].red   = px.r;
+        output_image->palette[x].green = px.g;
+        output_image->palette[x].blue  = px.b;
+        output_image->trans[x]         = px.a;
     }
 }
 
@@ -369,7 +361,7 @@ int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_
     return ind;
 }
 
-int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, float min_opaque_val, int ie_bug, int newcolors, int* remap, hist_item acolormap[])
+int remap_to_palette(read_info *input_image, write_info *output_image, int floyd, float min_opaque_val, int ie_bug, int newcolors, hist_item acolormap[])
 {
     int ind=0;
     int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val);
@@ -500,7 +492,7 @@ int remap_to_palette(read_info *input_image, write_info *output_image, int floyd
                 }
             }
 
-            *pQ = (unsigned char)remap[ind];
+            *pQ = ind;
 
             if ((!floyd) || fs_direction) {
                 ++col;
@@ -779,8 +771,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     output_image.height = input_image.height;
     output_image.gamma = 0.45455;
 
-    int remap[256];
-    set_palette(&output_image, newcolors, remap, acolormap);
+    set_palette(&output_image, newcolors, acolormap);
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image
@@ -807,7 +798,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     */
     verbose_printf("  mapping image to new colors...\n" );
 
-    if (remap_to_palette(&input_image,&output_image,floyd,min_opaque_val,ie_bug,newcolors,remap,acolormap)) {
+    if (remap_to_palette(&input_image,&output_image,floyd,min_opaque_val,ie_bug,newcolors,acolormap)) {
         return OUT_OF_MEMORY_ERROR;
     }
 

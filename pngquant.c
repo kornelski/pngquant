@@ -1050,12 +1050,8 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         acolormap[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 
         for(int i=0; i < bv[bi].colors; i++) {
-            achv[bv[bi].ind + i].value *= 2.0 + sqrt(colordifference(acolormap[bi].acolor, achv[bv[bi].ind + i].acolor));
-        }
-
-        /* store total color popularity */
-        for(int i=0; i < bv[bi].colors; i++) {
-            acolormap[bi].value += achv[bv[bi].ind + i].value;
+            /* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */
+            achv[bv[bi].ind + i].value *= 1.0 + sqrt(colordifference(acolormap[bi].acolor, achv[bv[bi].ind + i].acolor))/2.0;
         }
     }
 

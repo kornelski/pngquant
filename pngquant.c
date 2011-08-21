@@ -79,7 +79,8 @@ struct box {
     float weight;
 };
 
-static pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug, int speed_tradeoff);
+pngquant_error pngquant(read_info *input_image, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug, int speed_tradeoff);
+pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
 
 static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int reqcolors);
 typedef int (*comparefunc)(const void *, const void *);
@@ -211,7 +212,20 @@ int main(int argc, char *argv[])
 
         verbose_printf("%s:\n", filename);
 
-        retval = pngquant(filename, newext, floyd, force, using_stdin, reqcolors, ie_bug, speed_tradeoff);
+        read_info input_image = {0};
+        retval = read_image(filename,using_stdin,&input_image);
+
+        if (!retval) {
+            retval = pngquant(&input_image, newext, floyd, force, using_stdin, reqcolors, ie_bug, speed_tradeoff);
+        }
+
+        if (input_image.rgba_data) {
+            free(input_image.rgba_data);
+        }
+
+        if (input_image.row_pointers) {
+            free(input_image.row_pointers);
+        }
 
         if (retval) {
             latest_error = retval;
@@ -674,11 +688,8 @@ float modify_alpha(read_info *input_image, int ie_bug)
     return min_opaque_val;
 }
 
-pngquant_error pngquant(const char *filename, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug, int speed_tradeoff)
+pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p)
 {
-    read_info input_image = {0};
-    float min_opaque_val;
-
     FILE *infile;
 
     if (using_stdin) {
@@ -697,7 +708,7 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
      ** Step 1: read in the alpha-channel image.
      */
     /* GRR:  returns RGBA (4 channels), 8 bps */
-    pngquant_error retval = rwpng_read_image(infile, &input_image);
+    pngquant_error retval = rwpng_read_image(infile, input_image_p);
 
     if (!using_stdin)
         fclose(infile);
@@ -707,13 +718,22 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
         return retval;
     }
 
-    verbose_printf("  Reading file corrected for gamma %2.1f\n", 1.0/input_image.gamma);
+    return 0;
+}
 
-    min_opaque_val = modify_alpha(&input_image,ie_bug);
+pngquant_error pngquant(read_info *input_image, const char *newext, int floyd, int force, int using_stdin, int reqcolors, int ie_bug, int speed_tradeoff)
+{
+    float min_opaque_val;
+
+    pngquant_error retval;
+
+    verbose_printf("  Reading file corrected for gamma %2.1f\n", 1.0/input_image->gamma);
+
+    min_opaque_val = modify_alpha(input_image,ie_bug);
     assert(min_opaque_val>0);
 
     int colors=0;
-    hist_item *achv = histogram(&input_image, reqcolors, &colors, speed_tradeoff);
+    hist_item *achv = histogram(input_image, reqcolors, &colors, speed_tradeoff);
     int newcolors = MIN(colors, reqcolors);
 
     // backup numbers in achv
@@ -766,8 +786,8 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     pam_freeacolorhist(achv);
 
     write_info output_image = {0};
-    output_image.width = input_image.width;
-    output_image.height = input_image.height;
+    output_image.width = input_image->width;
+    output_image.height = input_image->height;
     output_image.gamma = 0.45455;
 
     set_palette(&output_image, newcolors, acolormap);
@@ -797,16 +817,9 @@ pngquant_error pngquant(const char *filename, const char *newext, int floyd, int
     */
     verbose_printf("  mapping image to new colors...\n" );
 
-    remap_to_palette(&input_image,&output_image,floyd,min_opaque_val,ie_bug,newcolors,acolormap);
+    remap_to_palette(input_image,&output_image,floyd,min_opaque_val,ie_bug,newcolors,acolormap);
 
     /* now we're done with the INPUT data and row_pointers, so free 'em */
-
-    if (input_image.rgba_data) {
-        free(input_image.rgba_data);
-    }
-    if (input_image.row_pointers) {
-        free(input_image.row_pointers);
-    }
 
     retval = write_image(&output_image,filename,newext,force,using_stdin);
 

@@ -426,8 +426,7 @@ void remap_to_palette(read_info *input_image, write_info *output_image, int floy
 
         if (floyd) {
             for (col = 0; col < cols + 2; ++col) {
-                nexterr[col].r = nexterr[col].g =
-                nexterr[col].b = nexterr[col].a = 0;
+                nexterr[col] = (f_pixel){0,0,0,0};
             }
         }
 
@@ -472,50 +471,51 @@ void remap_to_palette(read_info *input_image, write_info *output_image, int floy
 
             if (floyd) {
                 float colorimp = (1.0/256.0) + acolormap[ind].acolor.a;
+                f_pixel px = acolormap[ind].acolor;
 
                 /* Propagate Floyd-Steinberg error terms. */
                 if (fs_direction) {
-                    err = (sr - acolormap[ind].acolor.r) * colorimp;
+                    err = (sr - px.r) * colorimp;
                     thiserr[col + 2].r += (err * 7.0f) / 16.0f;
                     nexterr[col    ].r += (err * 3.0f) / 16.0f;
                     nexterr[col + 1].r += (err * 5.0f) / 16.0f;
-                    nexterr[col + 2].r += (err    ) / 16.0f;
-                    err = (sg - acolormap[ind].acolor.g) * colorimp;
+                    nexterr[col + 2].r += (err       ) / 16.0f;
+                    err = (sg - px.g) * colorimp;
                     thiserr[col + 2].g += (err * 7.0f) / 16.0f;
                     nexterr[col    ].g += (err * 3.0f) / 16.0f;
                     nexterr[col + 1].g += (err * 5.0f) / 16.0f;
-                    nexterr[col + 2].g += (err    ) / 16.0f;
-                    err = (sb - acolormap[ind].acolor.b) * colorimp;
+                    nexterr[col + 2].g += (err       ) / 16.0f;
+                    err = (sb - px.b) * colorimp;
                     thiserr[col + 2].b += (err * 7.0f) / 16.0f;
                     nexterr[col    ].b += (err * 3.0f) / 16.0f;
                     nexterr[col + 1].b += (err * 5.0f) / 16.0f;
-                    nexterr[col + 2].b += (err    ) / 16.0f;
-                    err = (sa - acolormap[ind].acolor.a);
+                    nexterr[col + 2].b += (err       ) / 16.0f;
+                    err = (sa - px.a);
                     thiserr[col + 2].a += (err * 7.0f) / 16.0f;
                     nexterr[col    ].a += (err * 3.0f) / 16.0f;
                     nexterr[col + 1].a += (err * 5.0f) / 16.0f;
-                    nexterr[col + 2].a += (err    ) / 16.0f;
+                    nexterr[col + 2].a += (err       ) / 16.0f;
                 } else {
-                    err = (sr - acolormap[ind].acolor.r) * colorimp;
+                    err = (sr - px.r) * colorimp;
                     thiserr[col    ].r += (err * 7.0f) / 16.0f;
                     nexterr[col + 2].r += (err * 3.0f) / 16.0f;
                     nexterr[col + 1].r += (err * 5.0f) / 16.0f;
-                    nexterr[col    ].r += (err    ) / 16.0f;
-                    err = (sg - acolormap[ind].acolor.g) * colorimp;
+                    nexterr[col    ].r += (err       ) / 16.0f;
+                    err = (sg - px.g) * colorimp;
                     thiserr[col    ].g += (err * 7.0f) / 16.0f;
                     nexterr[col + 2].g += (err * 3.0f) / 16.0f;
                     nexterr[col + 1].g += (err * 5.0f) / 16.0f;
-                    nexterr[col    ].g += (err    ) / 16.0f;
-                    err = (sb - acolormap[ind].acolor.b) * colorimp;
+                    nexterr[col    ].g += (err       ) / 16.0f;
+                    err = (sb - px.b) * colorimp;
                     thiserr[col    ].b += (err * 7.0f) / 16.0f;
                     nexterr[col + 2].b += (err * 3.0f) / 16.0f;
                     nexterr[col + 1].b += (err * 5.0f) / 16.0f;
-                    nexterr[col    ].b += (err    ) / 16.0f;
-                    err = (sa - acolormap[ind].acolor.a);
+                    nexterr[col    ].b += (err       ) / 16.0f;
+                    err = (sa - px.a);
                     thiserr[col    ].a += (err * 7.0f) / 16.0f;
                     nexterr[col + 2].a += (err * 3.0f) / 16.0f;
                     nexterr[col + 1].a += (err * 5.0f) / 16.0f;
-                    nexterr[col    ].a += (err    ) / 16.0f;
+                    nexterr[col    ].a += (err       ) / 16.0f;
                 }
             }
 
@@ -972,14 +972,11 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         float vara = 0;
 
         for (int i = 0; i < clrs; ++i) {
-            float v = achv[indx + i].acolor.a;
-            vara += (background.a - v)*(background.a - v);
-            v = achv[indx + i].acolor.r;
-            varr += (background.r - v)*(background.r - v);
-            v = achv[indx + i].acolor.g;
-            varg += (background.g - v)*(background.g - v);
-            v = achv[indx + i].acolor.b;
-            varb += (background.b - v)*(background.b - v);
+            f_pixel px = achv[indx + i].acolor;
+            vara += (background.a - px.a)*(background.a - px.a);
+            varr += (background.r - px.r)*(background.r - px.r);
+            varg += (background.g - px.g)*(background.g - px.g);
+            varb += (background.b - px.b)*(background.b - px.b);
         }
 
         /*
@@ -1081,28 +1078,29 @@ static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opa
 
     for (i = 0; i < clrs; ++i) {
         float weight = 1.0f;
+        f_pixel px = achv[indx + i].acolor;
         float tmp;
 
         /* give more weight to colors that are further away from average
             this is intended to prevent desaturation of images and fading of whites
          */
-        tmp = (0.5f - achv[indx + i].acolor.r);
+        tmp = (0.5f - px.r);
         weight += tmp*tmp;
-        tmp = (0.5f - achv[indx + i].acolor.g);
+        tmp = (0.5f - px.g);
         weight += tmp*tmp;
-        tmp = (0.5f - achv[indx + i].acolor.b);
+        tmp = (0.5f - px.b);
         weight += tmp*tmp;
 
         weight *= achv[indx + i].value;
         sum += weight;
 
-        r += achv[indx + i].acolor.r * weight;
-        g += achv[indx + i].acolor.g * weight;
-        b += achv[indx + i].acolor.b * weight;
-        a += achv[indx + i].acolor.a * weight;
+        r += px.r * weight;
+        g += px.g * weight;
+        b += px.b * weight;
+        a += px.a * weight;
 
         /* find if there are opaque colors, in case we're supposed to preserve opacity exactly (ie_bug) */
-        if (achv[indx + i].acolor.a > maxa) maxa = achv[indx + i].acolor.a;
+        if (px.a > maxa) maxa = px.a;
     }
 
     /* Colors are in premultiplied alpha colorspace, so they'll blend OK

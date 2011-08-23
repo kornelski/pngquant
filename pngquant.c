@@ -101,6 +101,18 @@ void verbose_printf(const char *fmt, ...)
     va_end(va);
 }
 
+static void print_full_version(FILE *fd)
+{
+    fprintf(fd, "pngquant-improved, version %s, by Greg Roelofs, Kornel Lesinski.\n", PNGQUANT_VERSION);
+    rwpng_version_info(fd);
+    fputs("\n", fd);
+}
+
+static void print_usage(FILE *fd)
+{
+    fputs(PNGQUANT_USAGE, fd);
+}
+
 int main(int argc, char *argv[])
 {
     int argn;
@@ -112,7 +124,6 @@ int main(int argc, char *argv[])
     int using_stdin = FALSE;
     int latest_error=0, error_count=0, file_count=0;
     const char *filename, *newext = NULL;
-    const char *pq_usage = PNGQUANT_USAGE;
 
     argn = 1;
 
@@ -132,17 +143,25 @@ int main(int argc, char *argv[])
             force = TRUE;
         else if (0 == strncmp(argv[argn], "-noforce", 4))
             force = FALSE;
-        else if ( 0 == strncmp(argv[argn], "-verbose", 2) ||
+        else if ( 0 == strcmp(argv[argn], "-verbose") ||
+                  0 == strcmp(argv[argn], "-v") ||
                   0 == strncmp(argv[argn], "-noquiet", 4) )
             verbose = TRUE;
         else if ( 0 == strncmp(argv[argn], "-noverbose", 4) ||
                   0 == strncmp(argv[argn], "-quiet", 2) )
             verbose = FALSE;
 
-        else if (0 == strcmp(argv[argn], "-ext")) {
+        else if ( 0 == strcmp(argv[argn], "-version")) {
+            puts(PNGQUANT_VERSION);
+            return SUCCESS;
+        } else if ( 0 == strcmp(argv[argn], "-h") || 0 == strcmp(argv[argn], "--help")) {
+            print_full_version(stdout);
+            print_usage(stdout);
+            return SUCCESS;
+        } else if (0 == strcmp(argv[argn], "-ext")) {
             ++argn;
             if (argn == argc) {
-                fprintf(stderr, "%s", pq_usage);
+                print_usage(stderr);
                 return MISSING_ARGUMENT;
             }
             newext = argv[argn];
@@ -151,28 +170,21 @@ int main(int argc, char *argv[])
                  0 == strcmp(argv[argn], "-speed")) {
             ++argn;
             if (argn == argc) {
-                fprintf(stderr, "%s", pq_usage);
+                print_usage(stderr);
                 return MISSING_ARGUMENT;
             }
             speed_tradeoff = atoi(argv[argn]);
         }
         else {
-            fprintf(stderr, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n",
-              PNGQUANT_VERSION);
-            rwpng_version_info();
-            fputs("\n", stderr);
-            fputs(pq_usage, stderr);
+            print_usage(stderr);
             return MISSING_ARGUMENT;
         }
         ++argn;
     }
 
     if (argn == argc) {
-        fprintf(stderr, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n",
-          PNGQUANT_VERSION);
-        rwpng_version_info();
-        fputs("\n", stderr);
-        fputs(pq_usage, stderr);
+        print_full_version(stderr);
+        print_usage(stderr);
         return MISSING_ARGUMENT;
     }
     if (sscanf(argv[argn], "%d", &reqcolors) != 1) {

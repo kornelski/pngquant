@@ -99,7 +99,7 @@ typedef union {
 
 /* prototypes for public functions in rwpng.c */
 
-void rwpng_version_info(void);
+void rwpng_version_info(FILE *fp);
 
 pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr);
 

@@ -38,11 +38,11 @@
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
 
 
-void rwpng_version_info(void)
+void rwpng_version_info(FILE *fp)
 {
-    fprintf(stderr, "   Compiled with libpng %s; using libpng %s.\n",
+    fprintf(fp, "   Compiled with libpng %s; using libpng %s.\n",
       PNG_LIBPNG_VER_STRING, png_get_header_ver(NULL));
-    fprintf(stderr, "   Compiled with zlib %s; using zlib %s.\n",
+    fprintf(fp, "   Compiled with zlib %s; using zlib %s.\n",
       ZLIB_VERSION, zlib_version);
 }
 

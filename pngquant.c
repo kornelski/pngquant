@@ -311,7 +311,9 @@ void set_palette(write_info *output_image, int newcolors, hist_item acolormap[])
 
     verbose_printf("%d entr%s transparent\n", num_transparent, (num_transparent == 1)? "y" : "ies");
 
-    /* colors sorted by popularity make pngs slightly more compressible */
+        /* colors sorted by popularity make pngs slightly more compressible
+         * opaque and transparent are sorted separately
+         */
     qsort(acolormap, num_transparent, sizeof(acolormap[0]), popularity);
     qsort(acolormap+num_transparent, newcolors-num_transparent, sizeof(acolormap[0]), popularity);
 
@@ -365,7 +367,7 @@ inline static float colordifference(f_pixel px, f_pixel py)
 #endif
 }
 
-int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_opaque_val)
+static int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_opaque_val)
 {
     int ind=0;
 
@@ -679,7 +681,7 @@ float modify_alpha(read_info *input_image, int ie_bug)
             if (pP->a && (pP->r != rgbcheck.r || pP->g != rgbcheck.g || pP->b != rgbcheck.b || pP->a != rgbcheck.a)) {
                 fprintf(stderr, "Conversion error: expected %d,%d,%d,%d got %d,%d,%d,%d\n",
                         pP->r,pP->g,pP->b,pP->a, rgbcheck.r,rgbcheck.g,rgbcheck.b,rgbcheck.a);
-                return 0;
+                return -1;
             }
 #endif
             /* set all completely transparent colors to black */
@@ -731,7 +733,7 @@ pngquant_error read_image(const char *filename, int using_stdin, read_info *inpu
         return retval;
     }
 
-    return 0;
+    return SUCCESS;
 }
 
 pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff)
@@ -831,22 +833,22 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     free(acolormap);
 
-    return 0;
+    return SUCCESS;
 }
 
 
 
 typedef struct {
-    int chan; float weight;
-} channelweight;
+    int chan; float variance;
+} channelvariance;
 
-static int compareweight(const void *ch1, const void *ch2)
+static int comparevariance(const void *ch1, const void *ch2)
 {
-    return ((channelweight*)ch1)->weight > ((channelweight*)ch2)->weight ? -1 :
-    (((channelweight*)ch1)->weight < ((channelweight*)ch2)->weight ? 1 : 0);
+    return ((channelvariance*)ch1)->variance > ((channelvariance*)ch2)->variance ? -1 :
+          (((channelvariance*)ch1)->variance < ((channelvariance*)ch2)->variance ? 1 : 0);
 };
 
-static channelweight channel_sort_order[4];
+static channelvariance channel_sort_order[4];
 
 inline static int weightedcompare_other(const float *restrict c1p, const float *restrict c2p)
 {
@@ -863,6 +865,7 @@ inline static int weightedcompare_other(const float *restrict c1p, const float *
     return 0;
 }
 
+/** these are specialised functions to make first comparison faster without lookup in channel_sort_order[] */
 static int weightedcompare_r(const void *ch1, const void *ch2)
 {
     const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
@@ -915,10 +918,10 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
 
 static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int newcolors)
 {
-    box_vector bv = malloc(sizeof(struct box) * newcolors);
+    box_vector bv = calloc(newcolors, sizeof(struct box));
     hist_item *acolormap = calloc(newcolors, sizeof(hist_item));
     if (!bv || !acolormap) {
-        return 0;
+        return NULL;
     }
 
     /*
@@ -927,10 +930,7 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
     bv[0].ind = 0;
     bv[0].colors = colors;
     bv[0].weight = 1.0;
-
-    int allcolors=0;
-    for(int i=0; i < colors; i++) allcolors += achv[i].value;
-    bv[0].sum = allcolors;
+    for(int i=0; i < colors; i++) bv[0].sum += achv[i].value;
 
     int boxes = 1;
 
@@ -940,7 +940,7 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
     while (boxes < newcolors) {
 
         /*
-        ** Find the first splittable box.
+        ** Find the best splittable box.
         */
         int bi=-1; float maxsum=0;
         for (int i=0; i < boxes; i++) {
@@ -953,43 +953,32 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         }
         if (bi < 0)
             break;        /* ran out of colors! */
+
         int indx = bv[bi].ind;
         int clrs = bv[bi].colors;
-        int sm = bv[bi].sum;
 
-        /*
-        ** Go through the box finding the minimum and maximum of each
-        ** component - the boundaries of the box.
-        */
+        /* compute variance of channels */
+        f_pixel mean = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 
-        /* colors are blended with background color, to prevent transparent colors from widening range unneccesarily */
-        /* background is global - used when sorting too */
-        f_pixel background = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
-
-        float varr = 0;
-        float varg = 0;
-        float varb = 0;
-        float vara = 0;
-
+        f_pixel variance = (f_pixel){0,0,0,0};
         for (int i = 0; i < clrs; ++i) {
             f_pixel px = achv[indx + i].acolor;
-            vara += (background.a - px.a)*(background.a - px.a);
-            varr += (background.r - px.r)*(background.r - px.r);
-            varg += (background.g - px.g)*(background.g - px.g);
-            varb += (background.b - px.b)*(background.b - px.b);
+            variance.a += (mean.a - px.a)*(mean.a - px.a);
+            variance.r += (mean.r - px.r)*(mean.r - px.r);
+            variance.g += (mean.g - px.g)*(mean.g - px.g);
+            variance.b += (mean.b - px.b)*(mean.b - px.b);
         }
 
         /*
-        ** Find the largest dimension, and sort by that component
-        ** by simply comparing the range in RGB space
+        ** Sort dimensions by their variance, and then sort colors first by dimension with highest variance
         */
 
-        channel_sort_order[0] = (channelweight){index_of_channel(r), varr};
-        channel_sort_order[1] = (channelweight){index_of_channel(g), varg};
-        channel_sort_order[2] = (channelweight){index_of_channel(b), varb};
-        channel_sort_order[3] = (channelweight){index_of_channel(a), vara};
+        channel_sort_order[0] = (channelvariance){index_of_channel(r), variance.r};
+        channel_sort_order[1] = (channelvariance){index_of_channel(g), variance.g};
+        channel_sort_order[2] = (channelvariance){index_of_channel(b), variance.b};
+        channel_sort_order[3] = (channelvariance){index_of_channel(a), variance.a};
 
-        qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), compareweight);
+        qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), comparevariance);
 
 
         comparefunc comp;
@@ -1030,15 +1019,16 @@ static hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, 
         }
 
         /*
-        ** Split the box, and sort to bring the biggest and/or very varying boxes to the top.
+        ** Split the box. Sum*weight is then used to find "largest" box to split.
         */
+        int sm = bv[bi].sum;
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
-        bv[bi].weight = powf(colordifference(background, averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val)),0.25f);
+        bv[bi].weight = powf(colordifference(mean, averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val)),0.25f);
         bv[boxes].ind = indx + break_at;
         bv[boxes].colors = clrs - break_at;
         bv[boxes].sum = sm - lowersum;
-        bv[boxes].weight = powf(colordifference(background, averagepixels(bv[boxes].ind, bv[boxes].colors, achv, min_opaque_val)),0.25f);
+        bv[boxes].weight = powf(colordifference(mean, averagepixels(bv[boxes].ind, bv[boxes].colors, achv, min_opaque_val)),0.25f);
         ++boxes;
     }
 

@@ -8,17 +8,19 @@ This is a [fork](http://pornel.net/pngquant) of [pngquant](http://www.libpng.org
 
   - uses variance instead of popularity for box selection (improvement suggested in the original median cut paper)
   - supports much larger number of colors in input images without degradation of quality
-  - more accurate remapping of transparent colors
+  - more accurate remapping of semitransparent colors
   - feedback loop that corrects poorly quantized colors
-  - gamma correction and floating-point math used throughout
+  - gamma correction (output is always generated with gamma 2.2 for web compatibility)
+  - floating-point math used throughout (more accurate colors and dithering)
 
 * More flexible commandline usage
 
   - number of colors defaults to 256
   - standard switches like `--` and `-` are allowed
 
-* Modernised code
+* Refactored and modernised code
 
+  - no workarounds for MSDOS and machines with 1MB of RAM
   - C99
   - Intel SSE3 optimisations
 
@@ -62,9 +64,6 @@ change log, see the CHANGELOG file.
 
 The INSTALL file explains how to build pngquant from source.
 
-The homepage of original pngquant is:
-http://www.libpng.org/pub/png/apps/pngquant.html
-
 ##Options
 
 See `pngquant -h` for full list.
@@ -77,8 +76,9 @@ Set custom extension for output filename. By default `-or8.png` or `-fs8.png` is
 
 Speed/quality trade-off. The default is 3 and lower settings rarely increase quality, but are much slower.
 
-Speeds 1-6 use feedback loop mechanism (quantize image, find worst colors, quantize again with more weight on that colors).
-Speeds 8-10 reduce input depth from 8 bit per gun to 7 bit (posterize to 128 levels) or less, if image has *a lot* of distinct color
+- Speeds 1-6 use feedback loop mechanism (quantize image, find worst colors, quantize again with more weight on these colors).
+
+- Speeds 8-10 reduce input depth from 8 bit per gun to 7 bit (posterize to 128 levels) or less, if image has *a lot* of distinct colors.
 
 ###`-iebug`
 

@@ -2,6 +2,10 @@
 
 CC=gcc
 
+BIN = pngquant
+PREFIX ?= /usr
+BINPREFIX = $(PREFIX)/bin
+
 # Change this to point to directory where include/png.h can be found:
 SYSTEMLIBPNG=/usr/X11
 
@@ -15,12 +19,19 @@ LDFLAGS = -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L$(SYSTEMLIBPNG)/lib/ -L/usr/lib/ -
 
 OBJS = pngquant.o rwpng.o pam.o mediancut.o
 
-all: pngquant
+all: $(BIN)
 
-pngquant: $(OBJS)
+$(BIN): $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
+
+install: $(BIN)
+	cp $(BIN) $(BINPREFIX)/$(BIN)
+
+uninstall:
+	rm -f $(BINPREFIX)/$(BIN)
 
 clean:
 	rm -f pngquant $(OBJS)
 
-.PHONY: all clean
+.PHONY: all install uninstall clean
+

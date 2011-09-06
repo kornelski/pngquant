@@ -23,3 +23,4 @@ pngquant: $(OBJS)
 clean:
 	rm -f pngquant $(OBJS)
 
+.PHONY: all clean

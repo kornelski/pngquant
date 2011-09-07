@@ -31,7 +31,6 @@ static int weightedcompare_a(const void *ch1, const void *ch2);
 
 static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opaque_val);
 
-typedef struct box *box_vector;
 struct box {
     float variance;
     int sum;
@@ -160,9 +159,9 @@ static void sort_colors_by_variance(f_pixel variance, hist_item achv[], int indx
 
 hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int newcolors)
 {
-    box_vector bv = calloc(newcolors, sizeof(struct box));
+    struct box bv[newcolors];
     hist_item *acolormap = calloc(newcolors, sizeof(hist_item));
-    if (!bv || !acolormap) {
+    if (!acolormap) {
         return NULL;
     }
 

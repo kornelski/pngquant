@@ -34,12 +34,6 @@
 #  define FALSE 0
 #endif
 
-#ifndef MAX
-#  define MAX(a,b)  ((a) > (b)? (a) : (b))
-#  define MIN(a,b)  ((a) < (b)? (a) : (b))
-#endif
-
-
 typedef enum {
     SUCCESS = 0,
     READ_ERROR = 2,

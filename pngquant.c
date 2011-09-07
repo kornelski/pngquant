@@ -53,20 +53,11 @@
 #  include <io.h>   /* setmode() */
 #endif
 
-#include <math.h>
 #include <stddef.h>
 
 #include "png.h"    /* libpng header; includes zlib.h */
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "pam.h"
-
-#ifdef __SSE3__
-#define USE_SSE
-#endif
-
-#ifdef USE_SSE
-#include <pmmintrin.h>
-#endif
 
 #define index_of_channel(ch) (offsetof(f_pixel,ch)/sizeof(float))
 
@@ -341,42 +332,6 @@ void set_palette(write_info *output_image, int newcolors, hist_item acolormap[])
         output_image->palette[x].blue  = px.b;
         output_image->trans[x]         = px.a;
     }
-}
-
-inline static float colordifference_stdc(f_pixel px, f_pixel py)
-{
-    float colorimp = MAX(px.a, py.a);
-
-    return (px.a - py.a) * (px.a - py.a) +
-           (px.r - py.r) * (px.r - py.r) * colorimp +
-           (px.g - py.g) * (px.g - py.g) * colorimp +
-           (px.b - py.b) * (px.b - py.b) * colorimp;
-}
-
-inline static float colordifference(f_pixel px, f_pixel py)
-{
-#ifdef USE_SSE
-    __m128 vpx = _mm_load_ps((const float*)&px);
-    __m128 vpy = _mm_load_ps((const float*)&py);
-
-    __m128 colorimp = _mm_max_ss(vpx,vpy); // max ? ? ?
-    colorimp = _mm_shuffle_ps(colorimp, colorimp, 0); // max max max max
-    colorimp = _mm_move_ss(colorimp, _mm_set_ss(1.0)); // 1.0 max max max
-
-    __m128 tmp = _mm_sub_ps(vpx, vpy); // t = px - py
-    tmp = _mm_mul_ps(tmp, tmp); // t = t * t
-    tmp = _mm_mul_ps(tmp, colorimp); // t = t * colorimp (except alpha)
-
-    tmp = _mm_hadd_ps(tmp,tmp); // 0+1 2+3 0+1 2+3
-    __m128 rev = _mm_shuffle_ps(tmp, tmp, 0x1B); // reverses vector 2+3 0+1 2+3 0+1
-    tmp = _mm_add_ss(tmp, rev); // 0+1 + 2+3
-
-    float res = _mm_cvtss_f32(tmp);
-    assert(fabs(res - colordifference_stdc(px,py)) < 0.001);
-    return res;
-#else
-    return colordifference_stdc(px,py);
-#endif
 }
 
 static int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_opaque_val)

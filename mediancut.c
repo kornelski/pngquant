@@ -111,6 +111,46 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
     return weightedcompare_other(c1p, c2p);
 }
 
+f_pixel channel_variance(hist_item* achv, int indx, int clrs, float min_opaque_val)
+{
+    f_pixel mean = averagepixels(indx, clrs, achv, min_opaque_val);
+
+    f_pixel variance = (f_pixel){0,0,0,0};
+
+    for (int i = 0; i < clrs; ++i) {
+        f_pixel px = achv[indx + i].acolor;
+        variance.a += (mean.a - px.a)*(mean.a - px.a);
+        variance.r += (mean.r - px.r)*(mean.r - px.r);
+        variance.g += (mean.g - px.g)*(mean.g - px.g);
+        variance.b += (mean.b - px.b)*(mean.b - px.b);
+    }
+    return variance;
+}
+
+static void sort_colors_by_variance(f_pixel variance, hist_item achv[], int indx, int clrs)
+{
+    /*
+     ** Sort dimensions by their variance, and then sort colors first by dimension with highest variance
+     */
+
+    channel_sort_order[0] = (channelvariance){index_of_channel(r), variance.r};
+    channel_sort_order[1] = (channelvariance){index_of_channel(g), variance.g};
+    channel_sort_order[2] = (channelvariance){index_of_channel(b), variance.b};
+    channel_sort_order[3] = (channelvariance){index_of_channel(a), variance.a};
+
+    qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), comparevariance);
+
+
+    int (*comp)(const void *, const void *); // comp variable that is a pointer to a function
+
+         if (channel_sort_order[0].chan == index_of_channel(r)) comp = weightedcompare_r;
+    else if (channel_sort_order[0].chan == index_of_channel(g)) comp = weightedcompare_g;
+    else if (channel_sort_order[0].chan == index_of_channel(b)) comp = weightedcompare_b;
+    else comp = weightedcompare_a;
+
+    qsort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
+}
+
 /*
  ** Here is the fun part, the median-cut colormap generator.  This is based
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
@@ -158,38 +198,7 @@ hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int new
         int indx = bv[bi].ind;
         int clrs = bv[bi].colors;
 
-        /* compute variance of channels */
-        f_pixel mean = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
-
-        f_pixel variance = (f_pixel){0,0,0,0};
-        for (int i = 0; i < clrs; ++i) {
-            f_pixel px = achv[indx + i].acolor;
-            variance.a += (mean.a - px.a)*(mean.a - px.a);
-            variance.r += (mean.r - px.r)*(mean.r - px.r);
-            variance.g += (mean.g - px.g)*(mean.g - px.g);
-            variance.b += (mean.b - px.b)*(mean.b - px.b);
-        }
-
-        /*
-         ** Sort dimensions by their variance, and then sort colors first by dimension with highest variance
-         */
-
-        channel_sort_order[0] = (channelvariance){index_of_channel(r), variance.r};
-        channel_sort_order[1] = (channelvariance){index_of_channel(g), variance.g};
-        channel_sort_order[2] = (channelvariance){index_of_channel(b), variance.b};
-        channel_sort_order[3] = (channelvariance){index_of_channel(a), variance.a};
-
-        qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), comparevariance);
-
-
-        int (*comp)(const void *, const void *); // comp variable that is a pointer to a function
-        
-             if (channel_sort_order[0].chan == index_of_channel(r)) comp = weightedcompare_r;
-        else if (channel_sort_order[0].chan == index_of_channel(g)) comp = weightedcompare_g;
-        else if (channel_sort_order[0].chan == index_of_channel(b)) comp = weightedcompare_b;
-        else comp = weightedcompare_a;
-
-        qsort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
+        sort_colors_by_variance(channel_variance(achv, indx, clrs, min_opaque_val), achv, indx, clrs);
 
         /*
          Classic implementation tries to get even number of colors or pixels in each subdivision.

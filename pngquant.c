@@ -373,7 +373,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, fl
 
     f_pixel *restrict thiserr = NULL;
     f_pixel *restrict nexterr = NULL;
-    float sr=0, sg=0, sb=0, sa=0, err;
+    float sr=0, sg=0, sb=0, sa=0;
     int fs_direction = 1;
 
     /* Initialize Floyd-Steinberg error vectors. */
@@ -424,49 +424,54 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, fl
             float colorimp = (1.0/256.0) + acolormap[ind].acolor.a;
             f_pixel xp = acolormap[ind].acolor;
 
+            f_pixel err = {
+                .r = (sr - xp.r) * colorimp,
+                .g = (sg - xp.g) * colorimp,
+                .b = (sb - xp.b) * colorimp,
+                .a = (sa - xp.a),
+            };
+
             /* Propagate Floyd-Steinberg error terms. */
             if (fs_direction) {
-                err = (sr - xp.r) * colorimp;
-                thiserr[col + 2].r += (err * 7.0f) / 16.0f;
-                nexterr[col    ].r += (err * 3.0f) / 16.0f;
-                nexterr[col + 1].r += (err * 5.0f) / 16.0f;
-                nexterr[col + 2].r += (err       ) / 16.0f;
-                err = (sg - xp.g) * colorimp;
-                thiserr[col + 2].g += (err * 7.0f) / 16.0f;
-                nexterr[col    ].g += (err * 3.0f) / 16.0f;
-                nexterr[col + 1].g += (err * 5.0f) / 16.0f;
-                nexterr[col + 2].g += (err       ) / 16.0f;
-                err = (sb - xp.b) * colorimp;
-                thiserr[col + 2].b += (err * 7.0f) / 16.0f;
-                nexterr[col    ].b += (err * 3.0f) / 16.0f;
-                nexterr[col + 1].b += (err * 5.0f) / 16.0f;
-                nexterr[col + 2].b += (err       ) / 16.0f;
-                err = (sa - xp.a);
-                thiserr[col + 2].a += (err * 7.0f) / 16.0f;
-                nexterr[col    ].a += (err * 3.0f) / 16.0f;
-                nexterr[col + 1].a += (err * 5.0f) / 16.0f;
-                nexterr[col + 2].a += (err       ) / 16.0f;
+                thiserr[col + 2].a += (err.a * 7.0f) / 16.0f;
+                thiserr[col + 2].r += (err.r * 7.0f) / 16.0f;
+                thiserr[col + 2].g += (err.g * 7.0f) / 16.0f;
+                thiserr[col + 2].b += (err.b * 7.0f) / 16.0f;
+
+                nexterr[col    ].a += (err.a * 3.0f) / 16.0f;
+                nexterr[col    ].r += (err.r * 3.0f) / 16.0f;
+                nexterr[col    ].g += (err.g * 3.0f) / 16.0f;
+                nexterr[col    ].b += (err.b * 3.0f) / 16.0f;
+
+                nexterr[col + 1].a += (err.a * 5.0f) / 16.0f;
+                nexterr[col + 1].r += (err.r * 5.0f) / 16.0f;
+                nexterr[col + 1].g += (err.g * 5.0f) / 16.0f;
+                nexterr[col + 1].b += (err.b * 5.0f) / 16.0f;
+
+                nexterr[col + 2].a += (err.a       ) / 16.0f;
+                nexterr[col + 2].r += (err.r       ) / 16.0f;
+                nexterr[col + 2].g += (err.g       ) / 16.0f;
+                nexterr[col + 2].b += (err.b       ) / 16.0f;
             } else {
-                err = (sr - xp.r) * colorimp;
-                thiserr[col    ].r += (err * 7.0f) / 16.0f;
-                nexterr[col + 2].r += (err * 3.0f) / 16.0f;
-                nexterr[col + 1].r += (err * 5.0f) / 16.0f;
-                nexterr[col    ].r += (err       ) / 16.0f;
-                err = (sg - xp.g) * colorimp;
-                thiserr[col    ].g += (err * 7.0f) / 16.0f;
-                nexterr[col + 2].g += (err * 3.0f) / 16.0f;
-                nexterr[col + 1].g += (err * 5.0f) / 16.0f;
-                nexterr[col    ].g += (err       ) / 16.0f;
-                err = (sb - xp.b) * colorimp;
-                thiserr[col    ].b += (err * 7.0f) / 16.0f;
-                nexterr[col + 2].b += (err * 3.0f) / 16.0f;
-                nexterr[col + 1].b += (err * 5.0f) / 16.0f;
-                nexterr[col    ].b += (err       ) / 16.0f;
-                err = (sa - xp.a);
-                thiserr[col    ].a += (err * 7.0f) / 16.0f;
-                nexterr[col + 2].a += (err * 3.0f) / 16.0f;
-                nexterr[col + 1].a += (err * 5.0f) / 16.0f;
-                nexterr[col    ].a += (err       ) / 16.0f;
+                thiserr[col    ].a += (err.a * 7.0f) / 16.0f;
+                thiserr[col    ].r += (err.r * 7.0f) / 16.0f;
+                thiserr[col    ].g += (err.g * 7.0f) / 16.0f;
+                thiserr[col    ].b += (err.b * 7.0f) / 16.0f;
+
+                nexterr[col    ].a += (err.a       ) / 16.0f;
+                nexterr[col    ].r += (err.r       ) / 16.0f;
+                nexterr[col    ].g += (err.g       ) / 16.0f;
+                nexterr[col    ].b += (err.b       ) / 16.0f;
+
+                nexterr[col + 1].a += (err.a * 5.0f) / 16.0f;
+                nexterr[col + 1].r += (err.r * 5.0f) / 16.0f;
+                nexterr[col + 1].g += (err.g * 5.0f) / 16.0f;
+                nexterr[col + 1].b += (err.b * 5.0f) / 16.0f;
+
+                nexterr[col + 2].a += (err.a * 3.0f) / 16.0f;
+                nexterr[col + 2].r += (err.r * 3.0f) / 16.0f;
+                nexterr[col + 2].g += (err.g * 3.0f) / 16.0f;
+                nexterr[col + 2].b += (err.b * 3.0f) / 16.0f;
             }
 
             if (fs_direction) {

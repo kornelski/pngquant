@@ -185,9 +185,6 @@ pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
         return PNG_OUT_OF_MEMORY_ERROR;
     }
 
-    Trace((stderr, "readpng_get_image:  channels = %d, rowbytes = %ld, height = %ld\n", mainprog_ptr->channels, rowbytes, mainprog_ptr->height));
-
-
     /* set the individual row_pointers to point at the correct offsets */
 
     for (i = 0;  i < mainprog_ptr->height;  ++i)

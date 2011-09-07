@@ -421,7 +421,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, fl
 
             row_pointers[row][col] = ind;
 
-            float colorimp = (1.0/256.0) + acolormap[ind].acolor.a;
+            float colorimp = (3.0f + acolormap[ind].acolor.a)/4.0f;
             f_pixel xp = acolormap[ind].acolor;
 
             f_pixel err = {

@@ -673,8 +673,8 @@ float modify_alpha(read_info *input_image, int ie_bug)
     float min_opaque_val, almost_opaque_val;
 
     if (ie_bug) {
-        min_opaque_val = 0.93; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
-        almost_opaque_val = min_opaque_val * 0.66;
+        min_opaque_val = 238.0/256.0; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
+        almost_opaque_val = min_opaque_val * 169.0/256.0;
 
         verbose_printf("  Working around IE6 bug by making image less transparent...\n");
     } else {

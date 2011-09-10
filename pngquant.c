@@ -258,7 +258,7 @@ static int popularity(const void *ch1, const void *ch2)
     return v1-v2;
 }
 
-void set_palette(write_info *output_image, int newcolors, hist_item acolormap[])
+void sort_palette(write_info *output_image, int newcolors, hist_item acolormap[])
 {
     assert(acolormap); assert(output_image);
 
@@ -303,7 +303,10 @@ void set_palette(write_info *output_image, int newcolors, hist_item acolormap[])
 
     output_image->num_palette = newcolors;
     output_image->num_trans = num_transparent;
+}
 
+void set_palette(write_info *output_image, int newcolors, hist_item acolormap[])
+{
     for (int x = 0; x < newcolors; ++x) {
         rgb_pixel px = to_rgb(output_image->gamma, acolormap[x].acolor);
         acolormap[x].acolor = to_f(output_image->gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
@@ -315,7 +318,7 @@ void set_palette(write_info *output_image, int newcolors, hist_item acolormap[])
     }
 }
 
-static int best_color_index(f_pixel px, hist_item* acolormap, int numcolors, float min_opaque_val)
+static int best_color_index(f_pixel px, const hist_item* acolormap, int numcolors, float min_opaque_val)
 {
     int ind=0;
 
@@ -361,7 +364,7 @@ void remap_to_palette(read_info *input_image, write_info *output_image, float mi
     }
 }
 
-void remap_to_palette_floyd(read_info *input_image, write_info *output_image, float min_opaque_val, int ie_bug, int newcolors, hist_item acolormap[])
+void remap_to_palette_floyd(read_info *input_image, write_info *output_image, float min_opaque_val, int ie_bug, int newcolors, const hist_item acolormap[])
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     unsigned char **row_pointers = output_image->row_pointers;
@@ -747,8 +750,6 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     output_image->height = input_image->height;
     output_image->gamma = 0.45455;
 
-    set_palette(output_image, newcolors, acolormap);
-
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image
     ** note that rwpng_info.row_pointers
@@ -774,10 +775,17 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     */
     verbose_printf("  mapping image to new colors...\n" );
 
+    // tRNS, etc.
+    sort_palette(output_image, newcolors, acolormap);
+
     if (floyd) {
+        // if dithering, save rounding error and stick to that palette
+        // otherwise palette can be improved after remapping
+        set_palette(output_image, newcolors, acolormap);
         remap_to_palette_floyd(input_image,output_image,min_opaque_val,ie_bug,newcolors,acolormap);
     } else {
         remap_to_palette(input_image,output_image,min_opaque_val,ie_bug,newcolors,acolormap);
+        set_palette(output_image, newcolors, acolormap);
     }
 
     free(acolormap);

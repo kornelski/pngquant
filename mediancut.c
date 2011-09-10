@@ -33,10 +33,10 @@ static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opa
 
 typedef struct box *box_vector;
 struct box {
+    float variance;
+    int sum;
     int ind;
     int colors;
-    int sum;
-    float weight;
 };
 
 typedef struct {
@@ -151,6 +151,7 @@ static void sort_colors_by_variance(f_pixel variance, hist_item achv[], int indx
     qsort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
 }
 
+
 /*
  ** Here is the fun part, the median-cut colormap generator.  This is based
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
@@ -170,7 +171,7 @@ hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int new
      */
     bv[0].ind = 0;
     bv[0].colors = colors;
-    bv[0].weight = 1.0;
+    bv[0].variance = 1.0;
     for(int i=0; i < colors; i++) bv[0].sum += achv[i].value;
 
     int boxes = 1;
@@ -187,8 +188,10 @@ hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int new
         for (int i=0; i < boxes; i++) {
             if (bv[i].colors < 2) continue;
 
-            if (bv[i].sum*bv[i].weight > maxsum) {
-                maxsum = bv[i].sum*bv[i].weight;
+            float thissum = bv[i].sum*bv[i].variance;
+
+            if (thissum > maxsum) {
+                maxsum = thissum;
                 bi = i;
             }
         }
@@ -230,16 +233,16 @@ hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int new
         }
 
         /*
-         ** Split the box. Sum*weight is then used to find "largest" box to split.
+         ** Split the box. Sum*variance is then used to find "largest" box to split.
          */
         int sm = bv[bi].sum;
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
-        bv[bi].weight = powf(colordifference(mean, averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val)),0.25f);
+        bv[bi].variance = lowervar;
         bv[boxes].ind = indx + break_at;
         bv[boxes].colors = clrs - break_at;
         bv[boxes].sum = sm - lowersum;
-        bv[boxes].weight = powf(colordifference(mean, averagepixels(bv[boxes].ind, bv[boxes].colors, achv, min_opaque_val)),0.25f);
+        bv[boxes].variance = halfvar*2.0-lowervar;
         ++boxes;
     }
 

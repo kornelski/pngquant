@@ -354,18 +354,29 @@ void remap_to_palette(read_info *input_image, write_info *output_image, float mi
 
     int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val);
 
+    f_pixel average_color[newcolors];
+    float average_color_count[newcolors];
+    viter_init(acolormap, newcolors, average_color, average_color_count, NULL, NULL);
+
     for (int row = 0; row < rows; ++row) {
         for(int col = 0; col < cols; ++col) {
 
             f_pixel px = to_f(gamma, input_pixels[row][col]);
+            int match;
 
             if (px.a < 1.0/256.0) {
-                row_pointers[row][col] = transparent_ind;
+                match = transparent_ind;
             } else {
-                row_pointers[row][col] = best_color_index(px,acolormap,newcolors,min_opaque_val);
+                match = best_color_index(px,acolormap,newcolors,min_opaque_val);
             }
+
+            row_pointers[row][col] = match;
+
+            viter_update_color(px, 1.0, acolormap, match, average_color, average_color_count, NULL, NULL);
         }
     }
+
+    viter_finalize(acolormap, newcolors, average_color, average_color_count);
 }
 
 void remap_to_palette_floyd(read_info *input_image, write_info *output_image, float min_opaque_val, int ie_bug, int newcolors, const hist_item acolormap[])

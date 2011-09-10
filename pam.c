@@ -212,7 +212,7 @@ static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols
                 if (PAM_EQUAL(achl->ch.acolor, fpx))
                     break;
             if (achl != NULL) {
-                ++(achl->ch.value);
+                ++(achl->ch.perceptual_weight);
             } else {
                 if (++(*acolorsP) > maxacolors) {
                     pam_freeacolorhash(acht);
@@ -221,7 +221,7 @@ static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols
                 achl = mempool_new(&acht->mempool, sizeof(struct acolorhist_list_item));
 
                 achl->ch.acolor = fpx;
-                achl->ch.value = 1;
+                achl->ch.perceptual_weight = 1;
                 achl->next = buckets[hash];
                 buckets[hash] = achl;
             }

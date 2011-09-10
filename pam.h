@@ -114,7 +114,7 @@ inline static float colordifference(f_pixel px, f_pixel py)
 
 typedef struct {
     f_pixel acolor;
-    float value, num_pixels;
+    float adjusted_weight, perceptual_weight;
 } hist_item;
 
 typedef struct acolorhist_list_item *acolorhist_list;

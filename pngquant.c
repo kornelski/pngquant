@@ -255,10 +255,10 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-static int popularity(const void *ch1, const void *ch2)
+static int compare_perceptual_weight(const void *ch1, const void *ch2)
 {
-    const float v1 = ((const hist_item*)ch1)->value;
-    const float v2 = ((const hist_item*)ch2)->value;
+    const float v1 = ((const hist_item*)ch1)->perceptual_weight;
+    const float v2 = ((const hist_item*)ch2)->perceptual_weight;
     return v1-v2;
 }
 
@@ -302,8 +302,8 @@ void sort_palette(write_info *output_image, int newcolors, hist_item acolormap[]
     /* colors sorted by popularity make pngs slightly more compressible
      * opaque and transparent are sorted separately
      */
-    qsort(acolormap, num_transparent, sizeof(acolormap[0]), popularity);
-    qsort(acolormap+num_transparent, newcolors-num_transparent, sizeof(acolormap[0]), popularity);
+    qsort(acolormap, num_transparent, sizeof(acolormap[0]), compare_perceptual_weight);
+    qsort(acolormap+num_transparent, newcolors-num_transparent, sizeof(acolormap[0]), compare_perceptual_weight);
 
     output_image->num_palette = newcolors;
     output_image->num_trans = num_transparent;
@@ -717,7 +717,7 @@ static void viter_init(hist_item *newmap, int newcolors,
     // some base color and weight is added
     if (base_color) {
         for (int i=0; i < newcolors; i++) {
-            float value = 1.0+newmap[i].value/2.0;
+            float value = 1.0+newmap[i].adjusted_weight/2.0;
             base_color_count[i] = value;
             base_color[i] = (f_pixel){
                 .a = newmap[i].acolor.a * value,
@@ -760,6 +760,7 @@ static void viter_finalize(hist_item *acolormap, int newcolors, f_pixel *average
                 .b = (average_color[i].b) / average_color_count[i],
             };
         }
+        acolormap[i].perceptual_weight = average_color_count[i];
     }
 }
 
@@ -776,9 +777,8 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     hist_item *achv = histogram(input_image, reqcolors, &colors, speed_tradeoff);
     int newcolors = MIN(colors, reqcolors);
 
-    // backup numbers in achv
     for(int i=0; i < colors; i++) {
-        achv[i].num_pixels = achv[i].value;
+        achv[i].adjusted_weight = achv[i].perceptual_weight;
     }
 
     hist_item *acolormap = NULL;
@@ -809,12 +809,12 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
                 int match = best_color_index(achv[i].acolor, newmap, newcolors, min_opaque_val);
                 float diff = colordifference(achv[i].acolor, newmap[match].acolor);
                 assert(diff >= 0);
-                assert(achv[i].num_pixels > 0);
-                total_error += diff * achv[i].num_pixels;
+                assert(achv[i].perceptual_weight > 0);
+                total_error += diff * achv[i].perceptual_weight;
 
-                viter_update_color(achv[i].acolor, achv[i].value, newmap, match, average_color,average_color_count,base_color,base_color_count);
+                viter_update_color(achv[i].acolor, achv[i].adjusted_weight, newmap, match, average_color,average_color_count,base_color,base_color_count);
 
-                achv[i].value = (achv[i].num_pixels+achv[i].value) * (1.0+sqrtf(diff));
+                achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (1.0+sqrtf(diff));
             }
         }
 
@@ -845,7 +845,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
         for(int j=0; j < colors; j++) {
 
             int match = best_color_index(achv[j].acolor, acolormap, newcolors, min_opaque_val);
-            viter_update_color(achv[j].acolor, achv[j].value,acolormap, match, average_color,average_color_count, NULL,NULL);
+            viter_update_color(achv[j].acolor, achv[j].adjusted_weight,acolormap, match, average_color,average_color_count, NULL,NULL);
         }
 
         viter_finalize(acolormap, newcolors, average_color,average_color_count);

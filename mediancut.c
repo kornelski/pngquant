@@ -171,7 +171,7 @@ hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int new
     bv[0].ind = 0;
     bv[0].colors = colors;
     bv[0].variance = 1.0;
-    for(int i=0; i < colors; i++) bv[0].sum += achv[i].value;
+    for(int i=0; i < colors; i++) bv[0].sum += achv[i].adjusted_weight;
 
     int boxes = 1;
 
@@ -218,7 +218,7 @@ hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int new
         int lowersum = 0;
         float halfvar = 0, lowervar = 0;
         for(int i=0; i < clrs -1; i++) {
-            halfvar += sqrtf(colordifference(median, achv[indx+i].acolor)) * sqrtf(achv[indx+i].value);
+            halfvar += sqrtf(colordifference(median, achv[indx+i].acolor)) * sqrtf(achv[indx+i].adjusted_weight);
         }
         halfvar /= 2.0f;
 
@@ -227,8 +227,8 @@ hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int new
             if (lowervar >= halfvar)
                 break;
 
-            lowervar += sqrtf(colordifference(median, achv[indx+break_at].acolor)) * sqrtf(achv[indx+break_at].value);
-            lowersum += achv[indx + break_at].value;
+            lowervar += sqrtf(colordifference(median, achv[indx+break_at].acolor)) * sqrtf(achv[indx+break_at].adjusted_weight);
+            lowersum += achv[indx + break_at].adjusted_weight;
         }
 
         /*
@@ -258,12 +258,12 @@ hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int new
     for (int bi = 0; bi < boxes; ++bi) {
         acolormap[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 
-        for(int i=0; i < bv[bi].colors; i++) {
+        for(int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
             /* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */
-            achv[bv[bi].ind + i].value *= 1.0 + sqrt(colordifference(acolormap[bi].acolor, achv[bv[bi].ind + i].acolor))/2.0;
+            achv[i].adjusted_weight *= 1.0 + sqrt(colordifference(acolormap[bi].acolor, achv[i].acolor))/2.0;
 
-            /* store total color popularity */
-            acolormap[bi].value += achv[bv[bi].ind + i].value;
+            /* store total color popularity (perceptual_weight is approximation of it) */
+            acolormap[bi].perceptual_weight += achv[i].perceptual_weight;
         }
     }
 
@@ -294,7 +294,7 @@ static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opa
         tmp = (0.5f - px.b);
         weight += tmp*tmp;
 
-        weight *= achv[indx + i].value;
+        weight *= achv[indx + i].adjusted_weight;
         sum += weight;
 
         r += px.r * weight;

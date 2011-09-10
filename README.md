@@ -7,9 +7,10 @@ This is a [fork](http://pornel.net/pngquant) of [pngquant](http://www.libpng.org
 * Significantly better quality of quantisation
 
   - uses variance instead of popularity for box selection (improvement suggested in the original median cut paper)
+  - feedback loop that repeats median cut for poorly quantized colors
+  - additional colormap improvement using Voronoi iteration
   - supports much larger number of colors in input images without degradation of quality
   - more accurate remapping of semitransparent colors
-  - feedback loop that corrects poorly quantized colors
   - gamma correction (output is always generated with gamma 2.2 for web compatibility)
   - floating-point math used throughout (more accurate colors and dithering)
 

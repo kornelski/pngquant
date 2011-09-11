@@ -795,7 +795,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
         float total_error=0;
 
-        if (feedback_loop_trials || acolormap) {
+        if (feedback_loop_trials) {
 
             viter_init(newmap, newcolors, average_color,average_color_count,base_color,base_color_count);
 

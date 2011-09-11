@@ -317,7 +317,7 @@ void set_palette(write_info *output_image, int newcolors, colormap_item acolorma
     }
 }
 
-static int best_color_index(f_pixel px, const colormap_item* acolormap, int numcolors, float min_opaque_val)
+static int best_color_index(f_pixel px, const colormap_item* acolormap, int numcolors, float min_opaque_val, float *dist_out)
 {
     int ind=0;
     const int iebug = px.a > min_opaque_val;
@@ -337,6 +337,8 @@ static int best_color_index(f_pixel px, const colormap_item* acolormap, int numc
             dist = newdist;
         }
     }
+
+    if (dist_out) *dist_out = dist;
     return ind;
 }
 
@@ -347,7 +349,7 @@ void remap_to_palette(read_info *input_image, write_info *output_image, float mi
     int rows = input_image->height, cols = input_image->width;
     double gamma = input_image->gamma;
 
-    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val);
+    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val, NULL);
 
     f_pixel average_color[newcolors];
     float average_color_count[newcolors];
@@ -362,7 +364,7 @@ void remap_to_palette(read_info *input_image, write_info *output_image, float mi
             if (px.a < 1.0/256.0) {
                 match = transparent_ind;
             } else {
-                match = best_color_index(px,acolormap,newcolors,min_opaque_val);
+                match = best_color_index(px,acolormap,newcolors,min_opaque_val, NULL);
             }
 
             row_pointers[row][col] = match;
@@ -382,7 +384,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, fl
     double gamma = input_image->gamma;
 
     int ind=0;
-    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val);
+    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val, NULL);
 
     f_pixel *restrict thiserr = NULL;
     f_pixel *restrict nexterr = NULL;
@@ -429,7 +431,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, fl
             if (sa < 1.0/256.0) {
                 ind = transparent_ind;
             } else {
-                ind = best_color_index((f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, acolormap, newcolors, min_opaque_val);
+                ind = best_color_index((f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, acolormap, newcolors, min_opaque_val, NULL);
             }
 
             row_pointers[row][col] = ind;
@@ -800,9 +802,8 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
             viter_init(newmap, newcolors, average_color,average_color_count,base_color,base_color_count);
 
             for(int i=0; i < colors; i++) {
-
-                int match = best_color_index(achv[i].acolor, newmap, newcolors, min_opaque_val);
-                float diff = colordifference(achv[i].acolor, newmap[match].acolor);
+                float diff;
+                int match = best_color_index(achv[i].acolor, newmap, newcolors, min_opaque_val, &diff);
                 assert(diff >= 0);
                 assert(achv[i].perceptual_weight > 0);
                 total_error += diff * achv[i].perceptual_weight;
@@ -839,7 +840,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
         for(int j=0; j < colors; j++) {
 
-            int match = best_color_index(achv[j].acolor, acolormap, newcolors, min_opaque_val);
+            int match = best_color_index(achv[j].acolor, acolormap, newcolors, min_opaque_val, NULL);
             viter_update_color(achv[j].acolor, achv[j].adjusted_weight,acolormap, match, average_color,average_color_count, NULL,NULL);
         }
 

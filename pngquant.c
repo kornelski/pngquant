@@ -218,6 +218,8 @@ int main(int argc, char *argv[])
         }
 
         if (!retval) {
+            verbose_printf("  writing %d-color image\n", output_image.num_palette);
+
             retval = write_image(&output_image,filename,newext,force,using_stdin);
         }
 
@@ -267,19 +269,12 @@ void sort_palette(write_info *output_image, int newcolors, colormap_item acolorm
     assert(acolormap); assert(output_image);
 
     /*
-    ** Step 3.4 [GRR]: set the bit-depth appropriately, given the actual
-    ** number of colors that will be used in the output image.
-    */
-
-    verbose_printf("  writing %d-color image\n", newcolors);
-
-    /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with
     ** the maximal alpha value (i.e., fully opaque) are at the end and can
     ** therefore be omitted from the tRNS chunk.
     */
 
-    verbose_printf("  remapping colormap to eliminate opaque tRNS-chunk entries...");
+    verbose_printf("  eliminating opaque tRNS-chunk entries...");
 
     /* move transparent colors to the beginning to shrink trns chunk */
     int num_transparent=0;
@@ -604,7 +599,7 @@ hist_item *histogram(read_info *input_image, int reqcolors, int *colors, int spe
         if (achv) break;
 
         ignorebits++;
-        verbose_printf("too many colors!\n  scaling colors to improve clustering...\n");
+        verbose_printf("too many colors!\n  scaling colors to improve clustering...");
     }
 
     verbose_printf("%d colors found\n", *colors);
@@ -768,7 +763,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 {
     float min_opaque_val;
 
-    verbose_printf("  Reading file corrected for gamma %2.1f\n", 1.0/input_image->gamma);
+    verbose_printf("  reading file corrected for gamma %2.1f\n", 1.0/input_image->gamma);
 
     min_opaque_val = modify_alpha(input_image,ie_bug);
     assert(min_opaque_val>0);
@@ -875,15 +870,14 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
         output_image->row_pointers[row] = output_image->indexed_data + row*output_image->width;
     }
 
+    // tRNS, etc.
+    sort_palette(output_image, newcolors, acolormap);
 
     /*
      ** Step 4: map the colors in the image to their closest match in the
      ** new colormap, and write 'em out.
      */
-    verbose_printf("  mapping image to new colors...\n" );
-
-    // tRNS, etc.
-    sort_palette(output_image, newcolors, acolormap);
+    verbose_printf("  mapping image to new colors\n");
 
     if (floyd) {
         // if dithering, save rounding error and stick to that palette

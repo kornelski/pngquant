@@ -197,8 +197,8 @@ int main(int argc, char *argv[])
 
         verbose_printf("%s:\n", filename);
 
-        read_info input_image = {0};
-        write_info output_image = {0};
+        read_info input_image = {{0}};
+        write_info output_image = {{0}};
         retval = read_image(filename,using_stdin,&input_image);
 
         if (!retval) {

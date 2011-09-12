@@ -117,6 +117,11 @@ typedef struct {
     float adjusted_weight, perceptual_weight;
 } hist_item;
 
+typedef struct {
+    f_pixel acolor;
+    float popularity;
+} colormap_item;
+
 typedef struct acolorhist_list_item *acolorhist_list;
 struct acolorhist_list_item {
     acolorhist_list next;

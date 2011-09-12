@@ -157,10 +157,10 @@ static void sort_colors_by_variance(f_pixel variance, hist_item achv[], int indx
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
 
-hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int newcolors)
+colormap_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int newcolors)
 {
     struct box bv[newcolors];
-    hist_item *acolormap = calloc(newcolors, sizeof(hist_item));
+    colormap_item *acolormap = calloc(newcolors, sizeof(acolormap[0]));
     if (!acolormap) {
         return NULL;
     }
@@ -263,7 +263,7 @@ hist_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int new
             achv[i].adjusted_weight *= 1.0 + sqrt(colordifference(acolormap[bi].acolor, achv[i].acolor))/2.0;
 
             /* store total color popularity (perceptual_weight is approximation of it) */
-            acolormap[bi].perceptual_weight += achv[i].perceptual_weight;
+            acolormap[bi].popularity += achv[i].perceptual_weight;
         }
     }
 

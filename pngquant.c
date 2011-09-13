@@ -342,12 +342,15 @@ static int best_color_index(f_pixel px, const colormap_item* acolormap, int numc
     return ind;
 }
 
-void remap_to_palette(read_info *input_image, write_info *output_image, float min_opaque_val, int ie_bug, int newcolors, colormap_item acolormap[])
+float remap_to_palette(read_info *input_image, write_info *output_image, float min_opaque_val, int ie_bug, int newcolors, colormap_item acolormap[])
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     unsigned char **row_pointers = output_image->row_pointers;
     int rows = input_image->height, cols = input_image->width;
     double gamma = input_image->gamma;
+
+    int remapped_pixels=0;
+    float remapping_error=0;
 
     int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val, NULL);
 
@@ -364,7 +367,11 @@ void remap_to_palette(read_info *input_image, write_info *output_image, float mi
             if (px.a < 1.0/256.0) {
                 match = transparent_ind;
             } else {
-                match = best_color_index(px,acolormap,newcolors,min_opaque_val, NULL);
+                float diff;
+                match = best_color_index(px,acolormap,newcolors,min_opaque_val, &diff);
+
+                remapped_pixels++;
+                remapping_error += diff;
             }
 
             row_pointers[row][col] = match;
@@ -374,14 +381,19 @@ void remap_to_palette(read_info *input_image, write_info *output_image, float mi
     }
 
     viter_finalize(acolormap, newcolors, average_color, average_color_count);
+
+    return remapping_error / MAX(1,remapped_pixels);
 }
 
-void remap_to_palette_floyd(read_info *input_image, write_info *output_image, float min_opaque_val, int ie_bug, int newcolors, const colormap_item acolormap[])
+float remap_to_palette_floyd(read_info *input_image, write_info *output_image, float min_opaque_val, int ie_bug, int newcolors, const colormap_item acolormap[])
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     unsigned char **row_pointers = output_image->row_pointers;
     int rows = input_image->height, cols = input_image->width;
     double gamma = input_image->gamma;
+
+    int remapped_pixels=0;
+    float remapping_error=0;
 
     int ind=0;
     int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val, NULL);
@@ -431,7 +443,11 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, fl
             if (sa < 1.0/256.0) {
                 ind = transparent_ind;
             } else {
-                ind = best_color_index((f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, acolormap, newcolors, min_opaque_val, NULL);
+                float diff;
+                ind = best_color_index((f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, acolormap, newcolors, min_opaque_val, &diff);
+
+                remapped_pixels++;
+                remapping_error += diff;
             }
 
             row_pointers[row][col] = ind;
@@ -505,6 +521,8 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, fl
         nexterr = temperr;
         fs_direction = !fs_direction;
     }
+
+    return remapping_error / MAX(1, remapped_pixels);
 }
 
 char *add_filename_extension(const char *filename, const char *newext)
@@ -878,17 +896,21 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
      ** Step 4: map the colors in the image to their closest match in the
      ** new colormap, and write 'em out.
      */
-    verbose_printf("  mapping image to new colors\n");
+    verbose_printf("  mapping image to new colors...");
+
+    float remapping_error;
 
     if (floyd) {
         // if dithering, save rounding error and stick to that palette
         // otherwise palette can be improved after remapping
         set_palette(output_image, newcolors, acolormap);
-        remap_to_palette_floyd(input_image,output_image,min_opaque_val,ie_bug,newcolors,acolormap);
+        remapping_error = remap_to_palette_floyd(input_image,output_image,min_opaque_val,ie_bug,newcolors,acolormap);
     } else {
-        remap_to_palette(input_image,output_image,min_opaque_val,ie_bug,newcolors,acolormap);
+        remapping_error = remap_to_palette(input_image,output_image,min_opaque_val,ie_bug,newcolors,acolormap);
         set_palette(output_image, newcolors, acolormap);
     }
+
+    verbose_printf("MSE=%.3f\n", remapping_error*256.0f);
 
     free(acolormap);
 

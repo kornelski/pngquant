@@ -778,7 +778,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     colormap_item *acolormap = NULL;
     float least_error = -1;
-    int feedback_loop_trials = 9*(6-speed_tradeoff);
+    int feedback_loop_trials = 56-9*speed_tradeoff;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
     f_pixel average_color[newcolors];

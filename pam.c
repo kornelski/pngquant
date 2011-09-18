@@ -53,33 +53,6 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
 
-
-/*
-
- libpam3.c:
- pam_computeacolorhist( )
- NOTUSED pam_addtoacolorhist( )
- pam_computeacolorhash( )
- pam_allocacolorhash( )
- pam_addtoacolorhash( )
- pam_acolorhashtoacolorhist( )
- NOTUSED pam_acolorhisttoacolorhash( )
- pam_lookupacolor( )
- pam_freeacolorhist( )
- pam_freeacolorhash( )
-
- libpbm1.c:
- pm_freearray( )
- pm_allocrow( )
-
- pam.h:
- pam_freearray( )
- */
-
-
-/*===========================================================================*/
-
-
 /* libpam3.c - pam (portable alpha map) utility library part 3
  **
  ** Colormap routines.
@@ -93,11 +66,6 @@ static acolorhash_table pam_allocacolorhash(void);
  ** copyright notice and this permission notice appear in supporting
  ** documentation.  This software is provided "as is" without express or
  ** implied warranty.
- */
-
-/*
- #include "pam.h"
- #include "pamcmap.h"
  */
 
 #define HASH_SIZE 30029

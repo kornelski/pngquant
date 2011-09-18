@@ -49,7 +49,7 @@ struct {u_register_t l1, l2;} l;\
 #endif
 
 static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
-static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
+static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
 
@@ -168,7 +168,7 @@ inline static  unsigned long pam_hashapixel(f_pixel p)
 
 #define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) >= (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
 
-hist_item *pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
+hist_item *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
 {
     acolorhash_table acht;
     hist_item *achv;
@@ -181,7 +181,7 @@ hist_item *pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, d
     return achv;
 }
 
-static acolorhash_table pam_computeacolorhash(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
+static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
 {
     acolorhash_table acht; acolorhist_list *buckets;
     acolorhist_list achl;

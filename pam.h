@@ -137,5 +137,5 @@ typedef struct {
 typedef unsigned char pixval; /* GRR: hardcoded for now; later add 16-bit support */
 
 
-hist_item *pam_computeacolorhist(rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
+hist_item *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
 void pam_freeacolorhist(hist_item *achv);

@@ -64,8 +64,10 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
 pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin);
 
-static void viter_init(colormap_item newmap[], int newcolors, f_pixel* average_color, float* average_color_count, f_pixel* base_color, float* base_color_count);
-static void viter_update_color(f_pixel acolor, float value, colormap_item newmap[], int match, f_pixel *average_color, float *average_color_count, f_pixel *base_color, float *base_color_count);
+static void viter_init(const colormap_item newmap[], int newcolors, f_pixel* average_color, float* average_color_count, f_pixel* base_color, float* base_color_count);
+static void viter_update_color(f_pixel acolor, float value, colormap_item newmap[], int match,
+                               f_pixel *average_color, float *average_color_count,
+                               const f_pixel *base_color, const float *base_color_count);
 static void viter_finalize(colormap_item newmap[], int newcolors, f_pixel *average_color, float *average_color_count);
 
 static int verbose=0;
@@ -598,7 +600,7 @@ hist_item *histogram(read_info *input_image, int reqcolors, int *colors, int spe
 {
     hist_item *achv;
     int ignorebits=0;
-    rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
+    const rgb_pixel *const *input_pixels = (const rgb_pixel *const *)input_image->row_pointers;
     int cols = input_image->width, rows = input_image->height;
     double gamma = input_image->gamma;
     assert(gamma > 0); assert(colors);
@@ -717,7 +719,7 @@ pngquant_error read_image(const char *filename, int using_stdin, read_info *inpu
 /*
  * Voronoi iteration: new palette color is computed from weighted average of colors that map to that palette entry.
  */
-static void viter_init(colormap_item newmap[], int newcolors,
+static void viter_init(const colormap_item newmap[], int newcolors,
                      f_pixel *average_color, float *average_color_count,
                      f_pixel *base_color, float *base_color_count)
 {
@@ -746,7 +748,7 @@ static void viter_init(colormap_item newmap[], int newcolors,
 
 static void viter_update_color(f_pixel acolor, float value, colormap_item newmap[], int match,
                              f_pixel *average_color, float *average_color_count,
-                             f_pixel *base_color, float *base_color_count)
+                             const f_pixel *base_color, const float *base_color_count)
 {
     average_color[match].a += acolor.a * value;
     average_color[match].r += acolor.r * value;

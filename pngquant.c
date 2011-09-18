@@ -320,7 +320,7 @@ void set_palette(write_info *output_image, int newcolors, colormap_item acolorma
 static int best_color_index(f_pixel px, const colormap_item* acolormap, int numcolors, float min_opaque_val)
 {
     int ind=0;
-
+    const int iebug = px.a > min_opaque_val;
     float dist = colordifference(px,acolormap[0].acolor);
 
     for(int i = 1; i < numcolors; i++) {
@@ -329,7 +329,7 @@ static int best_color_index(f_pixel px, const colormap_item* acolormap, int numc
         if (newdist < dist) {
 
             /* penalty for making holes in IE */
-            if (px.a > min_opaque_val && acolormap[i].acolor.a < 1) {
+            if (iebug && acolormap[i].acolor.a < 1) {
                 if (newdist+1.0 > dist) continue;
             }
 

@@ -39,20 +39,36 @@ typedef struct {
 
 static const float internal_gamma = 0.45455;
 
-/*
- Converts 8-bit RGB with given gamma to scalar RGB with internal gamma and premultiplied by alpha.
- Premultiplied color space is much better for blending of semitransparent colors.
+/**
+ Converts scalar color to internal gamma and premultiplied alpha.
+ (premultiplied color space is much better for blending of semitransparent colors)
+ */
+inline static f_pixel to_f_scalar(float gamma, f_pixel px)
+{
+    if (gamma != internal_gamma) {
+        px.r = powf(px.r, internal_gamma/gamma);
+        px.g = powf(px.g, internal_gamma/gamma);
+        px.b = powf(px.b, internal_gamma/gamma);
+    }
+
+    px.r *= px.a;
+    px.g *= px.a;
+    px.b *= px.a;
+
+    return px;
+}
+
+/**
+  Converts 8-bit RGB with given gamma to scalar RGB
  */
 inline static f_pixel to_f(float gamma, rgb_pixel px)
 {
-    gamma /= internal_gamma;
-
-    float r = powf(px.r/255.0f, 1.0f/gamma),
-          g = powf(px.g/255.0f, 1.0f/gamma),
-          b = powf(px.b/255.0f, 1.0f/gamma),
-          a = px.a/255.0f;
-
-    return (f_pixel){.r=r*a, .g=g*a, .b=b*a, .a=a};
+    return to_f_scalar(gamma, (f_pixel){
+        .a = px.a/255.0f,
+        .r = px.r/255.0f,
+        .g = px.g/255.0f,
+        .b = px.b/255.0f,
+    });
 }
 
 inline static rgb_pixel to_rgb(float gamma, f_pixel px)

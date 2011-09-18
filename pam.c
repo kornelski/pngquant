@@ -114,8 +114,6 @@ inline static unsigned long pam_hashapixel(f_pixel px)
     return hash % HASH_SIZE;
 }
 
-#define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) >= (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
-
 hist_item *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP)
 {
     acolorhash_table acht;
@@ -131,15 +129,17 @@ hist_item *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int 
 
 inline static f_pixel posterize_pixel(rgb_pixel px, int maxval, float gamma)
 {
-    if (maxval != 255) {
-        px.r = PAM_SCALE(px.r, 255, maxval); px.r = PAM_SCALE(px.r, maxval, 255);
-        px.g = PAM_SCALE(px.g, 255, maxval); px.g = PAM_SCALE(px.g, maxval, 255);
-        px.b = PAM_SCALE(px.b, 255, maxval); px.b = PAM_SCALE(px.b, maxval, 255);
-        px.a = PAM_SCALE(px.a, 255, maxval); px.a = PAM_SCALE(px.a, maxval, 255);
-    }
-
+    if (maxval == 255) {
         return to_f(gamma, px);
+    } else {
+        return to_f_scalar(gamma, (f_pixel){
+            .a = (px.a * maxval / 255) / (float)maxval,
+            .r = (px.r * maxval / 255) / (float)maxval,
+            .g = (px.g * maxval / 255) / (float)maxval,
+            .b = (px.b * maxval / 255) / (float)maxval,
+        });
     }
+}
 
 float boost_from_contrast(f_pixel prev, f_pixel fpx, f_pixel next, f_pixel above, f_pixel below, float prev_boost)
 {
@@ -190,12 +190,12 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
             next = posterize_pixel(apixels[row][MIN(cols-1,col+1)], maxval, gamma);
 
             if (use_contrast) {
-                const rgb_pixel *restrict prevline = apixels[MAX(0,row-1)];
-                const rgb_pixel *restrict nextline = apixels[MIN(rows-1,row+1)];
-                f_pixel above = posterize_pixel(prevline[col], maxval, gamma);
-                f_pixel below = posterize_pixel(nextline[col], maxval, gamma);
+            const rgb_pixel *restrict prevline = apixels[MAX(0,row-1)];
+            const rgb_pixel *restrict nextline = apixels[MIN(rows-1,row+1)];
+            f_pixel above = posterize_pixel(prevline[col], maxval, gamma);
+            f_pixel below = posterize_pixel(nextline[col], maxval, gamma);
 
-                boost = boost_from_contrast(prev,curr,next,above,below,boost);
+            boost = boost_from_contrast(prev,curr,next,above,below,boost);
             }
 
             hash = pam_hashapixel(curr);

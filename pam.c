@@ -25,28 +25,7 @@ typedef unsigned long long u_register_t;
 typedef unsigned long u_register_t;
 #endif
 
-#ifdef __LP64__
-#define PAM_EQUAL(p,q)                  \
-((union {\
-    f_pixel f;\
-    struct {u_register_t l1, l2;} l;\
-}){p}.l.l1 == \
-(union {\
-    f_pixel f;\
-struct {u_register_t l1, l2;} l;\
-}){q}.l.l1 &&\
-(union {\
-    f_pixel f;\
-    struct {u_register_t l1, l2;} l;\
-}){p}.l.l2 == \
-(union {\
-    f_pixel f;\
-struct {u_register_t l1, l2;} l;\
-}){q}.l.l2)
-#else
-    #define PAM_EQUAL(p,q) \
-    ((p).r == (q).r && (p).g == (q).g && (p).b == (q).b && (p).a == (q).a)
-#endif
+#define PAM_EQUAL(p,q) ((p).a == (q).a && (p).r == (q).r && (p).g == (q).g && (p).b == (q).b)
 
 static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
 static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP);

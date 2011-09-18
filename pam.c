@@ -108,30 +108,10 @@ static void mempool_free(mempool m)
 }
 
 
-#define ROTL(x, n) ( (u_register_t)((x) << (n)) | (u_register_t)((x) >> (sizeof(u_register_t)*8-(n))) )
-inline static  unsigned long pam_hashapixel(f_pixel p)
+inline static unsigned long pam_hashapixel(f_pixel px)
 {
-    assert(sizeof(u_register_t) == sizeof(register_t));
-
-#ifdef __LP64__
-    union {
-        f_pixel f;
-        struct {register_t l1, l2;} l;
-    } h = {p};
-
-    assert(sizeof(h.l) == sizeof(f_pixel));
-
-    return (ROTL(h.l.l1,13) ^ h.l.l2) % HASH_SIZE;
-#else
-    union {
-        f_pixel f;
-        struct {register_t l1, l2, l3, l4;} l;
-    } h = {p};
-
-    assert(sizeof(h.l) == sizeof(f_pixel));
-
-    return (ROTL(h.l.l1,3) ^ ROTL(h.l.l2,7) ^ ROTL(h.l.l3,11) ^ h.l.l4) % HASH_SIZE;
-#endif
+    unsigned long hash = px.a * 256.0*5.0 + px.r * 256.0*179.0 + px.g * 256.0*17.0 + px.b * 256.0*30047.0;
+    return hash % HASH_SIZE;
 }
 
 #define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) >= (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))

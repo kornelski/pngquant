@@ -617,7 +617,7 @@ hist_item *histogram(read_info *input_image, int reqcolors, int *colors, int spe
     verbose_printf("  making histogram...");
     for (; ;) {
 
-        achv = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, colors);
+        achv = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, speed_tradeoff < 9, colors);
         if (achv) break;
 
         ignorebits++;

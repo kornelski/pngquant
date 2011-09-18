@@ -49,7 +49,7 @@ struct {u_register_t l1, l2;} l;\
 #endif
 
 static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
-static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP);
+static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
 
@@ -116,12 +116,12 @@ inline static unsigned long pam_hashapixel(f_pixel px)
 
 #define PAM_SCALE(p, oldmaxval, newmaxval) ((int)(p) >= (oldmaxval) ? (newmaxval) : (int)(p) * ((newmaxval)+1) / (oldmaxval))
 
-hist_item *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
+hist_item *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP)
 {
     acolorhash_table acht;
     hist_item *achv;
 
-    acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, acolorsP);
+    acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, use_contrast, acolorsP);
     if (!acht) return 0;
 
     achv = pam_acolorhashtoacolorhist(acht, maxacolors);
@@ -138,8 +138,8 @@ inline static f_pixel posterize_pixel(rgb_pixel px, int maxval, float gamma)
         px.a = PAM_SCALE(px.a, 255, maxval); px.a = PAM_SCALE(px.a, maxval, 255);
     }
 
-    return to_f(gamma, px);
-}
+        return to_f(gamma, px);
+    }
 
 float boost_from_contrast(f_pixel prev, f_pixel fpx, f_pixel next, f_pixel above, f_pixel below, float prev_boost)
 {
@@ -169,7 +169,7 @@ float boost_from_contrast(f_pixel prev, f_pixel fpx, f_pixel next, f_pixel above
     return (contrast < prev_boost) ? contrast : (prev_boost+prev_boost+contrast)/3.0f;
 }
 
-static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int* acolorsP)
+static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP)
 {
     acolorhash_table acht; acolorhist_list *buckets;
     acolorhist_list achl;
@@ -185,16 +185,18 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                 next = posterize_pixel(apixels[row][MIN(cols-1,1)], maxval, gamma), prev;
         float boost=0.5;
         for (col = 0; col < cols; ++col) {
-            const rgb_pixel *restrict prevline = apixels[MAX(0,row-1)];
-            const rgb_pixel *restrict nextline = apixels[MIN(rows-1,row+1)];
-            f_pixel above = posterize_pixel(prevline[col], maxval, gamma);
-            f_pixel below = posterize_pixel(nextline[col], maxval, gamma);
-
             prev = curr;
             curr = next;
             next = posterize_pixel(apixels[row][MIN(cols-1,col+1)], maxval, gamma);
 
-            boost = boost_from_contrast(prev,curr,next,above,below,boost);
+            if (use_contrast) {
+                const rgb_pixel *restrict prevline = apixels[MAX(0,row-1)];
+                const rgb_pixel *restrict nextline = apixels[MIN(rows-1,row+1)];
+                f_pixel above = posterize_pixel(prevline[col], maxval, gamma);
+                f_pixel below = posterize_pixel(nextline[col], maxval, gamma);
+
+                boost = boost_from_contrast(prev,curr,next,above,below,boost);
+            }
 
             hash = pam_hashapixel(curr);
 

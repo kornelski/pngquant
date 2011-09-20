@@ -1,2 +1,2 @@
 
-colormap_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int reqcolors);
+colormap_item *mediancut(hist *hist, float min_opaque_val, int reqcolors);

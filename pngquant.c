@@ -599,14 +599,14 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
     return retval;
 }
 
-hist_item *histogram(read_info *input_image, int reqcolors, int *colors, int speed_tradeoff)
+hist *histogram(read_info *input_image, int reqcolors, int speed_tradeoff)
 {
-    hist_item *achv;
+    hist *hist;
     int ignorebits=0;
     const rgb_pixel *const *input_pixels = (const rgb_pixel *const *)input_image->row_pointers;
     int cols = input_image->width, rows = input_image->height;
     double gamma = input_image->gamma;
-    assert(gamma > 0); assert(colors);
+    assert(gamma > 0);
 
    /*
     ** Step 2: attempt to make a histogram of the colors, unclustered.
@@ -620,15 +620,15 @@ hist_item *histogram(read_info *input_image, int reqcolors, int *colors, int spe
     verbose_printf("  making histogram...");
     for (; ;) {
 
-        achv = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, speed_tradeoff < 9, colors);
-        if (achv) break;
+        hist = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, speed_tradeoff < 9);
+        if (hist) break;
 
         ignorebits++;
         verbose_printf("too many colors!\n  scaling colors to improve clustering...");
     }
 
-    verbose_printf("%d colors found\n", *colors);
-    return achv;
+    verbose_printf("%d colors found\n", hist->size);
+    return hist;
 }
 
 float modify_alpha(read_info *input_image, int ie_bug)
@@ -789,9 +789,9 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     min_opaque_val = modify_alpha(input_image,ie_bug);
     assert(min_opaque_val>0);
 
-    int colors=0;
-    hist_item *achv = histogram(input_image, reqcolors, &colors, speed_tradeoff);
-    int newcolors = MIN(colors, reqcolors);
+    hist *hist = histogram(input_image, reqcolors, speed_tradeoff);
+    hist_item *achv = hist->achv;
+    int newcolors = MIN(hist->size, reqcolors);
 
     colormap_item *acolormap = NULL;
     float least_error = -1;
@@ -806,7 +806,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     {
         verbose_printf("  selecting colors");
 
-        colormap_item *newmap = mediancut(achv, min_opaque_val, colors, newcolors);
+        colormap_item *newmap = mediancut(hist, min_opaque_val, newcolors);
 
         verbose_printf("...");
 
@@ -816,7 +816,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
             viter_init(newmap, newcolors, average_color,average_color_count,base_color,base_color_count);
 
-            for(int i=0; i < colors; i++) {
+            for(int i=0; i < hist->size; i++) {
                 float diff;
                 int match = best_color_index(achv[i].acolor, newmap, newcolors, min_opaque_val, &diff);
                 assert(diff >= 0);
@@ -853,7 +853,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     for(int i=0; i < iterations; i++) {
         viter_init(acolormap, newcolors, average_color,average_color_count, NULL,NULL);
 
-        for(int j=0; j < colors; j++) {
+        for(int j=0; j < hist->size; j++) {
 
             int match = best_color_index(achv[j].acolor, acolormap, newcolors, min_opaque_val, NULL);
             viter_update_color(achv[j].acolor, achv[j].adjusted_weight,acolormap, match, average_color,average_color_count, NULL,NULL);
@@ -862,7 +862,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
         viter_finalize(acolormap, newcolors, average_color,average_color_count);
     }
 
-    pam_freeacolorhist(achv);
+    pam_freeacolorhist(hist);
 
     output_image->width = input_image->width;
     output_image->height = input_image->height;

@@ -29,7 +29,7 @@ static int weightedcompare_g(const void *ch1, const void *ch2);
 static int weightedcompare_b(const void *ch1, const void *ch2);
 static int weightedcompare_a(const void *ch1, const void *ch2);
 
-static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opaque_val);
+static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float min_opaque_val);
 
 struct box {
     float variance;
@@ -110,10 +110,9 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
     return weightedcompare_other(c1p, c2p);
 }
 
-f_pixel channel_variance(hist_item* achv, int indx, int clrs, float min_opaque_val)
+f_pixel channel_variance(const hist_item achv[], int indx, int clrs, float min_opaque_val)
 {
     f_pixel mean = averagepixels(indx, clrs, achv, min_opaque_val);
-
     f_pixel variance = (f_pixel){0,0,0,0};
 
     for (int i = 0; i < clrs; ++i) {
@@ -157,8 +156,9 @@ static void sort_colors_by_variance(f_pixel variance, hist_item achv[], int indx
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
 
-colormap_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int newcolors)
+colormap_item *mediancut(hist *hist, float min_opaque_val, int newcolors)
 {
+    hist_item *achv = hist->achv;
     struct box bv[newcolors];
     colormap_item *acolormap = calloc(newcolors, sizeof(acolormap[0]));
     if (!acolormap) {
@@ -169,9 +169,9 @@ colormap_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int
      ** Set up the initial box.
      */
     bv[0].ind = 0;
-    bv[0].colors = colors;
+    bv[0].colors = hist->size;
     bv[0].variance = 1.0;
-    for(int i=0; i < colors; i++) bv[0].sum += achv[i].adjusted_weight;
+    for(int i=0; i < bv[0].colors; i++) bv[0].sum += achv[i].adjusted_weight;
 
     int boxes = 1;
 
@@ -273,7 +273,7 @@ colormap_item *mediancut(hist_item achv[], float min_opaque_val, int colors, int
     return acolormap;
 }
 
-static f_pixel averagepixels(int indx, int clrs, hist_item achv[], float min_opaque_val)
+static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float min_opaque_val)
 {
     float r = 0, g = 0, b = 0, a = 0, sum = 0;
     float maxa = 0;

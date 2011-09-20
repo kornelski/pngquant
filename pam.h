@@ -134,6 +134,11 @@ typedef struct {
 } hist_item;
 
 typedef struct {
+    hist_item *achv;
+    int size;
+} hist;
+
+typedef struct {
     f_pixel acolor;
     float popularity;
 } colormap_item;
@@ -150,5 +155,5 @@ typedef struct {
 } *acolorhash_table;
 
 
-hist_item *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP);
-void pam_freeacolorhist(hist_item *achv);
+hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast);
+void pam_freeacolorhist(hist *h);

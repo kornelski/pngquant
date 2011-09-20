@@ -27,7 +27,7 @@ typedef unsigned long u_register_t;
 
 #define PAM_EQUAL(p,q) ((p).a == (q).a && (p).r == (q).r && (p).g == (q).g && (p).b == (q).b)
 
-static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
+static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
 static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
@@ -93,15 +93,16 @@ inline static unsigned long pam_hashapixel(f_pixel px)
     return hash % HASH_SIZE;
 }
 
-hist_item *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP)
+hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast)
 {
     acolorhash_table acht;
-    hist_item *achv;
+    hist *achv;
 
-    acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, use_contrast, acolorsP);
+    int hist_size=0;
+    acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, use_contrast, &hist_size);
     if (!acht) return 0;
 
-    achv = pam_acolorhashtoacolorhist(acht, maxacolors);
+    achv = pam_acolorhashtoacolorhist(acht, hist_size);
     pam_freeacolorhash(acht);
     return achv;
 }
@@ -156,7 +157,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
     const int maxval = 255>>ignorebits;
     acht = pam_allocacolorhash();
     buckets = acht->buckets;
-    *acolorsP = 0;
+    int colors=0;
 
     /* Go through the entire image, building a hash table of colors. */
     for (row = 0; row < rows; ++row) {
@@ -185,7 +186,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
             if (achl != NULL) {
                 achl->perceptual_weight += 1.0f+boost;
             } else {
-                if (++(*acolorsP) > maxacolors) {
+                if (++colors > maxacolors) {
                     pam_freeacolorhash(acht);
                     return NULL;
                 }
@@ -199,6 +200,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
         }
 
     }
+    *acolorsP = colors;
     return acht;
 }
 
@@ -211,27 +213,28 @@ static acolorhash_table pam_allocacolorhash()
     return t;
 }
 
-static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors)
+static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size)
 {
-    hist_item *achv;
+    hist *hist;
     struct acolorhist_list_item *achl;
     int i, j;
 
-    /* Now collate the hash table into a simple acolorhist array. */
-    achv = (hist_item *) malloc(maxacolors * sizeof(achv[0]));
+    hist = malloc(sizeof(hist));
+    hist->achv = malloc(hist_size * sizeof(hist->achv[0]));
+    hist->size = hist_size;
 
     /* Loop through the hash table. */
     j = 0;
     for (i = 0; i < HASH_SIZE; ++i)
         for (achl = acht->buckets[i]; achl != NULL; achl = achl->next) {
             /* Add the new entry. */
-            achv[j].acolor = achl->acolor;
-            achv[j].adjusted_weight = achv[j].perceptual_weight = achl->perceptual_weight;
+            hist->achv[j].acolor = achl->acolor;
+            hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->perceptual_weight;
             ++j;
         }
 
     /* All done. */
-    return achv;
+    return hist;
 }
 
 
@@ -242,9 +245,10 @@ static void pam_freeacolorhash(acolorhash_table acht)
 
 
 
-void pam_freeacolorhist(hist_item *achv)
+void pam_freeacolorhist(hist *hist)
 {
-    free(achv);
+    free(hist->achv);
+    free(hist);
 }
 
 

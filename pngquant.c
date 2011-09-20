@@ -527,6 +527,9 @@ float remap_to_palette_floyd(read_info *input_image, write_info *output_image, f
     return remapping_error / MAX(1, remapped_pixels);
 }
 
+/* build the output filename from the input name by inserting "-fs8" or
+ * "-or8" before the ".png" extension (or by appending that plus ".png" if
+ * there isn't any extension), then make sure it doesn't exist already */
 char *add_filename_extension(const char *filename, const char *newext)
 {
     int x = strlen(filename);
@@ -558,7 +561,7 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
     FILE *outfile;
     if (using_stdin) {
         set_binary_mode(stdout);
-        outfile = stdout;   /* GRR:  see comment above about fdopen() */
+        outfile = stdout;
     } else {
         char *outname = add_filename_extension(filename,newext);
 
@@ -694,10 +697,6 @@ pngquant_error read_image(const char *filename, int using_stdin, read_info *inpu
         fprintf(stderr, "  error:  cannot open %s for reading\n", filename);
         return READ_ERROR;
     }
-
-    /* build the output filename from the input name by inserting "-fs8" or
-     * "-or8" before the ".png" extension (or by appending that plus ".png" if
-     * there isn't any extension), then make sure it doesn't exist already */
 
     /*
      ** Step 1: read in the alpha-channel image.
@@ -871,8 +870,6 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image
-    ** note that rwpng_info.row_pointers
-    ** is still in use via apixels (INPUT data).
     */
 
     output_image->indexed_data = malloc(output_image->height * output_image->width);

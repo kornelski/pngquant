@@ -150,8 +150,5 @@ typedef struct {
 } *acolorhash_table;
 
 
-typedef unsigned char pixval; /* GRR: hardcoded for now; later add 16-bit support */
-
-
 hist_item *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP);
 void pam_freeacolorhist(hist_item *achv);

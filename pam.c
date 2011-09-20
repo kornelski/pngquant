@@ -150,8 +150,8 @@ float boost_from_contrast(f_pixel prev, f_pixel fpx, f_pixel next, f_pixel above
 
 static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP)
 {
-    acolorhash_table acht; acolorhist_list *buckets;
-    acolorhist_list achl;
+    acolorhash_table acht;
+    struct acolorhist_list_item *achl, **buckets;
     int col, row, hash;
     const int maxval = 255>>ignorebits;
     acht = pam_allocacolorhash();
@@ -180,10 +180,10 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
             hash = pam_hashapixel(curr);
 
             for (achl = buckets[hash]; achl != NULL; achl = achl->next)
-                if (PAM_EQUAL(achl->ch.acolor, curr))
+                if (PAM_EQUAL(achl->acolor, curr))
                     break;
             if (achl != NULL) {
-                achl->ch.perceptual_weight += 1.0f+boost;
+                achl->perceptual_weight += 1.0f+boost;
             } else {
                 if (++(*acolorsP) > maxacolors) {
                     pam_freeacolorhash(acht);
@@ -191,8 +191,8 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                 }
                 achl = mempool_new(&acht->mempool, sizeof(struct acolorhist_list_item));
 
-                achl->ch.acolor = curr;
-                achl->ch.perceptual_weight = 1.0f+boost;
+                achl->acolor = curr;
+                achl->perceptual_weight = 1.0f+boost;
                 achl->next = buckets[hash];
                 buckets[hash] = achl;
             }
@@ -214,7 +214,7 @@ static acolorhash_table pam_allocacolorhash()
 static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors)
 {
     hist_item *achv;
-    acolorhist_list achl;
+    struct acolorhist_list_item *achl;
     int i, j;
 
     /* Now collate the hash table into a simple acolorhist array. */
@@ -225,7 +225,8 @@ static hist_item *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolo
     for (i = 0; i < HASH_SIZE; ++i)
         for (achl = acht->buckets[i]; achl != NULL; achl = achl->next) {
             /* Add the new entry. */
-            achv[j] = achl->ch;
+            achv[j].acolor = achl->acolor;
+            achv[j].adjusted_weight = achv[j].perceptual_weight = achl->perceptual_weight;
             ++j;
         }
 

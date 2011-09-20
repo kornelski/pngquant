@@ -794,10 +794,6 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     hist_item *achv = histogram(input_image, reqcolors, &colors, speed_tradeoff);
     int newcolors = MIN(colors, reqcolors);
 
-    for(int i=0; i < colors; i++) {
-        achv[i].adjusted_weight = achv[i].perceptual_weight;
-    }
-
     colormap_item *acolormap = NULL;
     float least_error = -1;
     int feedback_loop_trials = 56-9*speed_tradeoff;

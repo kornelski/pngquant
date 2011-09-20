@@ -138,15 +138,15 @@ typedef struct {
     float popularity;
 } colormap_item;
 
-typedef struct acolorhist_list_item *acolorhist_list;
 struct acolorhist_list_item {
-    acolorhist_list next;
-    hist_item ch;
+    f_pixel acolor;
+    struct acolorhist_list_item *next;
+    float perceptual_weight;
 };
 
 typedef struct {
     struct mempool *mempool;
-    acolorhist_list *buckets;
+    struct acolorhist_list_item **buckets;
 } *acolorhash_table;
 
 

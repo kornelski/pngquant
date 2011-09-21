@@ -151,11 +151,29 @@ static void sort_colors_by_variance(f_pixel variance, hist_item achv[], int indx
 
 
 /*
+ ** Find the best splittable box. -1 if no boxes are splittable.
+ */
+static int best_splittable_box(struct box* bv, int boxes)
+{
+    int bi=-1; float maxsum=0;
+    for (int i=0; i < boxes; i++) {
+        if (bv[i].colors < 2) continue;
+
+        float thissum = bv[i].sum*bv[i].variance;
+
+        if (thissum > maxsum) {
+            maxsum = thissum;
+            bi = i;
+        }
+    }
+    return bi;
+}
+
+/*
  ** Here is the fun part, the median-cut colormap generator.  This is based
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
-
 colormap_item *mediancut(hist *hist, float min_opaque_val, int newcolors)
 {
     hist_item *achv = hist->achv;
@@ -180,20 +198,7 @@ colormap_item *mediancut(hist *hist, float min_opaque_val, int newcolors)
      */
     while (boxes < newcolors) {
 
-        /*
-         ** Find the best splittable box.
-         */
-        int bi=-1; float maxsum=0;
-        for (int i=0; i < boxes; i++) {
-            if (bv[i].colors < 2) continue;
-
-            float thissum = bv[i].sum*bv[i].variance;
-
-            if (thissum > maxsum) {
-                maxsum = thissum;
-                bi = i;
-            }
-        }
+        int bi= best_splittable_box(bv, boxes);
         if (bi < 0)
             break;        /* ran out of colors! */
 

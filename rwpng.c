@@ -256,6 +256,8 @@ pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
 
     png_set_compression_level(png_ptr, Z_BEST_COMPRESSION);
 
+    // Palette images generally don't gain anything from filtering
+    png_set_filter(png_ptr, PNG_FILTER_TYPE_BASE, PNG_FILTER_VALUE_NONE);
 
     /* set the image parameters appropriately */
     int sample_depth;
@@ -271,7 +273,7 @@ pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,
       sample_depth, PNG_COLOR_TYPE_PALETTE,
       mainprog_ptr->interlaced, PNG_COMPRESSION_TYPE_DEFAULT,
-      PNG_FILTER_TYPE_DEFAULT);
+      PNG_FILTER_TYPE_BASE);
 
     /* GRR WARNING:  cast of rwpng_colorp to png_colorp could fail in future
      * major revisions of libpng (but png_ptr/info_ptr will fail, regardless) */

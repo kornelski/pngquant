@@ -169,6 +169,11 @@ static int best_splittable_box(struct box* bv, int boxes)
     return bi;
 }
 
+inline static float color_weight(f_pixel median, hist_item h)
+{
+    return sqrtf(colordifference(median, h.acolor)) * sqrtf(h.adjusted_weight);
+}
+
 /*
  ** Here is the fun part, the median-cut colormap generator.  This is based
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
@@ -223,7 +228,7 @@ colormap_item *mediancut(hist *hist, float min_opaque_val, int newcolors)
         int lowersum = 0;
         float halfvar = 0, lowervar = 0;
         for(int i=0; i < clrs -1; i++) {
-            halfvar += sqrtf(colordifference(median, achv[indx+i].acolor)) * sqrtf(achv[indx+i].adjusted_weight);
+            halfvar += color_weight(median, achv[indx+i]);
         }
         halfvar /= 2.0f;
 
@@ -232,7 +237,7 @@ colormap_item *mediancut(hist *hist, float min_opaque_val, int newcolors)
             if (lowervar >= halfvar)
                 break;
 
-            lowervar += sqrtf(colordifference(median, achv[indx+break_at].acolor)) * sqrtf(achv[indx+break_at].adjusted_weight);
+            lowervar += color_weight(median, achv[indx+break_at]);
             lowersum += achv[indx + break_at].adjusted_weight;
         }
 

@@ -254,27 +254,10 @@ pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
 
     png_init_io(png_ptr, outfile);
 
-
-    /* set the compression levels--in general, always want to leave filtering
-     * turned on (except for palette images) and allow all of the filters,
-     * which is the default; want 32K zlib window, unless entire image buffer
-     * is 16K or smaller (unknown here)--also the default; usually want max
-     * compression (NOT the default); and remaining compression flags should
-     * be left alone */
-
     png_set_compression_level(png_ptr, Z_BEST_COMPRESSION);
-/*
-    >> this is default for no filtering; Z_FILTERED is default otherwise:
-    png_set_compression_strategy(png_ptr, Z_DEFAULT_STRATEGY);
-    >> these are all defaults:
-    png_set_compression_mem_level(png_ptr, 8);
-    png_set_compression_window_bits(png_ptr, 15);
-    png_set_compression_method(png_ptr, 8);
- */
 
 
     /* set the image parameters appropriately */
-
     int sample_depth;
     if (mainprog_ptr->num_palette <= 2)
         sample_depth = 1;
@@ -300,70 +283,8 @@ pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
     if (mainprog_ptr->gamma > 0.0)
         png_set_gAMA(png_ptr, info_ptr, mainprog_ptr->gamma);
 
-#if 0
-    if (mainprog_ptr->have_bg) {   /* we know it's RGBA, not gray+alpha */
-        png_color_16  background;
-
-        background.red = mainprog_ptr->bg_red;
-        background.green = mainprog_ptr->bg_green;
-        background.blue = mainprog_ptr->bg_blue;
-        png_set_bKGD(png_ptr, info_ptr, &background);
-    }
-
-    if (mainprog_ptr->have_time) {
-        png_time  modtime;
-
-        png_convert_from_time_t(&modtime, mainprog_ptr->modtime);
-        png_set_tIME(png_ptr, info_ptr, &modtime);
-    }
-
-    if (mainprog_ptr->have_text) {
-        png_text  text[6];
-        int  num_text = 0;
-
-        if (mainprog_ptr->have_text & TEXT_TITLE) {
-            text[num_text].compression = PNG_TEXT_COMPRESSION_NONE;
-            text[num_text].key = "Title";
-            text[num_text].text = mainprog_ptr->title;
-            ++num_text;
-        }
-        if (mainprog_ptr->have_text & TEXT_AUTHOR) {
-            text[num_text].compression = PNG_TEXT_COMPRESSION_NONE;
-            text[num_text].key = "Author";
-            text[num_text].text = mainprog_ptr->author;
-            ++num_text;
-        }
-        if (mainprog_ptr->have_text & TEXT_DESC) {
-            text[num_text].compression = PNG_TEXT_COMPRESSION_NONE;
-            text[num_text].key = "Description";
-            text[num_text].text = mainprog_ptr->desc;
-            ++num_text;
-        }
-        if (mainprog_ptr->have_text & TEXT_COPY) {
-            text[num_text].compression = PNG_TEXT_COMPRESSION_NONE;
-            text[num_text].key = "Copyright";
-            text[num_text].text = mainprog_ptr->copyright;
-            ++num_text;
-        }
-        if (mainprog_ptr->have_text & TEXT_EMAIL) {
-            text[num_text].compression = PNG_TEXT_COMPRESSION_NONE;
-            text[num_text].key = "E-mail";
-            text[num_text].text = mainprog_ptr->email;
-            ++num_text;
-        }
-        if (mainprog_ptr->have_text & TEXT_URL) {
-            text[num_text].compression = PNG_TEXT_COMPRESSION_NONE;
-            text[num_text].key = "URL";
-            text[num_text].text = mainprog_ptr->url;
-            ++num_text;
-        }
-        png_set_text(png_ptr, info_ptr, text, num_text);
-    }
-#endif /* 0 */
-
 
     /* write all chunks up to (but not including) first IDAT */
-
     png_write_info(png_ptr, info_ptr);
 
 
@@ -378,11 +299,8 @@ pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
      * into bytes (one, two or four pixels per byte) */
 
     png_set_packing(png_ptr);
-/*  png_set_shift(png_ptr, &sig_bit);  to scale low-bit-depth values */
-
 
     /* make sure we save our pointers for use in writepng_encode_image() */
-
     mainprog_ptr->png_ptr = png_ptr;
     mainprog_ptr->info_ptr = info_ptr;
 

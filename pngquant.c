@@ -780,6 +780,23 @@ static void viter_finalize(colormap_item acolormap[], int newcolors, f_pixel *av
     }
 }
 
+void viter_do_interation(const hist *hist, colormap_item *acolormap, int newcolors, float min_opaque_val)
+{
+    f_pixel average_color[newcolors];
+    float average_color_count[newcolors];
+
+    hist_item *achv = hist->achv;
+    viter_init(acolormap, newcolors, average_color,average_color_count, NULL,NULL);
+
+    for(int j=0; j < hist->size; j++) {
+
+        int match = best_color_index(achv[j].acolor, acolormap, newcolors, min_opaque_val, NULL);
+        viter_update_color(achv[j].acolor, achv[j].perceptual_weight,acolormap, match, average_color,average_color_count, NULL,NULL);
+    }
+
+    viter_finalize(acolormap, newcolors, average_color,average_color_count);
+}
+
 pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff)
 {
     float min_opaque_val;
@@ -851,15 +868,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     int iterations = MAX(5-speed_tradeoff,0); iterations *= iterations;
     for(int i=0; i < iterations; i++) {
-        viter_init(acolormap, newcolors, average_color,average_color_count, NULL,NULL);
-
-        for(int j=0; j < hist->size; j++) {
-
-            int match = best_color_index(achv[j].acolor, acolormap, newcolors, min_opaque_val, NULL);
-            viter_update_color(achv[j].acolor, achv[j].adjusted_weight,acolormap, match, average_color,average_color_count, NULL,NULL);
-    }
-
-        viter_finalize(acolormap, newcolors, average_color,average_color_count);
+        viter_do_interation(hist, acolormap, newcolors, min_opaque_val);
     }
 
     pam_freeacolorhist(hist);

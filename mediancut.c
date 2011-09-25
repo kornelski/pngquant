@@ -177,6 +177,8 @@ inline static float color_weight(f_pixel median, hist_item h)
     return sqrtf(diff) * sqrtf(h.adjusted_weight);
 }
 
+static colormap *colormap_from_boxes(struct box* bv,int boxes,hist_item *achv,float min_opaque_val);
+
 /*
  ** Here is the fun part, the median-cut colormap generator.  This is based
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
@@ -254,29 +256,37 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
         ++boxes;
     }
 
+    colormap *map = colormap_from_boxes(bv, boxes, achv, min_opaque_val);
+
+    for (int bi = 0; bi < boxes; ++bi) {
+        for(int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
+            /* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */
+            achv[i].adjusted_weight *= 1.0 + sqrt(colordifference(map->palette[bi].acolor, achv[i].acolor))/2.0;
+        }
+    }
+
+    return map;
+}
+
+static colormap *colormap_from_boxes(struct box* bv, int boxes, hist_item *achv, float min_opaque_val)
+{
     /*
      ** Ok, we've got enough boxes.  Now choose a representative color for
      ** each box.  There are a number of possible ways to make this choice.
      ** One would be to choose the center of the box; this ignores any structure
      ** within the boxes.  Another method would be to average all the colors in
-     ** the box - this is the method specified in Heckbert's paper.  A third
-     ** method is to average all the pixels in the box.  You can switch which
-     ** method is used by switching the commenting on the REP_ defines at
-     ** the beginning of this source file.
+     ** the box - this is the method specified in Heckbert's paper.
      */
 
-    colormap *map = pam_colormap(newcolors);
-    colormap_item *acolormap = map->palette;
+    colormap *map = pam_colormap(boxes);
 
     for (int bi = 0; bi < boxes; ++bi) {
-        acolormap[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
+        map->palette[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 
+        /* store total color popularity (perceptual_weight is approximation of it) */
+        map->palette[bi].popularity = 0;
         for(int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
-            /* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */
-            achv[i].adjusted_weight *= 1.0 + sqrt(colordifference(acolormap[bi].acolor, achv[i].acolor))/2.0;
-
-            /* store total color popularity (perceptual_weight is approximation of it) */
-            acolormap[bi].popularity += achv[i].perceptual_weight;
+            map->palette[bi].popularity += achv[i].perceptual_weight;
         }
     }
 

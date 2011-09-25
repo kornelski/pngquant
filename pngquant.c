@@ -64,11 +64,11 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
 pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin);
 
-static void viter_init(const colormap_item newmap[], int newcolors, f_pixel* average_color, float* average_color_count, f_pixel* base_color, float* base_color_count);
-static void viter_update_color(f_pixel acolor, float value, colormap_item newmap[], int match,
+static void viter_init(const colormap *map, f_pixel* average_color, float* average_color_count, f_pixel* base_color, float* base_color_count);
+static void viter_update_color(f_pixel acolor, float value, colormap *map, int match,
                                f_pixel *average_color, float *average_color_count,
                                const f_pixel *base_color, const float *base_color_count);
-static void viter_finalize(colormap_item newmap[], int newcolors, f_pixel *average_color, float *average_color_count);
+static void viter_finalize(colormap *map, f_pixel *average_color, float *average_color_count);
 
 static int verbose=0;
 void verbose_printf(const char *fmt, ...)
@@ -266,9 +266,9 @@ static int compare_popularity(const void *ch1, const void *ch2)
     return v1-v2;
 }
 
-void sort_palette(write_info *output_image, int newcolors, colormap_item acolormap[])
+void sort_palette(write_info *output_image, colormap *map)
 {
-    assert(acolormap); assert(output_image);
+    assert(map); assert(output_image);
 
     /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with
@@ -280,14 +280,14 @@ void sort_palette(write_info *output_image, int newcolors, colormap_item acolorm
 
     /* move transparent colors to the beginning to shrink trns chunk */
     int num_transparent=0;
-    for(int i=0; i < newcolors; i++)
+    for(int i=0; i < map->colors; i++)
     {
-        rgb_pixel px = to_rgb(output_image->gamma, acolormap[i].acolor);
+        rgb_pixel px = to_rgb(output_image->gamma, map->palette[i].acolor);
         if (px.a != 255) {
             if (i != num_transparent) {
-                colormap_item tmp = acolormap[num_transparent];
-                acolormap[num_transparent] = acolormap[i];
-                acolormap[i] = tmp;
+                colormap_item tmp = map->palette[num_transparent];
+                map->palette[num_transparent] = map->palette[i];
+                map->palette[i] = tmp;
                 i--;
             }
             num_transparent++;
@@ -299,18 +299,18 @@ void sort_palette(write_info *output_image, int newcolors, colormap_item acolorm
     /* colors sorted by popularity make pngs slightly more compressible
      * opaque and transparent are sorted separately
      */
-    qsort(acolormap, num_transparent, sizeof(acolormap[0]), compare_popularity);
-    qsort(acolormap+num_transparent, newcolors-num_transparent, sizeof(acolormap[0]), compare_popularity);
+    qsort(map->palette, num_transparent, sizeof(map->palette[0]), compare_popularity);
+    qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
 
-    output_image->num_palette = newcolors;
+    output_image->num_palette = map->colors;
     output_image->num_trans = num_transparent;
 }
 
-void set_palette(write_info *output_image, int newcolors, colormap_item acolormap[])
+void set_palette(write_info *output_image, colormap *map)
 {
-    for (int x = 0; x < newcolors; ++x) {
-        rgb_pixel px = to_rgb(output_image->gamma, acolormap[x].acolor);
-        acolormap[x].acolor = to_f(output_image->gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
+    for (int x = 0; x < map->colors; ++x) {
+        rgb_pixel px = to_rgb(output_image->gamma, map->palette[x].acolor);
+        map->palette[x].acolor = to_f(output_image->gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
         output_image->palette[x].red   = px.r;
         output_image->palette[x].green = px.g;
@@ -319,8 +319,10 @@ void set_palette(write_info *output_image, int newcolors, colormap_item acolorma
     }
 }
 
-static int best_color_index(f_pixel px, const colormap_item* acolormap, int numcolors, float min_opaque_val, float *dist_out)
+static int best_color_index(f_pixel px, const colormap *map, float min_opaque_val, float *dist_out)
 {
+    const colormap_item *const acolormap = map->palette;
+    const int numcolors = map->colors;
     int ind=0;
     const int iebug = px.a > min_opaque_val;
     float dist = colordifference(px,acolormap[0].acolor);
@@ -344,7 +346,7 @@ static int best_color_index(f_pixel px, const colormap_item* acolormap, int numc
     return ind;
 }
 
-float remap_to_palette(read_info *input_image, write_info *output_image, float min_opaque_val, int ie_bug, int newcolors, colormap_item acolormap[])
+float remap_to_palette(read_info *input_image, write_info *output_image, colormap *map, float min_opaque_val, int ie_bug)
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     unsigned char **row_pointers = output_image->row_pointers;
@@ -354,11 +356,11 @@ float remap_to_palette(read_info *input_image, write_info *output_image, float m
     int remapped_pixels=0;
     float remapping_error=0;
 
-    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val, NULL);
+    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, map, min_opaque_val, NULL);
 
-    f_pixel average_color[newcolors];
-    float average_color_count[newcolors];
-    viter_init(acolormap, newcolors, average_color, average_color_count, NULL, NULL);
+    f_pixel average_color[map->colors];
+    float average_color_count[map->colors];
+    viter_init(map, average_color, average_color_count, NULL, NULL);
 
     for (int row = 0; row < rows; ++row) {
         for(int col = 0; col < cols; ++col) {
@@ -370,7 +372,7 @@ float remap_to_palette(read_info *input_image, write_info *output_image, float m
                 match = transparent_ind;
             } else {
                 float diff;
-                match = best_color_index(px,acolormap,newcolors,min_opaque_val, &diff);
+                match = best_color_index(px, map,min_opaque_val, &diff);
 
                 remapped_pixels++;
                 remapping_error += diff;
@@ -378,16 +380,16 @@ float remap_to_palette(read_info *input_image, write_info *output_image, float m
 
             row_pointers[row][col] = match;
 
-            viter_update_color(px, 1.0, acolormap, match, average_color, average_color_count, NULL, NULL);
+            viter_update_color(px, 1.0, map, match, average_color, average_color_count, NULL, NULL);
         }
     }
 
-    viter_finalize(acolormap, newcolors, average_color, average_color_count);
+    viter_finalize(map, average_color, average_color_count);
 
     return remapping_error / MAX(1,remapped_pixels);
 }
 
-float remap_to_palette_floyd(read_info *input_image, write_info *output_image, float min_opaque_val, int ie_bug, int newcolors, const colormap_item acolormap[])
+float remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, float min_opaque_val, int ie_bug)
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     unsigned char **row_pointers = output_image->row_pointers;
@@ -397,8 +399,10 @@ float remap_to_palette_floyd(read_info *input_image, write_info *output_image, f
     int remapped_pixels=0;
     float remapping_error=0;
 
+    const colormap_item *acolormap = map->palette;
+
     int ind=0;
-    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, acolormap, newcolors, min_opaque_val, NULL);
+    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, map, min_opaque_val, NULL);
 
     f_pixel *restrict thiserr = NULL;
     f_pixel *restrict nexterr = NULL;
@@ -446,7 +450,7 @@ float remap_to_palette_floyd(read_info *input_image, write_info *output_image, f
                 ind = transparent_ind;
             } else {
                 float diff;
-                ind = best_color_index((f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, acolormap, newcolors, min_opaque_val, &diff);
+                ind = best_color_index((f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, map, min_opaque_val, &diff);
 
                 remapped_pixels++;
                 remapping_error += diff;
@@ -718,10 +722,12 @@ pngquant_error read_image(const char *filename, int using_stdin, read_info *inpu
 /*
  * Voronoi iteration: new palette color is computed from weighted average of colors that map to that palette entry.
  */
-static void viter_init(const colormap_item newmap[], int newcolors,
+static void viter_init(const colormap *map,
                      f_pixel *average_color, float *average_color_count,
                      f_pixel *base_color, float *base_color_count)
 {
+    colormap_item *newmap = map->palette;
+    int newcolors = map->colors;
     for (int i=0; i < newcolors; i++) {
         average_color_count[i] = 0;
         average_color[i] = (f_pixel){0,0,0,0};
@@ -745,7 +751,7 @@ static void viter_init(const colormap_item newmap[], int newcolors,
     }
 }
 
-static void viter_update_color(f_pixel acolor, float value, colormap_item newmap[], int match,
+static void viter_update_color(f_pixel acolor, float value, colormap *map, int match,
                              f_pixel *average_color, float *average_color_count,
                              const f_pixel *base_color, const float *base_color_count)
 {
@@ -756,7 +762,7 @@ static void viter_update_color(f_pixel acolor, float value, colormap_item newmap
     average_color_count[match] += value;
 
     if (base_color) {
-        newmap[match].acolor = (f_pixel){
+        map->palette[match].acolor = (f_pixel){
             .a = (average_color[match].a + base_color[match].a) / (average_color_count[match] + base_color_count[match]),
             .r = (average_color[match].r + base_color[match].r) / (average_color_count[match] + base_color_count[match]),
             .g = (average_color[match].g + base_color[match].g) / (average_color_count[match] + base_color_count[match]),
@@ -765,36 +771,36 @@ static void viter_update_color(f_pixel acolor, float value, colormap_item newmap
     }
 }
 
-static void viter_finalize(colormap_item acolormap[], int newcolors, f_pixel *average_color, float *average_color_count)
+static void viter_finalize(colormap *map, f_pixel *average_color, float *average_color_count)
 {
-    for (int i=0; i < newcolors; i++) {
+    for (int i=0; i < map->colors; i++) {
         if (average_color_count[i]) {
-            acolormap[i].acolor = (f_pixel){
+            map->palette[i].acolor = (f_pixel){
                 .a = (average_color[i].a) / average_color_count[i],
                 .r = (average_color[i].r) / average_color_count[i],
                 .g = (average_color[i].g) / average_color_count[i],
                 .b = (average_color[i].b) / average_color_count[i],
             };
         }
-        acolormap[i].popularity = average_color_count[i];
+        map->palette[i].popularity = average_color_count[i];
     }
 }
 
-void viter_do_interation(const hist *hist, colormap_item *acolormap, int newcolors, float min_opaque_val)
+void viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
 {
-    f_pixel average_color[newcolors];
-    float average_color_count[newcolors];
+    f_pixel average_color[map->colors];
+    float average_color_count[map->colors];
 
     hist_item *achv = hist->achv;
-    viter_init(acolormap, newcolors, average_color,average_color_count, NULL,NULL);
+    viter_init(map, average_color,average_color_count, NULL,NULL);
 
     for(int j=0; j < hist->size; j++) {
 
-        int match = best_color_index(achv[j].acolor, acolormap, newcolors, min_opaque_val, NULL);
-        viter_update_color(achv[j].acolor, achv[j].perceptual_weight,acolormap, match, average_color,average_color_count, NULL,NULL);
+        int match = best_color_index(achv[j].acolor, map, min_opaque_val, NULL);
+        viter_update_color(achv[j].acolor, achv[j].perceptual_weight, map, match, average_color,average_color_count, NULL,NULL);
     }
 
-    viter_finalize(acolormap, newcolors, average_color,average_color_count);
+    viter_finalize(map, average_color,average_color_count);
 }
 
 pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff)
@@ -808,9 +814,8 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     hist *hist = histogram(input_image, reqcolors, speed_tradeoff);
     hist_item *achv = hist->achv;
-    int newcolors = MIN(hist->size, reqcolors);
 
-    colormap_item *acolormap = NULL;
+    colormap *acolormap = NULL;
     float least_error = -1;
     int feedback_loop_trials = 56-9*speed_tradeoff;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
@@ -819,21 +824,21 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     {
         verbose_printf("  selecting colors");
 
-        colormap_item *newmap = mediancut(hist, min_opaque_val, newcolors);
+        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors);
 
         verbose_printf("...");
 
         float total_error=0;
-        f_pixel average_color[newcolors], base_color[newcolors];
-        float average_color_count[newcolors], base_color_count[newcolors];
+        f_pixel average_color[newmap->colors], base_color[newmap->colors];
+        float average_color_count[newmap->colors], base_color_count[newmap->colors];
 
         if (feedback_loop_trials) {
 
-            viter_init(newmap, newcolors, average_color,average_color_count,base_color,base_color_count);
+            viter_init(newmap, average_color,average_color_count,base_color,base_color_count);
 
             for(int i=0; i < hist->size; i++) {
                 float diff;
-                int match = best_color_index(achv[i].acolor, newmap, newcolors, min_opaque_val, &diff);
+                int match = best_color_index(achv[i].acolor, newmap, min_opaque_val, &diff);
                 assert(diff >= 0);
                 assert(achv[i].perceptual_weight > 0);
                 total_error += diff * achv[i].perceptual_weight;
@@ -846,18 +851,18 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
         }
 
         if (total_error < least_error || !acolormap) {
-            if (acolormap) free(acolormap);
+            if (acolormap) pam_freecolormap(acolormap);
 
             acolormap = newmap;
 
-            viter_finalize(acolormap, newcolors, average_color,average_color_count);
+            viter_finalize(acolormap, average_color,average_color_count);
 
             least_error = total_error;
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
             feedback_loop_trials -= 6;
             if (total_error > least_error*4) feedback_loop_trials -= 3;
-            free(newmap);
+            pam_freecolormap(newmap);
         }
 
         verbose_printf("%d%%\n",100-MAX(0,(int)(feedback_loop_trials/percent)));
@@ -868,7 +873,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     int iterations = MAX(5-speed_tradeoff,0); iterations *= iterations;
     for(int i=0; i < iterations; i++) {
-        viter_do_interation(hist, acolormap, newcolors, min_opaque_val);
+        viter_do_interation(hist, acolormap, min_opaque_val);
     }
 
     pam_freeacolorhist(hist);
@@ -894,7 +899,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     }
 
     // tRNS, etc.
-    sort_palette(output_image, newcolors, acolormap);
+    sort_palette(output_image, acolormap);
 
     /*
      ** Step 4: map the colors in the image to their closest match in the
@@ -907,16 +912,16 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     if (floyd) {
         // if dithering, save rounding error and stick to that palette
         // otherwise palette can be improved after remapping
-        set_palette(output_image, newcolors, acolormap);
-        remapping_error = remap_to_palette_floyd(input_image,output_image,min_opaque_val,ie_bug,newcolors,acolormap);
+        set_palette(output_image, acolormap);
+        remapping_error = remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, ie_bug);
     } else {
-        remapping_error = remap_to_palette(input_image,output_image,min_opaque_val,ie_bug,newcolors,acolormap);
-        set_palette(output_image, newcolors, acolormap);
+        remapping_error = remap_to_palette(input_image, output_image, acolormap, min_opaque_val, ie_bug);
+        set_palette(output_image, acolormap);
     }
 
     verbose_printf("MSE=%.3f\n", remapping_error*256.0f);
 
-    free(acolormap);
+    pam_freecolormap(acolormap);
 
     return SUCCESS;
 }

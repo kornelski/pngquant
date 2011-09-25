@@ -143,6 +143,11 @@ typedef struct {
     float popularity;
 } colormap_item;
 
+typedef struct {
+    colormap_item *palette;
+    int colors;
+} colormap;
+
 struct acolorhist_list_item {
     f_pixel acolor;
     struct acolorhist_list_item *next;
@@ -157,3 +162,6 @@ typedef struct {
 
 hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast);
 void pam_freeacolorhist(hist *h);
+
+colormap *pam_colormap(int colors);
+void pam_freecolormap(colormap *c);

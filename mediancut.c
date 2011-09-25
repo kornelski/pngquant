@@ -182,14 +182,10 @@ inline static float color_weight(f_pixel median, hist_item h)
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
-colormap_item *mediancut(hist *hist, float min_opaque_val, int newcolors)
+colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
 {
     hist_item *achv = hist->achv;
     struct box bv[newcolors];
-    colormap_item *acolormap = calloc(newcolors, sizeof(acolormap[0]));
-    if (!acolormap) {
-        return NULL;
-    }
 
     /*
      ** Set up the initial box.
@@ -268,6 +264,10 @@ colormap_item *mediancut(hist *hist, float min_opaque_val, int newcolors)
      ** method is used by switching the commenting on the REP_ defines at
      ** the beginning of this source file.
      */
+
+    colormap *map = pam_colormap(newcolors);
+    colormap_item *acolormap = map->palette;
+
     for (int bi = 0; bi < boxes; ++bi) {
         acolormap[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
 
@@ -280,10 +280,7 @@ colormap_item *mediancut(hist *hist, float min_opaque_val, int newcolors)
         }
     }
 
-    /*
-     ** All done.
-     */
-    return acolormap;
+    return map;
 }
 
 static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float min_opaque_val)

@@ -243,12 +243,23 @@ static void pam_freeacolorhash(acolorhash_table acht)
     mempool_free(acht->mempool);
 }
 
-
-
 void pam_freeacolorhist(hist *hist)
 {
     free(hist->achv);
     free(hist);
+}
+
+colormap *pam_colormap(int colors)
+{
+    colormap *map = malloc(sizeof(colormap));
+    map->palette = calloc(colors, sizeof(map->palette[0]));
+    map->colors = colors;
+    return map;
+}
+
+void pam_freecolormap(colormap *c)
+{
+    free(c->palette); free(c);
 }
 
 

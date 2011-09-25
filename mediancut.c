@@ -171,7 +171,10 @@ static int best_splittable_box(struct box* bv, int boxes)
 
 inline static float color_weight(f_pixel median, hist_item h)
 {
-    return sqrtf(colordifference(median, h.acolor)) * sqrtf(h.adjusted_weight);
+    float diff = colordifference(median, h.acolor);
+    // if color is "good enough", don't split further
+    if (diff < 1.f/256.f) diff /= 2.f;
+    return sqrtf(diff) * sqrtf(h.adjusted_weight);
 }
 
 /*

@@ -857,7 +857,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
             int match = best_color_index(achv[j].acolor, acolormap, newcolors, min_opaque_val, NULL);
             viter_update_color(achv[j].acolor, achv[j].adjusted_weight,acolormap, match, average_color,average_color_count, NULL,NULL);
-        }
+    }
 
         viter_finalize(acolormap, newcolors, average_color,average_color_count);
     }

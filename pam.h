@@ -145,8 +145,9 @@ typedef struct {
     float popularity;
 } colormap_item;
 
-typedef struct {
+typedef struct colormap {
     colormap_item *palette;
+    struct colormap *subset_palette;
     int colors;
 } colormap;
 

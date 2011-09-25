@@ -198,10 +198,18 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
 
     int boxes = 1;
 
+    // remember smaller palette for fast searching
+    colormap *representative_subset = NULL;
+    int subset_size = sqrtf(newcolors)*3;
+
     /*
      ** Main loop: split boxes until we have enough.
      */
     while (boxes < newcolors) {
+
+        if (boxes == subset_size) {
+            representative_subset = colormap_from_boxes(bv, boxes, achv, min_opaque_val);
+        }
 
         int bi= best_splittable_box(bv, boxes);
         if (bi < 0)
@@ -255,6 +263,7 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
     }
 
     colormap *map = colormap_from_boxes(bv, boxes, achv, min_opaque_val);
+    map->subset_palette = representative_subset;
     adjust_histogram(achv, map, bv, boxes);
 
     return map;
@@ -336,6 +345,7 @@ static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float m
     g /= sum;
     b /= sum;
 
+    assert(!isnan(r) && !isnan(g) && !isnan(b) && !isnan(a));
 
     /** if there was at least one completely opaque color, "round" final color to opaque */
     if (a >= min_opaque_val && maxa >= (255.0/256.0)) a = 1;

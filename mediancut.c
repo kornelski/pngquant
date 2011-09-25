@@ -178,6 +178,7 @@ inline static float color_weight(f_pixel median, hist_item h)
 }
 
 static colormap *colormap_from_boxes(struct box* bv,int boxes,hist_item *achv,float min_opaque_val);
+static void adjust_histogram(hist_item *achv,colormap *map,struct box* bv,int boxes);
 
 /*
  ** Here is the fun part, the median-cut colormap generator.  This is based
@@ -257,13 +258,7 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
     }
 
     colormap *map = colormap_from_boxes(bv, boxes, achv, min_opaque_val);
-
-    for (int bi = 0; bi < boxes; ++bi) {
-        for(int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
-            /* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */
-            achv[i].adjusted_weight *= 1.0 + sqrt(colordifference(map->palette[bi].acolor, achv[i].acolor))/2.0;
-        }
-    }
+    adjust_histogram(achv, map, bv, boxes);
 
     return map;
 }
@@ -291,6 +286,16 @@ static colormap *colormap_from_boxes(struct box* bv, int boxes, hist_item *achv,
     }
 
     return map;
+}
+
+/* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */
+static void adjust_histogram(hist_item *achv, colormap *map, struct box* bv, int boxes)
+{
+    for (int bi = 0; bi < boxes; ++bi) {
+        for(int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
+            achv[i].adjusted_weight *= 1.0 + sqrt(colordifference(map->palette[bi].acolor, achv[i].acolor))/2.0;
+        }
+    }
 }
 
 static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float min_opaque_val)

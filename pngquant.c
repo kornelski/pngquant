@@ -815,10 +815,6 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     int feedback_loop_trials = 56-9*speed_tradeoff;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
-    f_pixel average_color[newcolors];
-    float average_color_count[newcolors];
-    f_pixel base_color[newcolors];
-    float base_color_count[newcolors];
     do
     {
         verbose_printf("  selecting colors");
@@ -828,6 +824,8 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
         verbose_printf("...");
 
         float total_error=0;
+        f_pixel average_color[newcolors], base_color[newcolors];
+        float average_color_count[newcolors], base_color_count[newcolors];
 
         if (feedback_loop_trials) {
 
@@ -840,7 +838,8 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
                 assert(achv[i].perceptual_weight > 0);
                 total_error += diff * achv[i].perceptual_weight;
 
-                viter_update_color(achv[i].acolor, achv[i].adjusted_weight, newmap, match, average_color,average_color_count,base_color,base_color_count);
+                viter_update_color(achv[i].acolor, achv[i].perceptual_weight, newmap, match,
+                                   average_color,average_color_count,base_color,base_color_count);
 
                 achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (1.0+sqrtf(diff));
             }
@@ -850,6 +849,9 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
             if (acolormap) free(acolormap);
 
             acolormap = newmap;
+
+            viter_finalize(acolormap, newcolors, average_color,average_color_count);
+
             least_error = total_error;
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
@@ -863,8 +865,6 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     while(feedback_loop_trials > 0);
 
     verbose_printf("  moving colormap towards local minimum\n");
-
-    viter_finalize(acolormap, newcolors, average_color,average_color_count);
 
     int iterations = MAX(5-speed_tradeoff,0); iterations *= iterations;
     for(int i=0; i < iterations; i++) {

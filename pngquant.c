@@ -332,7 +332,7 @@ static int best_color_index(f_pixel px, const colormap_item* acolormap, int numc
 
             /* penalty for making holes in IE */
             if (iebug && acolormap[i].acolor.a < 1) {
-                if (newdist+1.0 > dist) continue;
+                if (newdist+1.f/1024.f > dist) continue;
             }
 
             ind = i;

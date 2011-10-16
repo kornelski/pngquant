@@ -390,7 +390,10 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
     return remapping_error / MAX(1,remapped_pixels);
 }
 
-float remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, float min_opaque_val, int ie_bug)
+/**
+  Uses edge/noise map to apply dithering only to flat areas. Dithering on edges creates jagged lines, and noisy areas are "naturally" dithered.
+ */
+float remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, float min_opaque_val, int ie_bug, const float *edge_map)
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     unsigned char **row_pointers = output_image->row_pointers;
@@ -431,11 +434,13 @@ float remap_to_palette_floyd(read_info *input_image, write_info *output_image, c
         do {
             f_pixel px = to_f(gamma, input_pixels[row][col]);
 
+            float dither_level = edge_map ? edge_map[row*cols + col] : 0.9;
+
             /* Use Floyd-Steinberg errors to adjust actual color. */
-            sr = px.r + thiserr[col + 1].r;
-            sg = px.g + thiserr[col + 1].g;
-            sb = px.b + thiserr[col + 1].b;
-            sa = px.a + thiserr[col + 1].a;
+            sr = px.r + thiserr[col + 1].r * dither_level;
+            sg = px.g + thiserr[col + 1].g * dither_level;
+            sb = px.b + thiserr[col + 1].b * dither_level;
+            sa = px.a + thiserr[col + 1].a * dither_level;
 
             if (sr < 0) sr = 0;
             else if (sr > 1) sr = 1;
@@ -459,14 +464,14 @@ float remap_to_palette_floyd(read_info *input_image, write_info *output_image, c
 
             row_pointers[row][col] = ind;
 
-            float colorimp = (3.0f + acolormap[ind].acolor.a)/4.0f;
+            float colorimp = (3.0f + acolormap[ind].acolor.a)/4.0f * dither_level;
             f_pixel xp = acolormap[ind].acolor;
 
             f_pixel err = {
                 .r = (sr - xp.r) * colorimp,
                 .g = (sg - xp.g) * colorimp,
                 .b = (sb - xp.b) * colorimp,
-                .a = (sa - xp.a),
+                .a = (sa - xp.a) * dither_level,
             };
 
             /* Propagate Floyd-Steinberg error terms. */
@@ -987,7 +992,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
         // if dithering, save rounding error and stick to that palette
         // otherwise palette can be improved after remapping
         set_palette(output_image, acolormap);
-        remapping_error = remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, ie_bug);
+        remapping_error = remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, ie_bug, edges);
     } else {
         remapping_error = remap_to_palette(input_image, output_image, acolormap, min_opaque_val, ie_bug);
         set_palette(output_image, acolormap);

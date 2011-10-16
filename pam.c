@@ -22,7 +22,7 @@
 #define PAM_EQUAL(p,q) ((p).a == (q).a && (p).r == (q).r && (p).g == (q).g && (p).b == (q).b)
 
 static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
-static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP);
+static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
 
@@ -87,13 +87,17 @@ inline static unsigned long pam_hashapixel(f_pixel px)
     return hash % HASH_SIZE;
 }
 
-hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast)
+/**
+ * Builds color histogram no larger than maxacolors. Ignores (posterizes) ignorebits lower bits in each color.
+ * perceptual_weight of each entry is increased by value from importance_map
+ */
+hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance_map)
 {
     acolorhash_table acht;
     hist *achv;
 
     int hist_size=0;
-    acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, use_contrast, &hist_size);
+    acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, importance_map, &hist_size);
     if (!acht) return 0;
 
     achv = pam_acolorhashtoacolorhist(acht, hist_size);
@@ -115,35 +119,7 @@ inline static f_pixel posterize_pixel(rgb_pixel px, int maxval, float gamma)
     }
 }
 
-float boost_from_contrast(f_pixel prev, f_pixel fpx, f_pixel next, f_pixel above, f_pixel below, float prev_boost)
-{
-    float r = fabsf(fpx.r*2.0f - (prev.r+next.r)),
-          g = fabsf(fpx.g*2.0f - (prev.g+next.g)),
-          b = fabsf(fpx.b*2.0f - (prev.b+next.b)),
-          a = fabsf(fpx.a*2.0f - (prev.a+next.a));
-
-    float r1 = fabsf(fpx.r*2.0f - (above.r+below.r)),
-          g1 = fabsf(fpx.g*2.0f - (above.g+below.g)),
-          b1 = fabsf(fpx.b*2.0f - (above.b+below.b)),
-          a1 = fabsf(fpx.a*2.0f - (above.a+below.a));
-
-    r = MAX(r, r1); // maximum of vertical or horizontal contrast. It's better at picking up noise.
-    g = MAX(g, g1);
-    b = MAX(b, b1);
-    a = MAX(a, a1);
-
-    float contrast = r+g+b+2.0f*a; // oddly a*2 works better than *3
-
-    // 0.6-contrast avoids boosting flat areas
-    contrast = MIN(1.0f,fabsf(0.6f-contrast/3.0f))*(1.0f/0.6f);
-    // I want only really high contrast (noise, edges) to influence
-    contrast *= contrast;
-
-    // it's "smeared" to spread influence of edges to neighboring pixels
-    return (contrast < prev_boost) ? contrast : (prev_boost+prev_boost+contrast)/3.0f;
-}
-
-static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast, int* acolorsP)
+static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance_map, int* acolorsP)
 {
     acolorhash_table acht;
     struct acolorhist_list_item *achl, **buckets;
@@ -155,30 +131,21 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
 
     /* Go through the entire image, building a hash table of colors. */
     for (row = 0; row < rows; ++row) {
-        f_pixel curr = posterize_pixel(apixels[row][0], maxval, gamma),
-                next = posterize_pixel(apixels[row][MIN(cols-1,1)], maxval, gamma), prev;
-        float boost=0.5;
+
+        float boost=1.0;
         for (col = 0; col < cols; ++col) {
-            prev = curr;
-            curr = next;
-            next = posterize_pixel(apixels[row][MIN(cols-1,col+1)], maxval, gamma);
-
-            if (use_contrast) {
-            const rgb_pixel *restrict prevline = apixels[MAX(0,row-1)];
-            const rgb_pixel *restrict nextline = apixels[MIN(rows-1,row+1)];
-            f_pixel above = posterize_pixel(prevline[col], maxval, gamma);
-            f_pixel below = posterize_pixel(nextline[col], maxval, gamma);
-
-            boost = boost_from_contrast(prev,curr,next,above,below,boost);
+            if (importance_map) {
+                boost = 0.5+*importance_map++;
             }
 
+            f_pixel curr = posterize_pixel(apixels[row][col], maxval, gamma);
             hash = pam_hashapixel(curr);
 
             for (achl = buckets[hash]; achl != NULL; achl = achl->next)
                 if (PAM_EQUAL(achl->acolor, curr))
                     break;
             if (achl != NULL) {
-                achl->perceptual_weight += 1.0f+boost;
+                achl->perceptual_weight += boost;
             } else {
                 if (++colors > maxacolors) {
                     pam_freeacolorhash(acht);
@@ -187,7 +154,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                 achl = mempool_new(&acht->mempool, sizeof(struct acolorhist_list_item));
 
                 achl->acolor = curr;
-                achl->perceptual_weight = 1.0f+boost;
+                achl->perceptual_weight = boost;
                 achl->next = buckets[hash];
                 buckets[hash] = achl;
             }

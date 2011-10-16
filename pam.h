@@ -160,7 +160,7 @@ typedef struct {
 } *acolorhash_table;
 
 
-hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, int use_contrast);
+hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *imp);
 void pam_freeacolorhist(hist *h);
 
 colormap *pam_colormap(int colors);

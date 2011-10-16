@@ -59,6 +59,7 @@
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "pam.h"
 #include "mediancut.h"
+#include "blur.h"
 
 pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff);
 pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
@@ -603,7 +604,7 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
     return retval;
 }
 
-hist *histogram(read_info *input_image, int reqcolors, int speed_tradeoff)
+hist *histogram(read_info *input_image, int reqcolors, int speed_tradeoff, const float *importance_map)
 {
     hist *hist;
     int ignorebits=0;
@@ -624,7 +625,7 @@ hist *histogram(read_info *input_image, int reqcolors, int speed_tradeoff)
     verbose_printf("  making histogram...");
     for (; ;) {
 
-        hist = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, speed_tradeoff < 9);
+        hist = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, importance_map);
         if (hist) break;
 
         ignorebits++;
@@ -803,6 +804,71 @@ void viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
     viter_finalize(map, average_color,average_color_count);
 }
 
+/**
+ Builds two maps:
+    noise - approximation of areas with high-frequency noise, except straight edges. 1=flat, 0=noisy.
+    edges - noise map including all edges
+ */
+void contrast_maps(const rgb_pixel*const apixels[], int cols, int rows, double gamma, float **noiseP, float **edgesP)
+{
+    float *noise = malloc(sizeof(float)*cols*rows);
+    float *tmp = malloc(sizeof(float)*cols*rows);
+    float *edges = malloc(sizeof(float)*cols*rows);
+
+    for (int j=0; j < rows; j++) {
+        f_pixel prev, curr = to_f(gamma, apixels[j][0]), next=curr;
+        for (int i=0; i < cols; i++) {
+            prev=curr;
+            curr=next;
+            next = to_f(gamma, apixels[j][MIN(cols-1,i+1)]);
+
+            float a = fabsf(prev.a+next.a - curr.a*2.f),
+            r = fabsf(prev.r+next.r - curr.r*2.f),
+            g = fabsf(prev.g+next.g - curr.g*2.f),
+            b = fabsf(prev.b+next.b - curr.b*2.f);
+
+            f_pixel nextl = to_f(gamma, apixels[MAX(0,j-1)][i]);
+            f_pixel prevl = to_f(gamma, apixels[MIN(rows-1,j+1)][i]);
+
+            float a1 = fabsf(prevl.a+nextl.a - curr.a*2.f),
+            r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),
+            g1 = fabsf(prevl.g+nextl.g - curr.g*2.f),
+            b1 = fabsf(prevl.b+nextl.b - curr.b*2.f);
+
+            float horiz = MAX(MAX(a,r),MAX(g,b));
+            float vert = MAX(MAX(a1,r1),MAX(g1,b1));
+            float edge = MAX(horiz,vert);
+            float z = edge - fabs(horiz-vert)*.5;
+            z = 1.f - MAX(z,MIN(horiz,vert));
+            z *= z;
+            z *= z;
+
+            noise[j*cols+i] = z;
+            edges[j*cols+i] = 1.f-edge;
+        }
+    }
+
+    max3(noise, tmp, cols, rows);
+    max3(tmp, noise, cols, rows);
+
+    blur(noise, tmp, noise, cols, rows, 3);
+
+    max3(noise, tmp, cols, rows);
+
+    min3(tmp, noise, cols, rows);
+    min3(noise, tmp, cols, rows);
+    min3(tmp, noise, cols, rows);
+
+    min3(edges, tmp, cols, rows);
+    max3(tmp, edges, cols, rows);
+    for(int i=0; i < cols*rows; i++) edges[i] = MIN(noise[i], edges[i]);
+
+    free(tmp);
+
+    *noiseP = noise;
+    *edgesP = edges;
+}
+
 pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff)
 {
     float min_opaque_val;
@@ -812,7 +878,15 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     min_opaque_val = modify_alpha(input_image,ie_bug);
     assert(min_opaque_val>0);
 
-    hist *hist = histogram(input_image, reqcolors, speed_tradeoff);
+    float *noise = NULL, *edges = NULL;
+    if (speed_tradeoff < 8) {
+        contrast_maps((const rgb_pixel**)input_image->row_pointers, input_image->width, input_image->height, input_image->gamma,
+                   &noise, &edges);
+    }
+
+    // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
+    // noise map does not include edges to avoid ruining anti-aliasing
+    hist *hist = histogram(input_image, reqcolors, speed_tradeoff, noise); if (noise) free(noise);
     hist_item *achv = hist->achv;
 
     colormap *acolormap = NULL;
@@ -921,6 +995,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     verbose_printf("MSE=%.3f\n", remapping_error*256.0f);
 
+    if (edges) free(edges);
     pam_freecolormap(acolormap);
 
     return SUCCESS;

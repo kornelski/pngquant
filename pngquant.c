@@ -412,14 +412,14 @@ float remap_to_palette_floyd(read_info *input_image, write_info *output_image, c
     /* Initialize Floyd-Steinberg error vectors. */
     thiserr = malloc((cols + 2) * sizeof(*thiserr));
     nexterr = malloc((cols + 2) * sizeof(*thiserr));
-    srandom(12345); /** deterministic dithering is better for comparing results */
+    srand(12345); /* deterministic dithering is better for comparing results */
 
     for (int col = 0; col < cols + 2; ++col) {
         const double rand_max = RAND_MAX;
-        thiserr[col].r = ((double)random() - rand_max/2.0)/rand_max/255.0;
-        thiserr[col].g = ((double)random() - rand_max/2.0)/rand_max/255.0;
-        thiserr[col].b = ((double)random() - rand_max/2.0)/rand_max/255.0;
-        thiserr[col].a = ((double)random() - rand_max/2.0)/rand_max/255.0;
+        thiserr[col].r = ((double)rand() - rand_max/2.0)/rand_max/255.0;
+        thiserr[col].g = ((double)rand() - rand_max/2.0)/rand_max/255.0;
+        thiserr[col].b = ((double)rand() - rand_max/2.0)/rand_max/255.0;
+        thiserr[col].a = ((double)rand() - rand_max/2.0)/rand_max/255.0;
     }
 
     for (int row = 0; row < rows; ++row) {

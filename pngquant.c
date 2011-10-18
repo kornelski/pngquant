@@ -393,15 +393,12 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
 /**
   Uses edge/noise map to apply dithering only to flat areas. Dithering on edges creates jagged lines, and noisy areas are "naturally" dithered.
  */
-float remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, float min_opaque_val, int ie_bug, const float *edge_map)
+void remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, float min_opaque_val, int ie_bug, const float *edge_map)
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     unsigned char **row_pointers = output_image->row_pointers;
     int rows = input_image->height, cols = input_image->width;
     double gamma = input_image->gamma;
-
-    int remapped_pixels=0;
-    float remapping_error=0;
 
     const colormap_item *acolormap = map->palette;
 
@@ -455,11 +452,7 @@ float remap_to_palette_floyd(read_info *input_image, write_info *output_image, c
             if (sa < 1.0/256.0) {
                 ind = transparent_ind;
             } else {
-                float diff;
-                ind = best_color_index((f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, map, min_opaque_val, &diff);
-
-                remapped_pixels++;
-                remapping_error += diff;
+                ind = best_color_index((f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, map, min_opaque_val, NULL);
             }
 
             row_pointers[row][col] = ind;
@@ -533,8 +526,6 @@ float remap_to_palette_floyd(read_info *input_image, write_info *output_image, c
         nexterr = temperr;
         fs_direction = !fs_direction;
     }
-
-    return remapping_error / MAX(1, remapped_pixels);
 }
 
 /* build the output filename from the input name by inserting "-fs8" or
@@ -986,19 +977,20 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
      */
     verbose_printf("  mapping image to new colors...");
 
-    float remapping_error;
-
     if (floyd) {
         // if dithering, save rounding error and stick to that palette
         // otherwise palette can be improved after remapping
         set_palette(output_image, acolormap);
-        remapping_error = remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, ie_bug, edges);
+        remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, ie_bug, edges);
     } else {
-        remapping_error = remap_to_palette(input_image, output_image, acolormap, min_opaque_val, ie_bug);
+        float remapping_error = remap_to_palette(input_image, output_image, acolormap, min_opaque_val, ie_bug);
         set_palette(output_image, acolormap);
+
+        // remapping error from dithered image is absurd, so always non-dithered value is used
+        verbose_printf("MSE=%.3f", remapping_error*256.0f);
     }
 
-    verbose_printf("MSE=%.3f\n", remapping_error*256.0f);
+    verbose_printf("\n");
 
     if (edges) free(edges);
     pam_freecolormap(acolormap);

@@ -19,10 +19,12 @@
 
 #include "pam.h"
 
+#ifndef __FreeBSD__
 #ifdef __LP64__
 typedef unsigned long long u_register_t;
 #else
 typedef unsigned long u_register_t;
+#endif
 #endif
 
 #define PAM_EQUAL(p,q) ((p).a == (q).a && (p).r == (q).r && (p).g == (q).g && (p).b == (q).b)

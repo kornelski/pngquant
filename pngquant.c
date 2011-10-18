@@ -457,15 +457,25 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
 
             row_pointers[row][col] = ind;
 
-            float colorimp = (3.0f + acolormap[ind].acolor.a)/4.0f * dither_level;
             f_pixel xp = acolormap[ind].acolor;
-
             f_pixel err = {
-                .r = (sr - xp.r) * colorimp,
-                .g = (sg - xp.g) * colorimp,
-                .b = (sb - xp.b) * colorimp,
-                .a = (sa - xp.a) * dither_level,
+                .r = (sr - xp.r),
+                .g = (sg - xp.g),
+                .b = (sb - xp.b),
+                .a = (sa - xp.a),
             };
+
+            // If dithering error is crazy high, don't propagate it that much
+            // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
+            if (err.r*err.r + err.g*err.g + err.b*err.b + err.a*err.a > 8.f/256.f) {
+                dither_level *= 0.5;
+            }
+
+            float colorimp = (3.0f + acolormap[ind].acolor.a)/4.0f * dither_level;
+            err.r *= colorimp;
+            err.g *= colorimp;
+            err.b *= colorimp;
+            err.a *= dither_level;
 
             /* Propagate Floyd-Steinberg error terms. */
             if (fs_direction) {

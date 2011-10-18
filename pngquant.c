@@ -875,6 +875,52 @@ void contrast_maps(const rgb_pixel*const apixels[], int cols, int rows, double g
     *edgesP = edges;
 }
 
+/**
+ * Builds map of neighbor pixels mapped to the same palette entry
+ *
+ * For efficiency/simplicity it mainly looks for same consecutive pixels horizontally
+ * and peeks 1 pixel above/below. Full 2d algorithm doesn't improve it significantly.
+ * Correct flood fill doesn't have visually good properties.
+ */
+void update_dither_map(write_info *output_image, float *edges)
+{
+    const int width = output_image->width;
+    const int height = output_image->height;
+    const unsigned char *pixels = output_image->indexed_data;
+
+    for(int row=0; row < height; row++)
+    {
+        unsigned char lastpixel = pixels[row*width];
+        int lastcol=0;
+        for(int col=1; col < width; col++)
+        {
+            unsigned char px = pixels[row*width + col];
+
+            if (px != lastpixel || col == width-1) {
+                float neighbor_count = 3.f + col-lastcol;
+
+                int i=lastcol;
+                while(i < col) {
+                    if (row > 0) {
+                        unsigned char pixelabove = pixels[(row-1)*width + i];
+                        if (pixelabove == lastpixel) neighbor_count += 1.f;
+                    }
+                    if (row < height-1) {
+                        unsigned char pixelbelow = pixels[(row+1)*width + i];
+                        if (pixelbelow == lastpixel) neighbor_count += 1.f;
+                    }
+                    i++;
+                }
+
+                while(lastcol < col) {
+                    edges[row*width + lastcol++] *= 1.f - 3.f/neighbor_count;
+                }
+                lastpixel = px;
+            }
+        }
+    }
+}
+
 pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff)
 {
     float min_opaque_val;
@@ -987,17 +1033,26 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
      */
     verbose_printf("  mapping image to new colors...");
 
-    if (floyd) {
-        // if dithering, save rounding error and stick to that palette
-        // otherwise palette can be improved after remapping
-        set_palette(output_image, acolormap);
-        remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, ie_bug, edges);
-    } else {
+    int use_dither_map = floyd && edges && speed_tradeoff < 6;
+
+    if (!floyd || use_dither_map) {
+        // If no dithering is required, that's the final remapping.
+        // If dithering (with dither map) is required, this image is used to find areas that require dithering
         float remapping_error = remap_to_palette(input_image, output_image, acolormap, min_opaque_val, ie_bug);
-        set_palette(output_image, acolormap);
+
+        if (use_dither_map) {
+            update_dither_map(output_image, edges);
+        }
 
         // remapping error from dithered image is absurd, so always non-dithered value is used
         verbose_printf("MSE=%.3f", remapping_error*256.0f);
+    }
+
+    // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
+    set_palette(output_image, acolormap);
+
+    if (floyd) {
+        remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, ie_bug, edges);
     }
 
     verbose_printf("\n");

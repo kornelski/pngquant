@@ -22,7 +22,7 @@
                 specify a mapfile, switch to grayscale */
 /* GRR TO DO:  if all samples are 0 or maxval, eliminate gAMA chunk (rwpng.c) */
 
-#define PNGQUANT_VERSION "1.5.1 (September 2011)"
+#define PNGQUANT_VERSION "1.6 (October 2011)"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\

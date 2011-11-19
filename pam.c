@@ -12,12 +12,11 @@
  ** implied warranty.
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <sys/types.h>
 
 #include "pam.h"
+#include "mempool.h"
 
 #define PAM_EQUAL(p,q) ((p).a == (q).a && (p).r == (q).r && (p).g == (q).g && (p).b == (q).b)
 
@@ -42,44 +41,6 @@ static acolorhash_table pam_allocacolorhash(void);
  */
 
 #define HASH_SIZE 30029
-
-typedef struct mempool {
-    struct mempool *next;
-    size_t used;
-} *mempool;
-
-#define MEMPOOL_RESERVED ((sizeof(struct mempool)+15) & ~0xF)
-#define MEMPOOL_SIZE (1<<18)
-
-static void* mempool_new(mempool *mptr, size_t size)
-{
-    assert(size < MEMPOOL_SIZE-MEMPOOL_RESERVED);
-
-    if (*mptr && ((*mptr)->used+size) <= MEMPOOL_SIZE) {
-        int prevused = (*mptr)->used;
-        (*mptr)->used += (size+15) & ~0xF;
-        return ((char*)(*mptr)) + prevused;
-    }
-
-    mempool old = mptr ? *mptr : NULL;
-    char *mem = calloc(MEMPOOL_SIZE, 1);
-
-    (*mptr) = (mempool)mem;
-    (*mptr)->used = MEMPOOL_RESERVED;
-    (*mptr)->next = old;
-
-    return mempool_new(mptr, size);
-}
-
-static void mempool_free(mempool m)
-{
-    while (m) {
-        mempool next = m->next;
-        free(m);
-        m = next;
-    }
-}
-
 
 inline static unsigned long pam_hashapixel(f_pixel px)
 {

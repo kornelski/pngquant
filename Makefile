@@ -17,7 +17,7 @@ CFLAGS = -std=gnu99 -O3 -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I$(SYSTEMLI
 
 LDFLAGS = -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L$(SYSTEMLIBPNG)/lib/ -L/usr/lib/ -lz -lpng -lm
 
-OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o
+OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o
 
 all: $(BIN)
 

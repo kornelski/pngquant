@@ -52,7 +52,7 @@ LDFLAGS = -nologo
 
 PROG = pngquant
 
-OBJS  = $(PROG)$(O) rwpng$(O) pam$(O) blur$(O) mediancut$(O)
+OBJS  = $(PROG)$(O) rwpng$(O) pam$(O) blur$(O) mediancut$(O) mempool$(O)
 
 EXES = $(PROG)$(E)
 

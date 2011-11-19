@@ -55,6 +55,7 @@
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "pam.h"
 #include "mediancut.h"
+#include "nearest.h"
 #include "blur.h"
 #include "viter.h"
 
@@ -329,6 +330,10 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
     float average_color_count[map->colors];
     viter_init(map, average_color, average_color_count, NULL, NULL);
 
+    qsort(map->subset_palette->palette, map->subset_palette->colors, sizeof(map->subset_palette->palette[0]), compare_popularity);
+    struct nearest_map *nearest_map = nearest_init(map);
+
+
     for (int row = 0; row < rows; ++row) {
         for(int col = 0; col < cols; ++col) {
 
@@ -339,7 +344,7 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
                 match = transparent_ind;
             } else {
                 float diff;
-                match = best_color_index(px, map,min_opaque_val, &diff);
+                match = nearest_search(nearest_map, px, &diff);
 
                 remapped_pixels++;
                 remapping_error += diff;

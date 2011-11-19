@@ -20,6 +20,11 @@ struct head {
     struct color_entry candidates[256];
 };
 
+struct nearest_map {
+    struct head heads[256];
+    int num_heads;
+};
+
 static int compareradius(const void *ap, const void *bp)
 {
     float a = ((struct sorttmp*)ap)->radius;
@@ -27,11 +32,7 @@ static int compareradius(const void *ap, const void *bp)
     return a > b ? 1 : (a < b ? -1 : 0);
 }
 
-struct head heads[256];
-int num_heads;
-int skipped=0;
-
-struct head build_head(f_pixel px, const colormap *map, int num_candidates, int skip_index[])
+static struct head build_head(f_pixel px, const colormap *map, int num_candidates, int skip_index[], int *skipped)
 {
     struct sorttmp colors[map->colors];
     int colorsused=0;
@@ -66,49 +67,54 @@ struct head build_head(f_pixel px, const colormap *map, int num_candidates, int 
         // - 1/256 is a tolerance for miscalculation (seems like colordifference isn't exact)
         if (colors[i].radius < h.radius/4.f - 1.f/256.f) {
             skip_index[colors[i].index]=1;
-            skipped++;
+            (*skipped)++;
         }
     }
     return h;
 }
 
 
-void nearest_init(const colormap *map)
+struct nearest_map *nearest_init(const colormap *map)
 {
+    struct nearest_map *centroids = calloc(1, sizeof(struct nearest_map));
+    int skipped=0;
     int skip_index[map->colors]; for(int j=0; j<map->colors;j++) skip_index[j]=0;
 
     int max_heads = map->subset_palette->colors;
     int h=0;
     for(; h < max_heads; h++)
     {
-        int num_candiadtes = 1+(map->colors-skipped)/((1+max_heads-h)/2);
+        int num_candiadtes = 1+(map->colors - skipped)/((1+max_heads-h)/2);
 
         int idx = best_color_index(map->subset_palette->palette[h].acolor, map, 1.0, NULL);
 
-        heads[h] = build_head(map->palette[idx].acolor, map, num_candiadtes, skip_index);
-        if (heads[h].num_candidates == 0) {
+        centroids->heads[h] = build_head(map->palette[idx].acolor, map, num_candiadtes, skip_index, &skipped);
+        if (centroids->heads[h].num_candidates == 0) {
             break;
         }
     }
 
-    heads[h].radius = 9999999;
-    heads[h].center = (f_pixel){0,0,0,0};
-    heads[h].num_candidates = 0;
+    centroids->heads[h].radius = 9999999;
+    centroids->heads[h].center = (f_pixel){0,0,0,0};
+    centroids->heads[h].num_candidates = 0;
     for (int i=0; i < map->colors; i++) {
         if (skip_index[i]) continue;
 
-        heads[h].candidates[heads[h].num_candidates++] = (struct color_entry) {
+        centroids->heads[h].candidates[centroids->heads[h].num_candidates++] = (struct color_entry) {
             .color = map->palette[i].acolor,
             .index = i,
             .radius = 999,
         };
     }
-    num_heads = ++h;
+    centroids->num_heads = ++h;
+
+    return centroids;
 }
 
-int nearest_search(f_pixel px)
+int nearest_search(struct nearest_map *centroids, f_pixel px, float *diff)
 {
-    for(int i=0; i < num_heads; i++) {
+    const struct head *const heads = centroids->heads;
+    for(int i=0; i < centroids->num_heads; i++) {
         float headdist = colordifference(px, heads[i].center);
 
         if (headdist <= heads[i].radius) {
@@ -122,6 +128,7 @@ int nearest_search(f_pixel px)
                     ind = heads[i].candidates[j].index;
                 }
             }
+            if (diff) *diff = dist;
             return ind;
         }
     }

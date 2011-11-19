@@ -227,9 +227,8 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
 
         f_pixel median = averagepixels(indx+(clrs-1)/2, clrs&1 ? 1 : 2, achv, min_opaque_val);
 
-        int lowersum = 0;
-        float halfvar = 0, lowervar = 0;
-        for(int i=0; i < clrs -1; i++) {
+        float halfvar = 0, lowervar = 0, lowersum = 0;
+        for(int i=0; i < clrs; i++) {
             halfvar += color_weight(median, achv[indx+i]);
         }
         halfvar /= 2.0f;

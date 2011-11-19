@@ -14,11 +14,8 @@
  */
 
 #include <stdlib.h>
-#include <assert.h>
 #include <stddef.h>
 
-#include "png.h"    /* libpng header; includes zlib.h */
-#include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "pam.h"
 #include "mediancut.h"
 

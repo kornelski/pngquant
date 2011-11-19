@@ -46,16 +46,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <stdarg.h>
 #ifdef WIN32        /* defined in Makefile.w32 (or use _MSC_VER for MSVC) */
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
 #endif
 
-#include <stddef.h>
-
-#include "png.h"    /* libpng header; includes zlib.h */
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "pam.h"
 #include "mediancut.h"

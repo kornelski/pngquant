@@ -13,7 +13,6 @@
  */
 
 #include <stdlib.h>
-#include <assert.h>
 
 #include "pam.h"
 #include "mempool.h"

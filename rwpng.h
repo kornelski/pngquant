@@ -29,6 +29,9 @@
 
   ---------------------------------------------------------------------------*/
 
+#include <setjmp.h>
+#include "png.h"    /* libpng header; includes zlib.h */
+
 #ifndef TRUE
 #  define TRUE 1
 #  define FALSE 0

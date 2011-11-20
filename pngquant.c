@@ -356,6 +356,8 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
         }
     }
 
+    nearest_free(nearest_map);
+
     viter_finalize(map, average_color, average_color_count);
 
     return remapping_error / MAX(1,remapped_pixels);

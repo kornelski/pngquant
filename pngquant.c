@@ -316,33 +316,6 @@ void set_palette(write_info *output_image, const colormap *map)
     }
 }
 
-static int best_color_index(f_pixel px, const colormap *map, float min_opaque_val, float *dist_out)
-{
-    const colormap_item *const acolormap = map->palette;
-    const int numcolors = map->colors;
-    int ind=0;
-    const int iebug = px.a > min_opaque_val;
-    float dist = colordifference(px,acolormap[0].acolor);
-
-    for(int i = 1; i < numcolors; i++) {
-        float newdist = colordifference(px,acolormap[i].acolor);
-
-        if (newdist < dist) {
-
-            /* penalty for making holes in IE */
-            if (iebug && acolormap[i].acolor.a < 1) {
-                if (newdist+1.f/1024.f > dist) continue;
-            }
-
-            ind = i;
-            dist = newdist;
-        }
-    }
-
-    if (dist_out) *dist_out = dist;
-    return ind;
-}
-
 float remap_to_palette(read_info *input_image, write_info *output_image, colormap *map, float min_opaque_val, int ie_bug)
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;

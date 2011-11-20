@@ -1,6 +1,7 @@
 
 #include "pam.h"
 #include "viter.h"
+#include "nearest.h"
 
 /*
  * Voronoi iteration: new palette color is computed from weighted average of colors that map to that palette entry.
@@ -76,17 +77,19 @@ float viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
 
     hist_item *achv = hist->achv;
     viter_init(map, average_color,average_color_count, NULL,NULL);
+    struct nearest_map *n = nearest_init(map);
 
     float total_diff=0, total_weight=0;
     for(int j=0; j < hist->size; j++) {
         float diff;
-        int match = best_color_index(achv[j].acolor, map, min_opaque_val, &diff);
+        int match = nearest_search(n, achv[j].acolor, min_opaque_val, &diff);
         total_diff += diff * achv[j].perceptual_weight;
         total_weight += achv[j].perceptual_weight;
 
         viter_update_color(achv[j].acolor, achv[j].perceptual_weight, map, match, average_color,average_color_count, NULL,NULL);
     }
 
+    nearest_free(n);
     viter_finalize(map, average_color,average_color_count);
 
     return total_diff / total_weight;

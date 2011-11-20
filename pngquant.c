@@ -900,7 +900,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     verbose_printf("  moving colormap towards local minimum\n");
 
-    int iterations = MAX(5-speed_tradeoff,0); iterations *= iterations;
+    int iterations = MAX(7-speed_tradeoff,0); iterations += iterations * iterations/2;
     for(int i=0; i < iterations; i++) {
         palette_error = viter_do_interation(hist, acolormap, min_opaque_val);
     }

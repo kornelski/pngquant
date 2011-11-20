@@ -119,8 +119,10 @@ struct nearest_map *nearest_init(const colormap *map)
     return centroids;
 }
 
-int nearest_search(struct nearest_map *centroids, f_pixel px, float *diff)
+int nearest_search(struct nearest_map *centroids, f_pixel px, float min_opaque_val, float *diff)
 {
+    const int iebug = px.a > min_opaque_val;
+
     const struct head *const heads = centroids->heads;
     for(int i=0; i < centroids->num_heads; i++) {
         float headdist = colordifference(px, heads[i].center);
@@ -129,9 +131,22 @@ int nearest_search(struct nearest_map *centroids, f_pixel px, float *diff)
             assert(heads[i].num_candidates);
             int ind=heads[i].candidates[0].index;
             float dist = colordifference(px, heads[i].candidates[0].color);
+
+            /* penalty for making holes in IE */
+            if (iebug && heads[i].candidates[0].color.a < 1) {
+                dist += 1.f/1024.f;
+            }
+
             for (int j=1; j < heads[i].num_candidates; j++) {
                 float newdist = colordifference(px, heads[i].candidates[j].color);
+
+                /* penalty for making holes in IE */
+                if (iebug && heads[i].candidates[j].color.a < 1) {
+                    newdist += 1.f/1024.f;
+                }
+
                 if (newdist < dist) {
+
                     dist = newdist;
                     ind = heads[i].candidates[j].index;
                 }

@@ -344,7 +344,7 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
                 match = transparent_ind;
             } else {
                 float diff;
-                match = nearest_search(nearest_map, px, &diff);
+                match = nearest_search(nearest_map, px, min_opaque_val, &diff);
 
                 remapped_pixels++;
                 remapping_error += diff;

@@ -200,6 +200,8 @@ int main(int argc, char *argv[])
         retval = read_image(filename,using_stdin,&input_image);
 
         if (!retval) {
+            verbose_printf("  read file corrected for gamma %2.1f\n", 1.0/input_image.gamma);
+
             retval = pngquant(&input_image, &output_image, floyd, reqcolors, ie_bug, speed_tradeoff);
         }
 
@@ -801,29 +803,16 @@ void update_dither_map(write_info *output_image, float *edges)
     }
 }
 
-pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff)
+/**
+ Repeats mediancut with different histogram weights to find palette with minimum error.
+
+ feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
+ */
+static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_val, int feedback_loop_trials, float *palette_error_p)
 {
-    float min_opaque_val;
-
-    verbose_printf("  reading file corrected for gamma %2.1f\n", 1.0/input_image->gamma);
-
-    min_opaque_val = modify_alpha(input_image,ie_bug);
-    assert(min_opaque_val>0);
-
-    float *noise = NULL, *edges = NULL;
-    if (speed_tradeoff < 8) {
-        contrast_maps((const rgb_pixel**)input_image->row_pointers, input_image->width, input_image->height, input_image->gamma,
-                   &noise, &edges);
-    }
-
-    // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
-    // noise map does not include edges to avoid ruining anti-aliasing
-    hist *hist = histogram(input_image, reqcolors, speed_tradeoff, noise); if (noise) free(noise);
     hist_item *achv = hist->achv;
-
     colormap *acolormap = NULL;
     float least_error = -1;
-    int feedback_loop_trials = 56-9*speed_tradeoff;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
     do
@@ -838,7 +827,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
         f_pixel average_color[newmap->colors], base_color[newmap->colors];
         float average_color_count[newmap->colors], base_color_count[newmap->colors];
 
-        if (feedback_loop_trials) {
+        if (feedback_loop_trials > 0) {
 
             viter_init(newmap, average_color,average_color_count,base_color,base_color_count);
 
@@ -858,7 +847,6 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
         if (total_error < least_error || !acolormap) {
             if (acolormap) pam_freecolormap(acolormap);
-
             acolormap = newmap;
 
             viter_finalize(acolormap, average_color,average_color_count);
@@ -875,11 +863,38 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     }
     while(feedback_loop_trials > 0);
 
+    float total_weight = 0;
+    for(int i=0; i < hist->size; i++) total_weight += achv[i].perceptual_weight;
+
+    *palette_error_p = least_error / total_weight;
+    return acolormap;
+}
+
+pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff)
+{
+    float min_opaque_val;
+
+    min_opaque_val = modify_alpha(input_image,ie_bug);
+    assert(min_opaque_val>0);
+
+    float *noise = NULL, *edges = NULL;
+    if (speed_tradeoff < 8) {
+        contrast_maps((const rgb_pixel**)input_image->row_pointers, input_image->width, input_image->height, input_image->gamma,
+                   &noise, &edges);
+    }
+
+    // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
+    // noise map does not include edges to avoid ruining anti-aliasing
+    hist *hist = histogram(input_image, reqcolors, speed_tradeoff, noise); if (noise) free(noise);
+
+    float palette_error = -1;
+    colormap *acolormap = find_best_palette(hist, reqcolors, min_opaque_val, 56-9*speed_tradeoff, &palette_error);
+
     verbose_printf("  moving colormap towards local minimum\n");
 
     int iterations = MAX(5-speed_tradeoff,0); iterations *= iterations;
     for(int i=0; i < iterations; i++) {
-        least_error = viter_do_interation(hist, acolormap, min_opaque_val);
+        palette_error = viter_do_interation(hist, acolormap, min_opaque_val);
     }
 
     pam_freeacolorhist(hist);

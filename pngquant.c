@@ -812,7 +812,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
 {
     hist_item *achv = hist->achv;
     colormap *acolormap = NULL;
-    float least_error = -1;
+    float least_error;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
     do
@@ -821,31 +821,32 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
 
         colormap *newmap = mediancut(hist, min_opaque_val, reqcolors);
 
-        verbose_printf("...");
-
-        float total_error=0;
-        f_pixel average_color[newmap->colors], base_color[newmap->colors];
-        float average_color_count[newmap->colors], base_color_count[newmap->colors];
-
-        if (feedback_loop_trials > 0) {
-
-            viter_init(newmap, average_color,average_color_count,base_color,base_color_count);
-
-            for(int i=0; i < hist->size; i++) {
-                float diff;
-                int match = best_color_index(achv[i].acolor, newmap, min_opaque_val, &diff);
-                assert(diff >= 0);
-                assert(achv[i].perceptual_weight > 0);
-                total_error += diff * achv[i].perceptual_weight;
-
-                viter_update_color(achv[i].acolor, achv[i].perceptual_weight, newmap, match,
-                                   average_color,average_color_count,base_color,base_color_count);
-
-                achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (1.0+sqrtf(diff));
-            }
+        if (feedback_loop_trials <= 0) {
+            verbose_printf("\n");
+            return newmap;
         }
 
-        if (total_error < least_error || !acolormap) {
+        verbose_printf("...");
+
+        f_pixel average_color[newmap->colors], base_color[newmap->colors];
+        float average_color_count[newmap->colors], base_color_count[newmap->colors];
+        viter_init(newmap, average_color,average_color_count,base_color,base_color_count);
+
+        float total_error = 0;
+        for(int i=0; i < hist->size; i++) {
+            float diff;
+            int match = best_color_index(achv[i].acolor, newmap, min_opaque_val, &diff);
+                assert(diff >= 0);
+            assert(achv[i].perceptual_weight > 0);
+            total_error += diff * achv[i].perceptual_weight;
+
+            viter_update_color(achv[i].acolor, achv[i].perceptual_weight, newmap, match,
+                               average_color,average_color_count,base_color,base_color_count);
+
+            achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (1.0+sqrtf(diff));
+        }
+
+        if (!acolormap || total_error < least_error) {
             if (acolormap) pam_freecolormap(acolormap);
             acolormap = newmap;
 

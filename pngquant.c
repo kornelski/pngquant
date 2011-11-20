@@ -936,12 +936,20 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
         // If dithering (with dither map) is required, this image is used to find areas that require dithering
         float remapping_error = remap_to_palette(input_image, output_image, acolormap, min_opaque_val, ie_bug);
 
+        // remapping error from dithered image is absurd, so always non-dithered value is used
+        // palette_error includes some perceptual weighting from histogram which is closer correlated with dssim
+        // so that should be used when possible.
+        if (palette_error < 0) {
+            palette_error = remapping_error;
+        }
+
         if (use_dither_map) {
             update_dither_map(output_image, edges);
         }
+    }
 
-        // remapping error from dithered image is absurd, so always non-dithered value is used
-        verbose_printf("MSE=%.3f", remapping_error*256.0f);
+    if (palette_error >= 0) {
+        verbose_printf("MSE=%.3f", palette_error*256.0f);
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping

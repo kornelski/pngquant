@@ -879,7 +879,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     int iterations = MAX(5-speed_tradeoff,0); iterations *= iterations;
     for(int i=0; i < iterations; i++) {
-        viter_do_interation(hist, acolormap, min_opaque_val);
+        least_error = viter_do_interation(hist, acolormap, min_opaque_val);
     }
 
     pam_freeacolorhist(hist);

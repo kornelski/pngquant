@@ -69,7 +69,7 @@ void viter_finalize(colormap *map, f_pixel *average_color, float *average_color_
     }
 }
 
-void viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
+float viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
 {
     f_pixel average_color[map->colors];
     float average_color_count[map->colors];
@@ -77,11 +77,17 @@ void viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
     hist_item *achv = hist->achv;
     viter_init(map, average_color,average_color_count, NULL,NULL);
 
+    float total_diff=0, total_weight=0;
     for(int j=0; j < hist->size; j++) {
+        float diff;
+        int match = best_color_index(achv[j].acolor, map, min_opaque_val, &diff);
+        total_diff += diff * achv[j].perceptual_weight;
+        total_weight += achv[j].perceptual_weight;
 
-        int match = best_color_index(achv[j].acolor, map, min_opaque_val, NULL);
         viter_update_color(achv[j].acolor, achv[j].perceptual_weight, map, match, average_color,average_color_count, NULL,NULL);
     }
 
     viter_finalize(map, average_color,average_color_count);
+
+    return total_diff / total_weight;
 }

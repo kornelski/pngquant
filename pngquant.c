@@ -286,7 +286,7 @@ void sort_palette(write_info *output_image, colormap *map)
         rgb_pixel px = to_rgb(output_image->gamma, map->palette[i].acolor);
         if (px.a != 255) {
             if (i != num_transparent) {
-                colormap_item tmp = map->palette[num_transparent];
+                const colormap_item tmp = map->palette[num_transparent];
                 map->palette[num_transparent] = map->palette[i];
                 map->palette[i] = tmp;
                 i--;
@@ -307,7 +307,7 @@ void sort_palette(write_info *output_image, colormap *map)
     output_image->num_trans = num_transparent;
 }
 
-void set_palette(write_info *output_image, colormap *map)
+void set_palette(write_info *output_image, const colormap *map)
 {
     for (int x = 0; x < map->colors; ++x) {
         rgb_pixel px = to_rgb(output_image->gamma, map->palette[x].acolor);

@@ -1,6 +1,3 @@
-//
-//  blur.c
-//  pngquant
 
 #include <assert.h>
 #include "pam.h"
@@ -48,6 +45,9 @@ static void transposing_1d_blur(float *restrict src, float *restrict dst, int wi
     }
 }
 
+/**
+ * Picks maximum of neighboring pixels (blur + lighten)
+ */
 void max3(float *src, float *dst, int width, int height)
 {
     for(int j=0; j < height; j++) {
@@ -72,6 +72,9 @@ void max3(float *src, float *dst, int width, int height)
     }
 }
 
+/**
+ * Picks minimum of neighboring pixels (blur + darken)
+ */
 void min3(float *src, float *dst, int width, int height)
 {
     for(int j=0; j < height; j++) {
@@ -97,7 +100,8 @@ void min3(float *src, float *dst, int width, int height)
 }
 
 /*
- Filters image with callback and blurs (lousy approximate of gaussian)
+ Filters src image and saves it to dst, overwriting tmp in the process.
+ Image must be width*height pixels high. Size controls radius of box blur.
  */
 void blur(float *src, float *tmp, float *dst, int width, int height, int size)
 {

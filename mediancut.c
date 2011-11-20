@@ -196,6 +196,7 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
     bv[0].ind = 0;
     bv[0].colors = hist->size;
     bv[0].variance = 1.0;
+    bv[0].sum = 0;
     for(int i=0; i < bv[0].colors; i++) bv[0].sum += achv[i].adjusted_weight;
 
     int boxes = 1;

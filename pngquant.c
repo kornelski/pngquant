@@ -396,6 +396,8 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
         thiserr[col].a = ((double)rand() - rand_max/2.0)/rand_max/255.0;
     }
 
+    struct nearest_map *n = nearest_init(map);
+
     for (int row = 0; row < rows; ++row) {
         memset(nexterr, 0, (cols + 2) * sizeof(*nexterr));
 
@@ -425,7 +427,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
             if (sa < 1.0/256.0) {
                 ind = transparent_ind;
             } else {
-                ind = best_color_index((f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, map, min_opaque_val, NULL);
+                ind = nearest_search(n, (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, min_opaque_val, NULL);
             }
 
             row_pointers[row][col] = ind;
@@ -509,6 +511,8 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
         nexterr = temperr;
         fs_direction = !fs_direction;
     }
+
+    nearest_free(n);
 }
 
 /* build the output filename from the input name by inserting "-fs8" or

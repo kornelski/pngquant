@@ -2,6 +2,7 @@
 #include "pam.h"
 #include "nearest.h"
 #include "mempool.h"
+#include <stdlib.h>
 
 struct color_entry {
     f_pixel color;

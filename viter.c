@@ -2,6 +2,7 @@
 #include "pam.h"
 #include "viter.h"
 #include "nearest.h"
+#include <stdlib.h>
 
 /*
  * Voronoi iteration: new palette color is computed from weighted average of colors that map to that palette entry.

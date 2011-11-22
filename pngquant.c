@@ -83,6 +83,23 @@ static void print_usage(FILE *fd)
     fputs(PNGQUANT_USAGE, fd);
 }
 
+inline static int is_sse3_required_but_not_available()
+{
+#if USE_SSE
+    int a,b,c,d;
+    cpuid(0, a, b, c, d);
+    if (a > 0) {
+        cpuid(1, a, b, c, d);
+        if (a&1) {
+            return FALSE; // required but available
+        }
+    }
+    return TRUE; // required and unavailable
+#else
+    return FALSE; // not required
+#endif
+}
+
 int main(int argc, char *argv[])
 {
     struct pngquant_options options = {
@@ -187,6 +204,12 @@ int main(int argc, char *argv[])
     } else {
         filename = argv[argn];
         ++argn;
+    }
+
+    if (is_sse3_required_but_not_available()) {
+        print_full_version(stderr);
+        fputs("SSE3-capable CPU is required for this build.\n", stderr);
+        return WRONG_ARCHITECTURE;
     }
 
     /*=============================  MAIN LOOP  =============================*/

@@ -816,11 +816,11 @@ void update_dither_map(write_info *output_image, float *edges)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_val, int feedback_loop_trials, float *palette_error_p)
+static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_val, int feedback_loop_trials, double *palette_error_p)
 {
     hist_item *achv = hist->achv;
     colormap *acolormap = NULL;
-    float least_error;
+    double least_error;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
     do
@@ -838,7 +838,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
         verbose_printf("...");
 
 
-        float total_error = 0;
+        double total_error = 0;
         f_pixel average_color[newmap->colors];
         float average_color_count[newmap->colors];
         viter_init(newmap, average_color,average_color_count);
@@ -846,7 +846,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
         for(int i=0; i < hist->size; i++) {
             float diff;
             int match = nearest_search(n, achv[i].acolor, min_opaque_val, &diff);
-            assert(diff >= 0);
+                assert(diff >= 0);
             assert(achv[i].perceptual_weight > 0);
             total_error += diff * achv[i].perceptual_weight;
 
@@ -875,7 +875,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
     }
     while(feedback_loop_trials > 0);
 
-    float total_weight = 0;
+    double total_weight = 0;
     for(int i=0; i < hist->size; i++) total_weight += achv[i].perceptual_weight;
 
     *palette_error_p = least_error / total_weight;
@@ -899,7 +899,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     // noise map does not include edges to avoid ruining anti-aliasing
     hist *hist = histogram(input_image, reqcolors, speed_tradeoff, noise); if (noise) free(noise);
 
-    float palette_error = -1;
+    double palette_error = -1;
     colormap *acolormap = find_best_palette(hist, reqcolors, min_opaque_val, 56-9*speed_tradeoff, &palette_error);
 
     verbose_printf("  moving colormap towards local minimum\n");

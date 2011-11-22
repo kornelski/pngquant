@@ -39,7 +39,7 @@ void viter_finalize(colormap *map, f_pixel *average_color, float *average_color_
     }
 }
 
-float viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
+double viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
 {
     f_pixel average_color[map->colors];
     float average_color_count[map->colors];
@@ -48,7 +48,7 @@ float viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
     viter_init(map, average_color,average_color_count);
     struct nearest_map *n = nearest_init(map);
 
-    float total_diff=0, total_weight=0;
+    double total_diff=0, total_weight=0;
     for(int j=0; j < hist->size; j++) {
         float diff;
         int match = nearest_search(n, achv[j].acolor, min_opaque_val, &diff);

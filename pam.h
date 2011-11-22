@@ -129,6 +129,10 @@ inline static float colordifference(f_pixel px, f_pixel py)
 }
 
 /* from pamcmap.h */
+union rgb_as_long {
+    rgb_pixel rgb;
+    unsigned long l;
+};
 
 typedef struct {
     f_pixel acolor;
@@ -152,7 +156,7 @@ typedef struct colormap {
 } colormap;
 
 struct acolorhist_list_item {
-    rgb_pixel acolor;
+    union rgb_as_long color;
     struct acolorhist_list_item *next;
     float perceptual_weight;
 };

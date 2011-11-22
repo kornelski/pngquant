@@ -17,8 +17,6 @@
 #include "pam.h"
 #include "mempool.h"
 
-#define PAM_EQUAL(p,q) ((p).a == (q).a && (p).r == (q).r && (p).g == (q).g && (p).b == (q).b)
-
 static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors, float gamma);
 static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
@@ -68,12 +66,6 @@ int best_color_index(f_pixel px, const colormap *map, float min_opaque_val, floa
 
 #define HASH_SIZE 30029
 
-inline static unsigned long pam_hashapixel(rgb_pixel px)
-{
-    unsigned long hash = px.a * 5 + px.r * 179 + px.g * 17 + px.b * 30047;
-    return hash % HASH_SIZE;
-}
-
 /**
  * Builds color histogram no larger than maxacolors. Ignores (posterizes) ignorebits lower bits in each color.
  * perceptual_weight of each entry is increased by value from importance_map
@@ -92,22 +84,13 @@ hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows,
     return achv;
 }
 
-inline static rgb_pixel posterize_pixel(rgb_pixel px, unsigned int mask)
-{
-    return (rgb_pixel){
-        .a = (px.a & mask),
-        .r = (px.r & mask),
-        .g = (px.g & mask),
-        .b = (px.b & mask),
-    };
-}
-
 static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance_map, int* acolorsP)
 {
     acolorhash_table acht;
     struct acolorhist_list_item *achl, **buckets;
     int col, row, hash;
-    const unsigned int mask = 255>>ignorebits<<ignorebits;
+    const unsigned int channel_mask = 255>>ignorebits<<ignorebits;
+    const unsigned int posterize_mask = channel_mask << 24 | channel_mask << 16 | channel_mask << 8 | channel_mask;
     acht = pam_allocacolorhash();
     buckets = acht->buckets;
     int colors=0;
@@ -121,12 +104,15 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                 boost = 0.5+*importance_map++;
             }
 
-            rgb_pixel curr = posterize_pixel(apixels[row][col], mask);
-            hash = pam_hashapixel(curr);
+            union rgb_as_long px = {apixels[row][col]};
+            px.l &= posterize_mask;
+            hash = px.l % HASH_SIZE;
 
-            for (achl = buckets[hash]; achl != NULL; achl = achl->next)
-                if (PAM_EQUAL(achl->acolor, curr))
+            for (achl = buckets[hash]; achl != NULL; achl = achl->next) {
+                if (achl->color.l == px.l)
                     break;
+            }
+
             if (achl != NULL) {
                 achl->perceptual_weight += boost;
             } else {
@@ -136,7 +122,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                 }
                 achl = mempool_new(&acht->mempool, sizeof(struct acolorhist_list_item));
 
-                achl->acolor = curr;
+                achl->color = px;
                 achl->perceptual_weight = boost;
                 achl->next = buckets[hash];
                 buckets[hash] = achl;
@@ -172,7 +158,7 @@ static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size, fl
     for (i = 0; i < HASH_SIZE; ++i)
         for (achl = acht->buckets[i]; achl != NULL; achl = achl->next) {
             /* Add the new entry. */
-            hist->achv[j].acolor = to_f(gamma, achl->acolor);
+            hist->achv[j].acolor = to_f(gamma, achl->color.rgb);
             hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->perceptual_weight;
             ++j;
         }

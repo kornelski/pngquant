@@ -19,7 +19,7 @@
 
 #define PAM_EQUAL(p,q) ((p).a == (q).a && (p).r == (q).r && (p).g == (q).g && (p).b == (q).b)
 
-static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors);
+static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors, float gamma);
 static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
@@ -68,9 +68,9 @@ int best_color_index(f_pixel px, const colormap *map, float min_opaque_val, floa
 
 #define HASH_SIZE 30029
 
-inline static unsigned long pam_hashapixel(f_pixel px)
+inline static unsigned long pam_hashapixel(rgb_pixel px)
 {
-    unsigned long hash = px.a * 256.0*5.0 + px.r * 256.0*179.0 + px.g * 256.0*17.0 + px.b * 256.0*30047.0;
+    unsigned long hash = px.a * 5 + px.r * 179 + px.g * 17 + px.b * 30047;
     return hash % HASH_SIZE;
 }
 
@@ -87,23 +87,19 @@ hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows,
     acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, importance_map, &hist_size);
     if (!acht) return 0;
 
-    achv = pam_acolorhashtoacolorhist(acht, hist_size);
+    achv = pam_acolorhashtoacolorhist(acht, hist_size, gamma);
     pam_freeacolorhash(acht);
     return achv;
 }
 
-inline static f_pixel posterize_pixel(rgb_pixel px, int maxval, float gamma)
+inline static rgb_pixel posterize_pixel(rgb_pixel px, unsigned int mask)
 {
-    if (maxval == 255) {
-        return to_f(gamma, px);
-    } else {
-        return to_f_scalar(gamma, (f_pixel){
-            .a = (px.a * maxval / 255) / (float)maxval,
-            .r = (px.r * maxval / 255) / (float)maxval,
-            .g = (px.g * maxval / 255) / (float)maxval,
-            .b = (px.b * maxval / 255) / (float)maxval,
-        });
-    }
+    return (rgb_pixel){
+        .a = (px.a & mask),
+        .r = (px.r & mask),
+        .g = (px.g & mask),
+        .b = (px.b & mask),
+    };
 }
 
 static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance_map, int* acolorsP)
@@ -111,7 +107,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
     acolorhash_table acht;
     struct acolorhist_list_item *achl, **buckets;
     int col, row, hash;
-    const int maxval = 255>>ignorebits;
+    const unsigned int mask = 255>>ignorebits<<ignorebits;
     acht = pam_allocacolorhash();
     buckets = acht->buckets;
     int colors=0;
@@ -125,7 +121,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                 boost = 0.5+*importance_map++;
             }
 
-            f_pixel curr = posterize_pixel(apixels[row][col], maxval, gamma);
+            rgb_pixel curr = posterize_pixel(apixels[row][col], mask);
             hash = pam_hashapixel(curr);
 
             for (achl = buckets[hash]; achl != NULL; achl = achl->next)
@@ -161,7 +157,7 @@ static acolorhash_table pam_allocacolorhash()
     return t;
 }
 
-static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size)
+static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size, float gamma)
 {
     hist *hist;
     struct acolorhist_list_item *achl;
@@ -176,7 +172,7 @@ static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size)
     for (i = 0; i < HASH_SIZE; ++i)
         for (achl = acht->buckets[i]; achl != NULL; achl = achl->next) {
             /* Add the new entry. */
-            hist->achv[j].acolor = achl->acolor;
+            hist->achv[j].acolor = to_f(gamma, achl->acolor);
             hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->perceptual_weight;
             ++j;
         }

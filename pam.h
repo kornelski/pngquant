@@ -152,7 +152,7 @@ typedef struct colormap {
 } colormap;
 
 struct acolorhist_list_item {
-    f_pixel acolor;
+    rgb_pixel acolor;
     struct acolorhist_list_item *next;
     float perceptual_weight;
 };

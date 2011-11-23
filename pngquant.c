@@ -828,6 +828,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
         verbose_printf("  selecting colors");
 
         colormap *newmap = mediancut(hist, min_opaque_val, reqcolors);
+        qsort(newmap->subset_palette->palette, newmap->subset_palette->colors, sizeof(newmap->subset_palette->palette[0]), compare_popularity);
 
         if (feedback_loop_trials <= 0) {
             verbose_printf("\n");
@@ -841,10 +842,11 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
         f_pixel average_color[newmap->colors];
         float average_color_count[newmap->colors];
         viter_init(newmap, average_color,average_color_count);
+        struct nearest_map *n = nearest_init(newmap);
         for(int i=0; i < hist->size; i++) {
             float diff;
-            int match = best_color_index(achv[i].acolor, newmap, min_opaque_val, &diff);
-                assert(diff >= 0);
+            int match = nearest_search(n, achv[i].acolor, min_opaque_val, &diff);
+            assert(diff >= 0);
             assert(achv[i].perceptual_weight > 0);
             total_error += diff * achv[i].perceptual_weight;
 
@@ -853,6 +855,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
 
             achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (sqrtf(1.0+diff));
         }
+        nearest_free(n);
 
         if (!acolormap || total_error < least_error) {
             if (acolormap) pam_freecolormap(acolormap);

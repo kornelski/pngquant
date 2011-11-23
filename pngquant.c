@@ -352,7 +352,7 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
 
             row_pointers[row][col] = match;
 
-            viter_update_color(px, 1.0, map, match, average_color, average_color_count, NULL, NULL);
+            viter_update_color(px, 1.0, map, match, average_color, average_color_count);
         }
     }
 
@@ -839,11 +839,11 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
 
         verbose_printf("...");
 
-        f_pixel average_color[newmap->colors], base_color[newmap->colors];
-        float average_color_count[newmap->colors], base_color_count[newmap->colors];
-        viter_init(newmap, average_color,average_color_count,base_color,base_color_count);
 
         float total_error = 0;
+        f_pixel average_color[newmap->colors];
+        float average_color_count[newmap->colors];
+        viter_init(newmap, average_color,average_color_count);
         for(int i=0; i < hist->size; i++) {
             float diff;
             int match = best_color_index(achv[i].acolor, newmap, min_opaque_val, &diff);
@@ -852,7 +852,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
             total_error += diff * achv[i].perceptual_weight;
 
             viter_update_color(achv[i].acolor, achv[i].perceptual_weight, newmap, match,
-                               average_color,average_color_count,base_color,base_color_count);
+                               average_color,average_color_count);
 
             achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (sqrtf(1.0+diff));
         }

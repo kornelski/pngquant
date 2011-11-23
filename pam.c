@@ -183,6 +183,7 @@ colormap *pam_colormap(int colors)
 {
     colormap *map = malloc(sizeof(colormap));
     map->palette = calloc(colors, sizeof(map->palette[0]));
+    map->subset_palette = NULL;
     map->colors = colors;
     return map;
 }

@@ -324,15 +324,12 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
     int remapped_pixels=0;
     float remapping_error=0;
 
-    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, map, min_opaque_val, NULL);
+    struct nearest_map *n = nearest_init(map);
+    int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     f_pixel average_color[map->colors];
     float average_color_count[map->colors];
-    viter_init(map, average_color, average_color_count, NULL, NULL);
-
-    qsort(map->subset_palette->palette, map->subset_palette->colors, sizeof(map->subset_palette->palette[0]), compare_popularity);
-    struct nearest_map *nearest_map = nearest_init(map);
-
+    viter_init(map, average_color, average_color_count);
 
     for (int row = 0; row < rows; ++row) {
         for(int col = 0; col < cols; ++col) {
@@ -344,7 +341,7 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
                 match = transparent_ind;
             } else {
                 float diff;
-                match = nearest_search(nearest_map, px, min_opaque_val, &diff);
+                match = nearest_search(n, px, min_opaque_val, &diff);
 
                 remapped_pixels++;
                 remapping_error += diff;
@@ -356,7 +353,7 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
         }
     }
 
-    nearest_free(nearest_map);
+    nearest_free(n);
 
     viter_finalize(map, average_color, average_color_count);
 
@@ -375,8 +372,8 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
 
     const colormap_item *acolormap = map->palette;
 
-    int ind=0;
-    int transparent_ind = best_color_index((f_pixel){0,0,0,0}, map, min_opaque_val, NULL);
+    struct nearest_map *n = nearest_init(map);
+    int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     f_pixel *restrict thiserr = NULL;
     f_pixel *restrict nexterr = NULL;
@@ -396,7 +393,6 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
         thiserr[col].a = ((double)rand() - rand_max/2.0)/rand_max/255.0;
     }
 
-    struct nearest_map *n = nearest_init(map);
 
     for (int row = 0; row < rows; ++row) {
         memset(nexterr, 0, (cols + 2) * sizeof(*nexterr));
@@ -424,6 +420,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
             /* when fighting IE bug, dithering must not make opaque areas transparent */
             else if (sa > 1 || (ie_bug && px.a > 255.0/256.0)) sa = 1;
 
+            int ind;
             if (sa < 1.0/256.0) {
                 ind = transparent_ind;
             } else {

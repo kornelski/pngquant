@@ -854,7 +854,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
             viter_update_color(achv[i].acolor, achv[i].perceptual_weight, newmap, match,
                                average_color,average_color_count,base_color,base_color_count);
 
-            achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (1.0+sqrtf(diff));
+            achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (sqrtf(1.0+diff));
         }
 
         if (!acolormap || total_error < least_error) {

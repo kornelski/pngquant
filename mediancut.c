@@ -200,7 +200,7 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
 
     // remember smaller palette for fast searching
     colormap *representative_subset = NULL;
-    int subset_size = sqrtf(newcolors)*3;
+    int subset_size = ceilf(powf(newcolors,0.7f));
 
     /*
      ** Main loop: split boxes until we have enough.

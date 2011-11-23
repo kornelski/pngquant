@@ -32,8 +32,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "png.h"        /* libpng header; includes zlib.h */
-#include "rwpng.h"      /* typedefs, common macros, public prototypes */
+#include "png.h"
+#include "zlib.h"
+#include "rwpng.h"
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
 

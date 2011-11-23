@@ -166,7 +166,6 @@ typedef struct {
     struct acolorhist_list_item **buckets;
 } *acolorhash_table;
 
-int best_color_index(f_pixel px, const colormap *map, float min_opaque_val, float *dist_out);
 hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *imp);
 void pam_freeacolorhist(hist *h);
 

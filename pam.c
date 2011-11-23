@@ -22,33 +22,6 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
 
-int best_color_index(f_pixel px, const colormap *map, float min_opaque_val, float *dist_out)
-{
-    const colormap_item *const acolormap = map->palette;
-    const int numcolors = map->colors;
-    int ind=0;
-    const int iebug = px.a > min_opaque_val;
-    float dist = colordifference(px,acolormap[0].acolor);
-
-    for(int i = 1; i < numcolors; i++) {
-        float newdist = colordifference(px,acolormap[i].acolor);
-
-        if (newdist < dist) {
-
-            /* penalty for making holes in IE */
-            if (iebug && acolormap[i].acolor.a < 1) {
-                if (newdist+1.f/1024.f > dist) continue;
-            }
-
-            ind = i;
-            dist = newdist;
-        }
-    }
-
-    if (dist_out) *dist_out = dist;
-    return ind;
-}
-
 /* libpam3.c - pam (portable alpha map) utility library part 3
  **
  ** Colormap routines.

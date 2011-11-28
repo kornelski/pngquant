@@ -37,8 +37,11 @@
 
 typedef enum {
     SUCCESS = 0,
+    MISSING_ARGUMENT = 1,
     READ_ERROR = 2,
+    INVALID_ARGUMENT = 4,
     TOO_MANY_COLORS = 5,
+    TOO_LOW_QUALITY = 6,
     NOT_OVERWRITING_ERROR = 15,
     CANT_WRITE_ERROR = 16,
     OUT_OF_MEMORY_ERROR = 17,
@@ -51,8 +54,6 @@ typedef enum {
     LIBPNG_WRITE_ERROR = 55,
     LIBPNG_WRITE_WHOLE_ERROR = 45,
 
-    INVALID_ARGUMENT = 4,
-    MISSING_ARGUMENT = 1,
 } pngquant_error;
 
 typedef struct {

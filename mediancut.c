@@ -26,7 +26,7 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[static clrs
 struct box {
     f_pixel color;
     f_pixel variance;
-    double sum;
+    double sum, total_error;
     unsigned int ind;
     unsigned int colors;
 };
@@ -70,7 +70,7 @@ static inline void hist_item_swap(hist_item *l, hist_item *r)
         hist_item t = *l;
         *l = *r;
         *r = t;
-    }
+}
 }
 
 inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len) ALWAYS_INLINE;
@@ -115,7 +115,7 @@ static void hist_item_sort_range(hist_item *base, unsigned int len, int sort_sta
 
         if (sort_start+sort_len > 0 && (signed)l >= sort_start && l > 0) {
             hist_item_sort_range(base, l, sort_start, sort_len);
-        }
+}
         if (len > r && r < sort_start+sort_len && (signed)len > sort_start) {
             base += r; len -= r; sort_start -= r; // tail-recursive "call"
         } else return;
@@ -143,14 +143,14 @@ static hist_item *hist_item_sort_halfvar(hist_item *base, unsigned int len, doub
                 // End of left recursion. This will be executed in order from the first element.
                 *lowervar += base[0].color_weight;
                 if (*lowervar > halfvar) return &base[0];
-            }
-        }
+}
+    }
         if (len > r) {
             base += r; len -= r; // tail-recursive "call"
         } else {
             *lowervar += base[r].color_weight;
             return (*lowervar > halfvar) ? &base[r] : NULL;
-        }
+    }
     } while(1);
 }
 
@@ -243,12 +243,48 @@ inline static double color_weight(f_pixel median, hist_item h)
 static colormap *colormap_from_boxes(struct box* bv,unsigned int boxes,hist_item *achv,float min_opaque_val);
 static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, unsigned int boxes);
 
+double box_error(const struct box *box, const hist_item achv[])
+{
+    f_pixel avg = box->color;
+
+    double total_error=0;
+    for (int i = 0; i < box->colors; ++i) {
+        total_error += colordifference(avg, achv[box->ind + i].acolor) * achv[box->ind + i].perceptual_weight;
+    }
+
+    return total_error;
+}
+
+
+static int total_box_error_below_target(double target_mse, struct box bv[], int boxes, const hist *hist)
+{
+    target_mse *= hist->total_perceptual_weight;
+    double total_error=0;
+    for(int i=0; i < boxes; i++) {
+        // error is (re)calculated lazily
+        if (bv[i].total_error >= 0) {
+            total_error += bv[i].total_error;
+        }
+        if (total_error > target_mse) return 0;
+    }
+
+    for(int i=0; i < boxes; i++) {
+        if (bv[i].total_error < 0) {
+            bv[i].total_error = box_error(&bv[i], hist->achv);
+            total_error += bv[i].total_error;
+        }
+        if (total_error > target_mse) return 0;
+    }
+
+    return 1;
+}
+
 /*
  ** Here is the fun part, the median-cut colormap generator.  This is based
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
-colormap *mediancut(histogram *hist, float min_opaque_val, unsigned int newcolors)
+colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int newcolors, const double target_mse)
 {
     hist_item *achv = hist->achv;
     struct box bv[newcolors];
@@ -261,6 +297,7 @@ colormap *mediancut(histogram *hist, float min_opaque_val, unsigned int newcolor
     bv[0].color = averagepixels(bv[0].colors, &achv[bv[0].ind], min_opaque_val);
     bv[0].variance = box_variance(achv, &bv[0]);
     bv[0].sum = 0;
+    bv[0].total_error = -1;
     for(unsigned int i=0; i < bv[0].colors; i++) bv[0].sum += achv[i].adjusted_weight;
 
     unsigned int boxes = 1;
@@ -314,13 +351,20 @@ colormap *mediancut(histogram *hist, float min_opaque_val, unsigned int newcolor
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
         bv[bi].color = averagepixels(bv[bi].colors, &achv[bv[bi].ind], min_opaque_val);
+        bv[bi].total_error = -1;
         bv[bi].variance = box_variance(achv, &bv[bi]);
         bv[boxes].ind = indx + break_at;
         bv[boxes].colors = clrs - break_at;
         bv[boxes].sum = sm - lowersum;
         bv[boxes].color = averagepixels(bv[boxes].colors, &achv[bv[boxes].ind], min_opaque_val);
+        bv[boxes].total_error = -1;
         bv[boxes].variance = box_variance(achv, &bv[boxes]);
+
         ++boxes;
+
+        if (total_box_error_below_target(target_mse, bv, boxes, hist)) {
+            break;
+        }
     }
 
     colormap *map = colormap_from_boxes(bv, boxes, achv, min_opaque_val);
@@ -365,13 +409,13 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
     }
 }
 
-static f_pixel averagepixels(unsigned int clrs, const hist_item achv[static clrs], float min_opaque_val)
+static f_pixel averagepixels(unsigned int clrs, const hist_item achv[static clrs], const float min_opaque_val)
 {
     double r = 0, g = 0, b = 0, a = 0, sum = 0;
     float maxa = 0;
 
     for(unsigned int i = 0; i < clrs; ++i) {
-        f_pixel px = achv[i].acolor;
+        const f_pixel px = achv[i].acolor;
         double tmp, weight = 1.0f;
 
         /* give more weight to colors that are further away from average

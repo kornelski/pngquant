@@ -62,9 +62,10 @@
 #include "viter.h"
 
 struct pngquant_options {
+    double target_mse, max_mse;
+    float min_opaque_val;
     unsigned int reqcolors;
     unsigned int speed_tradeoff;
-    float min_opaque_val;
     bool floyd, last_index_transparent;
 };
 
@@ -117,6 +118,12 @@ inline static bool is_sse2_available()
     return d & (1<<26); // edx bit 26 is set when SSE2 is present
         }
 #endif
+
+static double quality_to_mse(int quality)
+{
+    // curve fudged to be roughly similar to quality of libjpeg
+    return 1.1/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
+}
 
 static const struct {const char *old; char *new;} obsolete_options[] = {
     {"-fs","--floyd"},
@@ -178,11 +185,13 @@ int main(int argc, char *argv[])
         .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
         .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
         .last_index_transparent = false, // puts transparent color at last index. This is workaround for blu-ray subtitles.
+        .target_mse = 0,
+        .max_mse = INFINITY,
     };
 
     bool force = false, // force overwrite
          using_stdin = false;
-    int latest_error=0, error_count=0, file_count=0;
+    unsigned int latest_error=0, error_count=0, skipped_count=0, file_count=0;
     const char *filename, *newext = NULL;
 
     fix_obsolete_options(argc, argv);
@@ -200,7 +209,7 @@ int main(int argc, char *argv[])
             case arg_ext: newext = optarg; break;
 
             case arg_iebug:
-                options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
+            options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
                 break;
             case arg_transbug:
                 options.last_index_transparent = true;
@@ -215,9 +224,9 @@ int main(int argc, char *argv[])
                 break;
 
             case 'h':
-                print_full_version(stdout);
-                print_usage(stdout);
-                return SUCCESS;
+            print_full_version(stdout);
+            print_usage(stdout);
+            return SUCCESS;
 
             case 'V':
                 puts(PNGQUANT_VERSION);
@@ -227,7 +236,7 @@ int main(int argc, char *argv[])
 
             default:
                 return INVALID_ARGUMENT;
-        }
+            }
     } while (opt != -1);
 
     int argn = optind;
@@ -236,8 +245,8 @@ int main(int argc, char *argv[])
         if (argn > 1) {
             fputs("No input files specified. See -h for help.\n", stderr);
         } else {
-            print_full_version(stderr);
-            print_usage(stderr);
+        print_full_version(stderr);
+        print_usage(stderr);
         }
         return MISSING_ARGUMENT;
     }
@@ -297,7 +306,7 @@ int main(int argc, char *argv[])
         write_info output_image = {};
 
         if (!retval) {
-            retval = read_image(filename,using_stdin,&input_image);
+        retval = read_image(filename,using_stdin,&input_image);
         }
 
         if (!retval) {
@@ -330,7 +339,11 @@ int main(int argc, char *argv[])
 
         if (retval) {
             latest_error = retval;
-            ++error_count;
+            if (retval != TOO_LOW_QUALITY) {
+                error_count++;
+            } else {
+                skipped_count++;
+            }
         }
         ++file_count;
 
@@ -343,14 +356,16 @@ int main(int argc, char *argv[])
     /*=======================================================================*/
 
 
-    if (error_count)
-        verbose_printf("There were errors quantizing %d file%s out of a"
-          " total of %d file%s.\n",
-          error_count, (error_count == 1)? "" : "s",
-          file_count, (file_count == 1)? "" : "s");
-    else
+    if (error_count) {
+        verbose_printf("There were errors quantizing %d file%s out of a total of %d file%s.\n",
+                       error_count, (error_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
+    } else if (skipped_count) {
+        verbose_printf("Skipped %d file%s out of a total of %d file%s.\n",
+                       skipped_count, (skipped_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
+    } else {
         verbose_printf("No errors detected while quantizing %d image%s.\n",
                        file_count, (file_count == 1)? "" : "s");
+    }
 
     return latest_error;
 }
@@ -543,7 +558,7 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
             float sr = px.r + thiserr[col + 1].r * dither_level,
                   sg = px.g + thiserr[col + 1].g * dither_level,
                   sb = px.b + thiserr[col + 1].b * dither_level,
-                  sa = px.a + thiserr[col + 1].a * dither_level;
+            sa = px.a + thiserr[col + 1].a * dither_level;
 
             // Error must be clamped, otherwise it can accumulate so much that it will be
             // impossible to compensate it, causing color streaks
@@ -566,7 +581,7 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
                     ind = curr_ind;
                 } else {
                     ind = nearest_search(n, spx, min_opaque_val, NULL);
-                }
+            }
             }
 
             row_pointers[row][col] = ind;
@@ -942,7 +957,7 @@ static void adjust_histogram_callback(hist_item *item, float diff)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(histogram *hist, const int reqcolors, const float min_opaque_val, int feedback_loop_trials, double *palette_error_p)
+static colormap *find_best_palette(histogram *hist, int reqcolors, const float min_opaque_val, const double target_mse, int feedback_loop_trials, double *palette_error_p)
 {
     colormap *acolormap = NULL;
     double least_error = 0;
@@ -952,7 +967,7 @@ static colormap *find_best_palette(histogram *hist, const int reqcolors, const f
     {
         verbose_printf("  selecting colors");
 
-        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors);
+        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors, target_mse);
         if (newmap->subset_palette) {
             // nearest_search() needs subset palette to accelerate the search, I presume that
             // palette starting with most popular colors will improve search speed
@@ -972,11 +987,17 @@ static colormap *find_best_palette(histogram *hist, const int reqcolors, const f
 
         double total_error = viter_do_iteration(hist, newmap, min_opaque_val, adjust_histogram_callback);
 
-        if (!acolormap || total_error < least_error) {
+        // goal is to increase quality or to reduce number of colors used if quality is good enough
+        if (!acolormap || total_error < least_error || (total_error < target_mse && newmap->colors < reqcolors)) {
             if (acolormap) pam_freecolormap(acolormap);
             acolormap = newmap;
 
             least_error = total_error;
+
+            // if number of colors could be reduced, try to keep it that way
+            // but allow extra color as a bit of wiggle room in case quality can be improved too
+            reqcolors = MIN(newmap->colors+1, reqcolors);
+
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
             feedback_loop_trials -= 6;
@@ -996,8 +1017,11 @@ static colormap *find_best_palette(histogram *hist, const int reqcolors, const f
 static pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options)
 {
     const int speed_tradeoff = options->speed_tradeoff, reqcolors = options->reqcolors;
+    const double max_mse = options->max_mse, target_mse = options->target_mse;
     const float min_opaque_val = options->min_opaque_val;
     assert(min_opaque_val>0);
+    assert(max_mse >= target_mse);
+
     modify_alpha(input_image, min_opaque_val);
 
 
@@ -1012,14 +1036,17 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
     histogram *hist = get_histogram(input_image, reqcolors, speed_tradeoff, noise); if (noise) free(noise);
 
     double palette_error = -1;
-    colormap *acolormap = find_best_palette(hist, reqcolors, min_opaque_val, 56-9*speed_tradeoff, &palette_error);
-
-        verbose_printf("  moving colormap towards local minimum\n");
+    colormap *acolormap = find_best_palette(hist, reqcolors, min_opaque_val, target_mse, 56-9*speed_tradeoff, &palette_error);
 
     // Voronoi iteration approaches local minimum for the palette
     unsigned int iterations = MAX(8-speed_tradeoff,0); iterations += iterations * iterations/2;
+    if (palette_error < 0 && max_mse >= 0 && !iterations) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
+
+    if (iterations) {
+        verbose_printf("  moving colormap towards local minimum\n");
+
         const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
-        double previous_palette_error = 9999999;
+        double previous_palette_error = INFINITY;
         for(unsigned int i=0; i < iterations; i++) {
             palette_error = viter_do_iteration(hist, acolormap, min_opaque_val, NULL);
 
@@ -1028,8 +1055,16 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
             }
             previous_palette_error = palette_error;
         }
+    }
 
     pam_freeacolorhist(hist);
+
+    if (palette_error > max_mse) {
+        verbose_printf("  image degradation MSE=%.3f exceeded limit of %.3f, skipping\n", palette_error*65536.0, max_mse*65536.0);
+        if (edges) free(edges);
+        pam_freecolormap(acolormap);
+        return TOO_LOW_QUALITY;
+    }
 
     output_image->width = input_image->width;
     output_image->height = input_image->height;
@@ -1043,7 +1078,6 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
     output_image->row_pointers = malloc(output_image->height * sizeof(output_image->row_pointers[0]));
 
     if (!output_image->indexed_data || !output_image->row_pointers) {
-        fprintf(stderr, "  insufficient memory for indexed data and/or row pointers\n");
         return OUT_OF_MEMORY_ERROR;
     }
 
@@ -1081,7 +1115,7 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
     }
 
     if (palette_error >= 0) {
-        verbose_printf("MSE=%.3f", palette_error*256.0f*256.0f);
+        verbose_printf("MSE=%.3f", palette_error*65536.0);
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping

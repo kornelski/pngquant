@@ -875,10 +875,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
     }
     while(feedback_loop_trials > 0);
 
-    double total_weight = 0;
-    for(int i=0; i < hist->size; i++) total_weight += achv[i].perceptual_weight;
-
-    *palette_error_p = least_error / total_weight;
+    *palette_error_p = least_error / hist->total_perceptual_weight;
     return acolormap;
 }
 

@@ -118,24 +118,23 @@ static acolorhash_table pam_allocacolorhash()
 
 static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size, float gamma)
 {
-    hist *hist;
-    struct acolorhist_list_item *achl;
-    int i, j;
-
-    hist = malloc(sizeof(hist[0]));
+    hist *hist = hist = malloc(sizeof(hist[0]));
     hist->achv = malloc(hist_size * sizeof(hist->achv[0]));
     hist->size = hist_size;
 
     /* Loop through the hash table. */
-    j = 0;
-    for (i = 0; i < HASH_SIZE; ++i)
-        for (achl = acht->buckets[i]; achl != NULL; achl = achl->next) {
+    double total_weight=0;
+    for (int j=0, i=0; i < HASH_SIZE; ++i) {
+        for (struct acolorhist_list_item *achl = acht->buckets[i]; achl != NULL; achl = achl->next) {
             /* Add the new entry. */
             hist->achv[j].acolor = to_f(gamma, achl->color.rgb);
             hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->perceptual_weight;
+            total_weight += achl->perceptual_weight;
             ++j;
         }
+    }
 
+    hist->total_perceptual_weight = total_weight;
     /* All done. */
     return hist;
 }

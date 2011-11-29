@@ -141,6 +141,7 @@ typedef struct {
 
 typedef struct {
     hist_item *achv;
+    double total_perceptual_weight;
     int size;
 } hist;
 

@@ -48,12 +48,11 @@ double viter_do_interation(const hist *hist, colormap *map, float min_opaque_val
     viter_init(map, average_color,average_color_count);
     struct nearest_map *n = nearest_init(map);
 
-    double total_diff=0, total_weight=0;
+    double total_diff=0;
     for(int j=0; j < hist->size; j++) {
         float diff;
         int match = nearest_search(n, achv[j].acolor, min_opaque_val, &diff);
         total_diff += diff * achv[j].perceptual_weight;
-        total_weight += achv[j].perceptual_weight;
 
         viter_update_color(achv[j].acolor, achv[j].perceptual_weight, map, match, average_color,average_color_count);
     }
@@ -61,5 +60,5 @@ double viter_do_interation(const hist *hist, colormap *map, float min_opaque_val
     nearest_free(n);
     viter_finalize(map, average_color,average_color_count);
 
-    return total_diff / total_weight;
+    return total_diff / hist->total_perceptual_weight;
 }

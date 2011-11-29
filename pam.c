@@ -122,7 +122,7 @@ static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size, fl
     struct acolorhist_list_item *achl;
     int i, j;
 
-    hist = malloc(sizeof(hist));
+    hist = malloc(sizeof(hist[0]));
     hist->achv = malloc(hist_size * sizeof(hist->achv[0]));
     hist->size = hist_size;
 

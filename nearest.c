@@ -78,6 +78,24 @@ static struct head build_head(f_pixel px, const colormap *map, int num_candidate
     return h;
 }
 
+static colormap *get_subset_palette(const colormap *map)
+{
+    // it may happen that it gets palette without subset palette or the subset is too large
+    int subset_size = (map->colors+3)/4;
+
+    if (map->subset_palette && map->subset_palette->colors <= subset_size) {
+        return map->subset_palette;
+    }
+
+    const colormap *source = map->subset_palette ? map->subset_palette : map;
+    colormap *subset_palette = pam_colormap(subset_size);
+
+    for(int i=0; i < subset_size; i++) {
+        subset_palette->palette[i] = source->palette[i];
+    }
+
+    return subset_palette;
+}
 
 struct nearest_map *nearest_init(const colormap *map)
 {
@@ -88,7 +106,8 @@ struct nearest_map *nearest_init(const colormap *map)
     int skipped=0;
     int skip_index[map->colors]; for(int j=0; j<map->colors;j++) skip_index[j]=0;
 
-    const int selected_heads = map->subset_palette->colors;
+    colormap *subset_palette = get_subset_palette(map);
+    const int selected_heads = subset_palette->colors;
     centroids->heads = mempool_new(&centroids->mempool, sizeof(centroids->heads[0])*(selected_heads+1)); // +1 is fallback head
 
     int h=0;
@@ -96,7 +115,7 @@ struct nearest_map *nearest_init(const colormap *map)
     {
         int num_candiadtes = 1+(map->colors - skipped)/((1+selected_heads-h)/2);
 
-        centroids->heads[h] = build_head(map->subset_palette->palette[h].acolor, map, num_candiadtes, &centroids->mempool, skip_index, &skipped);
+        centroids->heads[h] = build_head(subset_palette->palette[h].acolor, map, num_candiadtes, &centroids->mempool, skip_index, &skipped);
         if (centroids->heads[h].num_candidates == 0) {
             break;
         }
@@ -116,6 +135,11 @@ struct nearest_map *nearest_init(const colormap *map)
         };
     }
     centroids->num_heads = ++h;
+
+    // get_subset_palette could have created a copy
+    if (subset_palette != map->subset_palette) {
+        pam_freecolormap(subset_palette);
+    }
 
     return centroids;
 }

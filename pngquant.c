@@ -904,9 +904,16 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     verbose_printf("  moving colormap towards local minimum\n");
 
-    int iterations = MAX(7-speed_tradeoff,0); iterations += iterations * iterations/2;
+    int iterations = MAX(8-speed_tradeoff,0); iterations += iterations * iterations/2;
+    const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
+    double previous_palette_error = 9999999;
     for(int i=0; i < iterations; i++) {
         palette_error = viter_do_interation(hist, acolormap, min_opaque_val);
+
+        if (fabs(previous_palette_error-palette_error) < iteration_limit) {
+            break;
+        }
+        previous_palette_error = palette_error;
     }
 
     pam_freeacolorhist(hist);

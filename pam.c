@@ -118,7 +118,7 @@ static acolorhash_table pam_allocacolorhash()
 
 static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size, float gamma)
 {
-    hist *hist = hist = malloc(sizeof(hist[0]));
+    hist *hist = malloc(sizeof(hist[0]));
     hist->achv = malloc(hist_size * sizeof(hist->achv[0]));
     hist->size = hist_size;
 

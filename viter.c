@@ -39,7 +39,7 @@ void viter_finalize(colormap *map, f_pixel *average_color, float *average_color_
     }
 }
 
-double viter_do_interation(const hist *hist, colormap *map, float min_opaque_val)
+double viter_do_iteration(const hist *hist, colormap *map, float min_opaque_val)
 {
     f_pixel average_color[map->colors];
     float average_color_count[map->colors];

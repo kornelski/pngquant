@@ -960,7 +960,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     }
 
     if (palette_error >= 0) {
-        verbose_printf("MSE=%.3f", palette_error*256.0f);
+        verbose_printf("MSE=%.3f", palette_error*256.0f*256.0f);
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping

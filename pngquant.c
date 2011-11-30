@@ -828,7 +828,9 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
         verbose_printf("  selecting colors");
 
         colormap *newmap = mediancut(hist, min_opaque_val, reqcolors);
-        qsort(newmap->subset_palette->palette, newmap->subset_palette->colors, sizeof(newmap->subset_palette->palette[0]), compare_popularity);
+        if (newmap->subset_palette) {
+            qsort(newmap->subset_palette->palette, newmap->subset_palette->colors, sizeof(newmap->subset_palette->palette[0]), compare_popularity);
+        }
 
         if (feedback_loop_trials <= 0) {
             verbose_printf("\n");

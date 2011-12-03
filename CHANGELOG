@@ -1,3 +1,21 @@
+version 1.6
+-----------
+ - novel dithering algorithm that doesn't add noise unless necessary
+ - perceptual weighting of colors taking into account edges and noise
+ - much faster remapping
+
+version 1.5
+-----------
+ - palettes postprocessed with Voronoi iteration
+ - better RGBA color similarity algorithm and Floyd-Steinberg remapping
+ - SSE optimisations
+
+version 1.4
+-----------
+ - median cut is applied many times in a feedback loop
+ - speed/quality trade-off option
+ - faster remap of transparent areas
+
 version 1.3
 -----------
  - significant changes to the algorithm: use of variance

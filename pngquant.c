@@ -55,6 +55,7 @@ pngquant_error read_image(const char *filename, int using_stdin, read_info *inpu
 pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin);
 
 static int verbose=0;
+/* prints only when verbose flag is set */
 void verbose_printf(const char *fmt, ...)
 {
     va_list va;
@@ -79,9 +80,9 @@ int main(int argc, char *argv[])
 {
     int argn;
     int reqcolors;
-    int floyd = TRUE;
-    int force = FALSE;
-    int ie_bug = FALSE;
+    int floyd = TRUE; // floyd-steinberg dithering
+    int force = FALSE; // force overwrite
+    int ie_bug = FALSE; // preserve opaque colors for IE
     int speed_tradeoff = 3; // 1 max quality, 10 rough & fast. 3 is optimum.
     int using_stdin = FALSE;
     int latest_error=0, error_count=0, file_count=0;
@@ -166,6 +167,7 @@ int main(int argc, char *argv[])
     }
     ++argn;
 
+    // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
         newext = floyd? "-ie-fs8.png" : "-ie-or8.png";
         if (!ie_bug) newext += 3; /* skip "-ie" */
@@ -187,7 +189,7 @@ int main(int argc, char *argv[])
 
         verbose_printf("%s:\n", filename);
 
-        read_info input_image = {{0}};
+        read_info input_image = {{0}}; // initializes all fields to 0
         write_info output_image = {{0}};
         retval = read_image(filename,using_stdin,&input_image);
 
@@ -266,10 +268,10 @@ void sort_palette(write_info *output_image, colormap *map)
 
     /* move transparent colors to the beginning to shrink trns chunk */
     int num_transparent=0;
-    for(int i=0; i < map->colors; i++)
-    {
+    for(int i=0; i < map->colors; i++) {
         rgb_pixel px = to_rgb(output_image->gamma, map->palette[i].acolor);
         if (px.a != 255) {
+            // current transparent color is swapped with earlier opaque one
             if (i != num_transparent) {
                 const colormap_item tmp = map->palette[num_transparent];
                 map->palette[num_transparent] = map->palette[i];
@@ -401,6 +403,8 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
             sb = px.b + thiserr[col + 1].b * dither_level;
             sa = px.a + thiserr[col + 1].a * dither_level;
 
+            // Error must be clamped, otherwise it can accumulate so much that it will be
+            // impossible to compensate it, causing color streaks
             if (sr < 0) sr = 0;
             else if (sr > 1) sr = 1;
             if (sg < 0) sg = 0;
@@ -483,6 +487,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
                 nexterr[col + 2].b += (err.b * 3.0f) / 16.0f;
             }
 
+            // remapping is done in zig-zag
             if (fs_direction) {
                 ++col;
                 if (col >= cols) break;
@@ -575,6 +580,7 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
     return retval;
 }
 
+/* histogram contains information how many times each color is present in the image, weighted by importance_map */
 hist *histogram(read_info *input_image, int reqcolors, int speed_tradeoff, const float *importance_map)
 {
     hist *hist;
@@ -709,25 +715,26 @@ void contrast_maps(const rgb_pixel*const apixels[], int cols, int rows, double g
             curr=next;
             next = to_f(gamma, apixels[j][MIN(cols-1,i+1)]);
 
+            // contrast is difference between pixels neighbouring horizontally and vertically
             float a = fabsf(prev.a+next.a - curr.a*2.f),
-            r = fabsf(prev.r+next.r - curr.r*2.f),
-            g = fabsf(prev.g+next.g - curr.g*2.f),
-            b = fabsf(prev.b+next.b - curr.b*2.f);
+                  r = fabsf(prev.r+next.r - curr.r*2.f),
+                  g = fabsf(prev.g+next.g - curr.g*2.f),
+                  b = fabsf(prev.b+next.b - curr.b*2.f);
 
             f_pixel nextl = to_f(gamma, apixels[MAX(0,j-1)][i]);
             f_pixel prevl = to_f(gamma, apixels[MIN(rows-1,j+1)][i]);
 
             float a1 = fabsf(prevl.a+nextl.a - curr.a*2.f),
-            r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),
-            g1 = fabsf(prevl.g+nextl.g - curr.g*2.f),
-            b1 = fabsf(prevl.b+nextl.b - curr.b*2.f);
+                  r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),
+                  g1 = fabsf(prevl.g+nextl.g - curr.g*2.f),
+                  b1 = fabsf(prevl.b+nextl.b - curr.b*2.f);
 
             float horiz = MAX(MAX(a,r),MAX(g,b));
             float vert = MAX(MAX(a1,r1),MAX(g1,b1));
             float edge = MAX(horiz,vert);
             float z = edge - fabs(horiz-vert)*.5;
             z = 1.f - MAX(z,MIN(horiz,vert));
-            z *= z;
+            z *= z; // noise is amplified
             z *= z;
 
             noise[j*cols+i] = z;
@@ -735,6 +742,7 @@ void contrast_maps(const rgb_pixel*const apixels[], int cols, int rows, double g
         }
     }
 
+    // noise areas are shrunk and then expanded to remove thin edges from the map
     max3(noise, tmp, cols, rows);
     max3(tmp, noise, cols, rows);
 
@@ -820,6 +828,8 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
 
         colormap *newmap = mediancut(hist, min_opaque_val, reqcolors);
         if (newmap->subset_palette) {
+            // nearest_search() needs subset palette to accelerate the search, I presume that
+            // palette starting with most popular colors will improve search speed
             qsort(newmap->subset_palette->palette, newmap->subset_palette->colors, sizeof(newmap->subset_palette->palette[0]), compare_popularity);
         }
 
@@ -830,6 +840,9 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
 
         verbose_printf("...");
 
+        // after palette has been created, total error (MSE) is calculated to keep the best palette
+        // at the same time Voronoi iteration is done to improve the palette
+        // and histogram weights are adjusted based on remapping error to give more weight to poorly matched colors
 
         double total_error = 0;
         f_pixel average_color[newmap->colors];
@@ -839,7 +852,6 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
         for(int i=0; i < hist->size; i++) {
             float diff;
             int match = nearest_search(n, achv[i].acolor, min_opaque_val, &diff);
-                assert(diff >= 0);
             assert(achv[i].perceptual_weight > 0);
             total_error += diff * achv[i].perceptual_weight;
 
@@ -860,6 +872,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
             feedback_loop_trials -= 6;
+            // if error is really bad, it's unlikely to improve, so end sooner
             if (total_error > least_error*4) feedback_loop_trials -= 3;
             pam_freecolormap(newmap);
         }
@@ -894,6 +907,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     verbose_printf("  moving colormap towards local minimum\n");
 
+    // Voronoi iteration approaches local minimum for the palette
     int iterations = MAX(8-speed_tradeoff,0); iterations += iterations * iterations/2;
     const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
     double previous_palette_error = 9999999;
@@ -910,7 +924,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
 
     output_image->width = input_image->width;
     output_image->height = input_image->height;
-    output_image->gamma = 0.45455;
+    output_image->gamma = 0.45455; // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image

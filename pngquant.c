@@ -13,15 +13,6 @@
 ** implied warranty.
 */
 
-/* GRR TO DO:  "original file size" and "quantized file size" if verbose? */
-/* GRR TO DO:  add option to preserve background color (if any) exactly */
-/* GRR TO DO:  add mapfile support, but cleanly (build palette in main()) */
-/* GRR TO DO:  support 16 bps without down-conversion */
-/* GRR TO DO:  if all samples are gray and image is opaque and sample depth
-                would be no bigger than palette and user didn't explicitly
-                specify a mapfile, switch to grayscale */
-/* GRR TO DO:  if all samples are 0 or maxval, eliminate gAMA chunk (rwpng.c) */
-
 #define PNGQUANT_VERSION "1.6.2a (November 2011)"
 
 #define PNGQUANT_USAGE "\

@@ -50,7 +50,14 @@
 #include "blur.h"
 #include "viter.h"
 
-pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, float min_opaque_val, int speed_tradeoff);
+struct pngquant_options {
+    int reqcolors;
+    int floyd;
+    int speed_tradeoff;
+    float min_opaque_val;
+};
+
+pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options);
 pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
 pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin);
 
@@ -78,12 +85,14 @@ static void print_usage(FILE *fd)
 
 int main(int argc, char *argv[])
 {
+    struct pngquant_options options = {
+        .reqcolors = 256,
+        .floyd = TRUE, // floyd-steinberg dithering
+        .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, doesn't affect alpha)
+        .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
+    };
     int argn;
-    int reqcolors;
-    int floyd = TRUE; // floyd-steinberg dithering
     int force = FALSE; // force overwrite
-    float min_opaque_val = 1; // preserve opaque colors for IE
-    int speed_tradeoff = 3; // 1 max quality, 10 rough & fast. 3 is optimum.
     int using_stdin = FALSE;
     int latest_error=0, error_count=0, file_count=0;
     const char *filename, *newext = NULL;
@@ -95,13 +104,13 @@ int main(int argc, char *argv[])
 
         if ( 0 == strncmp(argv[argn], "-fs", 3) ||
              0 == strncmp(argv[argn], "-floyd", 3) )
-            floyd = TRUE;
+            options.floyd = TRUE;
         else if ( 0 == strncmp(argv[argn], "-nofs", 5) ||
                   0 == strncmp(argv[argn], "-nofloyd", 5) ||
                   0 == strncmp(argv[argn], "-ordered", 3) )
-            floyd = FALSE;
+            options.floyd = FALSE;
         else if (0 == strcmp(argv[argn], "-iebug"))
-            min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
+            options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
         else if (0 == strncmp(argv[argn], "-force", 2))
             force = TRUE;
         else if (0 == strncmp(argv[argn], "-noforce", 4))
@@ -136,7 +145,7 @@ int main(int argc, char *argv[])
                 print_usage(stderr);
                 return MISSING_ARGUMENT;
             }
-            speed_tradeoff = atoi(argv[argn]);
+            options.speed_tradeoff = atoi(argv[argn]);
         }
         else {
             print_usage(stderr);
@@ -150,26 +159,25 @@ int main(int argc, char *argv[])
         print_usage(stderr);
         return MISSING_ARGUMENT;
     }
-    if (sscanf(argv[argn], "%d", &reqcolors) == 1) {
-        reqcolors = 256; argn++;
+
+    if (sscanf(argv[argn], "%d", &options.reqcolors) == 1) {
+        argn++;
     }
-    if (reqcolors <= 1) {
-        fputs("number of colors must be greater than 1\n", stderr);
+
+    if (options.reqcolors < 2 || options.reqcolors > 256) {
+        fputs("number of colors must be between 2 and 256\n", stderr);
         return INVALID_ARGUMENT;
     }
-    if (reqcolors > 256) {
-        fputs("number of colors cannot be more than 256\n", stderr);
-        return INVALID_ARGUMENT;
-    }
-    if (speed_tradeoff < 1 || speed_tradeoff > 10) {
+
+    if (options.speed_tradeoff < 1 || options.speed_tradeoff > 10) {
         fputs("speed should be between 1 (slow) and 10 (fast)\n", stderr);
         return INVALID_ARGUMENT;
     }
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
-        newext = floyd? "-ie-fs8.png" : "-ie-or8.png";
-        if (min_opaque_val == 1.f) newext += 3; /* skip "-ie" */
+        newext = options.floyd ? "-ie-fs8.png" : "-ie-or8.png";
+        if (options.min_opaque_val == 1.f) newext += 3; /* skip "-ie" */
     }
 
     if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
@@ -180,7 +188,6 @@ int main(int argc, char *argv[])
         filename = argv[argn];
         ++argn;
     }
-
 
     /*=============================  MAIN LOOP  =============================*/
 
@@ -196,7 +203,7 @@ int main(int argc, char *argv[])
         if (!retval) {
             verbose_printf("  read file corrected for gamma %2.1f\n", 1.0/input_image.gamma);
 
-            retval = pngquant(&input_image, &output_image, floyd, reqcolors, min_opaque_val, speed_tradeoff);
+            retval = pngquant(&input_image, &output_image, &options);
         }
 
         /* now we're done with the INPUT data and row_pointers, so free 'em */
@@ -882,8 +889,10 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
     return acolormap;
 }
 
-pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, float min_opaque_val, int speed_tradeoff)
+pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options)
 {
+    const int speed_tradeoff = options->speed_tradeoff, reqcolors = options->reqcolors;
+    const float min_opaque_val = options->min_opaque_val;
     assert(min_opaque_val>0);
     modify_alpha(input_image, min_opaque_val);
 
@@ -947,7 +956,8 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
      */
     verbose_printf("  mapping image to new colors...");
 
-    int use_dither_map = floyd && edges && speed_tradeoff < 6;
+    const int floyd = options->floyd,
+              use_dither_map = floyd && edges && speed_tradeoff < 6;
 
     if (!floyd || use_dither_map) {
         // If no dithering is required, that's the final remapping.

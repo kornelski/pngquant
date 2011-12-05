@@ -150,8 +150,8 @@ int main(int argc, char *argv[])
         print_usage(stderr);
         return MISSING_ARGUMENT;
     }
-    if (sscanf(argv[argn], "%d", &reqcolors) != 1) {
-        reqcolors = 256; argn--;
+    if (sscanf(argv[argn], "%d", &reqcolors) == 1) {
+        reqcolors = 256; argn++;
     }
     if (reqcolors <= 1) {
         fputs("number of colors must be greater than 1\n", stderr);
@@ -165,7 +165,6 @@ int main(int argc, char *argv[])
         fputs("speed should be between 1 (slow) and 10 (fast)\n", stderr);
         return INVALID_ARGUMENT;
     }
-    ++argn;
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
@@ -173,9 +172,10 @@ int main(int argc, char *argv[])
         if (min_opaque_val == 1.f) newext += 3; /* skip "-ie" */
     }
 
-    if ( argn == argc || 0==strcmp(argv[argn],"-")) {
+    if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
         using_stdin = TRUE;
         filename = "stdin";
+        argn = argc;
     } else {
         filename = argv[argn];
         ++argn;
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
         if (retval) {
             latest_error = retval;
             ++error_count;
-        }
+            }
         ++file_count;
 
         verbose_printf("\n");
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
           file_count, (file_count == 1)? "" : "s");
     else
         verbose_printf("No errors detected while quantizing %d image%s.\n",
-          file_count, (file_count == 1)? "" : "s");
+                       file_count, (file_count == 1)? "" : "s");
 
     return latest_error;
 }
@@ -714,17 +714,17 @@ void contrast_maps(const rgb_pixel*const apixels[], int cols, int rows, double g
 
             // contrast is difference between pixels neighbouring horizontally and vertically
             float a = fabsf(prev.a+next.a - curr.a*2.f),
-                  r = fabsf(prev.r+next.r - curr.r*2.f),
-                  g = fabsf(prev.g+next.g - curr.g*2.f),
-                  b = fabsf(prev.b+next.b - curr.b*2.f);
+            r = fabsf(prev.r+next.r - curr.r*2.f),
+            g = fabsf(prev.g+next.g - curr.g*2.f),
+            b = fabsf(prev.b+next.b - curr.b*2.f);
 
             f_pixel nextl = to_f(gamma, apixels[MAX(0,j-1)][i]);
             f_pixel prevl = to_f(gamma, apixels[MIN(rows-1,j+1)][i]);
 
             float a1 = fabsf(prevl.a+nextl.a - curr.a*2.f),
-                  r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),
-                  g1 = fabsf(prevl.g+nextl.g - curr.g*2.f),
-                  b1 = fabsf(prevl.b+nextl.b - curr.b*2.f);
+            r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),
+            g1 = fabsf(prevl.g+nextl.g - curr.g*2.f),
+            b1 = fabsf(prevl.b+nextl.b - curr.b*2.f);
 
             float horiz = MAX(MAX(a,r),MAX(g,b));
             float vert = MAX(MAX(a1,r1),MAX(g1,b1));
@@ -901,20 +901,20 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     double palette_error = -1;
     colormap *acolormap = find_best_palette(hist, reqcolors, min_opaque_val, 56-9*speed_tradeoff, &palette_error);
 
-    verbose_printf("  moving colormap towards local minimum\n");
+        verbose_printf("  moving colormap towards local minimum\n");
 
     // Voronoi iteration approaches local minimum for the palette
     int iterations = MAX(8-speed_tradeoff,0); iterations += iterations * iterations/2;
-    const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
-    double previous_palette_error = 9999999;
-    for(int i=0; i < iterations; i++) {
-        palette_error = viter_do_iteration(hist, acolormap, min_opaque_val);
+        const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
+        double previous_palette_error = 9999999;
+        for(int i=0; i < iterations; i++) {
+            palette_error = viter_do_iteration(hist, acolormap, min_opaque_val);
 
-        if (fabs(previous_palette_error-palette_error) < iteration_limit) {
-            break;
+            if (fabs(previous_palette_error-palette_error) < iteration_limit) {
+                break;
+            }
+            previous_palette_error = palette_error;
         }
-        previous_palette_error = palette_error;
-    }
 
     pam_freeacolorhist(hist);
 

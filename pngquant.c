@@ -50,7 +50,7 @@
 #include "blur.h"
 #include "viter.h"
 
-pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff);
+pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, float min_opaque_val, int speed_tradeoff);
 pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
 pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin);
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     int reqcolors;
     int floyd = TRUE; // floyd-steinberg dithering
     int force = FALSE; // force overwrite
-    int ie_bug = FALSE; // preserve opaque colors for IE
+    float min_opaque_val = 1; // preserve opaque colors for IE
     int speed_tradeoff = 3; // 1 max quality, 10 rough & fast. 3 is optimum.
     int using_stdin = FALSE;
     int latest_error=0, error_count=0, file_count=0;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
                   0 == strncmp(argv[argn], "-ordered", 3) )
             floyd = FALSE;
         else if (0 == strcmp(argv[argn], "-iebug"))
-            ie_bug = TRUE;
+            min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
         else if (0 == strncmp(argv[argn], "-force", 2))
             force = TRUE;
         else if (0 == strncmp(argv[argn], "-noforce", 4))
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
         newext = floyd? "-ie-fs8.png" : "-ie-or8.png";
-        if (!ie_bug) newext += 3; /* skip "-ie" */
+        if (min_opaque_val == 1.f) newext += 3; /* skip "-ie" */
     }
 
     if ( argn == argc || 0==strcmp(argv[argn],"-")) {
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
         if (!retval) {
             verbose_printf("  read file corrected for gamma %2.1f\n", 1.0/input_image.gamma);
 
-            retval = pngquant(&input_image, &output_image, floyd, reqcolors, ie_bug, speed_tradeoff);
+            retval = pngquant(&input_image, &output_image, floyd, reqcolors, min_opaque_val, speed_tradeoff);
         }
 
         /* now we're done with the INPUT data and row_pointers, so free 'em */
@@ -307,7 +307,7 @@ void set_palette(write_info *output_image, const colormap *map)
     }
 }
 
-float remap_to_palette(read_info *input_image, write_info *output_image, colormap *map, float min_opaque_val, int ie_bug)
+float remap_to_palette(read_info *input_image, write_info *output_image, colormap *map, float min_opaque_val)
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     unsigned char **row_pointers = output_image->row_pointers;
@@ -356,7 +356,7 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
 /**
   Uses edge/noise map to apply dithering only to flat areas. Dithering on edges creates jagged lines, and noisy areas are "naturally" dithered.
  */
-void remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, float min_opaque_val, int ie_bug, const float *edge_map)
+void remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, float min_opaque_val, const float *edge_map)
 {
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
     unsigned char **row_pointers = output_image->row_pointers;
@@ -412,8 +412,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
             if (sb < 0) sb = 0;
             else if (sb > 1) sb = 1;
             if (sa < 0) sa = 0;
-            /* when fighting IE bug, dithering must not make opaque areas transparent */
-            else if (sa > 1 || (ie_bug && px.a > 255.0/256.0)) sa = 1;
+            else if (sa > 1) sa = 1;
 
             int ind;
             if (sa < 1.0/256.0) {
@@ -613,7 +612,7 @@ hist *histogram(read_info *input_image, int reqcolors, int speed_tradeoff, const
     return hist;
 }
 
-float modify_alpha(read_info *input_image, int ie_bug)
+float modify_alpha(read_info *input_image, float min_opaque_val)
 {
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
@@ -623,15 +622,13 @@ float modify_alpha(read_info *input_image, int ie_bug)
     rgb_pixel *pP;
     int rows= input_image->height, cols = input_image->width;
     double gamma = input_image->gamma;
-    float min_opaque_val, almost_opaque_val;
+    float almost_opaque_val;
 
-    if (ie_bug) {
-        min_opaque_val = 238.0/256.0; /* rest of the code uses min_opaque_val rather than checking for ie_bug */
+    if (min_opaque_val < 1.f) {
         almost_opaque_val = min_opaque_val * 169.0/256.0;
-
         verbose_printf("  Working around IE6 bug by making image less transparent...\n");
     } else {
-        min_opaque_val = almost_opaque_val = 1;
+        almost_opaque_val = 1;
     }
 
     for(int row = 0; row < rows; ++row) {
@@ -885,12 +882,11 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
     return acolormap;
 }
 
-pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, int ie_bug, int speed_tradeoff)
+pngquant_error pngquant(read_info *input_image, write_info *output_image, int floyd, int reqcolors, float min_opaque_val, int speed_tradeoff)
 {
-    float min_opaque_val;
-
-    min_opaque_val = modify_alpha(input_image,ie_bug);
     assert(min_opaque_val>0);
+    modify_alpha(input_image, min_opaque_val);
+
 
     float *noise = NULL, *edges = NULL;
     if (speed_tradeoff < 8) {
@@ -956,7 +952,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     if (!floyd || use_dither_map) {
         // If no dithering is required, that's the final remapping.
         // If dithering (with dither map) is required, this image is used to find areas that require dithering
-        float remapping_error = remap_to_palette(input_image, output_image, acolormap, min_opaque_val, ie_bug);
+        float remapping_error = remap_to_palette(input_image, output_image, acolormap, min_opaque_val);
 
         // remapping error from dithered image is absurd, so always non-dithered value is used
         // palette_error includes some perceptual weighting from histogram which is closer correlated with dssim
@@ -978,7 +974,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, int fl
     set_palette(output_image, acolormap);
 
     if (floyd) {
-        remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, ie_bug, edges);
+        remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, edges);
     }
 
     verbose_printf("\n");

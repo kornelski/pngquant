@@ -13,16 +13,18 @@ SYSTEMLIBPNG=/usr/X11
 CUSTOMLIBPNG = ../libpng
 CUSTOMZLIB = ../zlib
 
-CFLAGS += -DNDEBUG -std=gnu99 -O3 -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I$(SYSTEMLIBPNG)/include/ -funroll-loops -fomit-frame-pointer
+CFLAGS ?= -DNDEBUG -O3 -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I$(SYSTEMLIBPNG)/include/ -funroll-loops -fomit-frame-pointer
+CFLAGS += -std=gnu99
 
-LDFLAGS = -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L$(SYSTEMLIBPNG)/lib/ -L/usr/lib/ -lz -lpng -lm
+LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L$(SYSTEMLIBPNG)/lib/ -L/usr/lib/
+LDFLAGS += -lz -lpng -lm
 
 OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
 
 all: $(BIN)
 
 $(BIN): $(OBJS)
-	$(CC) -o $@ $(OBJS) $(LDFLAGS)
+	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
 install: $(BIN)
 	cp $(BIN) $(BINPREFIX)/$(BIN)

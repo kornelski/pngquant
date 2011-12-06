@@ -13,7 +13,7 @@ SYSTEMLIBPNG=/usr/X11
 CUSTOMLIBPNG = ../libpng
 CUSTOMZLIB = ../zlib
 
-CFLAGS = -DNDEBUG -std=gnu99 -O3 -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I$(SYSTEMLIBPNG)/include/ -funroll-loops -fomit-frame-pointer
+CFLAGS += -DNDEBUG -std=gnu99 -O3 -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I$(SYSTEMLIBPNG)/include/ -funroll-loops -fomit-frame-pointer
 
 LDFLAGS = -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L$(SYSTEMLIBPNG)/lib/ -L/usr/lib/ -lz -lpng -lm
 

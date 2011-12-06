@@ -73,7 +73,7 @@ void verbose_printf(const char *fmt, ...)
 
 static void print_full_version(FILE *fd)
 {
-    fprintf(fd, "pngquant-improved, version %s, by Greg Roelofs, Kornel Lesinski.\n", PNGQUANT_VERSION);
+    fprintf(fd, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n%s", PNGQUANT_VERSION, USE_SSE ? "   Compiled with SSE3 instructions\n" : "");
     rwpng_version_info(fd);
     fputs("\n", fd);
 }

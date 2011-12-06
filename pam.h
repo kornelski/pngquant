@@ -20,11 +20,15 @@
 #  define MIN(a,b)  ((a) < (b)? (a) : (b))
 #endif
 
-#ifdef __SSE3__
-#define USE_SSE
+#ifndef USE_SSE
+#  ifdef __SSE3__
+#    define USE_SSE 1
+#  else
+#    define USE_SSE 0
+#  endif
 #endif
 
-#ifdef USE_SSE
+#if USE_SSE
 #include <pmmintrin.h>
 #endif
 
@@ -108,7 +112,7 @@ inline static float colordifference_stdc(f_pixel px, f_pixel py)
 
 inline static float colordifference(f_pixel px, f_pixel py)
 {
-#ifdef USE_SSE
+#if USE_SSE
     __m128 vpx = _mm_load_ps((const float*)&px);
     __m128 vpy = _mm_load_ps((const float*)&py);
 

@@ -534,6 +534,8 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
         fs_direction = !fs_direction;
     }
 
+    free(thiserr);
+    free(nexterr);
     nearest_free(n);
 }
 

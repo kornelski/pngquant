@@ -162,6 +162,7 @@ colormap *pam_colormap(int colors)
 
 void pam_freecolormap(colormap *c)
 {
+    if (c->subset_palette) pam_freecolormap(c->subset_palette);
     free(c->palette); free(c);
 }
 

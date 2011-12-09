@@ -238,8 +238,6 @@ int main(int argc, char *argv[])
         }
 
         if (!retval) {
-            verbose_printf("  writing %d-color image\n", output_image.num_palette);
-
             retval = write_image(&output_image,filename,newext,force,using_stdin);
         }
 
@@ -574,6 +572,8 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
     if (using_stdin) {
         set_binary_mode(stdout);
         outfile = stdout;
+
+        verbose_printf("  writing %d-color image to stdout\n", output_image->num_palette);
     } else {
         char *outname = add_filename_extension(filename,newext);
 
@@ -590,6 +590,10 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
             free(outname);
             return CANT_WRITE_ERROR;
         }
+
+        char *outfilename = strrchr(outname, '/'); if (outfilename) outfilename++; else outfilename = outname;
+        verbose_printf("  writing %d-color image as %s\n", output_image->num_palette, outfilename);
+
         free(outname);
     }
 

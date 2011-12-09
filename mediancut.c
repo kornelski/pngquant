@@ -43,7 +43,7 @@ static int comparevariance(const void *ch1, const void *ch2)
 {
     return ((channelvariance*)ch1)->variance > ((channelvariance*)ch2)->variance ? -1 :
           (((channelvariance*)ch1)->variance < ((channelvariance*)ch2)->variance ? 1 : 0);
-};
+}
 
 static channelvariance channel_sort_order[4];
 

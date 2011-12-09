@@ -14,7 +14,7 @@ CUSTOMLIBPNG = ../libpng
 CUSTOMZLIB = ../zlib
 
 CFLAGS ?= -DNDEBUG -O3 -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I$(SYSTEMLIBPNG)/include/ -funroll-loops -fomit-frame-pointer
-CFLAGS += -std=gnu99
+CFLAGS += -std=c99
 
 LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L$(SYSTEMLIBPNG)/lib/ -L/usr/lib/
 LDFLAGS += -lz -lpng -lm

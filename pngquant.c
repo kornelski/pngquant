@@ -119,10 +119,53 @@ inline static bool is_sse2_available()
         }
 #endif
 
-static double quality_to_mse(int quality)
+static double quality_to_mse(long quality)
 {
+    if (quality == 0) return INFINITY;
+
     // curve fudged to be roughly similar to quality of libjpeg
     return 1.1/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
+}
+
+
+/**
+ *   N = automatic quality, uses limit unless force is set (N-N or 0-N)
+ *  -N = no better than N (same as 0-N)
+ * N-M = no worse than N, no better than M
+ * N-  = no worse than N, perfect if possible (same as N-100)
+ *
+ * where N,M are numbers between 0 (lousy) and 100 (perfect)
+ */
+static bool parse_quality(const char *quality, struct pngquant_options *options)
+{
+    long limit, target;
+    const char *str = quality; char *end;
+
+    long t1 = strtol(str, &end, 10);
+    if (str == end) return false;
+    str = end;
+
+    if ('\0' == end[0] && t1 < 0) { // quality="-%d"
+        target = -t1;
+        limit = 0;
+    } else if ('\0' == end[0]) { // quality="%d"
+        target = t1;
+        limit = t1*9/10;
+    } else if ('-' == end[0] && '\0' == end[1]) { // quality="%d-"
+        target = 100;
+        limit = t1;
+    } else { // quality="%d-%d"
+        long t2 = strtol(str, &end, 10);
+        if (str == end || t2 > 0) return false;
+        target = -t2;
+        limit = t1;
+    }
+
+    if (target < 0 || target > 100 || limit < 0 || limit > 100) return false;
+
+    options->max_mse = quality_to_mse(limit);
+    options->target_mse = quality_to_mse(target);
+    return true;
 }
 
 static const struct {const char *old; char *new;} obsolete_options[] = {
@@ -159,7 +202,7 @@ static void fix_obsolete_options(const int argc, char *argv[])
     }
 }
 
-enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug};
+enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug, arg_quality};
 
 static const struct option long_options[] = {
     {"verbose", no_argument, NULL, 'v'},
@@ -173,6 +216,7 @@ static const struct option long_options[] = {
     {"transbug", no_argument, NULL, arg_transbug},
     {"ext", required_argument, NULL, arg_ext},
     {"speed", required_argument, NULL, 's'},
+    {"quality", required_argument, NULL, arg_quality},
     {"version", no_argument, NULL, 'V'},
     {"help", no_argument, NULL, 'h'},
 };
@@ -223,6 +267,13 @@ int main(int argc, char *argv[])
                 }
                 break;
 
+            case arg_quality:
+                if (!parse_quality(optarg, &options)) {
+                    fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
+                    return INVALID_ARGUMENT;
+                }
+                break;
+
             case 'h':
             print_full_version(stdout);
             print_usage(stdout);
@@ -245,8 +296,8 @@ int main(int argc, char *argv[])
         if (argn > 1) {
             fputs("No input files specified. See -h for help.\n", stderr);
         } else {
-        print_full_version(stderr);
-        print_usage(stderr);
+            print_full_version(stderr);
+            print_usage(stderr);
         }
         return MISSING_ARGUMENT;
     }
@@ -339,10 +390,10 @@ int main(int argc, char *argv[])
 
         if (retval) {
             latest_error = retval;
-            if (retval != TOO_LOW_QUALITY) {
-                error_count++;
-            } else {
+            if (retval == TOO_LOW_QUALITY) {
                 skipped_count++;
+            } else {
+                error_count++;
             }
         }
         ++file_count;
@@ -359,10 +410,12 @@ int main(int argc, char *argv[])
     if (error_count) {
         verbose_printf("There were errors quantizing %d file%s out of a total of %d file%s.\n",
                        error_count, (error_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
-    } else if (skipped_count) {
+    }
+    if (skipped_count) {
         verbose_printf("Skipped %d file%s out of a total of %d file%s.\n",
                        skipped_count, (skipped_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
-    } else {
+    }
+    if (!skipped_count && !error_count) {
         verbose_printf("No errors detected while quantizing %d image%s.\n",
                        file_count, (file_count == 1)? "" : "s");
     }

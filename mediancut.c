@@ -256,7 +256,7 @@ double box_error(const struct box *box, const hist_item achv[])
 }
 
 
-static int total_box_error_below_target(double target_mse, struct box bv[], int boxes, const hist *hist)
+static int total_box_error_below_target(double target_mse, struct box bv[], int boxes, const histogram *hist)
 {
     target_mse *= hist->total_perceptual_weight;
     double total_error=0;

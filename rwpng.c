@@ -154,6 +154,8 @@ pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
         mainprog_ptr->gamma = 0.45455;
     }
 
+    png_set_interlace_handling(png_ptr);
+
     /* all transformations have been registered; now update info_ptr data,
      * get rowbytes and channels, and allocate image memory */
 

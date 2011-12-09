@@ -29,8 +29,6 @@
 
   ---------------------------------------------------------------------------*/
 
-#include <setjmp.h>
-#define PNG_SKIP_SETJMP_CHECK
 #include "png.h"    /* libpng header; includes zlib.h */
 
 #ifndef TRUE

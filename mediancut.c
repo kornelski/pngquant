@@ -29,6 +29,7 @@ static int weightedcompare_a(const void *ch1, const void *ch2);
 static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float min_opaque_val);
 
 struct box {
+    f_pixel color;
     float variance;
     int sum;
     int ind;
@@ -107,13 +108,13 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
     return weightedcompare_other(c1p, c2p);
 }
 
-f_pixel channel_variance(const hist_item achv[], int indx, int clrs, float min_opaque_val)
+static f_pixel channel_variance(const hist_item achv[], struct box *box)
 {
-    f_pixel mean = averagepixels(indx, clrs, achv, min_opaque_val);
+    f_pixel mean = box->color;
     f_pixel variance = (f_pixel){0,0,0,0};
 
-    for (int i = 0; i < clrs; ++i) {
-        f_pixel px = achv[indx + i].acolor;
+    for (int i = 0; i < box->colors; ++i) {
+        f_pixel px = achv[box->ind + i].acolor;
         variance.a += (mean.a - px.a)*(mean.a - px.a);
         variance.r += (mean.r - px.r)*(mean.r - px.r);
         variance.g += (mean.g - px.g)*(mean.g - px.g);
@@ -193,6 +194,7 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
     bv[0].ind = 0;
     bv[0].colors = hist->size;
     bv[0].variance = 1.0;
+    bv[0].color = averagepixels(bv[0].ind, bv[0].colors, achv, min_opaque_val);
     bv[0].sum = 0;
     for(int i=0; i < bv[0].colors; i++) bv[0].sum += achv[i].adjusted_weight;
 
@@ -218,7 +220,7 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
         int indx = bv[bi].ind;
         int clrs = bv[bi].colors;
 
-        sort_colors_by_variance(channel_variance(achv, indx, clrs, min_opaque_val), achv, indx, clrs);
+        sort_colors_by_variance(channel_variance(achv, &bv[bi]), achv, indx, clrs);
 
         /*
          Classic implementation tries to get even number of colors or pixels in each subdivision.
@@ -255,10 +257,12 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
         bv[bi].variance = lowervar;
+        bv[bi].color = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
         bv[boxes].ind = indx + break_at;
         bv[boxes].colors = clrs - break_at;
         bv[boxes].sum = sm - lowersum;
         bv[boxes].variance = halfvar*2.0-lowervar;
+        bv[boxes].color = averagepixels(bv[boxes].ind, bv[boxes].colors, achv, min_opaque_val);
         ++boxes;
     }
 
@@ -282,7 +286,7 @@ static colormap *colormap_from_boxes(struct box* bv, int boxes, hist_item *achv,
     colormap *map = pam_colormap(boxes);
 
     for (int bi = 0; bi < boxes; ++bi) {
-        map->palette[bi].acolor = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
+        map->palette[bi].acolor = bv[bi].color;
 
         /* store total color popularity (perceptual_weight is approximation of it) */
         map->palette[bi].popularity = 0;

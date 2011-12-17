@@ -108,6 +108,16 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
     return weightedcompare_other(c1p, c2p);
 }
 
+float box_variance(const hist_item achv[], const struct box* box)
+{
+    f_pixel mean = box->color;
+    float variance=0;
+    for (int i = 0; i < box->colors; ++i) {
+        variance += colordifference(achv[box->ind + i].acolor, mean) * achv[box->ind + i].adjusted_weight;
+    }
+    return variance;
+}
+
 static f_pixel channel_variance(const hist_item achv[], struct box *box)
 {
     f_pixel mean = box->color;
@@ -256,13 +266,13 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
         int sm = bv[bi].sum;
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
-        bv[bi].variance = lowervar;
         bv[bi].color = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);
+        bv[bi].variance = box_variance(achv, &bv[bi]);
         bv[boxes].ind = indx + break_at;
         bv[boxes].colors = clrs - break_at;
         bv[boxes].sum = sm - lowersum;
-        bv[boxes].variance = halfvar*2.0-lowervar;
         bv[boxes].color = averagepixels(bv[boxes].ind, bv[boxes].colors, achv, min_opaque_val);
+        bv[boxes].variance = box_variance(achv, &bv[boxes]);
         ++boxes;
     }
 

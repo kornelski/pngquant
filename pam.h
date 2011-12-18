@@ -49,52 +49,53 @@ typedef struct {
 static const float internal_gamma = 0.45455;
 
 /**
- Converts scalar color to internal gamma and premultiplied alpha.
+ Converts 8-bit color to internal gamma and premultiplied alpha.
  (premultiplied color space is much better for blending of semitransparent colors)
- */
-inline static f_pixel to_f_scalar(float gamma, f_pixel px)
-{
-    if (gamma != internal_gamma) {
-        px.r = powf(px.r, internal_gamma/gamma);
-        px.g = powf(px.g, internal_gamma/gamma);
-        px.b = powf(px.b, internal_gamma/gamma);
-    }
-
-    px.r *= px.a;
-    px.g *= px.a;
-    px.b *= px.a;
-
-    return px;
-}
-
-/**
-  Converts 8-bit RGB with given gamma to scalar RGB
  */
 inline static f_pixel to_f(float gamma, rgb_pixel px)
 {
-    return to_f_scalar(gamma, (f_pixel){
-        .a = px.a/255.0f,
-        .r = px.r/255.0f,
-        .g = px.g/255.0f,
-        .b = px.b/255.0f,
-    });
+    float r = px.r/255.f,
+          g = px.g/255.f,
+          b = px.b/255.f,
+          a = px.a/255.f;
+
+    if (gamma != internal_gamma) {
+        r = powf(r, internal_gamma/gamma);
+        g = powf(g, internal_gamma/gamma);
+        b = powf(b, internal_gamma/gamma);
+    }
+
+
+    return (f_pixel) {
+        .a = a,
+        .r = r*a,
+        .g = g*a,
+        .b = b*a,
+    };
 }
 
 inline static rgb_pixel to_rgb(float gamma, f_pixel px)
 {
-    if (px.a < 1.0/256.0) {
+    if (px.a < 1.f/256.f) {
         return (rgb_pixel){0,0,0,0};
     }
 
-    float r,g,b,a;
+    float r = px.r / px.a,
+          g = px.g / px.a,
+          b = px.b / px.a,
+          a = px.a;
 
-    gamma /= internal_gamma;
+    if (gamma != internal_gamma) {
+        r = powf(r, gamma/internal_gamma);
+        g = powf(g, gamma/internal_gamma);
+        b = powf(b, gamma/internal_gamma);
+    }
 
     // 256, because numbers are in range 1..255.9999… rounded down
-    r = powf(px.r/px.a, gamma)*256.0f;
-    g = powf(px.g/px.a, gamma)*256.0f;
-    b = powf(px.b/px.a, gamma)*256.0f;
-    a = px.a*256.0;
+    r *= 256.f;
+    g *= 256.f;
+    b *= 256.f;
+    a *= 256.f;
 
     return (rgb_pixel){
         .r = r>=255 ? 255 : (r<=0 ? 0 : r),

@@ -13,7 +13,7 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "1.6.2 (November 2011)"
+#define PNGQUANT_VERSION "1.6.3 (December 2011)"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -83,22 +83,14 @@ static void print_usage(FILE *fd)
     fputs(PNGQUANT_USAGE, fd);
 }
 
-inline static int is_sse3_required_but_not_available()
-{
 #if USE_SSE
+inline static int is_sse3_available()
+{
     int a,b,c,d;
-    cpuid(0, a, b, c, d);
-    if (a > 0) {
-        cpuid(1, a, b, c, d);
-        if (a&1) {
-            return FALSE; // required but available
-        }
-    }
-    return TRUE; // required and unavailable
-#else
-    return FALSE; // not required
-#endif
+    cpuid(1, a, b, c, d);
+    return (c&1); // ecx bit 0 is set when SSE3 is present
 }
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -206,11 +198,13 @@ int main(int argc, char *argv[])
         ++argn;
     }
 
-    if (is_sse3_required_but_not_available()) {
+#if USE_SSE
+    if (!is_sse3_available()) {
         print_full_version(stderr);
         fputs("SSE3-capable CPU is required for this build.\n", stderr);
         return WRONG_ARCHITECTURE;
     }
+#endif
 
     /*=============================  MAIN LOOP  =============================*/
 

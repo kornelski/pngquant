@@ -3,6 +3,7 @@ version 1.6
  - novel dithering algorithm that doesn't add noise unless necessary
  - perceptual weighting of colors taking into account edges and noise
  - much faster remapping
+ - improved portability, makefiles and man page
 
 version 1.5
 -----------

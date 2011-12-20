@@ -6,19 +6,16 @@ BIN = pngquant
 PREFIX ?= /usr
 BINPREFIX = $(PREFIX)/bin
 
-# Change this to point to directory where include/png.h can be found:
-SYSTEMLIBPNG=/usr/X11
-
 # Alternatively, build libpng and zlib in these directories:
-CUSTOMLIBPNG = ../libpng
-CUSTOMZLIB = ../zlib
+CUSTOMLIBPNG ?= ../libpng
+CUSTOMZLIB ?= ../zlib
 
 CFLAGSOPT ?= -O3 -fearly-inlining -fstrict-aliasing -ffast-math -funroll-loops -fomit-frame-pointer -fexpensive-optimizations -ffinite-math-only -funsafe-loop-optimizations
 
-CFLAGS ?= -DNDEBUG -g -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I$(SYSTEMLIBPNG)/include/ $(CFLAGSOPT)
+CFLAGS ?= -DNDEBUG -g -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I/usr/local/include/ -I/usr/include/ $(CFLAGSOPT)
 CFLAGS += -std=c99
 
-LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L$(SYSTEMLIBPNG)/lib/ -L/usr/lib/
+LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L/usr/local/lib/ -L/usr/lib/
 LDFLAGS += -lz -lpng -lm
 
 OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o

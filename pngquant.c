@@ -213,8 +213,8 @@ int main(int argc, char *argv[])
 
         verbose_printf("%s:\n", filename);
 
-        read_info input_image = {{0}}; // initializes all fields to 0
-        write_info output_image = {{0}};
+        read_info input_image = {}; // initializes all fields to 0
+        write_info output_image = {};
         retval = read_image(filename,using_stdin,&input_image);
 
         if (!retval) {
@@ -846,7 +846,7 @@ static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_v
 {
     hist_item *achv = hist->achv;
     colormap *acolormap = NULL;
-    double least_error;
+    double least_error = 0;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
     do

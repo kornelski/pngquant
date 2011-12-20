@@ -30,8 +30,8 @@ static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float m
 
 struct box {
     f_pixel color;
-    float variance;
-    int sum;
+    double variance;
+    double sum;
     int ind;
     int colors;
 };
@@ -108,10 +108,10 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
     return weightedcompare_other(c1p, c2p);
 }
 
-float box_variance(const hist_item achv[], const struct box* box)
+double box_variance(const hist_item achv[], const struct box* box)
 {
     f_pixel mean = box->color;
-    float variance=0;
+    double variance=0;
     for (int i = 0; i < box->colors; ++i) {
         variance += colordifference(achv[box->ind + i].acolor, mean) * achv[box->ind + i].adjusted_weight;
     }
@@ -177,12 +177,12 @@ static int best_splittable_box(struct box* bv, int boxes)
     return bi;
 }
 
-inline static float color_weight(f_pixel median, hist_item h)
+inline static double color_weight(f_pixel median, hist_item h)
 {
     float diff = colordifference(median, h.acolor);
     // if color is "good enough", don't split further
     if (diff < 1.f/256.f) diff /= 2.f;
-    return sqrtf(diff) * (sqrtf(1.f+h.adjusted_weight)-1.f);
+    return sqrt(diff) * (sqrt(1.0+h.adjusted_weight)-1.0);
 }
 
 static colormap *colormap_from_boxes(struct box* bv,int boxes,hist_item *achv,float min_opaque_val);
@@ -245,7 +245,7 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
 
         f_pixel median = averagepixels(indx+(clrs-1)/2, clrs&1 ? 1 : 2, achv, min_opaque_val);
 
-        float halfvar = 0, lowervar = 0, lowersum = 0;
+        double halfvar = 0, lowervar = 0, lowersum = 0;
         for(int i=0; i < clrs; i++) {
             halfvar += color_weight(median, achv[indx+i]);
         }
@@ -263,7 +263,7 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
         /*
          ** Split the box. Sum*variance is then used to find "largest" box to split.
          */
-        int sm = bv[bi].sum;
+        double sm = bv[bi].sum;
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
         bv[bi].color = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);

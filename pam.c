@@ -63,7 +63,9 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
     struct acolorhist_list_item *achl, **buckets;
     int col, row, hash;
     const unsigned int channel_mask = 255>>ignorebits<<ignorebits;
+    const unsigned int channel_hmask = (255>>(ignorebits)) ^ 0xFF;
     const unsigned int posterize_mask = channel_mask << 24 | channel_mask << 16 | channel_mask << 8 | channel_mask;
+    const unsigned int posterize_high_mask = channel_hmask << 24 | channel_hmask << 16 | channel_hmask << 8 | channel_hmask;
     acht = pam_allocacolorhash();
     buckets = acht->buckets;
     int colors=0;
@@ -78,7 +80,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
             }
 
             union rgb_as_long px = {apixels[row][col]};
-            px.l &= posterize_mask;
+            px.l = (px.l & posterize_mask) | ((px.l & posterize_high_mask) >> (8-ignorebits));
             hash = px.l % HASH_SIZE;
 
             for (achl = buckets[hash]; achl != NULL; achl = achl->next) {

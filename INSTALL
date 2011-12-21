@@ -1,7 +1,31 @@
-Follow the steps below to build pngquant from source on Linux or UNIX systems.
+To build pngquant from source on Mac OS X and most Linux distributions,
+simply run:
 
-You can skip first two steps if you have libpng installed on your system
-(although you may need to change paths in the Makefile)
+      $ make
+
+It will create pngquant executable in the current directory. If you'd like
+to install it system-wide:
+
+      $ sudo make install
+
+By default it will be installed in /usr/bin/. To install it in another
+directory (e.g. FreeBSD default location):
+
+      $ PREFIX=/usr/local make
+
+pngquant uses GNU Makefile. To compile on FreeBSD you will need to use gmake.
+
+For compilation instructions for Windows, see comments in Makefile.w32 file.
+
+
+##Compilation with custom libpng and zlib
+
+If you have custom libpng and zlib compiled, you can specify their paths:
+
+      $ CUSTOMLIBPNG=/path/to/libpng/ CUSTOMZLIB=/path/to/zlib/ make
+
+Alternatively, you can build your own versions in ../zlib and ../libpng
+directories. Use this only if you can't get your system's libpng/zlib to work.
 
 1. Download the zlib source code from:
    http://www.zlib.net/
@@ -23,7 +47,7 @@ You can skip first two steps if you have libpng installed on your system
    http://www.libpng.org/pub/png/libpng.html - e.g.:
 
       $ cd ..
-      $ wget http://prdownloads.sourceforge.net/libpng/libpng-1.2.44.tar.gz?download
+      $ wget http://prdownloads.sourceforge.net/libpng/libpng-1.2.46.tar.gz?download
 
    Unpack it into the parent directory of the 'pngquant' directory and rename
    it to 'libpng' - e.g.:
@@ -36,9 +60,19 @@ You can skip first two steps if you have libpng installed on your system
       $ cd libpng
       $ ./configure && make
 
-3. Go back to the pngquant directory and make using the Makefile.unx make file:
+3. Go back to the pngquant directory and make using the Makefile make file:
 
       $ cd ../pngquant/
       $ make
 
-That's it, you should now have a 'pngquant' executable in the current directory.
+
+##Compilation for portability
+
+pngquant will use SSE3 instructions if compiled on machine that supports it.
+If you need to compile for all x86/x64 CPUs:
+
+      $ USE_SSE=0 make
+
+Other CPU architectures don't need this.
+
+Alternatively, you can override all compiler flags using CFLAGS and LDFLAGS.

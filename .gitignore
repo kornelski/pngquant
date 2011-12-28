@@ -1,3 +1,5 @@
+pngquant
+pngquant.1.gz
 *.dylib
 *.mode1v3
 *.o

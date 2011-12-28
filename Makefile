@@ -9,8 +9,7 @@ SSEFLAG=-DUSE_SSE=$(USE_SSE)
 endif
 
 BIN = pngquant
-PREFIX ?= /usr
-BINPREFIX = $(PREFIX)/bin
+BINDIR ?= /usr/bin
 
 # Alternatively, build libpng and zlib in these directories:
 CUSTOMLIBPNG ?= ../libpng
@@ -32,10 +31,10 @@ $(BIN): $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
 install: $(BIN)
-	cp $(BIN) $(BINPREFIX)/$(BIN)
+	install -m 0755 -p -D $(BIN) $(DESTDIR)$(BINDIR)/$(BIN)
 
 uninstall:
-	rm -f $(BINPREFIX)/$(BIN)
+	rm -f $(BINDIR)/$(BIN)
 
 clean:
 	rm -f pngquant $(OBJS)

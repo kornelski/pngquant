@@ -31,6 +31,8 @@ all: $(BIN)
 $(BIN): $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
+$(OBJS): pam.h rwpng.h
+
 install: $(BIN)
 	install -m 0755 -p -D $(BIN) $(DESTDIR)$(BINPREFIX)/$(BIN)
 

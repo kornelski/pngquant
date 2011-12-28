@@ -8,9 +8,8 @@ ifdef USE_SSE
 SSEFLAG=-DUSE_SSE=$(USE_SSE)
 endif
 
-BIN = pngquant
-PREFIX ?= /usr
-BINPREFIX = $(PREFIX)/bin
+BINDIR ?= /usr/bin
+MANDIR ?= /usr/share/man/man1
 
 # Alternatively, build libpng and zlib in these directories:
 CUSTOMLIBPNG ?= ../libpng
@@ -26,19 +25,24 @@ LDFLAGS += -lz -lpng -lm
 
 OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
 
-all: $(BIN)
+all: pngquant pngquant.1.gz
 
-$(BIN): $(OBJS)
+pngquant: $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
-install: $(BIN)
-	cp $(BIN) $(BINPREFIX)/$(BIN)
+pngquant.1.gz: pngquant.1
+	gzip -9 <$< >$@
+
+install: all
+	install -m 0755 -p -D pngquant $(DESTDIR)$(BINDIR)/pngquant
+	install -m 0644 -p -D pngquant.1.gz $(DESTDIR)$(MANDIR)/pngquant.1.gz
 
 uninstall:
-	rm -f $(BINPREFIX)/$(BIN)
+	rm -f $(BINDIR)/pngquant
+	rm -f $(MANDIR)/pngquant.1.gz
 
 clean:
-	rm -f pngquant $(OBJS)
+	rm -f pngquant pngquant.1.gz $(OBJS)
 
 .PHONY: all install uninstall clean
 

@@ -32,7 +32,7 @@ $(BIN): $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
 install: $(BIN)
-	cp $(BIN) $(BINPREFIX)/$(BIN)
+	install -m 0755 -p -D $(BIN) $(DESTDIR)$(BINPREFIX)/$(BIN)
 
 uninstall:
 	rm -f $(BINPREFIX)/$(BIN)

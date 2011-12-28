@@ -8,7 +8,6 @@ ifdef USE_SSE
 SSEFLAG=-DUSE_SSE=$(USE_SSE)
 endif
 
-BIN = pngquant
 BINDIR ?= /usr/bin
 MANDIR ?= /usr/share/man/man1
 
@@ -26,20 +25,21 @@ LDFLAGS += -lz -lpng -lm
 
 OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
 
-all: $(BIN) pngquant.1.gz
+all: pngquant pngquant.1.gz
 
-$(BIN): $(OBJS)
+pngquant: $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
 pngquant.1.gz: pngquant.1
 	gzip -9 <$< >$@
 
 install: all
-	install -m 0755 -p -D $(BIN) $(DESTDIR)$(BINDIR)/$(BIN)
+	install -m 0755 -p -D pngquant $(DESTDIR)$(BINDIR)/pngquant
 	install -m 0644 -p -D pngquant.1.gz $(DESTDIR)$(MANDIR)/pngquant.1.gz
 
 uninstall:
-	rm -f $(BINDIR)/$(BIN)
+	rm -f $(BINDIR)/pngquant
+	rm -f $(MANDIR)/pngquant.1.gz
 
 clean:
 	rm -f pngquant pngquant.1.gz $(OBJS)

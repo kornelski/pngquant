@@ -1,6 +1,6 @@
 #pngquant
 
-This the [official](http://www.libpng.org/pub/png/apps/pngquant.html) [new](http://pornel.net/pngquant) `pngquant`.
+This the [official](http://www.libpng.org/pub/png/apps/pngquant.html) [new](http://pngquant.org) `pngquant`.
 
 pngquant converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*. Such images are compatible with all modern browsers, and a special compatibility setting exists which helps transparency degrade well in Internet Explorer 6.
 

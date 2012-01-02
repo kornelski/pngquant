@@ -320,14 +320,12 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
 
 static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float min_opaque_val)
 {
-    float r = 0, g = 0, b = 0, a = 0, sum = 0;
+    double r = 0, g = 0, b = 0, a = 0, sum = 0;
     float maxa = 0;
-    int i;
 
-    for (i = 0; i < clrs; ++i) {
-        float weight = 1.0f;
+    for (int i = 0; i < clrs; ++i) {
         f_pixel px = achv[indx + i].acolor;
-        float tmp;
+        double tmp, weight = 1.0f;
 
         /* give more weight to colors that are further away from average
          this is intended to prevent desaturation of images and fading of whites

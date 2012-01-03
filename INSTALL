@@ -8,10 +8,8 @@ to install it system-wide:
 
       $ sudo make install
 
-By default it will be installed in /usr/bin/. To install it in another
-directory (e.g. FreeBSD default location):
-
-      $ PREFIX=/usr/local make
+By default it will be installed in /usr/local/bin. To install it in another
+directory set PREFIX or DESTDIR environmental variables.
 
 pngquant uses GNU Makefile. To compile on FreeBSD you will need to use gmake.
 

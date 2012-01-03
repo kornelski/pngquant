@@ -9,7 +9,7 @@ SSEFLAG=-DUSE_SSE=$(USE_SSE)
 endif
 
 BIN = pngquant
-PREFIX ?= /usr
+PREFIX ?= /usr/local
 BINPREFIX = $(PREFIX)/bin
 
 # Alternatively, build libpng and zlib in these directories:

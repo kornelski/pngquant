@@ -813,7 +813,7 @@ void update_dither_map(write_info *output_image, float *edges)
             unsigned char px = pixels[row*width + col];
 
             if (px != lastpixel || col == width-1) {
-                float neighbor_count = 3.f + col-lastcol;
+                float neighbor_count = 2.5f + col-lastcol;
 
                 int i=lastcol;
                 while(i < col) {
@@ -829,13 +829,13 @@ void update_dither_map(write_info *output_image, float *edges)
                 }
 
                 while(lastcol <= col) {
-                    edges[row*width + lastcol++] *= 1.f - 3.f/neighbor_count;
+                    edges[row*width + lastcol++] *= 1.f - 2.5f/neighbor_count;
                 }
                 lastpixel = px;
             }
         }
     }
-    }
+}
 
 /**
  Repeats mediancut with different histogram weights to find palette with minimum error.
@@ -997,7 +997,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, const 
         if (use_dither_map) {
             update_dither_map(output_image, edges);
         }
-        }
+    }
 
     if (palette_error >= 0) {
         verbose_printf("MSE=%.3f", palette_error*256.0f*256.0f);

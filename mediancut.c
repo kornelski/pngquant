@@ -108,9 +108,11 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
     return weightedcompare_other(c1p, c2p);
 }
 
-inline static float variance_diff(float val)
+inline static float variance_diff(float val, const float good_enough)
 {
-    return val*val;
+    val *= val;
+    if (val < good_enough*good_enough) return val / 2.f;
+    return val;
 }
 
 static f_pixel box_variance(const hist_item achv[], const struct box *box)
@@ -121,10 +123,10 @@ static f_pixel box_variance(const hist_item achv[], const struct box *box)
     for (int i = 0; i < box->colors; ++i) {
         f_pixel px = achv[box->ind + i].acolor;
         float weight = achv[box->ind + i].adjusted_weight;
-        variance.a += variance_diff(mean.a - px.a)*weight;
-        variance.r += variance_diff(mean.r - px.r)*weight;
-        variance.g += variance_diff(mean.g - px.g)*weight;
-        variance.b += variance_diff(mean.b - px.b)*weight;
+        variance.a += variance_diff(mean.a - px.a, 1.f/256.f)*weight*0.95;
+        variance.r += variance_diff(mean.r - px.r, 1.f/512.f)*weight;
+        variance.g += variance_diff(mean.g - px.g, 1.f/512.f)*weight;
+        variance.b += variance_diff(mean.b - px.b, 1.f/512.f)*weight;
     }
     return variance;
 }
@@ -178,7 +180,7 @@ inline static double color_weight(f_pixel median, hist_item h)
 {
     float diff = colordifference(median, h.acolor);
     // if color is "good enough", don't split further
-    if (diff < 1.f/256.f) diff /= 2.f;
+    if (diff < 1.f/256.f/256.f) diff /= 2.f;
     return sqrt(diff) * (sqrt(1.0+h.adjusted_weight)-1.0);
 }
 

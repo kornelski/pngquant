@@ -30,7 +30,7 @@ static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float m
 
 struct box {
     f_pixel color;
-    double variance;
+    f_pixel variance;
     double sum;
     int ind;
     int colors;
@@ -108,22 +108,12 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
     return weightedcompare_other(c1p, c2p);
 }
 
-double box_variance(const hist_item achv[], const struct box* box)
-{
-    f_pixel mean = box->color;
-    double variance=0;
-    for (int i = 0; i < box->colors; ++i) {
-        variance += colordifference(achv[box->ind + i].acolor, mean) * achv[box->ind + i].adjusted_weight;
-    }
-    return variance;
-}
-
 inline static float variance_diff(float val)
 {
     return val*val;
 }
 
-static f_pixel channel_variance(const hist_item achv[], struct box *box)
+static f_pixel box_variance(const hist_item achv[], const struct box *box)
 {
     f_pixel mean = box->color;
     f_pixel variance = (f_pixel){0,0,0,0};
@@ -173,7 +163,7 @@ static int best_splittable_box(struct box* bv, int boxes)
     for (int i=0; i < boxes; i++) {
         if (bv[i].colors < 2) continue;
 
-        float thissum = bv[i].sum*bv[i].variance;
+        float thissum = bv[i].sum*(bv[i].variance.a+bv[i].variance.r+bv[i].variance.g+bv[i].variance.b);
 
         if (thissum > maxsum) {
             maxsum = thissum;
@@ -209,8 +199,8 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
      */
     bv[0].ind = 0;
     bv[0].colors = hist->size;
-    bv[0].variance = 1.0;
     bv[0].color = averagepixels(bv[0].ind, bv[0].colors, achv, min_opaque_val);
+    bv[0].variance = box_variance(achv, &bv[0]);
     bv[0].sum = 0;
     for(int i=0; i < bv[0].colors; i++) bv[0].sum += achv[i].adjusted_weight;
 
@@ -236,7 +226,7 @@ colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
         int indx = bv[bi].ind;
         int clrs = bv[bi].colors;
 
-        sort_colors_by_variance(channel_variance(achv, &bv[bi]), achv, indx, clrs);
+        sort_colors_by_variance(bv[bi].variance, achv, indx, clrs);
 
         /*
          Classic implementation tries to get even number of colors or pixels in each subdivision.

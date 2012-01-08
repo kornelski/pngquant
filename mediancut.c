@@ -163,7 +163,8 @@ static int best_splittable_box(struct box* bv, int boxes)
     for (int i=0; i < boxes; i++) {
         if (bv[i].colors < 2) continue;
 
-        float thissum = bv[i].sum*(bv[i].variance.a+bv[i].variance.r+bv[i].variance.g+bv[i].variance.b);
+        // looks only at max variance, because it's only going to split by it
+        float thissum = bv[i].sum*MAX(MAX(bv[i].variance.a,bv[i].variance.r),MAX(bv[i].variance.g,bv[i].variance.b));
 
         if (thissum > maxsum) {
             maxsum = thissum;

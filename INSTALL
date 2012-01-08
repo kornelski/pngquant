@@ -50,8 +50,8 @@ directories. Use this only if you can't get your system's libpng/zlib to work.
    Unpack it into the parent directory of the 'pngquant' directory and rename
    it to 'libpng' - e.g.:
 
-      $ tar zxf libpng-1.2.44.tar.gz
-      $ mv libpng-1.2.44 libpng
+      $ tar zxf libpng-1.2.46.tar.gz
+      $ mv libpng-1.2.46 libpng
 
    Build libpng:
 

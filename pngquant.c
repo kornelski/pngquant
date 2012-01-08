@@ -19,9 +19,9 @@
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
    options:\n\
       -force        overwrite existing output files (synonym: -f)\n\
-      -ext new.png  set custom extension for output filename\n\
-      -nofs         disable dithering (synonyms: -nofloyd, -ordered)\n\
-      -verbose      print status messages (synonyms: -noquiet)\n\
+      -ext new.png  set custom suffix/extension for output filename\n\
+      -nofs         disable Floyd-Steinberg dithering\n\
+      -verbose      print status messages (synonym: -v)\n\
       -speed N      speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
       -iebug        increase opacity to work around Internet Explorer 6 bug\n\
 \n\

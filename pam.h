@@ -21,7 +21,7 @@
 #endif
 
 #ifndef USE_SSE
-#  ifdef __SSE3__
+#  ifdef __SSE2__
 #    define USE_SSE 1
 #  else
 #    define USE_SSE 0
@@ -29,7 +29,7 @@
 #endif
 
 #if USE_SSE
-#include <pmmintrin.h>
+#include <emmintrin.h>
 #define cpuid(func,ax,bx,cx,dx)\
     __asm__ __volatile__ ("cpuid":\
     "=a" (ax), "=b" (bx), "=c" (cx), "=d" (dx) : "a" (func));
@@ -103,30 +103,45 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
     };
 }
 
-
-inline static float colordifference_stdc(f_pixel px, f_pixel py)
+inline static float colordifference_ch(const float x, const float y, const float alphas)
 {
-    return (px.a - py.a) * (px.a - py.a) * 3.0 +
-           (px.r - py.r) * (px.r - py.r) +
-           (px.g - py.g) * (px.g - py.g) +
-           (px.b - py.b) * (px.b - py.b);
+    // maximum of channel blended on white, and blended on black
+    // premultiplied alpha and backgrounds 0/1 shorten the formula
+    const float black = x-y, white = black+alphas;
+    return MAX(black*black, white*white);
+}
+
+inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
+{
+    const float alphas = py.a-px.a;
+    return colordifference_ch(px.r, py.r, alphas) +
+           colordifference_ch(px.g, py.g, alphas) +
+           colordifference_ch(px.b, py.b, alphas);
 }
 
 inline static float colordifference(f_pixel px, f_pixel py)
 {
 #if USE_SSE
-    __m128 vpx = _mm_load_ps((const float*)&px);
-    __m128 vpy = _mm_load_ps((const float*)&py);
+    const __m128 vpx = _mm_load_ps((const float*)&px);
+    const __m128 vpy = _mm_load_ps((const float*)&py);
 
-    __m128 tmp = _mm_sub_ps(vpx, vpy); // t = px - py
-    tmp = _mm_mul_ps(tmp, tmp); // t = t * t
-    tmp = _mm_mul_ss(tmp, _mm_set_ss(3.0)); // alpha * 3.0
+    // y.a - x.a
+    __m128 alphas = _mm_sub_ss(vpy, vpx);
+    alphas = _mm_shuffle_ps(alphas,alphas,0); // copy first to all four
 
-    tmp = _mm_hadd_ps(tmp,tmp); // 0+1 2+3 0+1 2+3
-    __m128 rev = _mm_shuffle_ps(tmp, tmp, 0x1B); // reverses vector 2+3 0+1 2+3 0+1
-    tmp = _mm_add_ss(tmp, rev); // 0+1 + 2+3
+    const __m128 black = _mm_sub_ps(vpx, vpy);
 
-    float res = _mm_cvtss_f32(tmp);
+    // x - y + (y.a - x.a)
+    const __m128 white = _mm_add_ps(black, alphas);
+
+    const __m128 max = _mm_max_ps(_mm_mul_ps(black, black), _mm_mul_ps(white, white));
+
+    // add rgb, not a
+    const __m128 maxhl = _mm_movehl_ps(max, max);
+    const __m128 tmp = _mm_add_ps(max, maxhl);
+    const __m128 sum = _mm_add_ss(maxhl, _mm_shuffle_ps(tmp, tmp, 1));
+
+    const float res = _mm_cvtss_f32(sum);
     assert(fabs(res - colordifference_stdc(px,py)) < 0.001);
     return res;
 #else

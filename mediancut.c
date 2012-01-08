@@ -118,6 +118,11 @@ double box_variance(const hist_item achv[], const struct box* box)
     return variance;
 }
 
+inline static float variance_diff(float val)
+{
+    return val*val;
+}
+
 static f_pixel channel_variance(const hist_item achv[], struct box *box)
 {
     f_pixel mean = box->color;
@@ -125,10 +130,11 @@ static f_pixel channel_variance(const hist_item achv[], struct box *box)
 
     for (int i = 0; i < box->colors; ++i) {
         f_pixel px = achv[box->ind + i].acolor;
-        variance.a += (mean.a - px.a)*(mean.a - px.a);
-        variance.r += (mean.r - px.r)*(mean.r - px.r);
-        variance.g += (mean.g - px.g)*(mean.g - px.g);
-        variance.b += (mean.b - px.b)*(mean.b - px.b);
+        float weight = achv[box->ind + i].adjusted_weight;
+        variance.a += variance_diff(mean.a - px.a)*weight;
+        variance.r += variance_diff(mean.r - px.r)*weight;
+        variance.g += variance_diff(mean.g - px.g)*weight;
+        variance.b += variance_diff(mean.b - px.b)*weight;
     }
     return variance;
 }

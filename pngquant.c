@@ -455,8 +455,8 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
 
             // If dithering error is crazy high, don't propagate it that much
             // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
-            if (err.r*err.r + err.g*err.g + err.b*err.b + err.a*err.a > 8.f/256.f) {
-                dither_level *= 0.5;
+            if (err.r*err.r + err.g*err.g + err.b*err.b + err.a*err.a > 16.f/256.f/256.f) {
+                dither_level *= 0.75;
             }
 
             float colorimp = (3.0f + acolormap[ind].acolor.a)/4.0f * dither_level;

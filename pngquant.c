@@ -649,7 +649,6 @@ float modify_alpha(read_info *input_image, float min_opaque_val)
        completely opaque */
 
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
-    rgb_pixel *pP;
     int rows= input_image->height, cols = input_image->width;
     double gamma = input_image->gamma;
     float almost_opaque_val;
@@ -662,7 +661,7 @@ float modify_alpha(read_info *input_image, float min_opaque_val)
     }
 
     for(int row = 0; row < rows; ++row) {
-        pP = input_pixels[row];
+        rgb_pixel *restrict pP = input_pixels[row];
         for(int col = 0; col < cols; ++col, ++pP) {
             f_pixel px = to_f(gamma, *pP);
 
@@ -731,9 +730,9 @@ pngquant_error read_image(const char *filename, int using_stdin, read_info *inpu
  */
 void contrast_maps(const rgb_pixel*const apixels[], int cols, int rows, double gamma, float **noiseP, float **edgesP)
 {
-    float *noise = malloc(sizeof(float)*cols*rows);
-    float *tmp = malloc(sizeof(float)*cols*rows);
-    float *edges = malloc(sizeof(float)*cols*rows);
+    float *restrict noise = malloc(sizeof(float)*cols*rows);
+    float *restrict tmp = malloc(sizeof(float)*cols*rows);
+    float *restrict edges = malloc(sizeof(float)*cols*rows);
 
     for (int j=0; j < rows; j++) {
         f_pixel prev, curr = to_f(gamma, apixels[j][0]), next=curr;
@@ -802,7 +801,7 @@ void update_dither_map(write_info *output_image, float *edges)
 {
     const int width = output_image->width;
     const int height = output_image->height;
-    const unsigned char *pixels = output_image->indexed_data;
+    const unsigned char *restrict pixels = output_image->indexed_data;
 
     for(int row=0; row < height; row++)
     {

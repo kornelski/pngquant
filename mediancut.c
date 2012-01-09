@@ -21,11 +21,6 @@
 
 #define index_of_channel(ch) (offsetof(f_pixel,ch)/sizeof(float))
 
-static int weightedcompare_r(const void *ch1, const void *ch2);
-static int weightedcompare_g(const void *ch1, const void *ch2);
-static int weightedcompare_b(const void *ch1, const void *ch2);
-static int weightedcompare_a(const void *ch1, const void *ch2);
-
 static f_pixel averagepixels(int indx, int clrs, const hist_item achv[], float min_opaque_val);
 
 struct box {

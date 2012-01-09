@@ -13,7 +13,7 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "1.6.4 (January 2012)"
+#define PNGQUANT_VERSION "1.7.0 (January 2012)"
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -73,7 +73,7 @@ void verbose_printf(const char *fmt, ...)
 
 static void print_full_version(FILE *fd)
 {
-    fprintf(fd, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n%s", PNGQUANT_VERSION, USE_SSE ? "   Compiled with SSE3 instructions\n" : "");
+    fprintf(fd, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n%s", PNGQUANT_VERSION, USE_SSE ? "   Compiled with SSE2 instructions\n" : "");
     rwpng_version_info(fd);
     fputs("\n", fd);
 }
@@ -84,11 +84,14 @@ static void print_usage(FILE *fd)
 }
 
 #if USE_SSE
-inline static int is_sse3_available()
+inline static int is_sse2_available()
 {
+#if (defined(__x86_64__) || defined(__amd64))
+    return TRUE;
+#endif
     int a,b,c,d;
     cpuid(1, a, b, c, d);
-    return (c&1); // ecx bit 0 is set when SSE3 is present
+    return d & (1<<26); // edx bit 26 is set when SSE2 is present
 }
 #endif
 
@@ -199,9 +202,9 @@ int main(int argc, char *argv[])
     }
 
 #if USE_SSE
-    if (!is_sse3_available()) {
+    if (!is_sse2_available()) {
         print_full_version(stderr);
-        fputs("SSE3-capable CPU is required for this build.\n", stderr);
+        fputs("SSE2-capable CPU is required for this build.\n", stderr);
         return WRONG_ARCHITECTURE;
     }
 #endif

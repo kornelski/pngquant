@@ -64,13 +64,7 @@ directories. Use this only if you can't get your system's libpng/zlib to work.
       $ make
 
 
-##Compilation for portability
+##Compilation for 32-bit x86
 
-pngquant will use SSE3 instructions if compiled on machine that supports it.
-If you need to compile for all x86/x64 CPUs:
-
-      $ USE_SSE=0 make
-
-Other CPU architectures don't need this.
-
-Alternatively, you can override all compiler flags using CFLAGS and LDFLAGS.
+pngquant will use SSE2 instructions only when compiled for x86-64. If you want to
+enable SSE2 optimisation on 32-bit Intel, add -DUSE_SSE=1 to CFLAGS.

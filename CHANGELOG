@@ -1,3 +1,8 @@
+version 1.7
+-----------
+ - new RGBA color similarity algorithm
+ - change of optional SSE3 code to SSE2 that is always enabled on x86-64
+
 version 1.6
 -----------
  - novel dithering algorithm that doesn't add noise unless necessary
@@ -23,7 +28,6 @@ version 1.3
    to find largest dimensioin and to split most varying boxes
  - use of premultiplied alpha for color blending
  - conversion of output to gamma 2.2
- - performance optimisations for 64-bit CPUs
 
 version 1.2
 -----------

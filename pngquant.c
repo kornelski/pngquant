@@ -346,7 +346,7 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
     const int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     viter_state average_color[map->colors];
-    viter_init(map, average_color);
+    viter_init(map, 1, average_color);
 
     for (int row = 0; row < rows; ++row) {
         for(int col = 0; col < cols; ++col) {
@@ -366,13 +366,13 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
 
             row_pointers[row][col] = match;
 
-            viter_update_color(px, 1.0, map, match, average_color);
+            viter_update_color(px, 1.0, map, match, 0, average_color);
         }
         }
 
     nearest_free(n);
 
-    viter_finalize(map, average_color);
+    viter_finalize(map, 1, average_color);
 
     return remapping_error / MAX(1,remapped_pixels);
 }

@@ -444,7 +444,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
                 ind = transparent_ind;
             } else {
                 ind = nearest_search(n, (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, min_opaque_val, NULL);
-                }
+            }
 
             row_pointers[row][col] = ind;
 
@@ -651,7 +651,7 @@ float modify_alpha(read_info *input_image, const float min_opaque_val)
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
 
-    rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
+    rgb_pixel *const *const input_pixels = (rgb_pixel **)input_image->row_pointers;
     const int rows= input_image->height, cols = input_image->width;
     const double gamma = input_image->gamma;
     float almost_opaque_val;
@@ -664,35 +664,36 @@ float modify_alpha(read_info *input_image, const float min_opaque_val)
     }
 
     for(int row = 0; row < rows; ++row) {
-        rgb_pixel *restrict pP = input_pixels[row];
-        for(int col = 0; col < cols; ++col, ++pP) {
-            f_pixel px = to_f(gamma, *pP);
+        for(int col = 0; col < cols; col++) {
+            const rgb_pixel srcpx = input_pixels[row][col];
+            f_pixel px = to_f(gamma, srcpx);
 
 #ifndef NDEBUG
             rgb_pixel rgbcheck = to_rgb(gamma, px);
 
-
-            if (pP->a && (pP->r != rgbcheck.r || pP->g != rgbcheck.g || pP->b != rgbcheck.b || pP->a != rgbcheck.a)) {
+            if (srcpx.a && (srcpx.r != rgbcheck.r || srcpx.g != rgbcheck.g || srcpx.b != rgbcheck.b || srcpx.a != rgbcheck.a)) {
                 fprintf(stderr, "Conversion error: expected %d,%d,%d,%d got %d,%d,%d,%d\n",
-                        pP->r,pP->g,pP->b,pP->a, rgbcheck.r,rgbcheck.g,rgbcheck.b,rgbcheck.a);
+                        srcpx.r,srcpx.g,srcpx.b,srcpx.a, rgbcheck.r,rgbcheck.g,rgbcheck.b,rgbcheck.a);
                 return -1;
             }
 #endif
             /* set all completely transparent colors to black */
-            if (!pP->a) {
-                *pP = (rgb_pixel){0,0,0,pP->a};
+            if (srcpx.a < 255) {
+                if (!srcpx.a) {
+                    input_pixels[row][col] = (rgb_pixel){0,0,0,0};
                 }
+                else if (px.a > almost_opaque_val) {
                     /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
-            else if (pP->a < 255 && px.a > almost_opaque_val) {
                     assert((min_opaque_val-almost_opaque_val)>0);
 
                     float al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
                     if (al > 1) al = 1;
                     px.a = al;
-                pP->a = to_rgb(gamma, px).a;
+                    input_pixels[row][col].a = to_rgb(gamma, px).a;
                 }
             }
         }
+    }
 
     return min_opaque_val;
 }

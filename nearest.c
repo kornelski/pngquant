@@ -144,7 +144,7 @@ struct nearest_map *nearest_init(const colormap *map)
     return centroids;
 }
 
-int nearest_search(struct nearest_map *centroids, f_pixel px, float min_opaque_val, float *diff)
+int nearest_search(const struct nearest_map *centroids, const f_pixel px, const float min_opaque_val, float *diff)
 {
     const int iebug = px.a > min_opaque_val;
 

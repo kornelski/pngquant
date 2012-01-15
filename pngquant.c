@@ -332,18 +332,18 @@ void set_palette(write_info *output_image, const colormap *map)
     }
 }
 
-float remap_to_palette(read_info *input_image, write_info *output_image, colormap *map, float min_opaque_val)
+float remap_to_palette(read_info *input_image, write_info *output_image, colormap *const map, const float min_opaque_val)
 {
-    rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
-    unsigned char **row_pointers = output_image->row_pointers;
-    int rows = input_image->height, cols = input_image->width;
-    double gamma = input_image->gamma;
+    const rgb_pixel *const *const input_pixels = (const rgb_pixel **)input_image->row_pointers;
+    unsigned char *const *const row_pointers = output_image->row_pointers;
+    const int rows = input_image->height, cols = input_image->width;
+    const double gamma = input_image->gamma;
 
     int remapped_pixels=0;
     float remapping_error=0;
 
-    struct nearest_map *n = nearest_init(map);
-    int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
+    struct nearest_map *const n = nearest_init(map);
+    const int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     f_pixel average_color[map->colors];
     float average_color_count[map->colors];
@@ -383,15 +383,15 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
  */
 void remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, float min_opaque_val, const float *edge_map)
 {
-    rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
-    unsigned char **row_pointers = output_image->row_pointers;
-    int rows = input_image->height, cols = input_image->width;
-    double gamma = input_image->gamma;
+    const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->row_pointers;
+    unsigned char *const *const row_pointers = output_image->row_pointers;
+    const int rows = input_image->height, cols = input_image->width;
+    const double gamma = input_image->gamma;
 
     const colormap_item *acolormap = map->palette;
 
-    struct nearest_map *n = nearest_init(map);
-    int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
+    struct nearest_map *const n = nearest_init(map);
+    const int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     f_pixel *restrict thiserr = NULL;
     f_pixel *restrict nexterr = NULL;
@@ -418,7 +418,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
         int col = (fs_direction) ? 0 : (cols - 1);
 
         do {
-            f_pixel px = to_f(gamma, input_pixels[row][col]);
+            const f_pixel px = to_f(gamma, input_pixels[row][col]);
 
             float dither_level = edge_map ? edge_map[row*cols + col] : 0.9;
 
@@ -444,11 +444,11 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
                 ind = transparent_ind;
             } else {
                 ind = nearest_search(n, (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, min_opaque_val, NULL);
-            }
+                }
 
             row_pointers[row][col] = ind;
 
-            f_pixel xp = acolormap[ind].acolor;
+            const f_pixel xp = acolormap[ind].acolor;
             f_pixel err = {
                 .r = (sr - xp.r),
                 .g = (sg - xp.g),
@@ -462,7 +462,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
                 dither_level *= 0.75;
             }
 
-            float colorimp = (3.0f + acolormap[ind].acolor.a)/4.0f * dither_level;
+            const float colorimp = (3.0f + acolormap[ind].acolor.a)/4.0f * dither_level;
             err.r *= colorimp;
             err.g *= colorimp;
             err.b *= colorimp;
@@ -613,13 +613,13 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
 }
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
-hist *histogram(read_info *input_image, int reqcolors, int speed_tradeoff, const float *importance_map)
+hist *histogram(const read_info *input_image, const int reqcolors, const int speed_tradeoff, const float *importance_map)
 {
     hist *hist;
     int ignorebits=0;
-    const rgb_pixel *const *input_pixels = (const rgb_pixel *const *)input_image->row_pointers;
-    int cols = input_image->width, rows = input_image->height;
-    double gamma = input_image->gamma;
+    const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->row_pointers;
+    const int cols = input_image->width, rows = input_image->height;
+    const double gamma = input_image->gamma;
     assert(gamma > 0);
 
    /*
@@ -645,15 +645,15 @@ hist *histogram(read_info *input_image, int reqcolors, int speed_tradeoff, const
     return hist;
 }
 
-float modify_alpha(read_info *input_image, float min_opaque_val)
+float modify_alpha(read_info *input_image, const float min_opaque_val)
 {
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
 
     rgb_pixel **input_pixels = (rgb_pixel **)input_image->row_pointers;
-    int rows= input_image->height, cols = input_image->width;
-    double gamma = input_image->gamma;
+    const int rows= input_image->height, cols = input_image->width;
+    const double gamma = input_image->gamma;
     float almost_opaque_val;
 
     if (min_opaque_val < 1.f) {
@@ -681,18 +681,18 @@ float modify_alpha(read_info *input_image, float min_opaque_val)
             /* set all completely transparent colors to black */
             if (!pP->a) {
                 *pP = (rgb_pixel){0,0,0,pP->a};
-            }
-            /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
+                }
+                    /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
             else if (pP->a < 255 && px.a > almost_opaque_val) {
-                assert((min_opaque_val-almost_opaque_val)>0);
+                    assert((min_opaque_val-almost_opaque_val)>0);
 
-                float al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
-                if (al > 1) al = 1;
-                px.a = al;
+                    float al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
+                    if (al > 1) al = 1;
+                    px.a = al;
                 pP->a = to_rgb(gamma, px).a;
+                }
             }
         }
-    }
 
     return min_opaque_val;
 }
@@ -731,7 +731,7 @@ pngquant_error read_image(const char *filename, int using_stdin, read_info *inpu
     noise - approximation of areas with high-frequency noise, except straight edges. 1=flat, 0=noisy.
     edges - noise map including all edges
  */
-void contrast_maps(const rgb_pixel*const apixels[], int cols, int rows, double gamma, float **noiseP, float **edgesP)
+void contrast_maps(const rgb_pixel*const apixels[], const int cols, const int rows, const double gamma, float **noiseP, float **edgesP)
 {
     float *restrict noise = malloc(sizeof(float)*cols*rows);
     float *restrict tmp = malloc(sizeof(float)*cols*rows);
@@ -800,7 +800,7 @@ void contrast_maps(const rgb_pixel*const apixels[], int cols, int rows, double g
  * and peeks 1 pixel above/below. Full 2d algorithm doesn't improve it significantly.
  * Correct flood fill doesn't have visually good properties.
  */
-void update_dither_map(write_info *output_image, float *edges)
+void update_dither_map(const write_info *output_image, float *edges)
 {
     const int width = output_image->width;
     const int height = output_image->height;
@@ -812,7 +812,7 @@ void update_dither_map(write_info *output_image, float *edges)
         int lastcol=0;
         for(int col=1; col < width; col++)
         {
-            unsigned char px = pixels[row*width + col];
+            const unsigned char px = pixels[row*width + col];
 
             if (px != lastpixel || col == width-1) {
                 float neighbor_count = 2.5f + col-lastcol;
@@ -844,7 +844,7 @@ void update_dither_map(write_info *output_image, float *edges)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(hist *hist, int reqcolors, float min_opaque_val, int feedback_loop_trials, double *palette_error_p)
+static colormap *find_best_palette(hist *hist, const int reqcolors, const float min_opaque_val, int feedback_loop_trials, double *palette_error_p)
 {
     hist_item *achv = hist->achv;
     colormap *acolormap = NULL;

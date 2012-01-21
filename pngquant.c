@@ -378,10 +378,25 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
     return remapping_error / MAX(1,remapped_pixels);
 }
 
+static float distance_from_closest_other_color(const colormap *map, const int i)
+{
+    float second_best=999999;
+    for(int j=0; j < map->colors; j++) {
+        if (i == j) continue;
+        float diff = colordifference(map->palette[i].acolor, map->palette[j].acolor);
+        if (diff <= second_best) {
+            second_best = diff;
+        }
+    }
+    return second_best;
+}
+
 /**
   Uses edge/noise map to apply dithering only to flat areas. Dithering on edges creates jagged lines, and noisy areas are "naturally" dithered.
+
+  If output_image_is_remapped is true, only pixels noticeably changed by error diffusion will be written to output image.
  */
-void remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, float min_opaque_val, const float *edge_map)
+void remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, const float min_opaque_val, const float *edge_map, const int output_image_is_remapped)
 {
     const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->row_pointers;
     unsigned char *const *const row_pointers = output_image->row_pointers;
@@ -392,6 +407,11 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
 
     struct nearest_map *const n = nearest_init(map);
     const int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
+
+    float difference_tolerance[map->colors];
+    if (output_image_is_remapped) for(int i=0; i < map->colors; i++) {
+        difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
+    }
 
     f_pixel *restrict thiserr = NULL;
     f_pixel *restrict nexterr = NULL;
@@ -410,7 +430,6 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
         thiserr[col].b = ((double)rand() - rand_max/2.0)/rand_max/255.0;
         thiserr[col].a = ((double)rand() - rand_max/2.0)/rand_max/255.0;
     }
-
 
     for (int row = 0; row < rows; ++row) {
         memset(nexterr, 0, (cols + 2) * sizeof(*nexterr));
@@ -443,7 +462,13 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
             if (sa < 1.0/256.0) {
                 ind = transparent_ind;
             } else {
-                ind = nearest_search(n, (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa}, min_opaque_val, NULL);
+                f_pixel spx = (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa};
+                int curr_ind = row_pointers[row][col];
+                if (output_image_is_remapped && colordifference(map->palette[curr_ind].acolor, spx) < difference_tolerance[curr_ind]) {
+                    ind = curr_ind;
+                } else {
+                    ind = nearest_search(n, spx, min_opaque_val, NULL);
+                }
             }
 
             row_pointers[row][col] = ind;
@@ -1010,7 +1035,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, const 
     set_palette(output_image, acolormap);
 
     if (floyd) {
-        remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, edges);
+        remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, edges, use_dither_map);
     }
 
     verbose_printf("\n");

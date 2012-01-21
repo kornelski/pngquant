@@ -864,6 +864,11 @@ void update_dither_map(const write_info *output_image, float *edges)
     }
 }
 
+static void adjust_histogram(hist_item *item, float diff)
+{
+    item->adjusted_weight = (item->perceptual_weight+item->adjusted_weight) * (sqrtf(1.0+diff));
+}
+
 /**
  Repeats mediancut with different histogram weights to find palette with minimum error.
 
@@ -871,7 +876,6 @@ void update_dither_map(const write_info *output_image, float *edges)
  */
 static colormap *find_best_palette(hist *hist, const int reqcolors, const float min_opaque_val, int feedback_loop_trials, double *palette_error_p)
 {
-    hist_item *achv = hist->achv;
     colormap *acolormap = NULL;
     double least_error = 0;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
@@ -898,28 +902,11 @@ static colormap *find_best_palette(hist *hist, const int reqcolors, const float 
         // at the same time Voronoi iteration is done to improve the palette
         // and histogram weights are adjusted based on remapping error to give more weight to poorly matched colors
 
-        double total_error = 0;
-        viter_state average_color[newmap->colors];
-        viter_init(newmap, average_color);
-        struct nearest_map *n = nearest_init(newmap);
-        for(int i=0; i < hist->size; i++) {
-            float diff;
-            int match = nearest_search(n, achv[i].acolor, min_opaque_val, &diff);
-            assert(achv[i].perceptual_weight > 0);
-            total_error += diff * achv[i].perceptual_weight;
-
-            viter_update_color(achv[i].acolor, achv[i].perceptual_weight, newmap, match,
-                               average_color);
-
-            achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (sqrtf(1.0+diff));
-        }
-        nearest_free(n);
+        double total_error = viter_do_iteration(hist, newmap, min_opaque_val, adjust_histogram);
 
         if (!acolormap || total_error < least_error) {
             if (acolormap) pam_freecolormap(acolormap);
             acolormap = newmap;
-
-            viter_finalize(acolormap, average_color);
 
             least_error = total_error;
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
@@ -934,7 +921,7 @@ static colormap *find_best_palette(hist *hist, const int reqcolors, const float 
     }
     while(feedback_loop_trials > 0);
 
-    *palette_error_p = least_error / hist->total_perceptual_weight;
+    *palette_error_p = least_error;
     return acolormap;
 }
 
@@ -966,7 +953,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, const 
         const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
         double previous_palette_error = 9999999;
         for(int i=0; i < iterations; i++) {
-            palette_error = viter_do_iteration(hist, acolormap, min_opaque_val);
+            palette_error = viter_do_iteration(hist, acolormap, min_opaque_val, NULL);
 
             if (fabs(previous_palette_error-palette_error) < iteration_limit) {
                 break;

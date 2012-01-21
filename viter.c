@@ -36,13 +36,12 @@ void viter_finalize(colormap *map, viter_state average_color[])
     }
 }
 
-double viter_do_iteration(const hist *hist, colormap *map, float min_opaque_val)
+double viter_do_iteration(hist *hist, colormap *map, const float min_opaque_val, viter_callback callback)
 {
     viter_state average_color[map->colors];
-
-    hist_item *achv = hist->achv;
     viter_init(map, average_color);
-    struct nearest_map *n = nearest_init(map);
+    struct nearest_map *const n = nearest_init(map);
+    hist_item *achv = hist->achv;
 
     double total_diff=0;
     for(int j=0; j < hist->size; j++) {
@@ -51,6 +50,8 @@ double viter_do_iteration(const hist *hist, colormap *map, float min_opaque_val)
         total_diff += diff * achv[j].perceptual_weight;
 
         viter_update_color(achv[j].acolor, achv[j].perceptual_weight, map, match, average_color);
+
+        if (callback) callback(&achv[j], diff);
     }
 
     nearest_free(n);

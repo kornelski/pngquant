@@ -345,9 +345,8 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
     struct nearest_map *const n = nearest_init(map);
     const int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
-    f_pixel average_color[map->colors];
-    float average_color_count[map->colors];
-    viter_init(map, average_color, average_color_count);
+    viter_state average_color[map->colors];
+    viter_init(map, average_color);
 
     for (int row = 0; row < rows; ++row) {
         for(int col = 0; col < cols; ++col) {
@@ -367,13 +366,13 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
 
             row_pointers[row][col] = match;
 
-            viter_update_color(px, 1.0, map, match, average_color, average_color_count);
+            viter_update_color(px, 1.0, map, match, average_color);
         }
-    }
+        }
 
     nearest_free(n);
 
-    viter_finalize(map, average_color, average_color_count);
+    viter_finalize(map, average_color);
 
     return remapping_error / MAX(1,remapped_pixels);
 }
@@ -900,9 +899,8 @@ static colormap *find_best_palette(hist *hist, const int reqcolors, const float 
         // and histogram weights are adjusted based on remapping error to give more weight to poorly matched colors
 
         double total_error = 0;
-        f_pixel average_color[newmap->colors];
-        float average_color_count[newmap->colors];
-        viter_init(newmap, average_color,average_color_count);
+        viter_state average_color[newmap->colors];
+        viter_init(newmap, average_color);
         struct nearest_map *n = nearest_init(newmap);
         for(int i=0; i < hist->size; i++) {
             float diff;
@@ -911,7 +909,7 @@ static colormap *find_best_palette(hist *hist, const int reqcolors, const float 
             total_error += diff * achv[i].perceptual_weight;
 
             viter_update_color(achv[i].acolor, achv[i].perceptual_weight, newmap, match,
-                               average_color,average_color_count);
+                               average_color);
 
             achv[i].adjusted_weight = (achv[i].perceptual_weight+achv[i].adjusted_weight) * (sqrtf(1.0+diff));
         }
@@ -921,7 +919,7 @@ static colormap *find_best_palette(hist *hist, const int reqcolors, const float 
             if (acolormap) pam_freecolormap(acolormap);
             acolormap = newmap;
 
-            viter_finalize(acolormap, average_color,average_color_count);
+            viter_finalize(acolormap, average_color);
 
             least_error = total_error;
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever

@@ -43,6 +43,13 @@
 #  include <io.h>   /* setmode() */
 #endif
 
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#define omp_get_max_threads() 1
+#define omp_get_thread_num() 0
+#endif
+
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "pam.h"
 #include "mediancut.h"
@@ -345,9 +352,12 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
     struct nearest_map *const n = nearest_init(map);
     const int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
-    viter_state average_color[map->colors];
-    viter_init(map, 1, average_color);
+    const int max_threads = omp_get_max_threads();
+    viter_state average_color[map->colors * max_threads];
+    viter_init(map, max_threads, average_color);
 
+    #pragma omp parallel for if (rows*cols > 3000) \
+        default(none) shared(average_color) reduction(+:remapping_error) reduction(+:remapped_pixels)
     for (int row = 0; row < rows; ++row) {
         for(int col = 0; col < cols; ++col) {
 
@@ -366,13 +376,13 @@ float remap_to_palette(read_info *input_image, write_info *output_image, colorma
 
             row_pointers[row][col] = match;
 
-            viter_update_color(px, 1.0, map, match, 0, average_color);
+            viter_update_color(px, 1.0, map, match, omp_get_thread_num(), average_color);
         }
-        }
+    }
+
+    viter_finalize(map, max_threads, average_color);
 
     nearest_free(n);
-
-    viter_finalize(map, 1, average_color);
 
     return remapping_error / MAX(1,remapped_pixels);
 }

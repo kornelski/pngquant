@@ -4,6 +4,14 @@
 #include "nearest.h"
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#define omp_get_max_threads() 1
+#define omp_get_thread_num() 0
+#endif
+
 /*
  * Voronoi iteration: new palette color is computed from weighted average of colors that map to that palette entry.
  */
@@ -50,26 +58,30 @@ void viter_finalize(colormap *map, const int max_threads, const viter_state aver
     }
 }
 
-double viter_do_iteration(hist *hist, colormap *map, const float min_opaque_val, viter_callback callback)
+double viter_do_iteration(hist *hist, colormap *const map, const float min_opaque_val, viter_callback callback)
 {
-    viter_state average_color[map->colors];
-    viter_init(map, 1, average_color);
+    const int max_threads = omp_get_max_threads();
+    viter_state average_color[map->colors * max_threads];
+    viter_init(map, max_threads, average_color);
     struct nearest_map *const n = nearest_init(map);
-    hist_item *achv = hist->achv;
+    hist_item *const achv = hist->achv;
+    const int hist_size = hist->size;
 
     double total_diff=0;
-    for(int j=0; j < hist->size; j++) {
+    #pragma omp parallel for if (hist_size > 3000) \
+        default(none) shared(average_color,callback) reduction(+:total_diff)
+    for(int j=0; j < hist_size; j++) {
         float diff;
         int match = nearest_search(n, achv[j].acolor, min_opaque_val, &diff);
         total_diff += diff * achv[j].perceptual_weight;
 
-        viter_update_color(achv[j].acolor, achv[j].perceptual_weight, map, match, 0, average_color);
+        viter_update_color(achv[j].acolor, achv[j].perceptual_weight, map, match, omp_get_thread_num(), average_color);
 
         if (callback) callback(&achv[j], diff);
     }
 
     nearest_free(n);
-    viter_finalize(map, 1, average_color);
+    viter_finalize(map, max_threads, average_color);
 
     return total_diff / hist->total_perceptual_weight;
 }

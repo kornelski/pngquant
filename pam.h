@@ -165,7 +165,7 @@ typedef struct {
     hist_item *achv;
     double total_perceptual_weight;
     int size;
-} hist;
+} histogram;
 
 typedef struct {
     f_pixel acolor;
@@ -189,8 +189,8 @@ typedef struct {
     struct acolorhist_list_item **buckets;
 } *acolorhash_table;
 
-hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *imp);
-void pam_freeacolorhist(hist *h);
+histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *imp);
+void pam_freeacolorhist(histogram *h);
 
 colormap *pam_colormap(int colors);
 void pam_freecolormap(colormap *c);

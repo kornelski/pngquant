@@ -647,9 +647,9 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
 }
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
-hist *histogram(const read_info *input_image, const int reqcolors, const int speed_tradeoff, const float *importance_map)
+histogram *get_histogram(const read_info *input_image, const int reqcolors, const int speed_tradeoff, const float *importance_map)
 {
-    hist *hist;
+    histogram *hist;
     int ignorebits=0;
     const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->row_pointers;
     const int cols = input_image->width, rows = input_image->height;
@@ -884,7 +884,7 @@ static void adjust_histogram(hist_item *item, float diff)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(hist *hist, const int reqcolors, const float min_opaque_val, int feedback_loop_trials, double *palette_error_p)
+static colormap *find_best_palette(histogram *hist, const int reqcolors, const float min_opaque_val, int feedback_loop_trials, double *palette_error_p)
 {
     colormap *acolormap = NULL;
     double least_error = 0;
@@ -951,7 +951,7 @@ pngquant_error pngquant(read_info *input_image, write_info *output_image, const 
 
     // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
     // noise map does not include edges to avoid ruining anti-aliasing
-    hist *hist = histogram(input_image, reqcolors, speed_tradeoff, noise); if (noise) free(noise);
+    histogram *hist = get_histogram(input_image, reqcolors, speed_tradeoff, noise); if (noise) free(noise);
 
     double palette_error = -1;
     colormap *acolormap = find_best_palette(hist, reqcolors, min_opaque_val, 56-9*speed_tradeoff, &palette_error);

@@ -187,7 +187,7 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
-colormap *mediancut(hist *hist, float min_opaque_val, int newcolors)
+colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
 {
     hist_item *achv = hist->achv;
     struct box bv[newcolors];

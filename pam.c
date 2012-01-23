@@ -17,7 +17,7 @@
 #include "pam.h"
 #include "mempool.h"
 
-static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors, float gamma);
+static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors, float gamma);
 static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance, int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
@@ -43,18 +43,18 @@ static acolorhash_table pam_allocacolorhash(void);
  * Builds color histogram no larger than maxacolors. Ignores (posterizes) ignorebits lower bits in each color.
  * perceptual_weight of each entry is increased by value from importance_map
  */
-hist *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance_map)
+histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance_map)
 {
     acolorhash_table acht;
-    hist *achv;
+    histogram *hist;
 
     int hist_size=0;
     acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, importance_map, &hist_size);
     if (!acht) return 0;
 
-    achv = pam_acolorhashtoacolorhist(acht, hist_size, gamma);
+    hist = pam_acolorhashtoacolorhist(acht, hist_size, gamma);
     pam_freeacolorhash(acht);
-    return achv;
+    return hist;
 }
 
 static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance_map, int* acolorsP)
@@ -118,9 +118,9 @@ static acolorhash_table pam_allocacolorhash()
     return t;
 }
 
-static hist *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size, float gamma)
+static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size, float gamma)
 {
-    hist *hist = malloc(sizeof(hist[0]));
+    histogram *hist = malloc(sizeof(hist[0]));
     hist->achv = malloc(hist_size * sizeof(hist->achv[0]));
     hist->size = hist_size;
 
@@ -147,7 +147,7 @@ static void pam_freeacolorhash(acolorhash_table acht)
     mempool_free(acht->mempool);
 }
 
-void pam_freeacolorhist(hist *hist)
+void pam_freeacolorhist(histogram *hist)
 {
     free(hist->achv);
     free(hist);

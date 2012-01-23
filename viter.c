@@ -58,7 +58,7 @@ void viter_finalize(colormap *map, const int max_threads, const viter_state aver
     }
 }
 
-double viter_do_iteration(hist *hist, colormap *const map, const float min_opaque_val, viter_callback callback)
+double viter_do_iteration(histogram *hist, colormap *const map, const float min_opaque_val, viter_callback callback)
 {
     const int max_threads = omp_get_max_threads();
     viter_state average_color[map->colors * max_threads];

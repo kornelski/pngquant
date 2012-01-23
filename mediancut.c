@@ -37,8 +37,8 @@ typedef struct {
 
 static int comparevariance(const void *ch1, const void *ch2)
 {
-    return ((channelvariance*)ch1)->variance > ((channelvariance*)ch2)->variance ? -1 :
-          (((channelvariance*)ch1)->variance < ((channelvariance*)ch2)->variance ? 1 : 0);
+    return ((const channelvariance*)ch1)->variance > ((const channelvariance*)ch2)->variance ? -1 :
+          (((const channelvariance*)ch1)->variance < ((const channelvariance*)ch2)->variance ? 1 : 0);
 }
 
 static channelvariance channel_sort_order[4];
@@ -61,8 +61,8 @@ inline static int weightedcompare_other(const float *restrict c1p, const float *
 /** these are specialised functions to make first comparison faster without lookup in channel_sort_order[] */
 static int weightedcompare_r(const void *ch1, const void *ch2)
 {
-    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
-    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
+    const float *c1p = (const float *)&((const hist_item*)ch1)->acolor;
+    const float *c2p = (const float *)&((const hist_item*)ch2)->acolor;
 
     if (c1p[index_of_channel(r)] > c2p[index_of_channel(r)]) return 1;
     if (c1p[index_of_channel(r)] < c2p[index_of_channel(r)]) return -1;
@@ -72,8 +72,8 @@ static int weightedcompare_r(const void *ch1, const void *ch2)
 
 static int weightedcompare_g(const void *ch1, const void *ch2)
 {
-    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
-    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
+    const float *c1p = (const float *)&((const hist_item*)ch1)->acolor;
+    const float *c2p = (const float *)&((const hist_item*)ch2)->acolor;
 
     if (c1p[index_of_channel(g)] > c2p[index_of_channel(g)]) return 1;
     if (c1p[index_of_channel(g)] < c2p[index_of_channel(g)]) return -1;
@@ -83,8 +83,8 @@ static int weightedcompare_g(const void *ch1, const void *ch2)
 
 static int weightedcompare_b(const void *ch1, const void *ch2)
 {
-    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
-    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
+    const float *c1p = (const float *)&((const hist_item*)ch1)->acolor;
+    const float *c2p = (const float *)&((const hist_item*)ch2)->acolor;
 
     if (c1p[index_of_channel(b)] > c2p[index_of_channel(b)]) return 1;
     if (c1p[index_of_channel(b)] < c2p[index_of_channel(b)]) return -1;
@@ -94,8 +94,8 @@ static int weightedcompare_b(const void *ch1, const void *ch2)
 
 static int weightedcompare_a(const void *ch1, const void *ch2)
 {
-    const float *c1p = (const float *)&((hist_item*)ch1)->acolor;
-    const float *c2p = (const float *)&((hist_item*)ch2)->acolor;
+    const float *c1p = (const float *)&((const hist_item*)ch1)->acolor;
+    const float *c2p = (const float *)&((const hist_item*)ch2)->acolor;
 
     if (c1p[index_of_channel(a)] > c2p[index_of_channel(a)]) return 1;
     if (c1p[index_of_channel(a)] < c2p[index_of_channel(a)]) return -1;

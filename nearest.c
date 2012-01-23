@@ -30,8 +30,8 @@ struct nearest_map {
 
 static int compareradius(const void *ap, const void *bp)
 {
-    float a = ((struct sorttmp*)ap)->radius;
-    float b = ((struct sorttmp*)bp)->radius;
+    float a = ((const struct sorttmp*)ap)->radius;
+    float b = ((const struct sorttmp*)bp)->radius;
     return a > b ? 1 : (a < b ? -1 : 0);
 }
 

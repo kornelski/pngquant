@@ -46,7 +46,7 @@ See `pngquant -h` for full list.
 
 ###`-ext new.png`
 
-Set custom extension for output filename. By default `-or8.png` or `-fs8.png` is used.
+Set custom extension (suffix) for output filename. By default `-or8.png` or `-fs8.png` is used. If you use `-ext .png -force` options pngquant will overwrite input files in place (use with caution).
 
 ###`-speed N`
 

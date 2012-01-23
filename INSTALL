@@ -66,5 +66,16 @@ directories. Use this only if you can't get your system's libpng/zlib to work.
 
 ##Compilation for 32-bit x86
 
-pngquant will use SSE2 instructions only when compiled for x86-64. If you want to
-enable SSE2 optimisation on 32-bit Intel, add -DUSE_SSE=1 to CFLAGS.
+pngquant will use SSE2 instructions only when compiled for x86-64. If you want
+to enable SSE2 optimisation on 32-bit Intel, add -DUSE_SSE=1 to CFLAGS.
+
+##Compilation with OpenMP
+
+     $ make openmp
+
+This makes pngquant faster in wall-clock time on multicore machines when one
+image at a time is processed.
+
+However, it significantly increases total CPU time used, and thus it's not
+recommended for server-side and parallelized batch jobs which run many pngquant
+instances at a time.

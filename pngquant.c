@@ -80,7 +80,14 @@ void verbose_printf(const char *fmt, ...)
 
 static void print_full_version(FILE *fd)
 {
-    fprintf(fd, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n%s", PNGQUANT_VERSION, USE_SSE ? "   Compiled with SSE2 instructions\n" : "");
+    fprintf(fd, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n"
+        #if USE_SSE
+                    "   Compiled with SSE2 instructions.\n"
+        #endif
+        #if _OPENMP
+                    "   Compiled with OpenMP (multicore support).\n"
+        #endif
+        , PNGQUANT_VERSION);
     rwpng_version_info(fd);
     fputs("\n", fd);
 }

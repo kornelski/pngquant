@@ -126,16 +126,16 @@ static f_pixel box_variance(const hist_item achv[], const struct box *box)
     return variance;
 }
 
-static void sort_colors_by_variance(f_pixel variance, hist_item achv[], int indx, int clrs)
+static void sort_colors_by_variance(const struct box *b, hist_item achv[])
 {
     /*
      ** Sort dimensions by their variance, and then sort colors first by dimension with highest variance
      */
 
-    channel_sort_order[0] = (channelvariance){index_of_channel(r), variance.r};
-    channel_sort_order[1] = (channelvariance){index_of_channel(g), variance.g};
-    channel_sort_order[2] = (channelvariance){index_of_channel(b), variance.b};
-    channel_sort_order[3] = (channelvariance){index_of_channel(a), variance.a};
+    channel_sort_order[0] = (channelvariance){index_of_channel(r), b->variance.r};
+    channel_sort_order[1] = (channelvariance){index_of_channel(g), b->variance.g};
+    channel_sort_order[2] = (channelvariance){index_of_channel(b), b->variance.b};
+    channel_sort_order[3] = (channelvariance){index_of_channel(a), b->variance.a};
 
     qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), comparevariance);
 
@@ -147,7 +147,7 @@ static void sort_colors_by_variance(f_pixel variance, hist_item achv[], int indx
     else if (channel_sort_order[0].chan == index_of_channel(b)) comp = weightedcompare_b;
     else comp = weightedcompare_a;
 
-    qsort(&(achv[indx]), clrs, sizeof(achv[0]), comp);
+    qsort(&(achv[b->ind]), b->colors, sizeof(achv[0]), comp);
 }
 
 
@@ -224,7 +224,7 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
         int indx = bv[bi].ind;
         int clrs = bv[bi].colors;
 
-        sort_colors_by_variance(bv[bi].variance, achv, indx, clrs);
+        sort_colors_by_variance(&bv[bi], achv);
 
         /*
          Classic implementation tries to get even number of colors or pixels in each subdivision.

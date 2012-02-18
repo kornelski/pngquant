@@ -103,7 +103,7 @@ static int weightedcompare_a(const void *ch1, const void *ch2)
     return weightedcompare_other(c1p, c2p);
 }
 
-inline static float variance_diff(float val, const float good_enough)
+inline static double variance_diff(double val, const double good_enough)
 {
     val *= val;
     if (val < good_enough*good_enough) return val / 2.f;
@@ -113,17 +113,23 @@ inline static float variance_diff(float val, const float good_enough)
 static f_pixel box_variance(const hist_item achv[], const struct box *box)
 {
     f_pixel mean = box->color;
-    f_pixel variance = (f_pixel){0,0,0,0};
+    double variancea=0, variancer=0, varianceg=0, varianceb=0;
 
     for (int i = 0; i < box->colors; ++i) {
         f_pixel px = achv[box->ind + i].acolor;
-        float weight = achv[box->ind + i].adjusted_weight;
-        variance.a += variance_diff(mean.a - px.a, 1.f/256.f)*weight*0.95;
-        variance.r += variance_diff(mean.r - px.r, 1.f/512.f)*weight;
-        variance.g += variance_diff(mean.g - px.g, 1.f/512.f)*weight;
-        variance.b += variance_diff(mean.b - px.b, 1.f/512.f)*weight;
+        double weight = achv[box->ind + i].adjusted_weight;
+        variancea += variance_diff(mean.a - px.a, 1.f/256.f)*weight*0.95;
+        variancer += variance_diff(mean.r - px.r, 1.f/512.f)*weight;
+        varianceg += variance_diff(mean.g - px.g, 1.f/512.f)*weight;
+        varianceb += variance_diff(mean.b - px.b, 1.f/512.f)*weight;
     }
-    return variance;
+
+    return (f_pixel){
+        .a = variancea,
+        .r = variancer,
+        .g = varianceg,
+        .b = varianceb,
+    };
 }
 
 static void sort_colors_by_variance(const struct box *b, hist_item achv[])

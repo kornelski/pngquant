@@ -64,9 +64,9 @@ struct pngquant_options {
     float min_opaque_val;
 };
 
-pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options);
-pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
-pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin);
+static pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options);
+static pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
+static pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin);
 
 static int verbose=0;
 /* prints only when verbose flag is set */
@@ -286,7 +286,7 @@ static int compare_popularity(const void *ch1, const void *ch2)
     return v1-v2;
 }
 
-void sort_palette(write_info *output_image, colormap *map)
+static void sort_palette(write_info *output_image, colormap *map)
 {
     assert(map); assert(output_image);
 
@@ -326,7 +326,7 @@ void sort_palette(write_info *output_image, colormap *map)
     output_image->num_trans = num_transparent;
 }
 
-void set_palette(write_info *output_image, const colormap *map)
+static void set_palette(write_info *output_image, const colormap *map)
 {
     for (int x = 0; x < map->colors; ++x) {
         rgb_pixel px = to_rgb(output_image->gamma, map->palette[x].acolor);
@@ -339,7 +339,7 @@ void set_palette(write_info *output_image, const colormap *map)
     }
 }
 
-float remap_to_palette(read_info *input_image, write_info *output_image, colormap *const map, const float min_opaque_val)
+static float remap_to_palette(read_info *input_image, write_info *output_image, colormap *const map, const float min_opaque_val)
 {
     const rgb_pixel *const *const input_pixels = (const rgb_pixel **)input_image->row_pointers;
     unsigned char *const *const row_pointers = output_image->row_pointers;
@@ -405,7 +405,7 @@ static float distance_from_closest_other_color(const colormap *map, const int i)
 
   If output_image_is_remapped is true, only pixels noticeably changed by error diffusion will be written to output image.
  */
-void remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, const float min_opaque_val, const float *edge_map, const int output_image_is_remapped)
+static void remap_to_palette_floyd(read_info *input_image, write_info *output_image, const colormap *map, const float min_opaque_val, const float *edge_map, const int output_image_is_remapped)
 {
     const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->row_pointers;
     unsigned char *const *const row_pointers = output_image->row_pointers;
@@ -571,7 +571,7 @@ void remap_to_palette_floyd(read_info *input_image, write_info *output_image, co
 /* build the output filename from the input name by inserting "-fs8" or
  * "-or8" before the ".png" extension (or by appending that plus ".png" if
  * there isn't any extension), then make sure it doesn't exist already */
-char *add_filename_extension(const char *filename, const char *newext)
+static char *add_filename_extension(const char *filename, const char *newext)
 {
     int x = strlen(filename);
 
@@ -597,7 +597,7 @@ static void set_binary_mode(FILE *fp)
 #endif
 }
 
-pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin)
+static pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin)
 {
     FILE *outfile;
     if (using_stdin) {
@@ -647,7 +647,7 @@ pngquant_error write_image(write_info *output_image,const char *filename,const c
 }
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
-histogram *get_histogram(const read_info *input_image, const int reqcolors, const int speed_tradeoff, const float *importance_map)
+static histogram *get_histogram(const read_info *input_image, const int reqcolors, const int speed_tradeoff, const float *importance_map)
 {
     histogram *hist;
     int ignorebits=0;
@@ -679,7 +679,7 @@ histogram *get_histogram(const read_info *input_image, const int reqcolors, cons
     return hist;
 }
 
-float modify_alpha(read_info *input_image, const float min_opaque_val)
+static float modify_alpha(read_info *input_image, const float min_opaque_val)
 {
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
@@ -732,7 +732,7 @@ float modify_alpha(read_info *input_image, const float min_opaque_val)
     return min_opaque_val;
 }
 
-pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p)
+static pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p)
 {
     FILE *infile;
 
@@ -766,7 +766,7 @@ pngquant_error read_image(const char *filename, int using_stdin, read_info *inpu
     noise - approximation of areas with high-frequency noise, except straight edges. 1=flat, 0=noisy.
     edges - noise map including all edges
  */
-void contrast_maps(const rgb_pixel*const apixels[], const int cols, const int rows, const double gamma, float **noiseP, float **edgesP)
+static void contrast_maps(const rgb_pixel*const apixels[], const int cols, const int rows, const double gamma, float **noiseP, float **edgesP)
 {
     float *restrict noise = malloc(sizeof(float)*cols*rows);
     float *restrict tmp = malloc(sizeof(float)*cols*rows);
@@ -835,7 +835,7 @@ void contrast_maps(const rgb_pixel*const apixels[], const int cols, const int ro
  * and peeks 1 pixel above/below. Full 2d algorithm doesn't improve it significantly.
  * Correct flood fill doesn't have visually good properties.
  */
-void update_dither_map(const write_info *output_image, float *edges)
+static void update_dither_map(const write_info *output_image, float *edges)
 {
     const int width = output_image->width;
     const int height = output_image->height;
@@ -874,7 +874,7 @@ void update_dither_map(const write_info *output_image, float *edges)
     }
 }
 
-static void adjust_histogram(hist_item *item, float diff)
+static void adjust_histogram_callback(hist_item *item, float diff)
 {
     item->adjusted_weight = (item->perceptual_weight+item->adjusted_weight) * (sqrtf(1.0+diff));
 }
@@ -912,7 +912,7 @@ static colormap *find_best_palette(histogram *hist, const int reqcolors, const f
         // at the same time Voronoi iteration is done to improve the palette
         // and histogram weights are adjusted based on remapping error to give more weight to poorly matched colors
 
-        double total_error = viter_do_iteration(hist, newmap, min_opaque_val, adjust_histogram);
+        double total_error = viter_do_iteration(hist, newmap, min_opaque_val, adjust_histogram_callback);
 
         if (!acolormap || total_error < least_error) {
             if (acolormap) pam_freecolormap(acolormap);
@@ -935,7 +935,7 @@ static colormap *find_best_palette(histogram *hist, const int reqcolors, const f
     return acolormap;
 }
 
-pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options)
+static pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options)
 {
     const int speed_tradeoff = options->speed_tradeoff, reqcolors = options->reqcolors;
     const float min_opaque_val = options->min_opaque_val;

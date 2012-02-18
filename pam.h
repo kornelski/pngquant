@@ -11,6 +11,8 @@
  ** documentation.  This software is provided "as is" without express or
  ** implied warranty.
  */
+#ifndef PAM_H
+#define PAM_H
 
 #include <math.h>
 #include <assert.h>
@@ -214,3 +216,5 @@ void pam_freeacolorhist(histogram *h);
 
 colormap *pam_colormap(int colors);
 void pam_freecolormap(colormap *c);
+
+#endif

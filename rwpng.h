@@ -29,6 +29,9 @@
 
   ---------------------------------------------------------------------------*/
 
+#ifndef RWPNG_H
+#define RWPNG_H
+
 #include "png.h"    /* libpng header; includes zlib.h */
 #include <setjmp.h>
 
@@ -96,3 +99,5 @@ void rwpng_version_info(FILE *fp);
 pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr);
 
 pngquant_error rwpng_write_image(FILE *outfile, write_info *mainprog_ptr);
+
+#endif

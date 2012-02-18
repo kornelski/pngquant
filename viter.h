@@ -1,4 +1,7 @@
 
+#ifndef VITER_H
+#define VITER_H
+
 typedef struct {
     double a, r, g, b, total;
 } viter_state;
@@ -9,3 +12,5 @@ void viter_init(const colormap *map, const int max_threads, viter_state state[])
 void viter_update_color(const f_pixel acolor, const float value, const colormap *map, const int match, const int thread, viter_state state[]);
 void viter_finalize(colormap *map, const int max_threads, const viter_state state[]);
 double viter_do_iteration(histogram *hist, colormap *const map, const float min_opaque_val, viter_callback callback);
+
+#endif

@@ -162,12 +162,18 @@ static void sort_colors_by_variance(const struct box *b, hist_item achv[])
  */
 static int best_splittable_box(struct box* bv, int boxes)
 {
-    int bi=-1; float maxsum=0;
+    int bi=-1; double maxsum=0;
     for (int i=0; i < boxes; i++) {
         if (bv[i].colors < 2) continue;
 
         // looks only at max variance, because it's only going to split by it
-        float thissum = bv[i].sum*MAX(MAX(bv[i].variance.a,bv[i].variance.r),MAX(bv[i].variance.g,bv[i].variance.b));
+        const double cv = MAX(bv[i].variance.r, MAX(bv[i].variance.g,bv[i].variance.b));
+
+        // perfect shadows are not that important
+        double av = bv[i].variance.a * 12.f/16.f;
+        if (av < 6.f/256.f/256.f) av /= 2.f;
+
+        const double thissum = bv[i].sum * MAX(av,cv);
 
         if (thissum > maxsum) {
             maxsum = thissum;

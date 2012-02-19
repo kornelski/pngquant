@@ -31,9 +31,12 @@
 
 #if USE_SSE
 #include <emmintrin.h>
+#define SSE_ALIGN __attribute__ ((aligned (16)))
 #define cpuid(func,ax,bx,cx,dx)\
     __asm__ __volatile__ ("cpuid":\
     "=a" (ax), "=b" (bx), "=c" (cx), "=d" (dx) : "a" (func));
+#else
+#define SSE_ALIGN
 #endif
 
 /* from pam.h */
@@ -44,7 +47,7 @@ typedef struct {
 
 typedef struct {
     float a, r, g, b;
-}  __attribute__ ((aligned (16))) f_pixel;
+} SSE_ALIGN f_pixel;
 
 static const float internal_gamma = 0.45455;
 

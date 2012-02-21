@@ -60,8 +60,8 @@ typedef struct {
     jmp_buf jmpbuf;
     png_uint_32 width;
     png_uint_32 height;
-    png_uint_32 rowbytes;
-    double gamma;
+    png_size_t rowbytes;
+    float gamma;
     int interlaced;
     unsigned char *rgba_data;
     unsigned char **row_pointers;
@@ -73,7 +73,7 @@ typedef struct {
     void *info_ptr;
     png_uint_32 width;
     png_uint_32 height;
-    double gamma;
+    float gamma;
     int interlaced;
     int num_palette;
     int num_trans;

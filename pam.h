@@ -49,7 +49,7 @@ typedef struct {
     float a, r, g, b;
 } SSE_ALIGN f_pixel;
 
-static const float internal_gamma = 0.45455;
+static const float internal_gamma = 0.45455f;
 
 /**
  Converts 8-bit color to internal gamma and premultiplied alpha.
@@ -101,10 +101,10 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
     a *= 256.f;
 
     return (rgb_pixel){
-        .r = r>=255 ? 255 : (r<=0 ? 0 : r),
-        .g = g>=255 ? 255 : (g<=0 ? 0 : g),
-        .b = b>=255 ? 255 : (b<=0 ? 0 : b),
-        .a = a>=255 ? 255 : a,
+        .r = r>=255.f ? 255 : (r<=0.f ? 0 : r),
+        .g = g>=255.f ? 255 : (g<=0.f ? 0 : g),
+        .b = b>=255.f ? 255 : (b<=0.f ? 0 : b),
+        .a = a>=255.f ? 255 : a,
     };
 }
 
@@ -193,7 +193,7 @@ typedef struct {
     struct acolorhist_list_item **buckets;
 } *acolorhash_table;
 
-histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *imp);
+histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, float gamma, int maxacolors, int ignorebits, const float *imp);
 void pam_freeacolorhist(histogram *h);
 
 colormap *pam_colormap(int colors);

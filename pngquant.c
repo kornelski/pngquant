@@ -107,9 +107,9 @@ inline static int is_sse2_available()
     return TRUE;
 #endif
     int a,b,c,d;
-    cpuid(1, a, b, c, d);
+        cpuid(1, a, b, c, d);
     return d & (1<<26); // edx bit 26 is set when SSE2 is present
-}
+        }
 #endif
 
 int main(int argc, char *argv[])
@@ -293,7 +293,7 @@ static int compare_popularity(const void *ch1, const void *ch2)
 {
     const float v1 = ((const colormap_item*)ch1)->popularity;
     const float v2 = ((const colormap_item*)ch2)->popularity;
-    return v1-v2;
+    return v1 > v2 ? 1 : -1;
 }
 
 static void sort_palette(write_info *output_image, colormap *map)
@@ -354,7 +354,7 @@ static float remap_to_palette(read_info *input_image, write_info *output_image, 
     const rgb_pixel *const *const input_pixels = (const rgb_pixel **)input_image->row_pointers;
     unsigned char *const *const row_pointers = output_image->row_pointers;
     const int rows = input_image->height, cols = input_image->width;
-    const double gamma = input_image->gamma;
+    const float gamma = input_image->gamma;
 
     int remapped_pixels=0;
     float remapping_error=0;
@@ -420,7 +420,7 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
     const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->row_pointers;
     unsigned char *const *const row_pointers = output_image->row_pointers;
     const int rows = input_image->height, cols = input_image->width;
-    const double gamma = input_image->gamma;
+    const float gamma = input_image->gamma;
 
     const colormap_item *acolormap = map->palette;
 
@@ -458,7 +458,7 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
         do {
             const f_pixel px = to_f(gamma, input_pixels[row][col]);
 
-            float dither_level = edge_map ? edge_map[row*cols + col] : 0.9;
+            float dither_level = edge_map ? edge_map[row*cols + col] : 0.9f;
 
             /* Use Floyd-Steinberg errors to adjust actual color. */
             sr = px.r + thiserr[col + 1].r * dither_level;
@@ -487,7 +487,7 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
                     ind = curr_ind;
                 } else {
                     ind = nearest_search(n, spx, min_opaque_val, NULL);
-                }
+            }
             }
 
             row_pointers[row][col] = ind;
@@ -583,7 +583,7 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
  * there isn't any extension), then make sure it doesn't exist already */
 static char *add_filename_extension(const char *filename, const char *newext)
 {
-    int x = strlen(filename);
+    size_t x = strlen(filename);
 
     char* outname = malloc(x+4+strlen(newext)+1);
 
@@ -663,7 +663,7 @@ static histogram *get_histogram(const read_info *input_image, const int reqcolor
     int ignorebits=0;
     const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->row_pointers;
     const int cols = input_image->width, rows = input_image->height;
-    const double gamma = input_image->gamma;
+    const float gamma = input_image->gamma;
     assert(gamma > 0);
 
    /*
@@ -697,11 +697,11 @@ static float modify_alpha(read_info *input_image, const float min_opaque_val)
 
     rgb_pixel *const *const input_pixels = (rgb_pixel **)input_image->row_pointers;
     const int rows= input_image->height, cols = input_image->width;
-    const double gamma = input_image->gamma;
+    const float gamma = input_image->gamma;
     float almost_opaque_val;
 
     if (min_opaque_val < 1.f) {
-        almost_opaque_val = min_opaque_val * 169.0/256.0;
+        almost_opaque_val = min_opaque_val * 169.f/256.f;
         verbose_printf("  Working around IE6 bug by making image less transparent...\n");
     } else {
         almost_opaque_val = 1;
@@ -725,18 +725,18 @@ static float modify_alpha(read_info *input_image, const float min_opaque_val)
             if (srcpx.a < 255) {
                 if (!srcpx.a) {
                     input_pixels[row][col] = (rgb_pixel){0,0,0,0};
-                }
+            }
                 else if (px.a > almost_opaque_val) {
-                    /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
-                    assert((min_opaque_val-almost_opaque_val)>0);
+            /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
+                assert((min_opaque_val-almost_opaque_val)>0);
 
-                    float al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
-                    if (al > 1) al = 1;
-                    px.a = al;
+                float al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
+                if (al > 1) al = 1;
+                px.a = al;
                     input_pixels[row][col].a = to_rgb(gamma, px).a;
-                }
             }
         }
+    }
     }
 
     return min_opaque_val;
@@ -776,7 +776,7 @@ static pngquant_error read_image(const char *filename, int using_stdin, read_inf
     noise - approximation of areas with high-frequency noise, except straight edges. 1=flat, 0=noisy.
     edges - noise map including all edges
  */
-static void contrast_maps(const rgb_pixel*const apixels[], const int cols, const int rows, const double gamma, float **noiseP, float **edgesP)
+static void contrast_maps(const rgb_pixel*const apixels[], const int cols, const int rows, const float gamma, float **noiseP, float **edgesP)
 {
     float *restrict noise = malloc(sizeof(float)*cols*rows);
     float *restrict tmp = malloc(sizeof(float)*cols*rows);
@@ -806,7 +806,7 @@ static void contrast_maps(const rgb_pixel*const apixels[], const int cols, const
             float horiz = MAX(MAX(a,r),MAX(g,b));
             float vert = MAX(MAX(a1,r1),MAX(g1,b1));
             float edge = MAX(horiz,vert);
-            float z = edge - fabs(horiz-vert)*.5;
+            float z = edge - fabsf(horiz-vert)*.5f;
             z = 1.f - MAX(z,MIN(horiz,vert));
             z *= z; // noise is amplified
             z *= z;
@@ -886,7 +886,7 @@ static void update_dither_map(const write_info *output_image, float *edges)
 
 static void adjust_histogram_callback(hist_item *item, float diff)
 {
-    item->adjusted_weight = (item->perceptual_weight+item->adjusted_weight) * (sqrtf(1.0+diff));
+    item->adjusted_weight = (item->perceptual_weight+item->adjusted_weight) * (sqrtf(1.f+diff));
 }
 
 /**
@@ -985,7 +985,7 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
 
     output_image->width = input_image->width;
     output_image->height = input_image->height;
-    output_image->gamma = 0.45455; // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
+    output_image->gamma = 0.45455f; // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image

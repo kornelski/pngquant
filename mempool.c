@@ -16,7 +16,7 @@ void* mempool_new(mempool *mptr, size_t size)
     assert(size < MEMPOOL_SIZE-MEMPOOL_RESERVED);
 
     if (*mptr && ((*mptr)->used+size) <= MEMPOOL_SIZE) {
-        int prevused = (*mptr)->used;
+        size_t prevused = (*mptr)->used;
         (*mptr)->used += (size+15) & ~0xF;
         return ((char*)(*mptr)) + prevused;
     }

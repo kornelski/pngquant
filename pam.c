@@ -43,7 +43,7 @@ static acolorhash_table pam_allocacolorhash(void);
  * Builds color histogram no larger than maxacolors. Ignores (posterizes) ignorebits lower bits in each color.
  * perceptual_weight of each entry is increased by value from importance_map
  */
-histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance_map)
+histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, float gamma, int maxacolors, int ignorebits, const float *importance_map)
 {
     acolorhash_table acht;
     histogram *hist;
@@ -76,7 +76,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
         float boost=1.0;
         for (col = 0; col < cols; ++col) {
             if (importance_map) {
-                boost = 0.5+*importance_map++;
+                boost = 0.5f+*importance_map++;
             }
 
             union rgb_as_long px = {apixels[row][col]};

@@ -31,17 +31,7 @@ struct box {
     int colors;
 };
 
-typedef struct {
-    int chan; float variance;
-} channelvariance;
-
-static int comparevariance(const void *ch1, const void *ch2)
-{
-    return ((const channelvariance*)ch1)->variance > ((const channelvariance*)ch2)->variance ? -1 :
-          (((const channelvariance*)ch1)->variance < ((const channelvariance*)ch2)->variance ? 1 : 0);
-}
-
-static channelvariance channel_sort_order[4];
+static unsigned int channel_order[3];
 
 inline static int weightedcompare_other(const hist_item *h1p, const hist_item *h2p)
 {
@@ -49,19 +39,19 @@ inline static int weightedcompare_other(const hist_item *h1p, const hist_item *h
     const float *restrict c2p = (const float *)&h2p->acolor;
 
     // other channels are sorted backwards
-    if (c1p[channel_sort_order[1].chan] > c2p[channel_sort_order[1].chan]) return -1;
-    if (c1p[channel_sort_order[1].chan] < c2p[channel_sort_order[1].chan]) return 1;
+    if (c1p[channel_order[0]] > c2p[channel_order[0]]) return -1;
+    if (c1p[channel_order[0]] < c2p[channel_order[0]]) return 1;
 
-    if (c1p[channel_sort_order[2].chan] > c2p[channel_sort_order[2].chan]) return -1;
-    if (c1p[channel_sort_order[2].chan] < c2p[channel_sort_order[2].chan]) return 1;
+    if (c1p[channel_order[1]] > c2p[channel_order[1]]) return -1;
+    if (c1p[channel_order[1]] < c2p[channel_order[1]]) return 1;
 
-    if (c1p[channel_sort_order[3].chan] > c2p[channel_sort_order[3].chan]) return -1;
-    if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
+    if (c1p[channel_order[2]] > c2p[channel_order[2]]) return -1;
+    if (c1p[channel_order[2]] < c2p[channel_order[2]]) return 1;
 
     return 0;
     }
 
-/** these are specialised functions to make first comparison faster without lookup in channel_sort_order[] */
+/** these are specialised functions to make first comparison faster without lookup in channel_order[] */
 static int weightedcompare_r(const void *a, const void *b)
 {
     const hist_item *h1p = (const hist_item *)a;
@@ -135,26 +125,41 @@ static f_pixel box_variance(const hist_item achv[], const struct box *box)
     };
 }
 
-static void sort_colors_by_variance(const struct box *b, hist_item achv[])
+
+typedef struct {
+    unsigned int chan; float variance;
+} channelvariance;
+
+static int comparevariance(const void *ch1, const void *ch2)
+{
+    return ((const channelvariance*)ch1)->variance > ((const channelvariance*)ch2)->variance ? -1 :
+          (((const channelvariance*)ch1)->variance < ((const channelvariance*)ch2)->variance ? 1 : 0);
+}
+
+static void sort_colors_by_variance(struct box *b, hist_item achv[])
 {
     /*
      ** Sort dimensions by their variance, and then sort colors first by dimension with highest variance
      */
+    channelvariance channels[4] = {
+        {index_of_channel(r), b->variance.r},
+        {index_of_channel(g), b->variance.g},
+        {index_of_channel(b), b->variance.b},
+        {index_of_channel(a), b->variance.a},
+    };
 
-    channel_sort_order[0] = (channelvariance){index_of_channel(r), b->variance.r};
-    channel_sort_order[1] = (channelvariance){index_of_channel(g), b->variance.g};
-    channel_sort_order[2] = (channelvariance){index_of_channel(b), b->variance.b};
-    channel_sort_order[3] = (channelvariance){index_of_channel(a), b->variance.a};
-
-    qsort(channel_sort_order, 4, sizeof(channel_sort_order[0]), comparevariance);
-
+    qsort(channels, 4, sizeof(channels[0]), comparevariance);
 
     int (*comp)(const void *, const void *); // comp variable that is a pointer to a function
 
-         if (channel_sort_order[0].chan == index_of_channel(r)) comp = weightedcompare_r;
-    else if (channel_sort_order[0].chan == index_of_channel(g)) comp = weightedcompare_g;
-    else if (channel_sort_order[0].chan == index_of_channel(b)) comp = weightedcompare_b;
+         if (channels[0].chan == index_of_channel(r)) comp = weightedcompare_r;
+    else if (channels[0].chan == index_of_channel(g)) comp = weightedcompare_g;
+    else if (channels[0].chan == index_of_channel(b)) comp = weightedcompare_b;
     else comp = weightedcompare_a;
+
+    channel_order[0] = channels[1].chan;
+    channel_order[1] = channels[2].chan;
+    channel_order[2] = channels[3].chan;
 
     qsort(&(achv[b->ind]), b->colors, sizeof(achv[0]), comp);
 }

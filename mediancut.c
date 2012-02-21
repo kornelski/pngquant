@@ -31,9 +31,7 @@ struct box {
     int colors;
 };
 
-static unsigned int channel_order[3];
-
-inline static int weightedcompare_other(const hist_item *h1p, const hist_item *h2p)
+inline static int weightedcompare_other(const int unsigned channel_order[], const hist_item *h1p, const hist_item *h2p)
 {
     const float *restrict c1p = (const float *)&h1p->acolor;
     const float *restrict c2p = (const float *)&h2p->acolor;
@@ -49,10 +47,10 @@ inline static int weightedcompare_other(const hist_item *h1p, const hist_item *h
     if (c1p[channel_order[2]] < c2p[channel_order[2]]) return 1;
 
     return 0;
-    }
+}
 
 /** these are specialised functions to make first comparison faster without lookup in channel_order[] */
-static int weightedcompare_r(const void *a, const void *b)
+static int weightedcompare_r(const unsigned int channel_order[], const hist_item *a, const hist_item *b)
 {
     const hist_item *h1p = (const hist_item *)a;
     const hist_item *h2p = (const hist_item *)b;
@@ -60,10 +58,10 @@ static int weightedcompare_r(const void *a, const void *b)
     if (h1p->acolor.r > h2p->acolor.r) return 1;
     if (h1p->acolor.r < h2p->acolor.r) return -1;
 
-    return weightedcompare_other(h1p, h2p);
+    return weightedcompare_other(channel_order, h1p, h2p);
 }
 
-static int weightedcompare_g(const void *a, const void *b)
+static int weightedcompare_g(const unsigned int channel_order[], const hist_item *a, const hist_item *b)
 {
     const hist_item *h1p = (const hist_item *)a;
     const hist_item *h2p = (const hist_item *)b;
@@ -71,10 +69,10 @@ static int weightedcompare_g(const void *a, const void *b)
     if (h1p->acolor.g > h2p->acolor.g) return 1;
     if (h1p->acolor.g < h2p->acolor.g) return -1;
 
-    return weightedcompare_other(h1p, h2p);
+    return weightedcompare_other(channel_order, h1p, h2p);
 }
 
-static int weightedcompare_b(const void *a, const void *b)
+static int weightedcompare_b(const unsigned int channel_order[], const hist_item *a, const hist_item *b)
 {
     const hist_item *h1p = (const hist_item *)a;
     const hist_item *h2p = (const hist_item *)b;
@@ -82,10 +80,10 @@ static int weightedcompare_b(const void *a, const void *b)
     if (h1p->acolor.b > h2p->acolor.b) return 1;
     if (h1p->acolor.b < h2p->acolor.b) return -1;
 
-    return weightedcompare_other(h1p, h2p);
-        }
+    return weightedcompare_other(channel_order, h1p, h2p);
+}
 
-static int weightedcompare_a(const void *a, const void *b)
+static int weightedcompare_a(const unsigned int channel_order[], const hist_item *a, const hist_item *b)
 {
     const hist_item *h1p = (const hist_item *)a;
     const hist_item *h2p = (const hist_item *)b;
@@ -93,15 +91,15 @@ static int weightedcompare_a(const void *a, const void *b)
     if (h1p->acolor.a > h2p->acolor.a) return 1;
     if (h1p->acolor.a < h2p->acolor.a) return -1;
 
-    return weightedcompare_other(h1p, h2p);
-            }
+    return weightedcompare_other(channel_order, h1p, h2p);
+}
 
 inline static double variance_diff(double val, const double good_enough)
 {
     val *= val;
     if (val < good_enough*good_enough) return val / 2.f;
     return val;
-        }
+}
 
 static f_pixel box_variance(const hist_item achv[], const struct box *box)
 {
@@ -126,6 +124,41 @@ static f_pixel box_variance(const hist_item achv[], const struct box *box)
 }
 
 
+static inline void hist_item_swap(hist_item *l, hist_item *r)
+{
+    if (l != r) {
+        hist_item t = *l;
+        *l = *r;
+        *r = t;
+    }
+}
+
+static void hist_item_sort_range(hist_item *restrict const base, const unsigned int end,
+                            const int sort_start, const unsigned int sort_len,
+                            const unsigned int channel_order[], int(*comp)(const unsigned int[], const hist_item *, const hist_item *))
+{
+    int pivot = 0;
+    int l = 1, r = end;
+    if (end > 30) {
+        hist_item_swap(&base[0], &base[end/2]);
+    }
+
+    while (l < r) {
+        if (comp(channel_order, &base[l], &base[pivot]) <= 0) {
+            l++;
+        } else {
+            r--;
+            hist_item_swap(&base[l], &base[r]);
+        }
+    }
+    l--;
+    hist_item_swap(&base[0], &base[l]);
+
+    if (l > 0 && 0 < sort_start+sort_len && l > sort_start) hist_item_sort_range(base, l, sort_start, sort_len, channel_order, comp);
+    if (end > r && r < sort_start+sort_len && end > sort_start) hist_item_sort_range(base + r, end - r, sort_start - r, sort_len, channel_order, comp);
+}
+
+
 typedef struct {
     unsigned int chan; float variance;
 } channelvariance;
@@ -136,7 +169,13 @@ static int comparevariance(const void *ch1, const void *ch2)
           (((const channelvariance*)ch1)->variance < ((const channelvariance*)ch2)->variance ? 1 : 0);
 }
 
-static void sort_colors_by_variance(struct box *b, hist_item achv[])
+struct sortinfo {
+    int (*comp)(const unsigned int[], const hist_item *, const hist_item *);
+    unsigned int channels[3];
+};
+
+/** Finds which channels need to be sorted first and picks optimised comparison function */
+static struct sortinfo prepare_sort(struct box *b, hist_item achv[])
 {
     /*
      ** Sort dimensions by their variance, and then sort colors first by dimension with highest variance
@@ -150,20 +189,33 @@ static void sort_colors_by_variance(struct box *b, hist_item achv[])
 
     qsort(channels, 4, sizeof(channels[0]), comparevariance);
 
-    int (*comp)(const void *, const void *); // comp variable that is a pointer to a function
+    // comp variable that is a pointer to a function
+    int (*comp)(const unsigned int[], const hist_item *, const hist_item *);
 
          if (channels[0].chan == index_of_channel(r)) comp = weightedcompare_r;
     else if (channels[0].chan == index_of_channel(g)) comp = weightedcompare_g;
     else if (channels[0].chan == index_of_channel(b)) comp = weightedcompare_b;
     else comp = weightedcompare_a;
 
-    channel_order[0] = channels[1].chan;
-    channel_order[1] = channels[2].chan;
-    channel_order[2] = channels[3].chan;
-
-    qsort(&(achv[b->ind]), b->colors, sizeof(achv[0]), comp);
+    return (struct sortinfo) {
+        .comp = comp,
+        .channels = {channels[1].chan,channels[2].chan,channels[3].chan},
+    };
 }
 
+/** finds median in unsorted set by sorting only minimum required */
+static f_pixel get_median(const struct box *b, hist_item achv[], const struct sortinfo *sort)
+{
+    const int median_start = (b->colors-1)/2;
+
+    hist_item_sort_range(&(achv[b->ind]), b->colors,
+                    median_start,
+                    b->colors&1 ? 1 : 2,
+                    sort->channels, sort->comp);
+
+    if (b->colors&1) return achv[b->ind + median_start].acolor;
+    return averagepixels(b->ind + median_start, 2, achv, 1.0);
+}
 
 /*
  ** Find the best splittable box. -1 if no boxes are splittable.
@@ -244,8 +296,6 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
         int indx = bv[bi].ind;
         int clrs = bv[bi].colors;
 
-        sort_colors_by_variance(&bv[bi], achv);
-
         /*
          Classic implementation tries to get even number of colors or pixels in each subdivision.
 
@@ -257,13 +307,16 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
          Median used as expected value gives much better results than mean.
          */
 
-        f_pixel median = averagepixels(indx+(clrs-1)/2, clrs&1 ? 1 : 2, achv, min_opaque_val);
+        const struct sortinfo sort = prepare_sort(&bv[bi], achv);
+        const f_pixel median = get_median(&bv[bi], achv, &sort);
 
         double halfvar = 0, lowervar = 0, lowersum = 0;
         for(int i=0; i < clrs; i++) {
             halfvar += color_weight(median, achv[indx+i]);
         }
         halfvar /= 2.0f;
+
+        qsort_r(&(achv[bv[bi].ind]), bv[bi].colors, sizeof(achv[0]), sort.channels, sort.comp);
 
         int break_at;
         for (break_at = 0; break_at < clrs - 1; ++break_at) {

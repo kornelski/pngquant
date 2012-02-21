@@ -192,15 +192,21 @@ typedef struct colormap {
     int colors;
 } colormap;
 
-struct acolorhist_list_item {
+struct acolorhist_arr_item {
     union rgb_as_long color;
-    struct acolorhist_list_item *next;
     float perceptual_weight;
+};
+
+struct acolorhist_arr_head {
+    int used, capacity;
+    struct acolorhist_arr_item *other_items;
+    union rgb_as_long color1, color2;
+    float perceptual_weight1, perceptual_weight2;
 };
 
 typedef struct {
     struct mempool *mempool;
-    struct acolorhist_list_item **buckets;
+    struct acolorhist_arr_head *buckets;
 } *acolorhash_table;
 
 histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, float gamma, int maxacolors, int ignorebits, const float *imp);

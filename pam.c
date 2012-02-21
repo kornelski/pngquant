@@ -13,7 +13,7 @@
  */
 
 #include <stdlib.h>
-
+#include <string.h>
 #include "pam.h"
 #include "mempool.h"
 
@@ -37,7 +37,7 @@ static acolorhash_table pam_allocacolorhash(void);
  ** implied warranty.
  */
 
-#define HASH_SIZE ((1<<18) / sizeof(struct acolorhist_arr_head) - 1)
+#define HASH_SIZE ((1<<19) / sizeof(struct acolorhist_arr_head) - 17)
 /**
  * Builds color histogram no larger than maxacolors. Ignores (posterizes) ignorebits lower bits in each color.
  * perceptual_weight of each entry is increased by value from importance_map
@@ -68,6 +68,10 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
 
     int colors=0;
 
+    const int stacksize = 512;
+    struct acolorhist_arr_item *freestack[stacksize];
+    int freestackp=0;
+
     /* Go through the entire image, building a hash table of colors. */
     for (int row = 0; row < rows; ++row) {
 
@@ -86,11 +90,11 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                to reduce number of allocations of achl->other_items.
              */
             struct acolorhist_arr_head *achl = &buckets[hash];
-            if (achl->used) {
-                if (achl->color1.l == px.l) {
+            if (achl->color1.l == px.l && achl->used) {
                 achl->perceptual_weight1 += boost;
                 continue;
             }
+            if (achl->used) {
                 if (achl->used > 1) {
                     if (achl->color2.l == px.l) {
                         achl->perceptual_weight2 += boost;
@@ -122,9 +126,27 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                         return NULL;
                     }
 
-                    const int capacity = achl->capacity*2 + 8;
-                    struct acolorhist_arr_item *new_items = mempool_new(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity);
-                    if (other_items) memcpy(new_items, other_items, sizeof(other_items[0])*achl->capacity);
+                    struct acolorhist_arr_item *new_items;
+                    int capacity;
+                    if (!other_items) { // there was no array previously, alloc "small" array
+                        capacity = 8;
+                        if (freestackp <= 0) {
+                            new_items = mempool_new(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity);
+                        } else {
+                            // freestack stores previously freed (reallocated) arrays that can be reused
+                            // (all pesimistically assumed to be capacity = 8)
+                            new_items = freestack[--freestackp];
+                        }
+                    } else {
+                        // simply reallocs and copies array to larger capacity
+                        capacity = achl->capacity*2 + 16;
+                        if (freestackp < stacksize-1) {
+                            freestack[freestackp++] = other_items;
+                        }
+                        new_items = mempool_new(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity);
+                        memcpy(new_items, other_items, sizeof(other_items[0])*achl->capacity);
+                    }
+
                     achl->other_items = new_items;
                     achl->capacity = capacity;
                     new_items[i] = (struct acolorhist_arr_item){

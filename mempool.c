@@ -4,7 +4,7 @@
 #include <assert.h>
 
 #define MEMPOOL_RESERVED ((sizeof(struct mempool)+15) & ~0xF)
-#define MEMPOOL_SIZE (1<<18)
+#define MEMPOOL_SIZE (1<<19)
 
 struct mempool {
     struct mempool *next;

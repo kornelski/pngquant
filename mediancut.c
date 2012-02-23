@@ -101,6 +101,7 @@ inline static double variance_diff(double val, const double good_enough)
     return val;
 }
 
+/** Weighted per-channel variance of the box. It's used to decide which channel to split by */
 static f_pixel box_variance(const hist_item achv[], const struct box *box)
 {
     f_pixel mean = box->color;
@@ -123,6 +124,7 @@ static f_pixel box_variance(const hist_item achv[], const struct box *box)
     };
 }
 
+inline static double color_weight(f_pixel median, hist_item h);
 
 static inline void hist_item_swap(hist_item *l, hist_item *r)
 {
@@ -133,6 +135,7 @@ static inline void hist_item_swap(hist_item *l, hist_item *r)
     }
 }
 
+/** this is a simple qsort that completely sorts only elements between sort_start and +sort_len. Used to find median of the set. */
 static void hist_item_sort_range(hist_item *restrict const base, const unsigned int end,
                             const int sort_start, const unsigned int sort_len,
                             const unsigned int channel_order[], int(*comp)(const unsigned int[], const hist_item *, const hist_item *))
@@ -156,6 +159,55 @@ static void hist_item_sort_range(hist_item *restrict const base, const unsigned 
 
     if (l > 0 && 0 < sort_start+sort_len && l > sort_start) hist_item_sort_range(base, l, sort_start, sort_len, channel_order, comp);
     if (end > r && r < sort_start+sort_len && end > sort_start) hist_item_sort_range(base + r, end - r, sort_start - r, sort_len, channel_order, comp);
+}
+
+/** sorts array to make sum of weights lower than halfvar one side, returns edge between <halfvar and >halfvar parts of the set */
+static hist_item *hist_item_sort_halfvar(hist_item *restrict base, int len, double *lowervar, const f_pixel *median, double halfvar,
+                            const unsigned int channel_order[], int(*comp)(const unsigned int[], const hist_item *, const hist_item *))
+{
+    int pivot = 0;
+    int l = 1, r = len;
+    if (len > 30) {
+        hist_item_swap(&base[0], &base[len/2]);
+    }
+
+    while (l < r) {
+        if (comp(channel_order, &base[l], &base[pivot]) <= 0) {
+            l++;
+        } else {
+            r--;
+            hist_item_swap(&base[l], &base[r]);
+        }
+    }
+    l--;
+    hist_item_swap(&base[0], &base[l]);
+
+    // check if sum of left side is smaller than half,
+    // if it is, then it doesn't need to be sorted
+    int t = 0; double tmpsum = *lowervar;
+    while (t <= l && tmpsum < halfvar) {
+        tmpsum += color_weight(*median, base[t++]);
+    }
+
+    if (tmpsum < halfvar) {
+        *lowervar = tmpsum;
+    } else {
+        if (l > 0) {
+            hist_item *res = hist_item_sort_halfvar(base, l, lowervar, median, halfvar, channel_order, comp);
+            if (res) return res;
+        } else {
+            // End of recursion. This will be executed in order from the first element.
+            *lowervar += color_weight(*median, base[0]);
+            if (*lowervar > halfvar) return &base[0];
+        }
+    }
+    if (len > r) {
+        return hist_item_sort_halfvar(base + r, len - r, lowervar, median, halfvar, channel_order, comp);
+    } else {
+        *lowervar += color_weight(*median, base[r]);
+        if (*lowervar > halfvar) return &base[r];
+    }
+    return NULL;
 }
 
 
@@ -310,27 +362,25 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
         const struct sortinfo sort = prepare_sort(&bv[bi], achv);
         const f_pixel median = get_median(&bv[bi], achv, &sort);
 
-        double halfvar = 0, lowervar = 0, lowersum = 0;
-        for(int i=0; i < clrs; i++) {
-            halfvar += color_weight(median, achv[indx+i]);
-        }
+        // box will be split to make color_weight of each side even
+        double halfvar = 0;
+        for(int i=0; i < clrs; i++) halfvar += color_weight(median, achv[indx+i]);
         halfvar /= 2.0f;
 
-        qsort_r(&(achv[bv[bi].ind]), bv[bi].colors, sizeof(achv[0]), sort.channels, sort.comp);
+        // hist_item_sort_halfvar sorts and sums lowervar at the same time
+        // returns item to break at …minus one, which does smell like an off-by-one error.
+        double lowervar=0;
 
-        int break_at;
-        for (break_at = 0; break_at < clrs - 1; ++break_at) {
-            if (lowervar >= halfvar)
-                break;
-
-            lowervar += color_weight(median, achv[indx+break_at]);
-            lowersum += achv[indx + break_at].adjusted_weight;
-        }
+        hist_item *break_p = hist_item_sort_halfvar(&achv[indx], clrs, &lowervar, &median, halfvar, sort.channels, sort.comp);
+        int break_at = MIN(clrs-1, break_p - &achv[indx] + 1);
 
         /*
-         ** Split the box. Sum*variance is then used to find "largest" box to split.
+         ** Split the box.
          */
         double sm = bv[bi].sum;
+        double lowersum = 0;
+        for (int i=0; i < break_at; i++) lowersum += achv[indx + i].adjusted_weight;
+
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
         bv[bi].color = averagepixels(bv[bi].ind, bv[bi].colors, achv, min_opaque_val);

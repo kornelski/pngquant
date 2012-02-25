@@ -174,7 +174,10 @@ union rgb_as_long {
 
 typedef struct {
     f_pixel acolor;
-    float adjusted_weight, perceptual_weight;
+    float adjusted_weight,   // perceptual weight changed to tweak how mediancut selects colors
+          perceptual_weight; // number of pixels weighted by importance of different areas of the picture
+
+    float color_weight; unsigned long sort_value; // these two change every time histogram subset is sorted
 } hist_item;
 
 typedef struct {

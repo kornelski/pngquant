@@ -83,8 +83,16 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
 
             // RGBA color is casted to long for easier hasing/comparisons
             union rgb_as_long px = {apixels[row][col]};
+            unsigned long hash;
+            if (!px.rgb.a) {
+                // "dirty alpha" has different RGBA values that end up being the same fully transparent color
+                px.l=0; hash=0;
+            } else {
+                // mask posterizes all 4 channels in one go
                 px.l = (px.l & posterize_mask) | ((px.l & posterize_high_mask) >> (8-ignorebits));
-            const unsigned long hash = px.l % HASH_SIZE;
+                // fancier hashing algorithms didn't improve much
+                hash = px.l % HASH_SIZE;
+            }
 
             /* head of the hash function stores first 2 colors inline (achl->used = 1..2),
                to reduce number of allocations of achl->other_items.

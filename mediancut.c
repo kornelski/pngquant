@@ -31,6 +31,7 @@ struct box {
     int colors;
 };
 
+inline static double variance_diff(double val, const double good_enough) ALWAYS_INLINE;
 inline static double variance_diff(double val, const double good_enough)
 {
     val *= val;
@@ -61,7 +62,7 @@ static f_pixel box_variance(const hist_item achv[], const struct box *box)
     };
 }
 
-inline static double color_weight(f_pixel median, hist_item h);
+inline static double color_weight(f_pixel median, hist_item h) ALWAYS_INLINE;
 
 static inline void hist_item_swap(hist_item *l, hist_item *r)
 {
@@ -72,77 +73,85 @@ static inline void hist_item_swap(hist_item *l, hist_item *r)
     }
 }
 
-/** this is a simple qsort that completely sorts only elements between sort_start and +sort_len. Used to find median of the set. */
-static void hist_item_sort_range(hist_item *restrict const base, const unsigned int end,
-                            const int sort_start, const unsigned int sort_len)
+inline static int qsort_pivot(const hist_item *const base, const unsigned int len) ALWAYS_INLINE;
+inline static int qsort_pivot(const hist_item *const base, const unsigned int len)
 {
-    int l = 1, r = end;
-    if (end > 30) {
-        hist_item_swap(&base[0], &base[end/2]);
+    if (len < 32) return len/2;
+
+    const int aidx=8, bidx=len/2, cidx=len-1;
+    const unsigned long a=base[aidx].sort_value, b=base[bidx].sort_value, c=base[cidx].sort_value;
+    return (a < b) ? ((b < c) ? bidx : ((a < c) ? cidx : aidx ))
+                   : ((b > c) ? bidx : ((a < c) ? aidx : cidx ));
+}
+
+inline static int qsort_partition(hist_item *const base, const unsigned int len) ALWAYS_INLINE;
+inline static int qsort_partition(hist_item *const base, const unsigned int len)
+{
+    int l = 1, r = len;
+    if (len >= 8) {
+        hist_item_swap(&base[0], &base[qsort_pivot(base,len)]);
     }
 
     const unsigned long pivot_value = base[0].sort_value;
     while (l < r) {
-        if (base[l].sort_value <= pivot_value) {
+        if (base[l].sort_value >= pivot_value) {
             l++;
         } else {
-            r--;
+            while(l < --r && base[r].sort_value <= pivot_value) {}
             hist_item_swap(&base[l], &base[r]);
         }
     }
     l--;
     hist_item_swap(&base[0], &base[l]);
 
-    if (l > 0 && 0 < sort_start+sort_len && l > sort_start) hist_item_sort_range(base, l, sort_start, sort_len);
-    if (end > r && r < sort_start+sort_len && end > sort_start) hist_item_sort_range(base + r, end - r, sort_start - r, sort_len);
+    return l;
+}
+
+/** this is a simple qsort that completely sorts only elements between sort_start and +sort_len. Used to find median of the set. */
+static void hist_item_sort_range(hist_item *base, unsigned int len, int sort_start, const unsigned int sort_len)
+{
+    do {
+        const int l = qsort_partition(base, len), r = l+1;
+
+        if (sort_start+sort_len > 0 && l > sort_start && l > 0) {
+            hist_item_sort_range(base, l, sort_start, sort_len);
+        }
+        if (len > r && r < sort_start+sort_len && len > sort_start) {
+            base += r; len -= r; sort_start -= r; // tail-recursive "call"
+        } else return;
+    } while(1);
 }
 
 /** sorts array to make sum of weights lower than halfvar one side, returns edge between <halfvar and >halfvar parts of the set */
-static hist_item *hist_item_sort_halfvar(hist_item *base, int len, double *lowervar, double halfvar)
+static hist_item *hist_item_sort_halfvar(hist_item *base, int len, double *const lowervar, const double halfvar)
 {
-    int l = 1, r = len;
-    if (len > 30) {
-        hist_item_swap(&base[0], &base[len/2]);
-    }
+    do {
+        const int l = qsort_partition(base, len), r = l+1;
 
-    const unsigned long pivot_value = base[0].sort_value;
-    while (l < r) {
-        if (base[l].sort_value <= pivot_value) {
-            l++;
+        // check if sum of left side is smaller than half,
+        // if it is, then it doesn't need to be sorted
+        int t = 0; double tmpsum = *lowervar;
+        while (t <= l && tmpsum < halfvar) tmpsum += base[t++].color_weight;
+
+        if (tmpsum < halfvar) {
+            *lowervar = tmpsum;
         } else {
-            r--;
-            hist_item_swap(&base[l], &base[r]);
+            if (l > 0) {
+                hist_item *res = hist_item_sort_halfvar(base, l, lowervar, halfvar);
+                if (res) return res;
+            } else {
+                // End of left recursion. This will be executed in order from the first element.
+                *lowervar += base[0].color_weight;
+                if (*lowervar > halfvar) return &base[0];
+            }
         }
-    }
-    l--;
-    hist_item_swap(&base[0], &base[l]);
-
-    // check if sum of left side is smaller than half,
-    // if it is, then it doesn't need to be sorted
-    int t = 0; double tmpsum = *lowervar;
-    while (t <= l && tmpsum < halfvar) {
-        tmpsum += base[t++].color_weight;
-    }
-
-    if (tmpsum < halfvar) {
-        *lowervar = tmpsum;
-    } else {
-        if (l > 0) {
-            hist_item *res = hist_item_sort_halfvar(base, l, lowervar, halfvar);
-            if (res) return res;
+        if (len > r) {
+            base += r; len -= r; // tail-recursive "call"
         } else {
-            // End of recursion. This will be executed in order from the first element.
-            *lowervar += base[0].color_weight;
-            if (*lowervar > halfvar) return &base[0];
+            *lowervar += base[r].color_weight;
+            return (*lowervar > halfvar) ? &base[r] : NULL;
         }
-    }
-    if (len > r) {
-        return hist_item_sort_halfvar(base + r, len - r, lowervar, halfvar);
-    } else {
-        *lowervar += base[r].color_weight;
-        if (*lowervar > halfvar) return &base[r];
-    }
-    return NULL;
+    } while(1);
 }
 
 static f_pixel get_median(const struct box *b, hist_item achv[]);

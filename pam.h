@@ -39,6 +39,12 @@
 #define SSE_ALIGN
 #endif
 
+#if defined(__GNUC__) || defined (__llvm__)
+#define ALWAYS_INLINE __attribute__((always_inline))
+#else
+#define ALWAYS_INLINE
+#endif
+
 /* from pam.h */
 
 typedef struct {
@@ -55,6 +61,7 @@ static const float internal_gamma = 0.45455f;
  Converts 8-bit color to internal gamma and premultiplied alpha.
  (premultiplied color space is much better for blending of semitransparent colors)
  */
+inline static f_pixel to_f(float gamma, rgb_pixel px) ALWAYS_INLINE;
 inline static f_pixel to_f(float gamma, rgb_pixel px)
 {
     float r = px.r/255.f,
@@ -108,6 +115,7 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
     };
 }
 
+inline static float colordifference_ch(const float x, const float y, const float alphas) ALWAYS_INLINE;
 inline static float colordifference_ch(const float x, const float y, const float alphas)
 {
     // maximum of channel blended on white, and blended on black
@@ -116,6 +124,7 @@ inline static float colordifference_ch(const float x, const float y, const float
     return MAX(black*black, white*white);
 }
 
+inline static float colordifference_stdc(const f_pixel px, const f_pixel py) ALWAYS_INLINE;
 inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
 {
     const float alphas = py.a-px.a;
@@ -124,6 +133,7 @@ inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
            colordifference_ch(px.b, py.b, alphas);
 }
 
+inline static float colordifference(f_pixel px, f_pixel py) ALWAYS_INLINE;
 inline static float colordifference(f_pixel px, f_pixel py)
 {
 #if USE_SSE

@@ -59,7 +59,7 @@ inline static int weightedcompare_other(const hist_item *h1p, const hist_item *h
     if (c1p[channel_sort_order[3].chan] < c2p[channel_sort_order[3].chan]) return 1;
 
     return 0;
-}
+    }
 
 /** these are specialised functions to make first comparison faster without lookup in channel_sort_order[] */
 static int weightedcompare_r(const void *a, const void *b)
@@ -93,7 +93,7 @@ static int weightedcompare_b(const void *a, const void *b)
     if (h1p->acolor.b < h2p->acolor.b) return -1;
 
     return weightedcompare_other(h1p, h2p);
-}
+        }
 
 static int weightedcompare_a(const void *a, const void *b)
 {
@@ -104,14 +104,14 @@ static int weightedcompare_a(const void *a, const void *b)
     if (h1p->acolor.a < h2p->acolor.a) return -1;
 
     return weightedcompare_other(h1p, h2p);
-}
+            }
 
 inline static double variance_diff(double val, const double good_enough)
 {
     val *= val;
     if (val < good_enough*good_enough) return val / 2.f;
     return val;
-}
+        }
 
 static f_pixel box_variance(const hist_item achv[], const struct box *box)
 {

@@ -3,6 +3,7 @@ version 1.7
  - new, accurate RGBA color similarity algorithm
  - change of optional SSE3 code to SSE2 that is always enabled on x86-64
  - optional OpenMP-based parallelisation of remapping
+ - significantly improved performance thanks to custom partial sorting
 
 version 1.6
 -----------

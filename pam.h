@@ -115,19 +115,19 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
     };
 }
 
-inline static float colordifference_ch(const float x, const float y, const float alphas) ALWAYS_INLINE;
-inline static float colordifference_ch(const float x, const float y, const float alphas)
+inline static double colordifference_ch(const double x, const double y, const double alphas) ALWAYS_INLINE;
+inline static double colordifference_ch(const double x, const double y, const double alphas)
 {
     // maximum of channel blended on white, and blended on black
     // premultiplied alpha and backgrounds 0/1 shorten the formula
-    const float black = x-y, white = black+alphas;
+    const double black = x-y, white = black+alphas;
     return MAX(black*black, white*white);
 }
 
 inline static float colordifference_stdc(const f_pixel px, const f_pixel py) ALWAYS_INLINE;
 inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
 {
-    const float alphas = py.a-px.a;
+    const double alphas = py.a-px.a;
     return colordifference_ch(px.r, py.r, alphas) +
            colordifference_ch(px.g, py.g, alphas) +
            colordifference_ch(px.b, py.b, alphas);

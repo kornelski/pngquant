@@ -81,6 +81,9 @@ void verbose_printf(const char *fmt, ...)
 static void print_full_version(FILE *fd)
 {
     fprintf(fd, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n"
+        #ifndef NDEBUG
+                    "   DEBUG (slow) version.\n"
+        #endif
         #if USE_SSE
                     "   Compiled with SSE2 instructions.\n"
         #endif

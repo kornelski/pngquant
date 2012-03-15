@@ -1,81 +1,29 @@
-# MSVC/NMAKE makefile for pngquant.
-# Greg Roelofs
-# Last modified:  28 December 2000
-#
-# Invoke this makefile from a DOS prompt window via:
-#
-#	%devstudio%\vc\bin\vcvars32.bat
-#	nmake -nologo -f Makefile.w32
-#
-# where %devstudio% is the installation directory for MSVC / DevStudio.  If
-# you get "environment out of space" errors, create a desktop shortcut with
-# "c:\windows\command.com /e:4096" as the program command line and set the
-# working directory to this directory.  Then double-click to open the new
-# DOS-prompt window with a bigger environment and retry the commands above.
-# 
-# This makefile assumes zlib has already been built or downloaded and is in
-# a subdirectory at the same level as the current subdirectory (as indicated
-# by the ZPATH macro below).  Edit as appropriate.
-#
-# Note that the names of the dynamic and static zlib libraries used below may
-# change in later releases of the library.  This makefile builds statically
-# linked executables, but that can be changed by uncommenting the appropriate
-# ZLIB lines.
+# Makefile for pngquant
 
-!include <ntwin32.mak>
+/* NWS: download the libpng and zlip binaries (.dll), sources (.h etc) and dev files (.lib etc) from:
+     http://gnuwin32.sourceforge.net/packages/libpng.htm
+     http://gnuwin32.sourceforge.net/packages/zlib.htm 
+   Extract source ZIPs to "libpng"/"zlib" sibling folders. Copy into them the "lib" folder from the respective dev file ZIPs.
+*/
 
 
-# macros --------------------------------------------------------------------
 
-PNGPATH = ../libpng
-PNGINC = -I$(PNGPATH)
-PNGLIB = $(PNGPATH)/libpng.lib
+# Alternatively, build libpng and zlib in these directories:
+CUSTOMLIBPNG = ../libpng
+CUSTOMZLIB = ../zlib
 
-ZPATH = ../zlib
-ZINC = -I$(ZPATH)
-#ZLIB = $(ZPATH)/zlibdll.lib
-ZLIB = $(ZPATH)/zlibstat.lib
+CFLAGS = -std=gnu99 -O3 -Wall -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I$(SYSTEMLIBPNG)/include/ -funroll-loops -fomit-frame-pointer
 
-INCS = $(PNGINC) $(ZINC)
-LIBS = $(PNGLIB) $(ZLIB)
+/* NWS: assume libpng/zlib .lib files will be in "lib" sub-folders */
+LDFLAGS = -L$(CUSTOMLIBPNG)/lib/ -L$(CUSTOMZLIB)/lib/ -L$(SYSTEMLIBPNG)/lib/ -L/usr/lib/ -lz -lpng -lm
 
-CC = cl
-LD = link
-RM = del
-CFLAGS = -nologo -std=c99 -O -W3 $(INCS) -DWIN32 $(cvars)
-# [note that -W3 is an MSVC-specific compilation flag ("all warnings on")]
-# [see %devstudio%\vc\include\win32.mak for cvars macro definition]
-O = .obj
-E = .exe
+OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
 
-LDFLAGS = -nologo
+all: pngquant
 
-PROG = pngquant
-
-OBJS  = $(PROG)$(O) rwpng$(O) pam$(O) blur$(O) mediancut$(O) mempool$(O) viter$(O) nearest$(O)
-
-EXES = $(PROG)$(E)
-
-
-# implicit make rules -------------------------------------------------------
-
-.c$(O):
-	$(CC) -c $(CFLAGS) $<
-
-
-# dependencies --------------------------------------------------------------
-
-all:  $(EXES)
-
-# setargv.obj expands wildcards and is included as part of MSVC; may be called
-# "wildargs.obj" (or similar) for Borland or Watcom compilers
-$(PROG)$(E): $(OBJS)
-	$(LD) $(LDFLAGS) -out:$@ $(OBJS) setargv.obj $(LIBS)
-
-$(PROG)$(O):	$(PROG).c
-
-
-# maintenance ---------------------------------------------------------------
+pngquant: $(OBJS)
+	/* NWS: output to "bin/pngquanti.exe" */
+	$(CC) -o ./bin/pngquanti $(OBJS) $(LDFLAGS)
 
 clean:
 #	ideally we could just do this:

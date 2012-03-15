@@ -38,7 +38,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#ifdef WIN32        /* defined in Makefile.w32 (or use _MSC_VER for MSVC) */
+#if defined(WIN32) || defined(__WIN32__)
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
 #endif
@@ -598,12 +598,8 @@ static char *add_filename_extension(const char *filename, const char *newext)
 
 static void set_binary_mode(FILE *fp)
 {
-#if defined(MSDOS) || defined(FLEXOS) || defined(OS2) || defined(WIN32)
-#if (defined(__HIGHC__) && !defined(FLEXOS))
-    setmode(fp, _BINARY);
-#else
+#if defined(WIN32) || defined(__WIN32__)
     setmode(fp == stdout ? 1 : 0, O_BINARY);
-#endif
 #endif
 }
 

@@ -209,7 +209,7 @@ pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
     35 = libpng error (via longjmp())
  */
 
-pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
+pngquant_error rwpng_write_image(FILE *outfile, write_info *mainprog_ptr)
 {
     png_structp png_ptr;       /* note:  temporary variables! */
     png_infop info_ptr;
@@ -222,7 +222,6 @@ pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
     if (!png_ptr) {
         return INIT_OUT_OF_MEMORY_ERROR;   /* out of memory */
     }
-    mainprog_ptr->png_ptr = png_ptr;
 
     info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
@@ -294,37 +293,6 @@ pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr)
 
     png_set_packing(png_ptr);
 
-    /* make sure we save our pointers for use in writepng_encode_image() */
-    mainprog_ptr->png_ptr = png_ptr;
-    mainprog_ptr->info_ptr = info_ptr;
-
-
-    /* OK, that's all we need to do for now; return happy */
-    return SUCCESS;
-}
-
-
-
-
-
-
-/* returns 0 for success, 45 for libpng (longjmp) problem */
-
-pngquant_error rwpng_write_image_whole(write_info *mainprog_ptr)
-{
-    png_structp png_ptr = (png_structp)mainprog_ptr->png_ptr;
-    png_infop info_ptr = (png_infop)mainprog_ptr->info_ptr;
-
-    /* as always, setjmp() must be called in every function that calls a
-     * PNG-writing libpng function */
-
-    if (setjmp(mainprog_ptr->jmpbuf)) {
-        png_destroy_write_struct(&png_ptr, &info_ptr);
-        mainprog_ptr->png_ptr = NULL;
-        mainprog_ptr->info_ptr = NULL;
-        return LIBPNG_WRITE_WHOLE_ERROR; /* libpng error (via longjmp()) */
-    }
-
 
     /* and now we just write the whole image; libpng takes care of interlacing
      * for us */
@@ -339,77 +307,10 @@ pngquant_error rwpng_write_image_whole(write_info *mainprog_ptr)
     png_write_end(png_ptr, NULL);
 
     png_destroy_write_struct(&png_ptr, &info_ptr);
-    mainprog_ptr->png_ptr = NULL;
-    mainprog_ptr->info_ptr = NULL;
 
     return SUCCESS;
 }
 
-
-
-
-
-/* this routine is called only for non-interlaced images */
-/* returns 0 if succeeds, 55 if libpng problem */
-
-int rwpng_write_image_row(write_info *mainprog_ptr)
-{
-    png_structp png_ptr = (png_structp)mainprog_ptr->png_ptr;
-    png_infop info_ptr = (png_infop)mainprog_ptr->info_ptr;
-
-
-    /* as always, setjmp() must be called in every function that calls a
-     * PNG-writing libpng function */
-
-    if (setjmp(mainprog_ptr->jmpbuf)) {
-        png_destroy_write_struct(&png_ptr, &info_ptr);
-        mainprog_ptr->png_ptr = NULL;
-        mainprog_ptr->info_ptr = NULL;
-        return LIBPNG_WRITE_ERROR;   /* libpng error (via longjmp()) */
-    }
-
-
-    /* indexed_data points at our one row of indexed data */
-
-    png_write_row(png_ptr, mainprog_ptr->indexed_data);
-
-    return SUCCESS;
-}
-
-
-
-
-
-/* this routine is called only after rwpng_write_image_row() */
-/* returns 0 if succeeds, 65 if libpng problem */
-
-int rwpng_write_image_finish(write_info *mainprog_ptr)
-{
-    png_structp png_ptr = (png_structp)mainprog_ptr->png_ptr;
-    png_infop info_ptr = (png_infop)mainprog_ptr->info_ptr;
-
-
-    /* as always, setjmp() must be called in every function that calls a
-     * PNG-writing libpng function */
-
-    if (setjmp(mainprog_ptr->jmpbuf)) {
-        png_destroy_write_struct(&png_ptr, &info_ptr);
-        mainprog_ptr->png_ptr = NULL;
-        mainprog_ptr->info_ptr = NULL;
-        return LIBPNG_WRITE_ERROR;   /* libpng error (via longjmp()) */
-    }
-
-
-    /* close out PNG file; if we had any text or time info to write after
-     * the IDATs, second argument would be info_ptr */
-    png_write_end(png_ptr, NULL);
-
-    png_destroy_write_struct(&png_ptr, &info_ptr);
-    mainprog_ptr->png_ptr = NULL;
-    mainprog_ptr->info_ptr = NULL;
-
-    return SUCCESS;
-}
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg)
 {

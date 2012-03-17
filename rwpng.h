@@ -70,8 +70,6 @@ typedef struct {
 
 typedef struct {
     jmp_buf jmpbuf;
-    void *png_ptr;
-    void *info_ptr;
     png_uint_32 width;
     png_uint_32 height;
     float gamma;
@@ -96,10 +94,4 @@ void rwpng_version_info(FILE *fp);
 
 pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr);
 
-pngquant_error rwpng_write_image_init(FILE *outfile, write_info *mainprog_ptr);
-
-pngquant_error rwpng_write_image_whole(write_info *mainprog_ptr);
-
-int rwpng_write_image_row(write_info *mainprog_ptr);
-
-int rwpng_write_image_finish(write_info *mainprog_ptr);
+pngquant_error rwpng_write_image(FILE *outfile, write_info *mainprog_ptr);

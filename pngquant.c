@@ -685,16 +685,10 @@ static pngquant_error write_image(write_info *output_image,const char *filename,
         free(outname);
     }
 
-    pngquant_error retval = rwpng_write_image_init(outfile, output_image);
+    pngquant_error retval = rwpng_write_image(outfile, output_image);
     if (retval) {
-        fprintf(stderr, "  rwpng_write_image_init() error\n");
-        if (!using_stdin)
-            fclose(outfile);
-        return retval;
+        fprintf(stderr, "  Error writing image to %s\n", outname);
     }
-
-    /* write entire interlaced palette PNG */
-    retval = rwpng_write_image_whole(output_image);
 
     if (!using_stdin)
         fclose(outfile);

@@ -66,7 +66,9 @@ struct pngquant_options {
 
 static pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options);
 static pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
-static pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin);
+static pngquant_error write_image(write_info *output_image,const char *filename,int force,int using_stdin);
+static char *add_filename_extension(const char *filename, const char *newext);
+static int file_exists(const char *outname);
 
 static int verbose=0;
 /* prints only when verbose flag is set */
@@ -280,13 +282,25 @@ int main(int argc, char *argv[])
     /*=============================  MAIN LOOP  =============================*/
 
     while (argn <= argc) {
-        int retval;
+        int retval = 0;
 
         verbose_printf("%s:\n", filename);
 
+        char *outname = NULL;
+        if (!using_stdin) {
+            outname = add_filename_extension(filename,newext);
+            if (!force && file_exists(outname)) {
+                fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
+                retval = NOT_OVERWRITING_ERROR;
+            }
+        }
+
         read_info input_image = {}; // initializes all fields to 0
         write_info output_image = {};
-        retval = read_image(filename,using_stdin,&input_image);
+
+        if (!retval) {
+            retval = read_image(filename,using_stdin,&input_image);
+        }
 
         if (!retval) {
             verbose_printf("  read file corrected for gamma %2.1f\n", 1.0/input_image.gamma);
@@ -303,8 +317,10 @@ int main(int argc, char *argv[])
         }
 
         if (!retval) {
-            retval = write_image(&output_image,filename,newext,force,using_stdin);
+            retval = write_image(&output_image,outname,force,using_stdin);
         }
+
+        if (outname) free(outname);
 
         if (output_image.indexed_data) {
             free(output_image.indexed_data);
@@ -316,7 +332,7 @@ int main(int argc, char *argv[])
         if (retval) {
             latest_error = retval;
             ++error_count;
-            }
+        }
         ++file_count;
 
         verbose_printf("\n");
@@ -629,6 +645,16 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
     nearest_free(n);
 }
 
+static int file_exists(const char *outname)
+{
+    FILE *outfile = fopen(outname, "rb");
+    if ((outfile ) != NULL) {
+        fclose(outfile);
+        return TRUE;
+    }
+    return FALSE;
+}
+
 /* build the output filename from the input name by inserting "-fs8" or
  * "-or8" before the ".png" extension (or by appending that plus ".png" if
  * there isn't any extension), then make sure it doesn't exist already */
@@ -654,7 +680,7 @@ static void set_binary_mode(FILE *fp)
 #endif
 }
 
-static pngquant_error write_image(write_info *output_image,const char *filename,const char *newext,int force,int using_stdin)
+static pngquant_error write_image(write_info *output_image,const char *outname,int force,int using_stdin)
 {
     FILE *outfile;
     if (using_stdin) {
@@ -663,26 +689,15 @@ static pngquant_error write_image(write_info *output_image,const char *filename,
 
         verbose_printf("  writing %d-color image to stdout\n", output_image->num_palette);
     } else {
-        char *outname = add_filename_extension(filename,newext);
 
-        if (!force) {
-            if ((outfile = fopen(outname, "rb")) != NULL) {
-                fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
-                fclose(outfile);
-                free(outname);
-                return NOT_OVERWRITING_ERROR;
-            }
-        }
         if ((outfile = fopen(outname, "wb")) == NULL) {
             fprintf(stderr, "  error:  cannot open %s for writing\n", outname);
-            free(outname);
             return CANT_WRITE_ERROR;
         }
 
-        char *outfilename = strrchr(outname, '/'); if (outfilename) outfilename++; else outfilename = outname;
+        const char *outfilename = strrchr(outname, '/');
+        if (outfilename) outfilename++; else outfilename = outname;
         verbose_printf("  writing %d-color image as %s\n", output_image->num_palette, outfilename);
-
-        free(outname);
     }
 
     pngquant_error retval = rwpng_write_image(outfile, output_image);

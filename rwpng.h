@@ -66,6 +66,7 @@ typedef struct {
     int interlaced;
     unsigned char *rgba_data;
     unsigned char **row_pointers;
+    png_size_t file_size;
 } read_info;
 
 typedef struct {

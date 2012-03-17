@@ -48,6 +48,20 @@ void rwpng_version_info(FILE *fp)
 }
 
 
+struct rwpng_read_data {
+    FILE *fp;
+    png_size_t bytes_read;
+};
+
+static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t length)
+{
+    struct rwpng_read_data *read_data = (struct rwpng_read_data *)png_get_io_ptr(png_ptr);
+
+    png_size_t read = fread(data, 1, length, read_data->fp);
+    if (!read) png_error(png_ptr, "Read error");
+    read_data->bytes_read += read;
+}
+
 
 /*
    retval:
@@ -66,20 +80,6 @@ pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
     png_uint_32  i;
     png_size_t   rowbytes;
     int          color_type, bit_depth;
-    unsigned char sig[8];
-
-
-    /* first do a quick check that the file really is a PNG image; could
-     * have used slightly more general png_sig_cmp() function instead */
-
-    if (!fread(sig, 8, 1, infile)) {
-        return READ_ERROR;
-    }
-
-    if (png_sig_cmp(sig, 0, 8)) {
-        return BAD_SIGNATURE_ERROR;   /* bad signature */
-    }
-
 
     png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, mainprog_ptr,
       rwpng_error_handler, NULL);
@@ -101,9 +101,8 @@ pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
         return LIBPNG_FATAL_ERROR;   /* fatal libpng error (via longjmp()) */
     }
 
-
-    png_init_io(png_ptr, infile);
-    png_set_sig_bytes(png_ptr, 8);  /* we already read the 8 signature bytes */
+    struct rwpng_read_data read_data = {infile, 0};
+    png_set_read_fn(png_ptr, &read_data, user_read_data);
 
     png_read_info(png_ptr, info_ptr);  /* read all PNG info up to image data */
 
@@ -194,6 +193,8 @@ pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
     png_read_end(png_ptr, NULL);
 
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+
+    mainprog_ptr->file_size = read_data.bytes_read;
 
     return SUCCESS;
 }

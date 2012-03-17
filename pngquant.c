@@ -287,7 +287,8 @@ int main(int argc, char *argv[])
         }
 
         if (!retval) {
-            verbose_printf("  read file corrected for gamma %2.1f\n", 1.0/input_image.gamma);
+            verbose_printf("  read %uKB file corrected for gamma %2.1f\n", (input_image.file_size+1023)/1024,
+                           1.0/input_image.gamma);
 
             retval = pngquant(&input_image, &output_image, &options);
         }

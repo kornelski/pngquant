@@ -931,7 +931,7 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
 
 
     float *noise = NULL, *edges = NULL;
-    if (speed_tradeoff < 8) {
+    if (speed_tradeoff < 8 && input_image->width >= 4 && input_image->height >= 4) {
         contrast_maps((const rgb_pixel**)input_image->row_pointers, input_image->width, input_image->height, input_image->gamma,
                    &noise, &edges);
     }

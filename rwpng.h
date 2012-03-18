@@ -30,6 +30,7 @@
   ---------------------------------------------------------------------------*/
 
 #include "png.h"    /* libpng header; includes zlib.h */
+#include <setjmp.h>
 
 #ifndef TRUE
 #  define TRUE 1

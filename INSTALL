@@ -11,9 +11,8 @@ to install it system-wide:
 By default it will be installed in /usr/local/bin. To install it in another
 directory set PREFIX or DESTDIR environmental variables.
 
-pngquant uses GNU Makefile. To compile on FreeBSD you will need to use gmake.
-
-For compilation instructions for Windows, see comments in Makefile.w32 file.
+pngquant uses GNU Makefile. To compile on FreeBSD you will need to use gmake,
+and on Windows the MinGW compiler (MSVC does not support C99).
 
 
 ##Compilation with custom libpng and zlib

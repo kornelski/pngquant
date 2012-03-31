@@ -18,12 +18,12 @@
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
    options:\n\
-      -force        overwrite existing output files (synonym: -f)\n\
-      -ext new.png  set custom suffix/extension for output filename\n\
-      -nofs         disable Floyd-Steinberg dithering\n\
-      -verbose      print status messages (synonym: -v)\n\
-      -speed N      speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
-      -iebug        increase opacity to work around Internet Explorer 6 bug\n\
+      --ext new.png  set custom suffix/extension for output filename\n\
+      --force        overwrite existing output files (synonym: -f)\n\
+      --iebug        increase opacity to work around Internet Explorer 6 bug\n\
+      --nofs         disable Floyd-Steinberg dithering\n\
+      --speed N      speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
+      --verbose      print status messages (synonym: -v)\n\
 \n\
    Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
    PNGs using Floyd-Steinberg diffusion dithering (unless disabled).\n\
@@ -131,35 +131,38 @@ int main(int argc, char *argv[])
     while (argn < argc && argv[argn][0] == '-' && argv[argn][1] != '\0') {
         if (0 == strcmp(argv[argn], "--")) { ++argn;break; }
 
-        if ( 0 == strncmp(argv[argn], "-fs", 3) ||
-             0 == strncmp(argv[argn], "-floyd", 3) )
+        if ( 0 == strncmp(argv[argn], "--fs", 3) ||
+             0 == strncmp(argv[argn], "--floyd", 3) )
             options.floyd = TRUE;
-        else if ( 0 == strncmp(argv[argn], "-nofs", 5) ||
-                  0 == strncmp(argv[argn], "-nofloyd", 5) ||
-                  0 == strncmp(argv[argn], "-ordered", 3) )
+        else if ( 0 == strncmp(argv[argn], "--nofs", 5) ||
+                  0 == strncmp(argv[argn], "--nofloyd", 5) ||
+                  0 == strncmp(argv[argn], "--ordered", 3) )
             options.floyd = FALSE;
-        else if (0 == strcmp(argv[argn], "-iebug"))
+        else if (0 == strcmp(argv[argn], "--iebug"))
             options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
-        else if (0 == strncmp(argv[argn], "-force", 2))
+        else if (0 == strcmp(argv[argn], "-f") ||
+		 0 == strncmp(argv[argn], "--force", 2))
             force = TRUE;
-        else if (0 == strncmp(argv[argn], "-noforce", 4))
+        else if (0 == strncmp(argv[argn], "--noforce", 4))
             force = FALSE;
-        else if ( 0 == strcmp(argv[argn], "-verbose") ||
+        else if ( 0 == strcmp(argv[argn], "--verbose") ||
                   0 == strcmp(argv[argn], "-v") ||
-                  0 == strncmp(argv[argn], "-noquiet", 4) )
+                  0 == strncmp(argv[argn], "--noquiet", 4) )
             verbose = TRUE;
-        else if ( 0 == strncmp(argv[argn], "-noverbose", 4) ||
-                  0 == strncmp(argv[argn], "-quiet", 2) )
+        else if ( 0 == strncmp(argv[argn], "--noverbose", 4) ||
+                  0 == strncmp(argv[argn], "--quiet", 2) )
             verbose = FALSE;
 
-        else if ( 0 == strcmp(argv[argn], "-version")) {
+        else if ( 0 == strcmp(argv[argn], "-V") ||
+		  0 == strcmp(argv[argn], "--version")) {
             puts(PNGQUANT_VERSION);
             return SUCCESS;
-        } else if ( 0 == strcmp(argv[argn], "-h") || 0 == strcmp(argv[argn], "--help")) {
+        } else if ( 0 == strcmp(argv[argn], "-h") ||
+		    0 == strcmp(argv[argn], "--help")) {
             print_full_version(stdout);
             print_usage(stdout);
             return SUCCESS;
-        } else if (0 == strcmp(argv[argn], "-ext")) {
+        } else if (0 == strcmp(argv[argn], "--ext")) {
             ++argn;
             if (argn == argc) {
                 print_usage(stderr);
@@ -168,7 +171,7 @@ int main(int argc, char *argv[])
             newext = argv[argn];
         }
         else if (0 == strcmp(argv[argn], "-s") ||
-                 0 == strcmp(argv[argn], "-speed")) {
+                 0 == strcmp(argv[argn], "--speed")) {
             ++argn;
             if (argn == argc) {
                 print_usage(stderr);

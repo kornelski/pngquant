@@ -19,27 +19,29 @@ The output filename is the same as the input name except that it ends in \fI-fs8
 The default behavior if the output file exists is to skip the conversion; use \fI-force\fP to overwrite.
 .SH OPTIONS
 .TP
-.B \-force, -f
-Overwrite existing output files.
-.TP
-.B \-nofs
-Do not use dithering.
-.TP
-.B \-verbose, -v
-Print status messages.
-.TP
-.B \-ext <new.png>
+.B \-\-ext <new.png>
 File extension (suffix) to use for output files instead of the default \fI-fs8.png\fP/\fI-or8.png\fP.
 .TP
-.B \-speed <N>, -s <N>
-Speed/quality trade-off from 1 (brute-force) to 10 (fastest). The default is 3. Speed 10 has 5% lower quality, but is about 8 times faster than the default.
+.B \-f, \-\-force
+Overwrite existing output files.
 .TP
-.B \-iebug
+.B \-\-fs, \-\-nofs
+Enable or disable dithering.
+.TP
+.B \-\-iebug
 Workaround for Internet Explorer 6, which only displays fully opaque pixels. pngquant will make almost-opaque pixels fully opaque and will reduce amount of semi-transparent colors. When this option is enabled the default filename suffix is \fI-ie-fs8.png\fP/\fI-ie-or8.png\fP.
 .TP
-.B \-version
-Prints version information.
+.B \-s <N>, \-\-speed <N>
+Speed/quality trade-off from 1 (brute-force) to 10 (fastest). The default is 3. Speed 10 has 5% lower quality, but is about 8 times faster than the default.
 .TP
+.B \-v, \-\-verbose, \-\-noverbose, \-\-quiet
+Enable or disable verbose messages.
+.TP
+.B \-V, \-\-version
+Display version information.
+.TP
+.B \-h, \-\-help
+Display help and exit.
 .SH EXAMPLE
 Creating a new image with the number of colors reduced to 64:
 .TP

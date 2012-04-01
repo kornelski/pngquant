@@ -40,6 +40,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <getopt.h>
 
 #if defined(WIN32) || defined(__WIN32__)
 #  include <fcntl.h>    /* O_BINARY */
@@ -151,6 +152,24 @@ static void fix_obsolete_options(const int argc, char *argv[])
     }
 }
 
+enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug};
+
+static const struct option long_options[] = {
+    {"verbose", no_argument, NULL, 'v'},
+    {"quiet", no_argument, NULL, 'q'},
+    {"force", no_argument, NULL, 'f'},
+    {"no-force", no_argument, NULL, arg_no_force},
+    {"floyd", no_argument, NULL, arg_floyd},
+    {"ordered", no_argument, NULL, arg_ordered},
+    {"nofs", no_argument, NULL, arg_ordered},
+    {"iebug", no_argument, NULL, arg_iebug},
+    {"transbug", no_argument, NULL, arg_transbug},
+    {"ext", required_argument, NULL, arg_ext},
+    {"speed", required_argument, NULL, 's'},
+    {"version", no_argument, NULL, 'V'},
+    {"help", no_argument, NULL, 'h'},
+};
+
 int main(int argc, char *argv[])
 {
     struct pngquant_options options = {
@@ -168,68 +187,58 @@ int main(int argc, char *argv[])
 
     fix_obsolete_options(argc, argv);
 
-    int argn = 1;
-    while (argn < argc && argv[argn][0] == '-' && argv[argn][1] != '\0') {
-        if (0 == strcmp(argv[argn], "--")) { ++argn;break; }
+    int opt;
+    do {
+        opt = getopt_long(argc, argv, "Vvqfhs:", long_options, NULL);
+        switch (opt) {
+            case 'v': verbose = true; break;
+            case 'q': verbose = false; break;
+            case arg_floyd: options.floyd = true; break;
+            case arg_ordered: options.floyd = false; break;
+            case 'f': force = true; break;
+            case arg_no_force: force = false; break;
+            case arg_ext: newext = optarg; break;
 
-        if ( 0 == strcmp(argv[argn], "--fs") ||
-             0 == strcmp(argv[argn], "--floyd") )
-            options.floyd = true;
-        else if ( 0 == strcmp(argv[argn], "--nofs") ||
-                  0 == strcmp(argv[argn], "--ordered") )
-            options.floyd = false;
-        else if (0 == strcmp(argv[argn], "--iebug"))
-            options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
-        else if (0 == strcmp(argv[argn], "-f") ||
-		 0 == strcmp(argv[argn], "--force"))
-            force = true;
-        else if (0 == strcmp(argv[argn], "--no-force"))
-            force = false;
-        else if ( 0 == strcmp(argv[argn], "--verbose") ||
-                  0 == strcmp(argv[argn], "-v"))
-            verbose = true;
-        else if ( 0 == strcmp(argv[argn], "--quiet") )
-            verbose = false;
+            case arg_iebug:
+                options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
+                break;
+            case arg_transbug:
+                options.last_index_transparent = true;
+                break;
 
-        else if ( 0 == strcmp(argv[argn], "--transbug"))
-            options.last_index_transparent = true;
+            case 's':
+                options.speed_tradeoff = atoi(optarg);
+                if (options.speed_tradeoff < 1 || options.speed_tradeoff > 10) {
+                    fputs("Speed should be between 1 (slow) and 10 (fast).\n", stderr);
+                    return INVALID_ARGUMENT;
+                }
+                break;
 
-        else if ( 0 == strcmp(argv[argn], "-V") ||
-		  0 == strcmp(argv[argn], "--version")) {
-            puts(PNGQUANT_VERSION);
-            return SUCCESS;
-        } else if ( 0 == strcmp(argv[argn], "-h") ||
-		    0 == strcmp(argv[argn], "--help")) {
-            print_full_version(stdout);
-            print_usage(stdout);
-            return SUCCESS;
-        } else if (0 == strcmp(argv[argn], "--ext")) {
-            ++argn;
-            if (argn == argc) {
-                print_usage(stderr);
-                return MISSING_ARGUMENT;
-            }
-            newext = argv[argn];
+            case 'h':
+                print_full_version(stdout);
+                print_usage(stdout);
+                return SUCCESS;
+
+            case 'V':
+                puts(PNGQUANT_VERSION);
+                return SUCCESS;
+
+            case -1: break;
+
+            default:
+                return INVALID_ARGUMENT;
         }
-        else if (0 == strcmp(argv[argn], "-s") ||
-                 0 == strcmp(argv[argn], "--speed")) {
-            ++argn;
-            if (argn == argc) {
-                print_usage(stderr);
-                return MISSING_ARGUMENT;
-            }
-            options.speed_tradeoff = atoi(argv[argn]);
-        }
-        else {
+    } while (opt != -1);
+
+    int argn = optind;
+
+    if (argn >= argc) {
+        if (argn > 1) {
+            fputs("No input files specified. See -h for help.\n", stderr);
+        } else {
+            print_full_version(stderr);
             print_usage(stderr);
-            return MISSING_ARGUMENT;
         }
-        ++argn;
-    }
-
-    if (argn == argc) {
-        print_full_version(stderr);
-        print_usage(stderr);
         return MISSING_ARGUMENT;
     }
 
@@ -241,12 +250,7 @@ int main(int argc, char *argv[])
     }
 
     if (options.reqcolors < 2 || options.reqcolors > 256) {
-        fputs("number of colors must be between 2 and 256\n", stderr);
-        return INVALID_ARGUMENT;
-    }
-
-    if (options.speed_tradeoff < 1 || options.speed_tradeoff > 10) {
-        fputs("speed should be between 1 (slow) and 10 (fast)\n", stderr);
+        fputs("Number of colors must be between 2 and 256.\n", stderr);
         return INVALID_ARGUMENT;
     }
 

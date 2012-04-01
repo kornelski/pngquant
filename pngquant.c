@@ -112,21 +112,83 @@ inline static int is_sse2_available()
         }
 #endif
 
+void exit_obsolete(const char *option)
+{
+    fprintf(stderr, "ERROR: option '%s' is obsoleted by '-%s'\n",
+	    option, option);
+    exit(1);
+}
+
 int main(int argc, char *argv[])
 {
     struct pngquant_options options = {
         .reqcolors = 256,
         .floyd = TRUE, // floyd-steinberg dithering
-        .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, doesn't affect alpha)
+        .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
         .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
     };
-    int argn;
+
     int force = FALSE; // force overwrite
     int using_stdin = FALSE;
     int latest_error=0, error_count=0, file_count=0;
     const char *filename, *newext = NULL;
 
-    argn = 1;
+    /* ***********************************************************************
+     *
+     * Old -options are obsolete. Notify user to migrate to --option syntax
+     *
+     * ***********************************************************************/
+
+    const char *obsolete[] =
+    {
+	"-fs"
+	"-floyd",
+	"-nofloyd",
+	"-ordered",
+	"-force",
+	"-noforce",
+	"-verbose",
+	"-noquiet",
+	"-help",
+	"-ext",
+	"-speed",
+	NULL
+    };
+
+    int index = 1;			       /* skip program name */
+
+    while ( index < argc ) {
+
+	int first  = argv[index][0];
+	int second = argv[index][1];
+
+	if ( (first == '-')  &&  (second == '-') )
+	    break;
+
+	if (first != '-')
+	    continue;
+
+	const char *str = argv[index];
+	const char *option;
+	int i = 0;
+
+	while ( (option = obsolete[i++]) ) {
+
+	    if ( strcmp(str, option) == 0 ) {
+		exit_obsolete(option);
+	    }
+	}
+
+	index++;
+    }
+
+    /* ***********************************************************************
+     *
+     * Real --options
+     *
+     * ***********************************************************************/
+
+    int argn = 1;
 
     while (argn < argc && argv[argn][0] == '-' && argv[argn][1] != '\0') {
         if (0 == strcmp(argv[argn], "--")) { ++argn;break; }

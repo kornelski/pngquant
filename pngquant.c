@@ -179,26 +179,26 @@ int main(int argc, char *argv[])
     while (argn < argc && argv[argn][0] == '-' && argv[argn][1] != '\0') {
         if (0 == strcmp(argv[argn], "--")) { ++argn;break; }
 
-        if ( 0 == strncmp(argv[argn], "--fs", 3) ||
-             0 == strncmp(argv[argn], "--floyd", 3) )
+        if ( 0 == strcmp(argv[argn], "--fs") ||
+             0 == strcmp(argv[argn], "--floyd") )
             options.floyd = TRUE;
-        else if ( 0 == strncmp(argv[argn], "--nofs", 5) ||
-                  0 == strncmp(argv[argn], "--nofloyd", 5) ||
-                  0 == strncmp(argv[argn], "--ordered", 3) )
+        else if ( 0 == strcmp(argv[argn], "--nofs") ||
+                  0 == strcmp(argv[argn], "--nofloyd") ||
+                  0 == strcmp(argv[argn], "--ordered") )
             options.floyd = FALSE;
         else if (0 == strcmp(argv[argn], "--iebug"))
             options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
         else if (0 == strcmp(argv[argn], "-f") ||
-		 0 == strncmp(argv[argn], "--force", 2))
+		 0 == strcmp(argv[argn], "--force"))
             force = TRUE;
-        else if (0 == strncmp(argv[argn], "--noforce", 4))
+        else if (0 == strcmp(argv[argn], "--noforce"))
             force = FALSE;
         else if ( 0 == strcmp(argv[argn], "--verbose") ||
                   0 == strcmp(argv[argn], "-v") ||
-                  0 == strncmp(argv[argn], "--noquiet", 4) )
+                  0 == strcmp(argv[argn], "--noquiet") )
             verbose = TRUE;
-        else if ( 0 == strncmp(argv[argn], "--noverbose", 4) ||
-                  0 == strncmp(argv[argn], "--quiet", 2) )
+        else if ( 0 == strcmp(argv[argn], "--noverbose") ||
+                  0 == strcmp(argv[argn], "--quiet") )
             verbose = FALSE;
 
         else if ( 0 == strcmp(argv[argn], "-V") ||

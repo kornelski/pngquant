@@ -4,6 +4,7 @@ version 1.7
  - change of optional SSE3 code to SSE2 that is always enabled on x86-64
  - optional OpenMP-based parallelisation of remapping
  - significantly improved performance thanks to custom partial sorting
+ - changed long options to use double hyphen (-force to --force) [thanks to Jari Aalto]
 
 version 1.6
 -----------

@@ -112,11 +112,9 @@ inline static int is_sse2_available()
         }
 #endif
 
-void exit_obsolete(const char *option)
+void warn_obsolete(const char *option)
 {
-    fprintf(stderr, "ERROR: option '%s' is obsoleted by '-%s'\n",
-	    option, option);
-    exit(1);
+    fprintf(stderr, "  warning: option '%s' has been replaced with '%s'\n", option+1, option);
 }
 
 int main(int argc, char *argv[])
@@ -139,21 +137,8 @@ int main(int argc, char *argv[])
      *
      * ***********************************************************************/
 
-    const char *obsolete[] =
-    {
-	"-fs"
-	"-floyd",
-	"-nofloyd",
-	"-ordered",
-	"-force",
-	"-noforce",
-	"-verbose",
-	"-noquiet",
-	"-help",
-	"-ext",
-	"-speed",
-	NULL
-    };
+    char *obsolete[] = { "--fs", "--nofs", "--floyd", "--nofloyd", "--ordered", "--force", "--noforce",
+        "--verbose", "--noquiet", "--help", "--version", "--ext", "--speed", NULL };
 
     int index = 1;			       /* skip program name */
 
@@ -169,13 +154,14 @@ int main(int argc, char *argv[])
 	    continue;
 
 	const char *str = argv[index];
-	const char *option;
+	char *option;
 	int i = 0;
 
 	while ( (option = obsolete[i++]) ) {
 
-	    if ( strcmp(str, option) == 0 ) {
-		exit_obsolete(option);
+	    if ( strcmp(str, option+1) == 0 ) { // option is --foo, compares -foo
+            warn_obsolete(option);
+            argv[index] = option; // replace -foo with --foo
 	    }
 	}
 

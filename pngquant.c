@@ -114,9 +114,38 @@ inline static int is_sse2_available()
         }
 #endif
 
-void warn_obsolete(const char *option)
+static const struct {const char *old; char *new;} obsolete_options[] = {
+    {"-fs","--floyd"},
+    {"-nofs", "--ordered"},
+    {"-floyd", "--floyd"},
+    {"-nofloyd", "--ordered"},
+    {"-ordered", "--ordered"},
+    {"-force", "--force"},
+    {"-noforce", "--no-force"},
+    {"-verbose", "--verbose"},
+    {"-quiet", "--quiet"},
+    {"-noverbose", "--quiet"},
+    {"-noquiet", "--verbose"},
+    {"-help", "--help"},
+    {"-version", "--version"},
+    {"-ext", "--ext"},
+    {"-speed", "--speed"},
+};
+
+static void fix_obsolete_options(const int argc, char *argv[])
 {
-    fprintf(stderr, "  warning: option '%s' has been replaced with '%s'\n", option+1, option);
+    for(int argn=1; argn < argc; argn++) {
+        if ('-' != argv[argn][0]) continue;
+
+        if ('-' == argv[argn][1]) break; // stop on first --option or --
+
+        for(int i=0; i < sizeof(obsolete_options)/sizeof(obsolete_options[0]); i++) {
+            if (0 == strcmp(obsolete_options[i].old, argv[argn])) {
+                fprintf(stderr, "  warning: option '%s' has been replaced with '%s'.\n", obsolete_options[i].old, obsolete_options[i].new);
+                argv[argn] = obsolete_options[i].new;
+            }
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -133,51 +162,9 @@ int main(int argc, char *argv[])
     int latest_error=0, error_count=0, file_count=0;
     const char *filename, *newext = NULL;
 
-    /* ***********************************************************************
-     *
-     * Old -options are obsolete. Notify user to migrate to --option syntax
-     *
-     * ***********************************************************************/
-
-    char *obsolete[] = { "--fs", "--nofs", "--floyd", "--nofloyd", "--ordered", "--force", "--noforce",
-        "--verbose", "--noquiet", "--help", "--version", "--ext", "--speed", NULL };
-
-    int index = 1;			       /* skip program name */
-
-    while ( index < argc ) {
-
-	int first  = argv[index][0];
-	int second = argv[index][1];
-
-	if ( (first == '-')  &&  (second == '-') )
-	    break;
-
-	if (first != '-')
-	    continue;
-
-	const char *str = argv[index];
-	char *option;
-	int i = 0;
-
-	while ( (option = obsolete[i++]) ) {
-
-	    if ( strcmp(str, option+1) == 0 ) { // option is --foo, compares -foo
-            warn_obsolete(option);
-            argv[index] = option; // replace -foo with --foo
-	    }
-	}
-
-	index++;
-    }
-
-    /* ***********************************************************************
-     *
-     * Real --options
-     *
-     * ***********************************************************************/
+    fix_obsolete_options(argc, argv);
 
     int argn = 1;
-
     while (argn < argc && argv[argn][0] == '-' && argv[argn][1] != '\0') {
         if (0 == strcmp(argv[argn], "--")) { ++argn;break; }
 
@@ -185,7 +172,6 @@ int main(int argc, char *argv[])
              0 == strcmp(argv[argn], "--floyd") )
             options.floyd = TRUE;
         else if ( 0 == strcmp(argv[argn], "--nofs") ||
-                  0 == strcmp(argv[argn], "--nofloyd") ||
                   0 == strcmp(argv[argn], "--ordered") )
             options.floyd = FALSE;
         else if (0 == strcmp(argv[argn], "--iebug"))
@@ -193,14 +179,12 @@ int main(int argc, char *argv[])
         else if (0 == strcmp(argv[argn], "-f") ||
 		 0 == strcmp(argv[argn], "--force"))
             force = TRUE;
-        else if (0 == strcmp(argv[argn], "--noforce"))
+        else if (0 == strcmp(argv[argn], "--no-force"))
             force = FALSE;
         else if ( 0 == strcmp(argv[argn], "--verbose") ||
-                  0 == strcmp(argv[argn], "-v") ||
-                  0 == strcmp(argv[argn], "--noquiet") )
+                  0 == strcmp(argv[argn], "-v"))
             verbose = TRUE;
-        else if ( 0 == strcmp(argv[argn], "--noverbose") ||
-                  0 == strcmp(argv[argn], "--quiet") )
+        else if ( 0 == strcmp(argv[argn], "--quiet") )
             verbose = FALSE;
 
         else if ( 0 == strcmp(argv[argn], "-V") ||

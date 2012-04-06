@@ -1,6 +1,8 @@
 # Makefile for pngquant
 
-CC=gcc
+# This changes default "cc" to "gcc", but still allows customization of the CC variable
+# if this line causes problems with non-GNU make, just remove it:
+CC := $(patsubst cc,gcc,$(CC))
 
 BIN = pngquant
 PREFIX ?= /usr/local
@@ -39,5 +41,5 @@ uninstall:
 clean:
 	rm -f pngquant $(OBJS)
 
-.PHONY: all install uninstall clean
+.PHONY: all install uninstall clean openmp
 

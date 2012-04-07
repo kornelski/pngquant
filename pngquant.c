@@ -39,6 +39,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdbool.h>
+
 #if defined(WIN32) || defined(__WIN32__)
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
@@ -60,19 +62,18 @@
 
 struct pngquant_options {
     int reqcolors;
-    int floyd;
     int speed_tradeoff;
-    int last_index_transparent;
     float min_opaque_val;
+    bool floyd, last_index_transparent;
 };
 
 static pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options);
 static pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
 static pngquant_error write_image(write_info *output_image,const char *filename,int force,int using_stdin);
 static char *add_filename_extension(const char *filename, const char *newext);
-static int file_exists(const char *outname);
+static bool file_exists(const char *outname);
 
-static int verbose=0;
+static bool verbose=0;
 /* prints only when verbose flag is set */
 void verbose_printf(const char *fmt, ...)
 {
@@ -105,10 +106,10 @@ static void print_usage(FILE *fd)
 }
 
 #if USE_SSE
-inline static int is_sse2_available()
+inline static bool is_sse2_available()
 {
 #if (defined(__x86_64__) || defined(__amd64))
-    return TRUE;
+    return true;
 #endif
     int a,b,c,d;
         cpuid(1, a, b, c, d);
@@ -154,14 +155,14 @@ int main(int argc, char *argv[])
 {
     struct pngquant_options options = {
         .reqcolors = 256,
-        .floyd = TRUE, // floyd-steinberg dithering
+        .floyd = true, // floyd-steinberg dithering
         .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
         .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
-        .last_index_transparent = FALSE, // puts transparent color at last index. This is workaround for blu-ray subtitles.
+        .last_index_transparent = false, // puts transparent color at last index. This is workaround for blu-ray subtitles.
     };
 
-    int force = FALSE; // force overwrite
-    int using_stdin = FALSE;
+    bool force = false, // force overwrite
+         using_stdin = false;
     int latest_error=0, error_count=0, file_count=0;
     const char *filename, *newext = NULL;
 
@@ -173,25 +174,25 @@ int main(int argc, char *argv[])
 
         if ( 0 == strcmp(argv[argn], "--fs") ||
              0 == strcmp(argv[argn], "--floyd") )
-            options.floyd = TRUE;
+            options.floyd = true;
         else if ( 0 == strcmp(argv[argn], "--nofs") ||
                   0 == strcmp(argv[argn], "--ordered") )
-            options.floyd = FALSE;
+            options.floyd = false;
         else if (0 == strcmp(argv[argn], "--iebug"))
             options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
         else if (0 == strcmp(argv[argn], "-f") ||
 		 0 == strcmp(argv[argn], "--force"))
-            force = TRUE;
+            force = true;
         else if (0 == strcmp(argv[argn], "--no-force"))
-            force = FALSE;
+            force = false;
         else if ( 0 == strcmp(argv[argn], "--verbose") ||
                   0 == strcmp(argv[argn], "-v"))
-            verbose = TRUE;
+            verbose = true;
         else if ( 0 == strcmp(argv[argn], "--quiet") )
-            verbose = FALSE;
+            verbose = false;
 
         else if ( 0 == strcmp(argv[argn], "--transbug"))
-            options.last_index_transparent = TRUE;
+            options.last_index_transparent = true;
 
         else if ( 0 == strcmp(argv[argn], "-V") ||
 		  0 == strcmp(argv[argn], "--version")) {
@@ -253,7 +254,7 @@ int main(int argc, char *argv[])
     }
 
     if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
-        using_stdin = TRUE;
+        using_stdin = true;
         filename = "stdin";
         argn = argc;
     } else {
@@ -652,14 +653,14 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
     nearest_free(n);
 }
 
-static int file_exists(const char *outname)
+static bool file_exists(const char *outname)
 {
     FILE *outfile = fopen(outname, "rb");
     if ((outfile ) != NULL) {
         fclose(outfile);
-        return TRUE;
+        return true;
     }
-    return FALSE;
+    return false;
 }
 
 /* build the output filename from the input name by inserting "-fs8" or

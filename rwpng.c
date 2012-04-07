@@ -112,7 +112,7 @@ pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
      * compression_type and filter_type => NULLs] */
 
     png_get_IHDR(png_ptr, info_ptr, &mainprog_ptr->width, &mainprog_ptr->height,
-      &bit_depth, &color_type, &mainprog_ptr->interlaced, NULL, NULL);
+      &bit_depth, &color_type, NULL, NULL, NULL);
 
 
     /* expand palette images to RGB, low-bit-depth grayscale images to 8 bits,
@@ -160,8 +160,7 @@ pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
 
     png_read_update_info(png_ptr, info_ptr);
 
-    mainprog_ptr->rowbytes = rowbytes = png_get_rowbytes(png_ptr, info_ptr);
-    //mainprog_ptr->channels = (int)png_get_channels(png_ptr, info_ptr);
+    rowbytes = png_get_rowbytes(png_ptr, info_ptr);
 
     if ((mainprog_ptr->rgba_data = malloc(rowbytes*mainprog_ptr->height)) == NULL) {
         fprintf(stderr, "pngquant readpng:  unable to allocate image data\n");
@@ -264,7 +263,7 @@ pngquant_error rwpng_write_image(FILE *outfile, write_info *mainprog_ptr)
 
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,
       sample_depth, PNG_COLOR_TYPE_PALETTE,
-      mainprog_ptr->interlaced, PNG_COMPRESSION_TYPE_DEFAULT,
+      0, PNG_COMPRESSION_TYPE_DEFAULT,
       PNG_FILTER_TYPE_BASE);
 
     /* GRR WARNING:  cast of rwpng_colorp to png_colorp could fail in future

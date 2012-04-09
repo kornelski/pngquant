@@ -1,55 +1,95 @@
-.TH PNGQUANT 1 "Tue, 06 Dec 2011 22:33:44 +0000"
-.SH NAME
-pngquant \- PNG image optimisation utility
-.SH SYNOPSIS
-.B pngquant
-.RI "[ options ] [ ncolors ] pngfile [ pngfile ... ]"
-.br
-.B pngquant
-.RI "[ options ] - <pngfile >pngfile
-.br
-.PP
-Arguments in square brackets are optional.
-.SH DESCRIPTION
-.PP
-.B pngquant
-converts 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette PNGs, optionally using Floyd-Steinberg dithering (default).
+.Dd 2012-04-09
+.Dt pngquant 1
+.Sh NAME
+.Nm pngquant
+.Nd PNG converter and lossy image compressor
+.Sh SYNOPSIS
+.Nm
+.Aq options
+.Op ncolors
+.Pa file
+.Op Ar
+.Nm
+.Aq options
+.Op ncolors
+.Fl
+.Cm < Ns Pa file
+.Cm > Ns Pa file
 
-The output filename is the same as the input name except that it ends in \fI-fs8.png\fP or \fI-or8.png\fP (unless the input is stdin, in which case the quantized image will go to stdout).
-The default behavior if the output file exists is to skip the conversion; use \fI-force\fP to overwrite.
-.SH OPTIONS
-.TP
-.B \-\-ext <new.png>
-File extension (suffix) to use for output files instead of the default \fI-fs8.png\fP/\fI-or8.png\fP.
-.TP
-.B \-f, \-\-force
+.Sh DESCRIPTION
+.Nm
+converts 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette PNGs, optionally using Floyd-Steinberg dithering.
+
+The output filename is the same as the input name except that it ends in
+.Ql -fs8.png
+or
+.Ql -or8.png
+(unless the input is stdin, in which case the quantized image will go to stdout).
+The default behavior if the output file exists is to skip the conversion; use
+.Fl Fl force
+to overwrite.
+.Sh OPTIONS
+.Bl -tag -width -indent
+.It Fl Fl ext Ar new.png
+File extension (suffix) to use for output files instead of the default
+.Ql -fs8.png
+or
+.Ql -or8.png .
+.It Fl f , Fl Fl force
 Overwrite existing output files.
-.TP
-.B \-\-fs, \-\-nofs
-Enable or disable dithering.
-.TP
-.B \-\-iebug
-Workaround for Internet Explorer 6, which only displays fully opaque pixels. pngquant will make almost-opaque pixels fully opaque and will reduce amount of semi-transparent colors. When this option is enabled the default filename suffix is \fI-ie-fs8.png\fP/\fI-ie-or8.png\fP.
-.TP
-.B \-s <N>, \-\-speed <N>
-Speed/quality trade-off from 1 (brute-force) to 10 (fastest). The default is 3. Speed 10 has 5% lower quality, but is about 8 times faster than the default.
-.TP
-.B \-v, \-\-verbose, \-\-noverbose, \-\-quiet
-Enable or disable verbose messages.
-.TP
-.B \-V, \-\-version
-Display version information.
-.TP
-.B \-h, \-\-help
+.Do
+.Fl Fl ext
+.Ar .png
+.Fl Fl force
+.Dc
+can be used to convert files in place (which is unsafe).
+.It Fl Fl nofs , Fl Fl ordered
+Disable Floyd-Steinberg dithering. It's enabled by default
+.Pq Fl Fl floyd .
+.It Fl Fl iebug
+Workaround for Internet Explorer 6, which only displays fully opaque pixels.
+.Nm
+will make almost-opaque pixels fully opaque and will reduce amount of semi-transparent colors. When this option is enabled the default filename suffix is
+.Ql -ie-fs8.png
+/
+.Ql -ie-or8.png .
+.It Fl s Ar N , Fl Fl speed Ar N
+Speed/quality trade-off from
+.Cm 1
+(brute-force) to
+.Cm 10
+(fastest). The default is
+.Cm 3 .
+Speed
+.Cm 10
+has 5% lower quality, but is about 8 times faster than the default.
+.It Fl v , Fl Fl verbose
+Enable verbose messages showing progress and information about input/output. Opposite is
+.Fl Fl quiet .
+Errors are output to
+.Pa stderr
+regardless of this option.
+.It Fl V , Fl Fl version
+Display version on
+.Pa stdout
+and exit.
+.It Fl h , Fl Fl help
 Display help and exit.
-.SH EXAMPLE
+.El
+.Sh EXAMPLE
 Creating a new image with the number of colors reduced to 64:
-.TP
-	pngquant 64 image.png
-.TP
-The resulting image will have 64 colors and will be saved as \fBimage-fs8.png\fP.
-.SH AUTHOR
-pngquant was written by Greg Roelofs <newt@pobox.com> and Kornel Lesinski. See <http://pngquant.org>.
-.PP
-This manual page was created by Nelson A. de Oliveira <naoliv@debian.org>,
-for the Debian project (but may be used by others).
+.Bd -offset indent
+.Nm
+.Cm 64 image.png
+.Pp
+The resulting image will have 64 colors and will be saved as
+.Pa image-fs8.png .
+.Sh AUTHOR
+.Nm
+pngquant was written by Greg Roelofs
+.Aq Mt newt@pobox.com
+and Kornel Lesinski
+.Aq Mt kornel@pngquant.org .
+.Lk http://pngquant.org "Pngquant homepage" .
+.Ed
+

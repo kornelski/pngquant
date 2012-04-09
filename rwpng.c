@@ -326,16 +326,11 @@ static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg)
      * regardless of whether _BSD_SOURCE or anything else has (or has not)
      * been defined. */
 
-    fprintf(stderr, "rwpng libpng error: %s\n", msg);
+    fprintf(stderr, "  error: %s\n", msg);
     fflush(stderr);
 
     mainprog_ptr = png_get_error_ptr(png_ptr);
-    if (mainprog_ptr == NULL) {         /* we are completely hosed now */
-        fprintf(stderr,
-          "rwpng severe error:  jmpbuf not recoverable; terminating.\n");
-        fflush(stderr);
-        exit(99);
-    }
+    if (mainprog_ptr == NULL) abort();
 
     longjmp(mainprog_ptr->jmpbuf, 1);
 }

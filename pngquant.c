@@ -507,17 +507,13 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
         difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
     }
 
-    f_pixel *restrict thiserr = NULL;
-    f_pixel *restrict nexterr = NULL;
-    float sr=0, sg=0, sb=0, sa=0;
-    int fs_direction = 1;
-
     /* Initialize Floyd-Steinberg error vectors. */
+    f_pixel *restrict thiserr, *restrict nexterr;
     thiserr = malloc((cols + 2) * sizeof(*thiserr));
     nexterr = malloc((cols + 2) * sizeof(*thiserr));
     srand(12345); /* deterministic dithering is better for comparing results */
 
-    for (int col = 0; col < cols + 2; ++col) {
+    for (unsigned int col = 0; col < cols + 2; ++col) {
         const double rand_max = RAND_MAX;
         thiserr[col].r = ((double)rand() - rand_max/2.0)/rand_max/255.0;
         thiserr[col].g = ((double)rand() - rand_max/2.0)/rand_max/255.0;
@@ -525,10 +521,11 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
         thiserr[col].a = ((double)rand() - rand_max/2.0)/rand_max/255.0;
     }
 
-    for (int row = 0; row < rows; ++row) {
+    bool fs_direction = true;
+    for (unsigned int row = 0; row < rows; ++row) {
         memset(nexterr, 0, (cols + 2) * sizeof(*nexterr));
 
-        int col = (fs_direction) ? 0 : (cols - 1);
+        unsigned int col = (fs_direction) ? 0 : (cols - 1);
 
         do {
             const f_pixel px = to_f(gamma, input_pixels[row][col]);
@@ -536,10 +533,10 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
             float dither_level = edge_map ? edge_map[row*cols + col] : 0.9f;
 
             /* Use Floyd-Steinberg errors to adjust actual color. */
-            sr = px.r + thiserr[col + 1].r * dither_level;
-            sg = px.g + thiserr[col + 1].g * dither_level;
-            sb = px.b + thiserr[col + 1].b * dither_level;
-            sa = px.a + thiserr[col + 1].a * dither_level;
+            float sr = px.r + thiserr[col + 1].r * dither_level,
+                  sg = px.g + thiserr[col + 1].g * dither_level,
+                  sb = px.b + thiserr[col + 1].b * dither_level,
+                  sa = px.a + thiserr[col + 1].a * dither_level;
 
             // Error must be clamped, otherwise it can accumulate so much that it will be
             // impossible to compensate it, causing color streaks
@@ -552,17 +549,17 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
             if (sa < 0) sa = 0;
             else if (sa > 1) sa = 1;
 
-            int ind;
+            unsigned int ind;
             if (sa < 1.0/256.0) {
                 ind = transparent_ind;
             } else {
-                f_pixel spx = (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa};
-                int curr_ind = row_pointers[row][col];
+                const f_pixel spx = (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa};
+                unsigned int curr_ind = row_pointers[row][col];
                 if (output_image_is_remapped && colordifference(map->palette[curr_ind].acolor, spx) < difference_tolerance[curr_ind]) {
                     ind = curr_ind;
                 } else {
                     ind = nearest_search(n, spx, min_opaque_val, NULL);
-            }
+                }
             }
 
             row_pointers[row][col] = ind;
@@ -635,14 +632,13 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
                 ++col;
                 if (col >= cols) break;
             } else {
+                if (col <= 0) break;
                 --col;
-                if (col < 0) break;
             }
         }
         while(1);
 
-        f_pixel *temperr;
-        temperr = thiserr;
+        f_pixel *const temperr = thiserr;
         thiserr = nexterr;
         nexterr = temperr;
         fs_direction = !fs_direction;
@@ -821,36 +817,36 @@ static pngquant_error read_image(const char *filename, int using_stdin, read_inf
     noise - approximation of areas with high-frequency noise, except straight edges. 1=flat, 0=noisy.
     edges - noise map including all edges
  */
-static void contrast_maps(const rgb_pixel*const apixels[], const int cols, const int rows, const float gamma, float **noiseP, float **edgesP)
+static void contrast_maps(const rgb_pixel*const apixels[], const unsigned int cols, const unsigned int rows, const float gamma, float **noiseP, float **edgesP)
 {
     float *restrict noise = malloc(sizeof(float)*cols*rows);
     float *restrict tmp = malloc(sizeof(float)*cols*rows);
     float *restrict edges = malloc(sizeof(float)*cols*rows);
 
-    for (int j=0; j < rows; j++) {
+    for (unsigned int j=0; j < rows; j++) {
         f_pixel prev, curr = to_f(gamma, apixels[j][0]), next=curr;
-        for (int i=0; i < cols; i++) {
+        for (unsigned int i=0; i < cols; i++) {
             prev=curr;
             curr=next;
             next = to_f(gamma, apixels[j][MIN(cols-1,i+1)]);
 
             // contrast is difference between pixels neighbouring horizontally and vertically
-            float a = fabsf(prev.a+next.a - curr.a*2.f),
+            const float a = fabsf(prev.a+next.a - curr.a*2.f),
             r = fabsf(prev.r+next.r - curr.r*2.f),
             g = fabsf(prev.g+next.g - curr.g*2.f),
             b = fabsf(prev.b+next.b - curr.b*2.f);
 
-            f_pixel nextl = to_f(gamma, apixels[MAX(0,j-1)][i]);
-            f_pixel prevl = to_f(gamma, apixels[MIN(rows-1,j+1)][i]);
+            const f_pixel nextl = to_f(gamma, apixels[MAX(0,j-1)][i]);
+            const f_pixel prevl = to_f(gamma, apixels[MIN(rows-1,j+1)][i]);
 
-            float a1 = fabsf(prevl.a+nextl.a - curr.a*2.f),
+            const float a1 = fabsf(prevl.a+nextl.a - curr.a*2.f),
             r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),
             g1 = fabsf(prevl.g+nextl.g - curr.g*2.f),
             b1 = fabsf(prevl.b+nextl.b - curr.b*2.f);
 
-            float horiz = MAX(MAX(a,r),MAX(g,b));
-            float vert = MAX(MAX(a1,r1),MAX(g1,b1));
-            float edge = MAX(horiz,vert);
+            const float horiz = MAX(MAX(a,r),MAX(g,b));
+            const float vert = MAX(MAX(a1,r1),MAX(g1,b1));
+            const float edge = MAX(horiz,vert);
             float z = edge - fabsf(horiz-vert)*.5f;
             z = 1.f - MAX(z,MIN(horiz,vert));
             z *= z; // noise is amplified
@@ -875,7 +871,7 @@ static void contrast_maps(const rgb_pixel*const apixels[], const int cols, const
 
     min3(edges, tmp, cols, rows);
     max3(tmp, edges, cols, rows);
-    for(int i=0; i < cols*rows; i++) edges[i] = MIN(noise[i], edges[i]);
+    for(unsigned int i=0; i < cols*rows; i++) edges[i] = MIN(noise[i], edges[i]);
 
     free(tmp);
 

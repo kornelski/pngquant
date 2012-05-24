@@ -9,25 +9,25 @@ static void transposing_1d_blur(float *restrict src, float *restrict dst, int wi
 {
     const float sizef = size;
 
-    for(int j=0; j < height; j++) {
+    for(unsigned int j=0; j < height; j++) {
         float *restrict row = src + j*width;
 
         // accumulate sum for pixels outside line
         float sum;
         sum = row[0]*sizef;
-        for(int i=0; i < size; i++) {
+        for(unsigned int i=0; i < size; i++) {
             sum += row[i];
         }
 
         // blur with left side outside line
-        for(int i=0; i < size; i++) {
+        for(unsigned int i=0; i < size; i++) {
             sum -= row[0];
             sum += row[i+size];
 
             dst[i*height + j] = sum / (sizef*2.f);
         }
 
-        for(int i=size; i < width-size; i++) {
+        for(unsigned int i=size; i < width-size; i++) {
             sum -= row[i-size];
             sum += row[i+size];
 
@@ -35,7 +35,7 @@ static void transposing_1d_blur(float *restrict src, float *restrict dst, int wi
         }
 
         // blur with right side outside line
-        for(int i=width-size; i < width; i++) {
+        for(unsigned int i=width-size; i < width; i++) {
             sum -= row[i-size];
             sum += row[width-1];
 
@@ -49,14 +49,14 @@ static void transposing_1d_blur(float *restrict src, float *restrict dst, int wi
  */
 void max3(float *src, float *dst, int width, int height)
 {
-    for(int j=0; j < height; j++) {
+    for(unsigned int j=0; j < height; j++) {
         const float *row = src + j*width,
         *prevrow = src + MAX(0,j-1)*width,
         *nextrow = src + MIN(height-1,j+1)*width;
 
         float prev,curr=row[0],next=row[0];
 
-        for(int i=0; i < width-1; i++) {
+        for(unsigned int i=0; i < width-1; i++) {
             prev=curr;
             curr=next;
             next=row[i+1];
@@ -76,14 +76,14 @@ void max3(float *src, float *dst, int width, int height)
  */
 void min3(float *src, float *dst, int width, int height)
 {
-    for(int j=0; j < height; j++) {
+    for(unsigned int j=0; j < height; j++) {
         const float *row = src + j*width,
         *prevrow = src + MAX(0,j-1)*width,
         *nextrow = src + MIN(height-1,j+1)*width;
 
         float prev,curr=row[0],next=row[0];
 
-        for(int i=0; i < width-1; i++) {
+        for(unsigned int i=0; i < width-1; i++) {
             prev=curr;
             curr=next;
             next=row[i+1];

@@ -45,7 +45,7 @@ static f_pixel box_variance(const hist_item achv[], const struct box *box)
     f_pixel mean = box->color;
     double variancea=0, variancer=0, varianceg=0, varianceb=0;
 
-    for (int i = 0; i < box->colors; ++i) {
+    for(unsigned int i = 0; i < box->colors; ++i) {
         f_pixel px = achv[box->ind + i].acolor;
         double weight = achv[box->ind + i].adjusted_weight;
         variancea += variance_diff(mean.a - px.a, 1.f/256.f)*weight*0.95;
@@ -181,7 +181,7 @@ static double prepare_sort(struct box *b, hist_item achv[])
 
     qsort(channels, 4, sizeof(channels[0]), comparevariance);
 
-    for (int i=0; i < b->colors; i++) {
+    for(unsigned int i=0; i < b->colors; i++) {
         const float *chans = (const float *)&achv[b->ind + i].acolor;
         // Only the first channel really matters. When trying median cut many times
         // with different histogram weights, I don't want sort randomness to influence outcome.
@@ -194,7 +194,7 @@ static double prepare_sort(struct box *b, hist_item achv[])
     // box will be split to make color_weight of each side even
     const int ind = b->ind, end = ind+b->colors;
     double totalvar = 0;
-    for(int j=ind; j < end; j++) totalvar += (achv[j].color_weight = color_weight(median, achv[j]));
+    for(unsigned int j=ind; j < end; j++) totalvar += (achv[j].color_weight = color_weight(median, achv[j]));
     return totalvar / 2.0;
 }
 
@@ -217,7 +217,7 @@ static f_pixel get_median(const struct box *b, hist_item achv[])
 static int best_splittable_box(struct box* bv, int boxes)
 {
     int bi=-1; double maxsum=0;
-    for (int i=0; i < boxes; i++) {
+    for(unsigned int i=0; i < boxes; i++) {
         if (bv[i].colors < 2) continue;
 
         // looks only at max variance, because it's only going to split by it
@@ -266,7 +266,7 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
     bv[0].color = averagepixels(bv[0].colors, &achv[bv[0].ind], min_opaque_val);
     bv[0].variance = box_variance(achv, &bv[0]);
     bv[0].sum = 0;
-    for(int i=0; i < bv[0].colors; i++) bv[0].sum += achv[i].adjusted_weight;
+    for(unsigned int i=0; i < bv[0].colors; i++) bv[0].sum += achv[i].adjusted_weight;
 
     int boxes = 1;
 
@@ -314,7 +314,7 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
          */
         double sm = bv[bi].sum;
         double lowersum = 0;
-        for (int i=0; i < break_at; i++) lowersum += achv[indx + i].adjusted_weight;
+        for(unsigned int i=0; i < break_at; i++) lowersum += achv[indx + i].adjusted_weight;
 
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
@@ -347,12 +347,12 @@ static colormap *colormap_from_boxes(struct box* bv, int boxes, hist_item *achv,
 
     colormap *map = pam_colormap(boxes);
 
-    for (int bi = 0; bi < boxes; ++bi) {
+    for(unsigned int bi = 0; bi < boxes; ++bi) {
         map->palette[bi].acolor = bv[bi].color;
 
         /* store total color popularity (perceptual_weight is approximation of it) */
         map->palette[bi].popularity = 0;
-        for(int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
+        for(unsigned int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
             map->palette[bi].popularity += achv[i].perceptual_weight;
         }
     }
@@ -363,8 +363,8 @@ static colormap *colormap_from_boxes(struct box* bv, int boxes, hist_item *achv,
 /* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */
 static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, int boxes)
 {
-    for (int bi = 0; bi < boxes; ++bi) {
-        for(int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
+    for(unsigned int bi = 0; bi < boxes; ++bi) {
+        for(unsigned int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
             achv[i].adjusted_weight *= sqrt(1.0 +colordifference(map->palette[bi].acolor, achv[i].acolor)/2.0);
         }
     }
@@ -375,7 +375,7 @@ static f_pixel averagepixels(int clrs, const hist_item achv[static clrs], float 
     double r = 0, g = 0, b = 0, a = 0, sum = 0;
     float maxa = 0;
 
-    for (int i = 0; i < clrs; ++i) {
+    for(unsigned int i = 0; i < clrs; ++i) {
         f_pixel px = achv[i].acolor;
         double tmp, weight = 1.0f;
 

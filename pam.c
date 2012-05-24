@@ -73,10 +73,10 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
     int freestackp=0;
 
     /* Go through the entire image, building a hash table of colors. */
-    for (int row = 0; row < rows; ++row) {
+    for(unsigned int row = 0; row < rows; ++row) {
 
         float boost=1.0;
-        for (int col = 0; col < cols; ++col) {
+        for(unsigned int col = 0; col < cols; ++col) {
             if (importance_map) {
                 boost = 0.5f+*importance_map++;
             }
@@ -201,7 +201,7 @@ static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_siz
 
     /* Loop through the hash table. */
     double total_weight=0;
-    for (int j=0, i=0; i < HASH_SIZE; ++i) {
+    for(unsigned int j=0, i=0; i < HASH_SIZE; ++i) {
         struct acolorhist_arr_head *achl = &acht->buckets[i];
         if (achl->used) {
             hist->achv[j].acolor = to_f(gamma, achl->color1.rgb);
@@ -216,7 +216,7 @@ static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_siz
                 ++j;
 
                 struct acolorhist_arr_item *a = achl->other_items;
-                for (int i=0; i < achl->used-2; i++) {
+                for(unsigned int i=0; i < achl->used-2; i++) {
                     hist->achv[j].acolor = to_f(gamma, a[i].color.rgb);
                     hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = a[i].perceptual_weight;
                     total_weight += a[i].perceptual_weight;

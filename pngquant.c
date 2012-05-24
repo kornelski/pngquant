@@ -137,12 +137,12 @@ static const struct {const char *old; char *new;} obsolete_options[] = {
 
 static void fix_obsolete_options(const int argc, char *argv[])
 {
-    for(int argn=1; argn < argc; argn++) {
+    for(unsigned int argn=1; argn < argc; argn++) {
         if ('-' != argv[argn][0]) continue;
 
         if ('-' == argv[argn][1]) break; // stop on first --option or --
 
-        for(int i=0; i < sizeof(obsolete_options)/sizeof(obsolete_options[0]); i++) {
+        for(unsigned int i=0; i < sizeof(obsolete_options)/sizeof(obsolete_options[0]); i++) {
             if (0 == strcmp(obsolete_options[i].old, argv[argn])) {
                 fprintf(stderr, "  warning: option '%s' has been replaced with '%s'.\n", obsolete_options[i].old, obsolete_options[i].new);
                 argv[argn] = obsolete_options[i].new;
@@ -368,7 +368,7 @@ static void sort_palette(write_info *output_image, colormap *map, int last_index
     verbose_printf("  eliminating opaque tRNS-chunk entries...");
     output_image->num_palette = map->colors;
 
-    if (last_index_transparent) for(int i=0; i < map->colors; i++) {
+    if (last_index_transparent) for(unsigned int i=0; i < map->colors; i++) {
         if (map->palette[i].acolor.a < 1.0/256.0) {
             const int old = i;
             const int transparent_dest = map->colors-1;
@@ -386,7 +386,7 @@ static void sort_palette(write_info *output_image, colormap *map, int last_index
 
     /* move transparent colors to the beginning to shrink trns chunk */
     int num_transparent=0;
-    for(int i=0; i < map->colors; i++) {
+    for(unsigned int i=0; i < map->colors; i++) {
         rgb_pixel px = to_rgb(output_image->gamma, map->palette[i].acolor);
         if (px.a != 255) {
             // current transparent color is swapped with earlier opaque one
@@ -413,7 +413,7 @@ static void sort_palette(write_info *output_image, colormap *map, int last_index
 
 static void set_palette(write_info *output_image, const colormap *map)
 {
-    for (int x = 0; x < map->colors; ++x) {
+    for(unsigned int x = 0; x < map->colors; ++x) {
         rgb_pixel px = to_rgb(output_image->gamma, map->palette[x].acolor);
         map->palette[x].acolor = to_f(output_image->gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
@@ -443,8 +443,8 @@ static float remap_to_palette(read_info *input_image, write_info *output_image, 
 
     #pragma omp parallel for if (rows*cols > 3000) \
         default(none) shared(average_color) reduction(+:remapping_error) reduction(+:remapped_pixels)
-    for (int row = 0; row < rows; ++row) {
-        for(int col = 0; col < cols; ++col) {
+    for(unsigned int row = 0; row < rows; ++row) {
+        for(unsigned int col = 0; col < cols; ++col) {
 
             f_pixel px = to_f(gamma, input_pixels[row][col]);
             int match;
@@ -475,7 +475,7 @@ static float remap_to_palette(read_info *input_image, write_info *output_image, 
 static float distance_from_closest_other_color(const colormap *map, const int i)
 {
     float second_best=999999;
-    for(int j=0; j < map->colors; j++) {
+    for(unsigned int j=0; j < map->colors; j++) {
         if (i == j) continue;
         float diff = colordifference(map->palette[i].acolor, map->palette[j].acolor);
         if (diff <= second_best) {
@@ -503,7 +503,7 @@ static void remap_to_palette_floyd(read_info *input_image, write_info *output_im
     const int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     float difference_tolerance[map->colors];
-    if (output_image_is_remapped) for(int i=0; i < map->colors; i++) {
+    if (output_image_is_remapped) for(unsigned int i=0; i < map->colors; i++) {
         difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
     }
 
@@ -717,12 +717,12 @@ static pngquant_error write_image(write_info *output_image,const char *outname,i
 }
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
-static histogram *get_histogram(const read_info *input_image, const int reqcolors, const int speed_tradeoff, const float *importance_map)
+static histogram *get_histogram(const read_info *input_image, const unsigned int reqcolors, const int speed_tradeoff, const float *importance_map)
 {
     histogram *hist;
     int ignorebits=0;
     const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->row_pointers;
-    const int cols = input_image->width, rows = input_image->height;
+    const unsigned int cols = input_image->width, rows = input_image->height;
     const float gamma = input_image->gamma;
     assert(gamma > 0);
 
@@ -756,18 +756,18 @@ static void modify_alpha(read_info *input_image, const float min_opaque_val)
        completely opaque */
 
     rgb_pixel *const *const input_pixels = (rgb_pixel **)input_image->row_pointers;
-    const int rows= input_image->height, cols = input_image->width;
+    const unsigned int rows = input_image->height, cols = input_image->width;
     const float gamma = input_image->gamma;
 
     if (min_opaque_val > 254.f/255.f) return;
 
     const float almost_opaque_val = min_opaque_val * 169.f/256.f;
-    const int almost_opaque_val_int = almost_opaque_val*255.f;
+    const unsigned int almost_opaque_val_int = almost_opaque_val*255.f;
 
     verbose_printf("  Working around IE6 bug by making image less transparent...\n");
 
-    for(int row = 0; row < rows; ++row) {
-        for(int col = 0; col < cols; col++) {
+    for(unsigned int row = 0; row < rows; ++row) {
+        for(unsigned int col = 0; col < cols; col++) {
             const rgb_pixel srcpx = input_pixels[row][col];
 
             /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
@@ -888,15 +888,15 @@ static void contrast_maps(const rgb_pixel*const apixels[], const unsigned int co
  */
 static void update_dither_map(const write_info *output_image, float *edges)
 {
-    const int width = output_image->width;
-    const int height = output_image->height;
+    const unsigned int width = output_image->width;
+    const unsigned int height = output_image->height;
     const unsigned char *restrict pixels = output_image->indexed_data;
 
-    for(int row=0; row < height; row++)
+    for(unsigned int row=0; row < height; row++)
     {
         unsigned char lastpixel = pixels[row*width];
         int lastcol=0;
-        for(int col=1; col < width; col++)
+        for(unsigned int col=1; col < width; col++)
         {
             const unsigned char px = pixels[row*width + col];
 
@@ -1010,10 +1010,10 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
         verbose_printf("  moving colormap towards local minimum\n");
 
     // Voronoi iteration approaches local minimum for the palette
-    int iterations = MAX(8-speed_tradeoff,0); iterations += iterations * iterations/2;
+    unsigned int iterations = MAX(8-speed_tradeoff,0); iterations += iterations * iterations/2;
         const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
         double previous_palette_error = 9999999;
-        for(int i=0; i < iterations; i++) {
+        for(unsigned int i=0; i < iterations; i++) {
             palette_error = viter_do_iteration(hist, acolormap, min_opaque_val, NULL);
 
             if (fabs(previous_palette_error-palette_error) < iteration_limit) {
@@ -1040,7 +1040,7 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
         return OUT_OF_MEMORY_ERROR;
     }
 
-    for (int row = 0;  row < output_image->height;  ++row) {
+    for(unsigned int row = 0;  row < output_image->height;  ++row) {
         output_image->row_pointers[row] = output_image->indexed_data + row*output_image->width;
     }
 

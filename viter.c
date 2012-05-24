@@ -36,7 +36,7 @@ void viter_finalize(colormap *map, const int max_threads, const viter_state aver
         double a=0, r=0, g=0, b=0, total=0;
 
         // Aggregate results from all threads
-        for(int t=0; t < max_threads; t++) {
+        for(unsigned int t=0; t < max_threads; t++) {
             const int offset = map->colors * t + i;
 
             a += average_color[offset].a;
@@ -70,7 +70,7 @@ double viter_do_iteration(histogram *hist, colormap *const map, const float min_
     double total_diff=0;
     #pragma omp parallel for if (hist_size > 3000) \
         default(none) shared(average_color,callback) reduction(+:total_diff)
-    for(int j=0; j < hist_size; j++) {
+    for(unsigned int j=0; j < hist_size; j++) {
         float diff;
         int match = nearest_search(n, achv[j].acolor, min_opaque_val, &diff);
         total_diff += diff * achv[j].perceptual_weight;

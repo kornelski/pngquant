@@ -61,15 +61,15 @@
 #include "viter.h"
 
 struct pngquant_options {
-    int reqcolors;
-    int speed_tradeoff;
+    unsigned int reqcolors;
+    unsigned int speed_tradeoff;
     float min_opaque_val;
     bool floyd, last_index_transparent;
 };
 
 static pngquant_error pngquant(read_info *input_image, write_info *output_image, const struct pngquant_options *options);
 static pngquant_error read_image(const char *filename, int using_stdin, read_info *input_image_p);
-static pngquant_error write_image(write_info *output_image,const char *filename,int force,int using_stdin);
+static pngquant_error write_image(write_info *output_image,const char *filename,bool force,bool using_stdin);
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
 
@@ -684,7 +684,7 @@ static void set_binary_mode(FILE *fp)
 #endif
 }
 
-static pngquant_error write_image(write_info *output_image,const char *outname,int force,int using_stdin)
+static pngquant_error write_image(write_info *output_image,const char *outname,bool force,bool using_stdin)
 {
     FILE *outfile;
     if (using_stdin) {
@@ -717,10 +717,10 @@ static pngquant_error write_image(write_info *output_image,const char *outname,i
 }
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
-static histogram *get_histogram(const read_info *input_image, const unsigned int reqcolors, const int speed_tradeoff, const float *importance_map)
+static histogram *get_histogram(const read_info *input_image, const unsigned int reqcolors, const unsigned int speed_tradeoff, const float *importance_map)
 {
     histogram *hist;
-    int ignorebits=0;
+    unsigned int ignorebits=0;
     const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->row_pointers;
     const unsigned int cols = input_image->width, rows = input_image->height;
     const float gamma = input_image->gamma;
@@ -733,7 +733,7 @@ static histogram *get_histogram(const read_info *input_image, const unsigned int
     */
 
     if (speed_tradeoff > 7) ignorebits++;
-    int maxcolors = (1<<17) + (1<<18)*(10-speed_tradeoff);
+    unsigned int maxcolors = (1<<17) + (1<<18)*(10-speed_tradeoff);
 
     verbose_printf("  making histogram...");
     for (; ;) {

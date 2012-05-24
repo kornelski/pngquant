@@ -72,7 +72,7 @@ double viter_do_iteration(histogram *hist, colormap *const map, const float min_
         default(none) shared(average_color,callback) reduction(+:total_diff)
     for(unsigned int j=0; j < hist_size; j++) {
         float diff;
-        int match = nearest_search(n, achv[j].acolor, min_opaque_val, &diff);
+        unsigned int match = nearest_search(n, achv[j].acolor, min_opaque_val, &diff);
         total_diff += diff * achv[j].perceptual_weight;
 
         viter_update_color(achv[j].acolor, achv[j].perceptual_weight, map, match, omp_get_thread_num(), average_color);

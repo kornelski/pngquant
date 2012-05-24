@@ -17,8 +17,8 @@
 #include "pam.h"
 #include "mempool.h"
 
-static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, int maxacolors, float gamma);
-static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance, int* acolorsP);
+static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, unsigned int maxacolors, float gamma);
+static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, double gamma, unsigned int maxacolors, unsigned int ignorebits, const float *importance, unsigned int* acolorsP);
 static void pam_freeacolorhash(acolorhash_table acht);
 static acolorhash_table pam_allocacolorhash(void);
 
@@ -42,12 +42,12 @@ static acolorhash_table pam_allocacolorhash(void);
  * Builds color histogram no larger than maxacolors. Ignores (posterizes) ignorebits lower bits in each color.
  * perceptual_weight of each entry is increased by value from importance_map
  */
-histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int rows, float gamma, int maxacolors, int ignorebits, const float *importance_map)
+histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], unsigned int cols, unsigned int rows, float gamma, unsigned int maxacolors, unsigned int ignorebits, const float *importance_map)
 {
     acolorhash_table acht;
     histogram *hist;
 
-    int hist_size=0;
+    unsigned int hist_size=0;
     acht = pam_computeacolorhash(apixels, cols, rows, gamma, maxacolors, ignorebits, importance_map, &hist_size);
     if (!acht) return 0;
 
@@ -56,7 +56,7 @@ histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], int cols, int 
     return hist;
 }
 
-static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, int cols, int rows, double gamma, int maxacolors, int ignorebits, const float *importance_map, int* acolorsP)
+static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, double gamma, unsigned int maxacolors, unsigned int ignorebits, const float *importance_map, unsigned int* acolorsP)
 {
     const unsigned int channel_mask = 255>>ignorebits<<ignorebits;
     const unsigned int channel_hmask = (255>>(ignorebits)) ^ 0xFF;
@@ -66,11 +66,11 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
     acolorhash_table acht = pam_allocacolorhash();
     struct acolorhist_arr_head *const buckets = acht->buckets;
 
-    int colors=0;
+    unsigned int colors=0;
 
-    const int stacksize = 512;
+    const unsigned int stacksize = 512;
     struct acolorhist_arr_item *freestack[stacksize];
-    int freestackp=0;
+    unsigned int freestackp=0;
 
     /* Go through the entire image, building a hash table of colors. */
     for(unsigned int row = 0; row < rows; ++row) {
@@ -110,7 +110,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                     }
                     // other items are stored as an array (which gets reallocated if needed)
                     struct acolorhist_arr_item *other_items = achl->other_items;
-                    int i = 0;
+                    unsigned int i = 0;
                     for (; i < achl->used-2; i++) {
                         if (other_items[i].color.l == px.l) {
                             other_items[i].perceptual_weight += boost;
@@ -135,7 +135,7 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, in
                     }
 
                     struct acolorhist_arr_item *new_items;
-                    int capacity;
+                    unsigned int capacity;
                     if (!other_items) { // there was no array previously, alloc "small" array
                         capacity = 8;
                         if (freestackp <= 0) {
@@ -193,7 +193,7 @@ static acolorhash_table pam_allocacolorhash()
     return t;
 }
 
-static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, int hist_size, float gamma)
+static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, unsigned int hist_size, float gamma)
 {
     histogram *hist = malloc(sizeof(hist[0]));
     hist->achv = malloc(hist_size * sizeof(hist->achv[0]));
@@ -243,7 +243,7 @@ void pam_freeacolorhist(histogram *hist)
     free(hist);
 }
 
-colormap *pam_colormap(int colors)
+colormap *pam_colormap(unsigned int colors)
 {
     colormap *map = malloc(sizeof(colormap));
     map->palette = calloc(colors, sizeof(map->palette[0]));

@@ -70,8 +70,8 @@ typedef struct {
     png_uint_32 width;
     png_uint_32 height;
     float gamma;
-    int num_palette;
-    int num_trans;
+    unsigned int num_palette;
+    unsigned int num_trans;
     png_color palette[256];
     unsigned char trans[256];
     unsigned char *indexed_data;

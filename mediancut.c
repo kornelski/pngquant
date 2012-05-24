@@ -21,14 +21,14 @@
 
 #define index_of_channel(ch) (offsetof(f_pixel,ch)/sizeof(float))
 
-static f_pixel averagepixels(int clrs, const hist_item achv[static clrs], float min_opaque_val);
+static f_pixel averagepixels(unsigned int clrs, const hist_item achv[static clrs], float min_opaque_val);
 
 struct box {
     f_pixel color;
     f_pixel variance;
     double sum;
-    int ind;
-    int colors;
+    unsigned int ind;
+    unsigned int colors;
 };
 
 inline static double variance_diff(double val, const double good_enough) ALWAYS_INLINE;
@@ -73,21 +73,21 @@ static inline void hist_item_swap(hist_item *l, hist_item *r)
     }
 }
 
-inline static int qsort_pivot(const hist_item *const base, const unsigned int len) ALWAYS_INLINE;
-inline static int qsort_pivot(const hist_item *const base, const unsigned int len)
+inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len) ALWAYS_INLINE;
+inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len)
 {
     if (len < 32) return len/2;
 
-    const int aidx=8, bidx=len/2, cidx=len-1;
+    const unsigned int aidx=8, bidx=len/2, cidx=len-1;
     const unsigned long a=base[aidx].sort_value, b=base[bidx].sort_value, c=base[cidx].sort_value;
     return (a < b) ? ((b < c) ? bidx : ((a < c) ? cidx : aidx ))
                    : ((b > c) ? bidx : ((a < c) ? aidx : cidx ));
 }
 
-inline static int qsort_partition(hist_item *const base, const unsigned int len) ALWAYS_INLINE;
-inline static int qsort_partition(hist_item *const base, const unsigned int len)
+inline static unsigned int qsort_partition(hist_item *const base, const unsigned int len) ALWAYS_INLINE;
+inline static unsigned int qsort_partition(hist_item *const base, const unsigned int len)
 {
-    int l = 1, r = len;
+    unsigned int l = 1, r = len;
     if (len >= 8) {
         hist_item_swap(&base[0], &base[qsort_pivot(base,len)]);
     }
@@ -108,10 +108,10 @@ inline static int qsort_partition(hist_item *const base, const unsigned int len)
 }
 
 /** this is a simple qsort that completely sorts only elements between sort_start and +sort_len. Used to find median of the set. */
-static void hist_item_sort_range(hist_item *base, unsigned int len, int sort_start, const unsigned int sort_len)
+static void hist_item_sort_range(hist_item *base, unsigned int len, unsigned int sort_start, const unsigned int sort_len)
 {
     do {
-        const int l = qsort_partition(base, len), r = l+1;
+        const unsigned int l = qsort_partition(base, len), r = l+1;
 
         if (sort_start+sort_len > 0 && l > sort_start && l > 0) {
             hist_item_sort_range(base, l, sort_start, sort_len);
@@ -123,14 +123,14 @@ static void hist_item_sort_range(hist_item *base, unsigned int len, int sort_sta
 }
 
 /** sorts array to make sum of weights lower than halfvar one side, returns edge between <halfvar and >halfvar parts of the set */
-static hist_item *hist_item_sort_halfvar(hist_item *base, int len, double *const lowervar, const double halfvar)
+static hist_item *hist_item_sort_halfvar(hist_item *base, unsigned int len, double *const lowervar, const double halfvar)
 {
     do {
-        const int l = qsort_partition(base, len), r = l+1;
+        const unsigned int l = qsort_partition(base, len), r = l+1;
 
         // check if sum of left side is smaller than half,
         // if it is, then it doesn't need to be sorted
-        int t = 0; double tmpsum = *lowervar;
+        unsigned int t = 0; double tmpsum = *lowervar;
         while (t <= l && tmpsum < halfvar) tmpsum += base[t++].color_weight;
 
         if (tmpsum < halfvar) {
@@ -192,7 +192,7 @@ static double prepare_sort(struct box *b, hist_item achv[])
     const f_pixel median = get_median(b, achv);
 
     // box will be split to make color_weight of each side even
-    const int ind = b->ind, end = ind+b->colors;
+    const unsigned int ind = b->ind, end = ind+b->colors;
     double totalvar = 0;
     for(unsigned int j=ind; j < end; j++) totalvar += (achv[j].color_weight = color_weight(median, achv[j]));
     return totalvar / 2.0;
@@ -201,7 +201,7 @@ static double prepare_sort(struct box *b, hist_item achv[])
 /** finds median in unsorted set by sorting only minimum required */
 static f_pixel get_median(const struct box *b, hist_item achv[])
 {
-    const int median_start = (b->colors-1)/2;
+    const unsigned int median_start = (b->colors-1)/2;
 
     hist_item_sort_range(&(achv[b->ind]), b->colors,
                     median_start,
@@ -214,7 +214,7 @@ static f_pixel get_median(const struct box *b, hist_item achv[])
 /*
  ** Find the best splittable box. -1 if no boxes are splittable.
  */
-static int best_splittable_box(struct box* bv, int boxes)
+static int best_splittable_box(struct box* bv, unsigned int boxes)
 {
     int bi=-1; double maxsum=0;
     for(unsigned int i=0; i < boxes; i++) {
@@ -245,15 +245,15 @@ inline static double color_weight(f_pixel median, hist_item h)
     return sqrt(diff) * (sqrt(1.0+h.adjusted_weight)-1.0);
 }
 
-static colormap *colormap_from_boxes(struct box* bv,int boxes,hist_item *achv,float min_opaque_val);
-static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, int boxes);
+static colormap *colormap_from_boxes(struct box* bv,unsigned int boxes,hist_item *achv,float min_opaque_val);
+static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, unsigned int boxes);
 
 /*
  ** Here is the fun part, the median-cut colormap generator.  This is based
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
-colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
+colormap *mediancut(histogram *hist, float min_opaque_val, unsigned int newcolors)
 {
     hist_item *achv = hist->achv;
     struct box bv[newcolors];
@@ -268,11 +268,11 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
     bv[0].sum = 0;
     for(unsigned int i=0; i < bv[0].colors; i++) bv[0].sum += achv[i].adjusted_weight;
 
-    int boxes = 1;
+    unsigned int boxes = 1;
 
     // remember smaller palette for fast searching
     colormap *representative_subset = NULL;
-    int subset_size = ceilf(powf(newcolors,0.7f));
+    unsigned int subset_size = ceilf(powf(newcolors,0.7f));
 
     /*
      ** Main loop: split boxes until we have enough.
@@ -287,8 +287,8 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
         if (bi < 0)
             break;        /* ran out of colors! */
 
-        int indx = bv[bi].ind;
-        int clrs = bv[bi].colors;
+        unsigned int indx = bv[bi].ind;
+        unsigned int clrs = bv[bi].colors;
 
         /*
          Classic implementation tries to get even number of colors or pixels in each subdivision.
@@ -307,7 +307,7 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
         // hist_item_sort_halfvar sorts and sums lowervar at the same time
         // returns item to break at …minus one, which does smell like an off-by-one error.
         hist_item *break_p = hist_item_sort_halfvar(&achv[indx], clrs, &lowervar, halfvar);
-        int break_at = MIN(clrs-1, break_p - &achv[indx] + 1);
+        unsigned int break_at = MIN(clrs-1, break_p - &achv[indx] + 1);
 
         /*
          ** Split the box.
@@ -335,7 +335,7 @@ colormap *mediancut(histogram *hist, float min_opaque_val, int newcolors)
     return map;
 }
 
-static colormap *colormap_from_boxes(struct box* bv, int boxes, hist_item *achv, float min_opaque_val)
+static colormap *colormap_from_boxes(struct box* bv, unsigned int boxes, hist_item *achv, float min_opaque_val)
 {
     /*
      ** Ok, we've got enough boxes.  Now choose a representative color for
@@ -361,7 +361,7 @@ static colormap *colormap_from_boxes(struct box* bv, int boxes, hist_item *achv,
 }
 
 /* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */
-static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, int boxes)
+static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, unsigned int boxes)
 {
     for(unsigned int bi = 0; bi < boxes; ++bi) {
         for(unsigned int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
@@ -370,7 +370,7 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
     }
 }
 
-static f_pixel averagepixels(int clrs, const hist_item achv[static clrs], float min_opaque_val)
+static f_pixel averagepixels(unsigned int clrs, const hist_item achv[static clrs], float min_opaque_val)
 {
     double r = 0, g = 0, b = 0, a = 0, sum = 0;
     float maxa = 0;

@@ -36,10 +36,10 @@ install: $(BIN)
 	install -m 0755 -p -D $(BIN) $(DESTDIR)$(BINPREFIX)/$(BIN)
 
 uninstall:
-	rm -f $(BINPREFIX)/$(BIN)
+	rm -f $(DESTDIR)$(BINPREFIX)/$(BIN)
 
 clean:
-	rm -f pngquant $(OBJS)
+	rm -f $(BIN) $(OBJS)
 
 .PHONY: all install uninstall clean openmp
 

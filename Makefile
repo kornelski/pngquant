@@ -12,7 +12,7 @@ BINPREFIX = $(PREFIX)/bin
 CUSTOMLIBPNG ?= ../libpng
 CUSTOMZLIB ?= ../zlib
 
-CFLAGSOPT ?= -O3 -mtune=native -fearly-inlining -fstrict-aliasing -ffast-math -funroll-loops -fstrict-overflow -fomit-frame-pointer -momit-leaf-frame-pointer -ffinite-math-only -fno-trapping-math -funsafe-loop-optimizations
+CFLAGSOPT ?= -O3 -fearly-inlining -fstrict-aliasing -ffast-math -funroll-loops -fomit-frame-pointer -momit-leaf-frame-pointer -ffinite-math-only -fno-trapping-math -funsafe-loop-optimizations
 
 CFLAGS ?= -DNDEBUG -Wall -Wno-unknown-pragmas -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I/usr/local/include/ -I/usr/include/ -I/usr/X11/include/ $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)

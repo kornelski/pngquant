@@ -5,7 +5,7 @@
 /*
  Blurs image horizontally (width 2*size+1) and writes it transposed to dst (called twice gives 2d blur)
  */
-static void transposing_1d_blur(float *restrict src, float *restrict dst, int width, int height, const int size)
+static void transposing_1d_blur(float *restrict src, float *restrict dst, unsigned int width, unsigned int height, const unsigned int size)
 {
     const float sizef = size;
 
@@ -47,7 +47,7 @@ static void transposing_1d_blur(float *restrict src, float *restrict dst, int wi
 /**
  * Picks maximum of neighboring pixels (blur + lighten)
  */
-void max3(float *src, float *dst, int width, int height)
+void max3(float *src, float *dst, unsigned int width, unsigned int height)
 {
     for(unsigned int j=0; j < height; j++) {
         const float *row = src + j*width,
@@ -74,7 +74,7 @@ void max3(float *src, float *dst, int width, int height)
 /**
  * Picks minimum of neighboring pixels (blur + darken)
  */
-void min3(float *src, float *dst, int width, int height)
+void min3(float *src, float *dst, unsigned int width, unsigned int height)
 {
     for(unsigned int j=0; j < height; j++) {
         const float *row = src + j*width,
@@ -102,8 +102,9 @@ void min3(float *src, float *dst, int width, int height)
  Filters src image and saves it to dst, overwriting tmp in the process.
  Image must be width*height pixels high. Size controls radius of box blur.
  */
-void blur(float *src, float *tmp, float *dst, int width, int height, int size)
+void blur(float *src, float *tmp, float *dst, unsigned int width, unsigned int height, unsigned int size)
 {
+    if (width < 2*size+1 || height < 2*size+1) return;
     transposing_1d_blur(src, tmp, width, height, size);
     transposing_1d_blur(tmp, dst, height, width, size);
 }

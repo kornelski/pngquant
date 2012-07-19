@@ -1,4 +1,4 @@
 
-void blur(float *src, float *tmp, float *dst, int width, int height, int size);
-void max3(float *src,float *dst, int width, int height);
-void min3(float *src,float *dst, int width, int height);
+void blur(float *src, float *tmp, float *dst, unsigned int width, unsigned int height, unsigned int size);
+void max3(float *src, float *dst, unsigned int width, unsigned int height);
+void min3(float *src, float *dst, unsigned int width, unsigned int height);

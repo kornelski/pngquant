@@ -51,7 +51,7 @@ void max3(float *src, float *dst, int width, int height)
 {
     for(unsigned int j=0; j < height; j++) {
         const float *row = src + j*width,
-        *prevrow = src + MAX(0,j-1)*width,
+        *prevrow = src + (j > 1 ? j-1 : 0)*width,
         *nextrow = src + MIN(height-1,j+1)*width;
 
         float prev,curr=row[0],next=row[0];
@@ -78,7 +78,7 @@ void min3(float *src, float *dst, int width, int height)
 {
     for(unsigned int j=0; j < height; j++) {
         const float *row = src + j*width,
-        *prevrow = src + MAX(0,j-1)*width,
+        *prevrow = src + (j > 1 ? j-1 : 0)*width,
         *nextrow = src + MIN(height-1,j+1)*width;
 
         float prev,curr=row[0],next=row[0];

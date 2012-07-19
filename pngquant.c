@@ -836,8 +836,8 @@ static void contrast_maps(const rgb_pixel*const apixels[], const unsigned int co
             g = fabsf(prev.g+next.g - curr.g*2.f),
             b = fabsf(prev.b+next.b - curr.b*2.f);
 
-            const f_pixel nextl = to_f(gamma, apixels[MAX(0,j-1)][i]);
             const f_pixel prevl = to_f(gamma, apixels[MIN(rows-1,j+1)][i]);
+            const f_pixel nextl = to_f(gamma, apixels[j > 1 ? j-1 : 0][i]);
 
             const float a1 = fabsf(prevl.a+nextl.a - curr.a*2.f),
             r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),

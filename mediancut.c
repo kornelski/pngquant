@@ -108,15 +108,15 @@ inline static unsigned int qsort_partition(hist_item *const base, const unsigned
 }
 
 /** this is a simple qsort that completely sorts only elements between sort_start and +sort_len. Used to find median of the set. */
-static void hist_item_sort_range(hist_item *base, unsigned int len, unsigned int sort_start, const unsigned int sort_len)
+static void hist_item_sort_range(hist_item *base, unsigned int len, int sort_start, const unsigned int sort_len)
 {
     do {
         const unsigned int l = qsort_partition(base, len), r = l+1;
 
-        if (sort_start+sort_len > 0 && l > sort_start && l > 0) {
+        if (sort_start+sort_len > 0 && (signed)l >= sort_start && l > 0) {
             hist_item_sort_range(base, l, sort_start, sort_len);
         }
-        if (len > r && r < sort_start+sort_len && len > sort_start) {
+        if (len > r && r < sort_start+sort_len && (signed)len > sort_start) {
             base += r; len -= r; sort_start -= r; // tail-recursive "call"
         } else return;
     } while(1);

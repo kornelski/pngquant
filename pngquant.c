@@ -1014,13 +1014,14 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, const float m
 {
     colormap *acolormap = NULL;
     double least_error = 0;
+    double target_mse_overshoot = feedback_loop_trials>0 ? 1.05 : 1.0;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
     do
     {
         verbose_printf("  selecting colors");
 
-        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors, target_mse);
+        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors, target_mse * target_mse_overshoot);
         if (newmap->subset_palette) {
             // nearest_search() needs subset palette to accelerate the search, I presume that
             // palette starting with most popular colors will improve search speed
@@ -1038,12 +1039,19 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, const float m
         // at the same time Voronoi iteration is done to improve the palette
         // and histogram weights are adjusted based on remapping error to give more weight to poorly matched colors
 
-        double total_error = viter_do_iteration(hist, newmap, min_opaque_val, adjust_histogram_callback);
+        const bool first_run_of_target_mse = !acolormap && target_mse > 0;
+        double total_error = viter_do_iteration(hist, newmap, min_opaque_val, first_run_of_target_mse ? NULL : adjust_histogram_callback);
 
         // goal is to increase quality or to reduce number of colors used if quality is good enough
-        if (!acolormap || total_error < least_error || (total_error < target_mse && newmap->colors < reqcolors)) {
+        if (!acolormap || total_error < least_error || (total_error <= target_mse && newmap->colors < reqcolors)) {
             if (acolormap) pam_freecolormap(acolormap);
             acolormap = newmap;
+
+            if (total_error < target_mse && total_error > 0) {
+                // voronoi iteration improves quality above what mediancut aims for
+                // this compensates for it, making mediancut aim for worse
+                target_mse_overshoot = MIN(target_mse_overshoot*1.25, target_mse/total_error);
+            }
 
             least_error = total_error;
 
@@ -1053,6 +1061,7 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, const float m
 
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
+            target_mse_overshoot = 1.0;
             feedback_loop_trials -= 6;
             // if error is really bad, it's unlikely to improve, so end sooner
             if (total_error > least_error*4) feedback_loop_trials -= 3;

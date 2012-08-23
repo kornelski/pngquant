@@ -233,7 +233,10 @@ int main(int argc, char *argv[])
         return MISSING_ARGUMENT;
     }
 
-    if (sscanf(argv[argn], "%d", &options.reqcolors) == 1) {
+    char *colors_end;
+    unsigned long colors = strtoul(argv[argn], &colors_end, 10);
+    if (colors_end != argv[argn] && '\0' == colors_end[0]) {
+        options.reqcolors = colors;
         argn++;
     }
 

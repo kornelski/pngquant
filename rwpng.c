@@ -199,33 +199,19 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr)
 }
 
 
-
-
-
-/*
-   retval:
-     0 = success
-    34 = insufficient memory
-    35 = libpng error (via longjmp())
- */
-
-pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
+pngquant_error rwpng_write_image_init(png_image *mainprog_ptr, png_structpp png_ptr_p, png_infopp info_ptr_p, FILE *outfile)
 {
-    png_structp png_ptr;       /* note:  temporary variables! */
-    png_infop info_ptr;
-
-
     /* could also replace libpng warning-handler (final NULL), but no need: */
 
-    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, mainprog_ptr,
-      rwpng_error_handler, NULL);
-    if (!png_ptr) {
+    *png_ptr_p = png_create_write_struct(PNG_LIBPNG_VER_STRING, mainprog_ptr, rwpng_error_handler, NULL);
+
+    if (!(*png_ptr_p)) {
         return INIT_OUT_OF_MEMORY_ERROR;   /* out of memory */
     }
 
-    info_ptr = png_create_info_struct(png_ptr);
-    if (!info_ptr) {
-        png_destroy_write_struct(&png_ptr, NULL);
+    *info_ptr_p = png_create_info_struct(*png_ptr_p);
+    if (!(*info_ptr_p)) {
+        png_destroy_write_struct(png_ptr_p, NULL);
         return INIT_OUT_OF_MEMORY_ERROR;   /* out of memory */
     }
 
@@ -236,19 +222,46 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
      * (as in this program) or exit immediately, so here we go: */
 
     if (setjmp(mainprog_ptr->jmpbuf)) {
-        png_destroy_write_struct(&png_ptr, &info_ptr);
+        png_destroy_write_struct(png_ptr_p, info_ptr_p);
         return LIBPNG_INIT_ERROR;   /* libpng error (via longjmp()) */
     }
 
+    png_init_io(*png_ptr_p, outfile);
 
-    /* make sure outfile is (re)opened in BINARY mode */
-
-    png_init_io(png_ptr, outfile);
-
-    png_set_compression_level(png_ptr, Z_BEST_COMPRESSION);
+    png_set_compression_level(*png_ptr_p, Z_BEST_COMPRESSION);
 
     // Palette images generally don't gain anything from filtering
-    png_set_filter(png_ptr, PNG_FILTER_TYPE_BASE, PNG_FILTER_VALUE_NONE);
+    png_set_filter(*png_ptr_p, PNG_FILTER_TYPE_BASE, PNG_FILTER_VALUE_NONE);
+
+    if (mainprog_ptr->png8.gamma > 0.0) {
+        png_set_gAMA(*png_ptr_p, *info_ptr_p, mainprog_ptr->png8.gamma);
+    }
+
+    return SUCCESS;
+}
+
+
+void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_image *mainprog_ptr)
+{
+    png_write_info(*png_ptr_p, *info_ptr_p);
+
+    png_set_packing(*png_ptr_p);
+
+    png_write_image(*png_ptr_p, mainprog_ptr->png8.row_pointers);
+
+    png_write_end(*png_ptr_p, NULL);
+
+    png_destroy_write_struct(png_ptr_p, info_ptr_p);
+}
+
+
+pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
+{
+    png_structp png_ptr;
+    png_infop info_ptr;
+
+    pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile);
+    if (retval) return retval;
 
     /* set the image parameters appropriately */
     int sample_depth;
@@ -266,47 +279,31 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
       0, PNG_COMPRESSION_TYPE_DEFAULT,
       PNG_FILTER_TYPE_BASE);
 
-    /* GRR WARNING:  cast of rwpng_colorp to png_colorp could fail in future
-     * major revisions of libpng (but png_ptr/info_ptr will fail, regardless) */
     png_set_PLTE(png_ptr, info_ptr, &mainprog_ptr->palette[0], mainprog_ptr->num_palette);
 
     if (mainprog_ptr->num_trans > 0)
         png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans, mainprog_ptr->num_trans, NULL);
 
-    if (mainprog_ptr->gamma > 0.0)
-        png_set_gAMA(png_ptr, info_ptr, mainprog_ptr->gamma);
+    rwpng_write_end(&info_ptr, &png_ptr, (png_image*)mainprog_ptr);
+
+    return SUCCESS;
+}
+
+pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
+{
+    png_structp png_ptr;
+    png_infop info_ptr;
+
+    pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile);
+    if (retval) return retval;
+
+    png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,
+                 8, PNG_COLOR_TYPE_RGB_ALPHA,
+                 0, PNG_COMPRESSION_TYPE_DEFAULT,
+                 PNG_FILTER_TYPE_BASE);
 
 
-    /* write all chunks up to (but not including) first IDAT */
-    png_write_info(png_ptr, info_ptr);
-
-
-    /* if we wanted to write any more text info *after* the image data, we
-     * would set up text struct(s) here and call png_set_text() again, with
-     * just the new data; png_set_tIME() could also go here, but it would
-     * have no effect since we already called it above (only one tIME chunk
-     * allowed) */
-
-
-    /* set up the transformations:  for now, just pack low-bit-depth pixels
-     * into bytes (one, two or four pixels per byte) */
-
-    png_set_packing(png_ptr);
-
-
-    /* and now we just write the whole image; libpng takes care of interlacing
-     * for us */
-
-    png_write_image(png_ptr, mainprog_ptr->row_pointers);
-
-
-    /* since that's it, we also close out the end of the PNG file now--if we
-     * had any text or time info to write after the IDATs, second argument
-     * would be info_ptr, but we optimize slightly by sending NULL pointer: */
-
-    png_write_end(png_ptr, NULL);
-
-    png_destroy_write_struct(&png_ptr, &info_ptr);
+    rwpng_write_end(&info_ptr, &png_ptr, (png_image*)mainprog_ptr);
 
     return SUCCESS;
 }

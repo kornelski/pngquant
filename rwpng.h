@@ -64,7 +64,7 @@ typedef struct {
     unsigned char *rgba_data;
     unsigned char **row_pointers;
     png_size_t file_size;
-} read_info;
+} png24_image;
 
 typedef struct {
     jmp_buf jmpbuf;
@@ -77,20 +77,20 @@ typedef struct {
     unsigned char trans[256];
     unsigned char *indexed_data;
     unsigned char **row_pointers;
-} write_info;
+} png8_image;
 
 typedef union {
     jmp_buf jmpbuf;
-    read_info read;
-    write_info write;
-} read_or_write_info;
+    png24_image read;
+    png8_image write;
+} png_image;
 
 /* prototypes for public functions in rwpng.c */
 
 void rwpng_version_info(FILE *fp);
 
-pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr);
+pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr);
 
-pngquant_error rwpng_write_image(FILE *outfile, write_info *mainprog_ptr);
+pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr);
 
 #endif

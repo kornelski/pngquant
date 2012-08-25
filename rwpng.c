@@ -73,7 +73,7 @@ static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t lengt
     26 = wrong PNG color type (no alpha channel)
  */
 
-pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
+pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr)
 {
     png_structp  png_ptr = NULL;
     png_infop    info_ptr = NULL;
@@ -209,7 +209,7 @@ pngquant_error rwpng_read_image(FILE *infile, read_info *mainprog_ptr)
     35 = libpng error (via longjmp())
  */
 
-pngquant_error rwpng_write_image(FILE *outfile, write_info *mainprog_ptr)
+pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 {
     png_structp png_ptr;       /* note:  temporary variables! */
     png_infop info_ptr;
@@ -314,7 +314,7 @@ pngquant_error rwpng_write_image(FILE *outfile, write_info *mainprog_ptr)
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg)
 {
-    read_or_write_info  *mainprog_ptr;
+    png_image  *mainprog_ptr;
 
     /* This function, aside from the extra step of retrieving the "error
      * pointer" (below) and the fact that it exists within the application

@@ -1115,6 +1115,12 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
             if (fabs(previous_palette_error-palette_error) < iteration_limit) {
                 break;
             }
+
+            if (palette_error > max_mse*1.5) { // probably hopeless
+                if (palette_error > max_mse*3.0) break; // definitely hopeless
+                iterations++;
+            }
+
             previous_palette_error = palette_error;
         }
     }

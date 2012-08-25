@@ -121,7 +121,7 @@ inline static bool is_sse2_available()
 
 static double quality_to_mse(long quality)
 {
-    if (quality == 0) return INFINITY;
+    if (quality == 0) return MAX_DIFF;
 
     // curve fudged to be roughly similar to quality of libjpeg
     return 1.1/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
@@ -230,7 +230,7 @@ int main(int argc, char *argv[])
         .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
         .last_index_transparent = false, // puts transparent color at last index. This is workaround for blu-ray subtitles.
         .target_mse = 0,
-        .max_mse = INFINITY,
+        .max_mse = MAX_DIFF,
     };
 
     bool force = false, // force overwrite
@@ -549,7 +549,7 @@ static float remap_to_palette(read_info *input_image, write_info *output_image, 
 
 static float distance_from_closest_other_color(const colormap *map, const int i)
 {
-    float second_best=999999;
+    float second_best=MAX_DIFF;
     for(unsigned int j=0; j < map->colors; j++) {
         if (i == j) continue;
         float diff = colordifference(map->palette[i].acolor, map->palette[j].acolor);
@@ -1102,13 +1102,13 @@ static pngquant_error pngquant(read_info *input_image, write_info *output_image,
 
     // Voronoi iteration approaches local minimum for the palette
     unsigned int iterations = MAX(8-speed_tradeoff,0); iterations += iterations * iterations/2;
-    if (palette_error < 0 && max_mse >= 0 && !iterations) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
+    if (!iterations && palette_error < 0 && max_mse < MAX_DIFF) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
 
     if (iterations) {
         verbose_printf("  moving colormap towards local minimum\n");
 
         const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
-        double previous_palette_error = INFINITY;
+        double previous_palette_error = MAX_DIFF;
         for(unsigned int i=0; i < iterations; i++) {
             palette_error = viter_do_iteration(hist, acolormap, min_opaque_val, NULL);
 

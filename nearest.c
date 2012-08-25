@@ -121,7 +121,7 @@ struct nearest_map *nearest_init(const colormap *map)
         }
     }
 
-    centroids->heads[h].radius = 9999999;
+    centroids->heads[h].radius = MAX_DIFF;
     centroids->heads[h].center = (f_pixel){0,0,0,0};
     centroids->heads[h].num_candidates = 0;
     centroids->heads[h].candidates = mempool_new(&centroids->mempool, (map->colors - skipped) * sizeof(centroids->heads[h].candidates[0]));

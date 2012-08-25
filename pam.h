@@ -22,6 +22,8 @@
 #  define MIN(a,b)  ((a) < (b)? (a) : (b))
 #endif
 
+#define MAX_DIFF 1e20
+
 // it's safe to assume that 64-bit x86 has SSE2.
 #ifndef USE_SSE
 #  if defined(__SSE2__) && (defined(__x86_64__) || defined(__amd64))

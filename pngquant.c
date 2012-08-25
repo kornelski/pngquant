@@ -71,7 +71,7 @@ struct pngquant_options {
 
 static pngquant_error pngquant(png24_image *input_image, png8_image *output_image, const struct pngquant_options *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
-static pngquant_error write_image(png8_image *output_image,const char *filename,bool force,bool using_stdin);
+static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *filename, bool force, bool using_stdin);
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
 
@@ -367,16 +367,28 @@ int main(int argc, char *argv[])
             retval = pngquant(&input_image, &output_image, &options);
         }
 
+        if (!retval) {
+            retval = write_image(&output_image, NULL, outname, force, using_stdin);
+        } else if (TOO_LOW_QUALITY == retval && using_stdin) {
+            // when outputting to stdout it'd be nasty to create 0-byte file
+            // so if quality is too low, output 24-bit original
+            if (options.min_opaque_val == 1.f) {
+                if (SUCCESS != write_image(NULL, &input_image, outname, force, using_stdin)) {
+                    error_count++;
+                }
+            } else {
+                // iebug preprocessing changes the original image
+                fputs("  error:  can't write the original image when iebug option is enabled\n", stderr);
+                error_count++;
+            }
+        }
+
         /* now we're done with the INPUT data and row_pointers, so free 'em */
         if (input_image.rgba_data) {
             free(input_image.rgba_data);
         }
         if (input_image.row_pointers) {
             free(input_image.row_pointers);
-        }
-
-        if (!retval) {
-            retval = write_image(&output_image,outname,force,using_stdin);
         }
 
         if (outname) free(outname);
@@ -759,14 +771,18 @@ static void set_binary_mode(FILE *fp)
 #endif
 }
 
-static pngquant_error write_image(png8_image *output_image,const char *outname,bool force,bool using_stdin)
+static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, bool force, bool using_stdin)
 {
     FILE *outfile;
     if (using_stdin) {
         set_binary_mode(stdout);
         outfile = stdout;
 
-        verbose_printf("  writing %d-color image to stdout\n", output_image->num_palette);
+        if (output_image) {
+            verbose_printf("  writing %d-color image to stdout\n", output_image->num_palette);
+        } else {
+            verbose_printf("  writing truecolor image to stdout\n");
+        }
     } else {
 
         if ((outfile = fopen(outname, "wb")) == NULL) {
@@ -776,10 +792,21 @@ static pngquant_error write_image(png8_image *output_image,const char *outname,b
 
         const char *outfilename = strrchr(outname, '/');
         if (outfilename) outfilename++; else outfilename = outname;
-        verbose_printf("  writing %d-color image as %s\n", output_image->num_palette, outfilename);
+
+        if (output_image) {
+            verbose_printf("  writing %d-color image as %s\n", output_image->num_palette, outfilename);
+        } else {
+            verbose_printf("  writing truecolor image as %s\n", outfilename);
+        }
     }
 
-    pngquant_error retval = rwpng_write_image8(outfile, output_image);
+    pngquant_error retval;
+    if (output_image) {
+        retval = rwpng_write_image8(outfile, output_image);
+    } else {
+        retval = rwpng_write_image24(outfile, output_image24);
+    }
+
     if (retval) {
         fprintf(stderr, "  Error writing image to %s\n", outname);
     }
@@ -1128,7 +1155,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     pam_freeacolorhist(hist);
 
     if (palette_error > max_mse) {
-        verbose_printf("  image degradation MSE=%.3f exceeded limit of %.3f, skipping\n", palette_error*65536.0, max_mse*65536.0);
+        verbose_printf("  image degradation MSE=%.3f exceeded limit of %.3f\n", palette_error*65536.0, max_mse*65536.0);
         if (edges) free(edges);
         pam_freecolormap(acolormap);
         return TOO_LOW_QUALITY;

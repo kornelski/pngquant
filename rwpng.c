@@ -206,13 +206,13 @@ pngquant_error rwpng_write_image_init(png_image *mainprog_ptr, png_structpp png_
     *png_ptr_p = png_create_write_struct(PNG_LIBPNG_VER_STRING, mainprog_ptr, rwpng_error_handler, NULL);
 
     if (!(*png_ptr_p)) {
-        return INIT_OUT_OF_MEMORY_ERROR;   /* out of memory */
+        return LIBPNG_INIT_ERROR;   /* out of memory */
     }
 
     *info_ptr_p = png_create_info_struct(*png_ptr_p);
     if (!(*info_ptr_p)) {
         png_destroy_write_struct(png_ptr_p, NULL);
-        return INIT_OUT_OF_MEMORY_ERROR;   /* out of memory */
+        return LIBPNG_INIT_ERROR;   /* out of memory */
     }
 
 

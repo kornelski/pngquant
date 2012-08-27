@@ -13,26 +13,27 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "1.7.4 (July 2012)"
+#define PNGQUANT_VERSION "1.8.0 (August 2012)"
 
 #define PNGQUANT_USAGE "\
-   usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
-   options:\n\
-      --ext new.png  set custom suffix/extension for output filename\n\
-      --force        overwrite existing output files (synonym: -f)\n\
-      --iebug        increase opacity to work around Internet Explorer 6 bug\n\
-      --transbug     transparent color will be placed at the end of the palette\n\
-      --nofs         disable Floyd-Steinberg dithering\n\
-      --speed N      speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
-      --verbose      print status messages (synonym: -v)\n\
+usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
+options:\n\
+  --force           overwrite existing output files (synonym: -f)\n\
+  --nofs            disable Floyd-Steinberg dithering\n\
+  --ext new.png     set custom suffix/extension for output filename\n\
+  --speed N         speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
+  --quality min-max don't save below min, use less colors below max (0-100)\n\
+  --verbose         print status messages (synonym: -v)\n\
+  --iebug           increase opacity to work around Internet Explorer 6 bug\n\
+  --transbug        transparent color will be placed at the end of the palette\n\
 \n\
-   Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
-   PNGs using Floyd-Steinberg diffusion dithering (unless disabled).\n\
-   The output filename is the same as the input name except that\n\
-   it ends in \"-fs8.png\", \"-or8.png\" or your custom extension (unless the\n\
-   input is stdin, in which case the quantized image will go to stdout).\n\
-   The default behavior if the output file exists is to skip the conversion;\n\
-   use -force to overwrite.\n"
+Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
+PNGs using Floyd-Steinberg diffusion dithering (unless disabled).\n\
+The output filename is the same as the input name except that\n\
+it ends in \"-fs8.png\", \"-or8.png\" or your custom extension (unless the\n\
+input is stdin, in which case the quantized image will go to stdout).\n\
+The default behavior if the output file exists is to skip the conversion;\n\
+use --force to overwrite.\n"
 
 
 #include <stdio.h>

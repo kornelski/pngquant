@@ -44,19 +44,25 @@ To further reduce file size, you may want to consider [optipng](http://optipng.s
 
 See `pngquant -h` for full list.
 
-###`-ext new.png`
+###`--quality min-max`
+
+`min` and `max` are numbers in range 0 (worst) to 100 (perfect), similar to JPEG. pngquant will use the least amount of colors required to meet or exceed the `max` quality. If conversion results in quality below the `min` quality the image won't be saved (if outputting to stdin, 24-bit original will be output) and pngquant will exit with status code 99.
+
+    pngquant --quality=65-80 image.png
+
+###`--ext new.png`
 
 Set custom extension (suffix) for output filename. By default `-or8.png` or `-fs8.png` is used. If you use `-ext .png -force` options pngquant will overwrite input files in place (use with caution).
 
-###`-speed N`
+###`--speed N`
 
 Speed/quality trade-off from 1 (brute-force) to 10 (fastest). The default is 3. Speed 10 has 5% lower quality, but is 8 times faster than the default.
 
-###`-iebug`
+###`--iebug`
 
 Workaround for IE6, which only displays fully opaque pixels. pngquant will make almost-opaque pixels fully opaque and will avoid creating new transparent colors.
 
-###`-version`
+###`--version`
 
 Print version information to stdout.
 

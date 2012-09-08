@@ -35,7 +35,7 @@ inline static double variance_diff(double val, const double good_enough) ALWAYS_
 inline static double variance_diff(double val, const double good_enough)
 {
     val *= val;
-    if (val < good_enough*good_enough) return val / 2.f;
+    if (val < good_enough*good_enough) return val*0.5;
     return val;
 }
 
@@ -48,17 +48,17 @@ static f_pixel box_variance(const hist_item achv[], const struct box *box)
     for(unsigned int i = 0; i < box->colors; ++i) {
         f_pixel px = achv[box->ind + i].acolor;
         double weight = achv[box->ind + i].adjusted_weight;
-        variancea += variance_diff(mean.a - px.a, 1.f/256.f)*weight*0.95;
-        variancer += variance_diff(mean.r - px.r, 1.f/512.f)*weight;
-        varianceg += variance_diff(mean.g - px.g, 1.f/512.f)*weight;
-        varianceb += variance_diff(mean.b - px.b, 1.f/512.f)*weight;
+        variancea += variance_diff(mean.a - px.a, 2.0/256.0)*weight;
+        variancer += variance_diff(mean.r - px.r, 1.0/256.0)*weight;
+        varianceg += variance_diff(mean.g - px.g, 1.0/256.0)*weight;
+        varianceb += variance_diff(mean.b - px.b, 1.0/256.0)*weight;
     }
 
     return (f_pixel){
-        .a = variancea,
-        .r = variancer,
-        .g = varianceg,
-        .b = varianceb,
+        .a = variancea*(4.0/16.0),
+        .r = variancer*(7.0/16.0),
+        .g = varianceg*(9.0/16.0),
+        .b = varianceb*(5.0/16.0),
     };
 }
 
@@ -222,12 +222,7 @@ static int best_splittable_box(struct box* bv, unsigned int boxes)
 
         // looks only at max variance, because it's only going to split by it
         const double cv = MAX(bv[i].variance.r, MAX(bv[i].variance.g,bv[i].variance.b));
-
-        // perfect shadows are not that important
-        double av = bv[i].variance.a * 12.f/16.f;
-        if (av < 6.f/256.f/256.f) av /= 2.f;
-
-        const double thissum = bv[i].sum * MAX(av,cv);
+        const double thissum = bv[i].sum * MAX(bv[i].variance.a, cv);
 
         if (thissum > maxsum) {
             maxsum = thissum;

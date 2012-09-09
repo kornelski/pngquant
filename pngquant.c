@@ -13,7 +13,9 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "1.7.4 (July 2012)"
+#ifndef PNGQUANT_VERSION
+#define PNGQUANT_VERSION "development build"
+#endif
 
 #define PNGQUANT_USAGE "\
    usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -86,7 +88,7 @@ void verbose_printf(const char *fmt, ...)
 
 static void print_full_version(FILE *fd)
 {
-    fprintf(fd, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n"
+    fprintf(fd, "pngquant, %s, by Greg Roelofs, Kornel Lesinski.\n"
         #ifndef NDEBUG
                     "   DEBUG (slow) version.\n"
         #endif

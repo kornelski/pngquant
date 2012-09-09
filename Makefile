@@ -49,7 +49,7 @@ dist: $(TARFILE)
 $(TARFILE): $(DISTFILES)
 	rm -rf $(TARFILE) $(TARNAME)
 	mkdir $(TARNAME)
-	cp -r $(DISTFILES) $(TARNAME)
+	cp $(DISTFILES) $(TARNAME)
 	tar -czf $(TARFILE) $(TARNAME)
 	rm -rf $(TARNAME)
 

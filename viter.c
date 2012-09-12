@@ -70,7 +70,7 @@ double viter_do_iteration(histogram *hist, colormap *const map, const float min_
     double total_diff=0;
     #pragma omp parallel for if (hist_size > 3000) \
         default(none) shared(average_color,callback) reduction(+:total_diff)
-    for(unsigned int j=0; j < hist_size; j++) {
+    for(int j=0; j < hist_size; j++) {
         float diff;
         unsigned int match = nearest_search(n, achv[j].acolor, min_opaque_val, &diff);
         total_diff += diff * achv[j].perceptual_weight;

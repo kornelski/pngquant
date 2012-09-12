@@ -531,7 +531,7 @@ static float remap_to_palette(png24_image *input_image, png8_image *output_image
 
     #pragma omp parallel for if (rows*cols > 3000) \
         default(none) shared(average_color) reduction(+:remapping_error) reduction(+:remapped_pixels)
-    for(unsigned int row = 0; row < rows; ++row) {
+    for(int row = 0; row < rows; ++row) {
         for(unsigned int col = 0; col < cols; ++col) {
 
             f_pixel px = to_f(gamma, input_pixels[row][col]);

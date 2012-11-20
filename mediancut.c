@@ -334,7 +334,10 @@ colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int ne
             representative_subset = colormap_from_boxes(bv, boxes, achv, min_opaque_val);
         }
 
-        int bi= best_splittable_box(bv, boxes, max_mse);
+        // first splits boxes that exceed quality limit (to have colors for things like odd green pixel),
+        // later raises the limit to allow large smooth areas/gradients get colors.
+        const double current_max_mse = max_mse + (boxes/(double)newcolors)*16.0*max_mse;
+        const int bi = best_splittable_box(bv, boxes, current_max_mse);
         if (bi < 0)
             break;        /* ran out of colors! */
 

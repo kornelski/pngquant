@@ -1049,7 +1049,7 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, const float m
     {
         verbose_printf("  selecting colors");
 
-        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors, target_mse * target_mse_overshoot, least_error*3.0);
+        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors, target_mse * target_mse_overshoot, MAX(MAX(15.0/65536.0, target_mse), least_error)*1.2);
         if (newmap->subset_palette) {
             // nearest_search() needs subset palette to accelerate the search, I presume that
             // palette starting with most popular colors will improve search speed

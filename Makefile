@@ -25,7 +25,7 @@ OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
 all: $(BIN)
 
 openmp::
-	CFLAGSADD=-fopenmp LDFLAGSADD=-lgomp $(MAKE) -j 8 $(MAKEFLAGS)
+	$(MAKE) CFLAGSADD=-fopenmp LDFLAGSADD=-lgomp -j8 $(MAKEFLAGS)
 
 $(BIN): $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@

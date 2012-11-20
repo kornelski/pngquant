@@ -894,7 +894,7 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
         set_binary_mode(stdin);
         infile = stdin;
     } else if ((infile = fopen(filename, "rb")) == NULL) {
-        fprintf(stderr, "  error:  cannot open %s for reading\n", filename);
+        fprintf(stderr, "  error: cannot open %s for reading\n", filename);
         return READ_ERROR;
     }
 
@@ -908,7 +908,7 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
         fclose(infile);
 
     if (retval) {
-        fprintf(stderr, "  rwpng_read_image() error\n");
+        fprintf(stderr, "  error: rwpng_read_image() error %d\n", retval);
         return retval;
     }
 

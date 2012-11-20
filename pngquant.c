@@ -1041,7 +1041,7 @@ static void adjust_histogram_callback(hist_item *item, float diff)
 static colormap *find_best_palette(histogram *hist, int reqcolors, const float min_opaque_val, const double target_mse, int feedback_loop_trials, double *palette_error_p)
 {
     colormap *acolormap = NULL;
-    double least_error = 0;
+    double least_error = MAX_DIFF;
     double target_mse_overshoot = feedback_loop_trials>0 ? 1.05 : 1.0;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
@@ -1049,7 +1049,7 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, const float m
     {
         verbose_printf("  selecting colors");
 
-        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors, target_mse * target_mse_overshoot);
+        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors, target_mse * target_mse_overshoot, least_error*3.0);
         if (newmap->subset_palette) {
             // nearest_search() needs subset palette to accelerate the search, I presume that
             // palette starting with most popular colors will improve search speed

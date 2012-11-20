@@ -26,7 +26,7 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[static clrs
 struct box {
     f_pixel color;
     f_pixel variance;
-    double sum, total_error;
+    double sum, total_error, max_error;
     unsigned int ind;
     unsigned int colors;
 };
@@ -60,6 +60,20 @@ static f_pixel box_variance(const hist_item achv[], const struct box *box)
         .g = varianceg*(9.0/16.0),
         .b = varianceb*(5.0/16.0),
     };
+}
+
+static double box_max_error(const hist_item achv[], const struct box *box)
+{
+    f_pixel mean = box->color;
+    double max_error = 0;
+
+    for(unsigned int i = 0; i < box->colors; ++i) {
+        const double diff = colordifference(mean, achv[box->ind + i].acolor);
+        if (diff > max_error) {
+            max_error = diff;
+        }
+    }
+    return max_error;
 }
 
 inline static double color_weight(f_pixel median, hist_item h) ALWAYS_INLINE;
@@ -214,7 +228,7 @@ static f_pixel get_median(const struct box *b, hist_item achv[])
 /*
  ** Find the best splittable box. -1 if no boxes are splittable.
  */
-static int best_splittable_box(struct box* bv, unsigned int boxes)
+static int best_splittable_box(struct box* bv, unsigned int boxes, const double max_mse)
 {
     int bi=-1; double maxsum=0;
     for(unsigned int i=0; i < boxes; i++) {
@@ -222,7 +236,11 @@ static int best_splittable_box(struct box* bv, unsigned int boxes)
 
         // looks only at max variance, because it's only going to split by it
         const double cv = MAX(bv[i].variance.r, MAX(bv[i].variance.g,bv[i].variance.b));
-        const double thissum = bv[i].sum * MAX(bv[i].variance.a, cv);
+        double thissum = bv[i].sum * MAX(bv[i].variance.a, cv);
+
+        if (bv[i].max_error > max_mse) {
+            thissum = thissum* bv[i].max_error/max_mse;
+        }
 
         if (thissum > maxsum) {
             maxsum = thissum;
@@ -284,7 +302,7 @@ static int total_box_error_below_target(double target_mse, struct box bv[], int 
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
-colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int newcolors, const double target_mse)
+colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int newcolors, const double target_mse, const double max_mse)
 {
     hist_item *achv = hist->achv;
     struct box bv[newcolors];
@@ -296,6 +314,7 @@ colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int ne
     bv[0].colors = hist->size;
     bv[0].color = averagepixels(bv[0].colors, &achv[bv[0].ind], min_opaque_val);
     bv[0].variance = box_variance(achv, &bv[0]);
+    bv[0].max_error = box_max_error(achv, &bv[0]);
     bv[0].sum = 0;
     bv[0].total_error = -1;
     for(unsigned int i=0; i < bv[0].colors; i++) bv[0].sum += achv[i].adjusted_weight;
@@ -315,7 +334,7 @@ colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int ne
             representative_subset = colormap_from_boxes(bv, boxes, achv, min_opaque_val);
         }
 
-        int bi= best_splittable_box(bv, boxes);
+        int bi= best_splittable_box(bv, boxes, max_mse);
         if (bi < 0)
             break;        /* ran out of colors! */
 
@@ -353,12 +372,14 @@ colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int ne
         bv[bi].color = averagepixels(bv[bi].colors, &achv[bv[bi].ind], min_opaque_val);
         bv[bi].total_error = -1;
         bv[bi].variance = box_variance(achv, &bv[bi]);
+        bv[bi].max_error = box_max_error(achv, &bv[bi]);
         bv[boxes].ind = indx + break_at;
         bv[boxes].colors = clrs - break_at;
         bv[boxes].sum = sm - lowersum;
         bv[boxes].color = averagepixels(bv[boxes].colors, &achv[bv[boxes].ind], min_opaque_val);
         bv[boxes].total_error = -1;
         bv[boxes].variance = box_variance(achv, &bv[boxes]);
+        bv[boxes].max_error = box_max_error(achv, &bv[boxes]);
 
         ++boxes;
 

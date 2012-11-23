@@ -68,22 +68,41 @@ struct pngquant_options {
     unsigned int reqcolors;
     unsigned int speed_tradeoff;
     bool floyd, last_index_transparent;
+    bool using_stdin, force;
+    void (*log_callback)(const struct pngquant_options *context, const char *msg);
 };
 
 static pngquant_error pngquant(png24_image *input_image, png8_image *output_image, const struct pngquant_options *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
-static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *filename, bool force, bool using_stdin);
+static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
 
-static bool verbose=0;
-/* prints only when verbose flag is set */
-void verbose_printf(const char *fmt, ...)
+static void verbose_printf(const struct pngquant_options *context, const char *fmt, ...)
 {
     va_list va;
-    va_start(va, fmt);
-    if (verbose) vfprintf(stderr, fmt, va);
-    va_end(va);
+    if (context->log_callback) {
+        va_start(va, fmt);
+        int required_space = vsnprintf(NULL, 0, fmt, va)+1;
+        va_end(va);
+
+        char buf[required_space];
+        va_start(va, fmt);
+        vsnprintf(buf, required_space, fmt, va);
+        va_end(va);
+
+        context->log_callback(context, buf);
+    }
+}
+
+inline static void verbose_print(const struct pngquant_options *context, const char *msg)
+{
+    if (context->log_callback) context->log_callback(context, msg);
+}
+
+static void log_callback(const struct pngquant_options *context, const char *msg)
+{
+    fputs(msg, stderr);
 }
 
 static void print_full_version(FILE *fd)
@@ -233,9 +252,6 @@ int main(int argc, char *argv[])
         .target_mse = 0,
         .max_mse = MAX_DIFF,
     };
-
-    bool force = false, // force overwrite
-         using_stdin = false;
     unsigned int latest_error=0, error_count=0, skipped_count=0, file_count=0;
     const char *filename, *newext = NULL;
 
@@ -245,12 +261,12 @@ int main(int argc, char *argv[])
     do {
         opt = getopt_long(argc, argv, "Vvqfhs:", long_options, NULL);
         switch (opt) {
-            case 'v': verbose = true; break;
-            case 'q': verbose = false; break;
+            case 'v': options.log_callback = log_callback; break;
+            case 'q': options.log_callback = NULL; break;
             case arg_floyd: options.floyd = true; break;
             case arg_ordered: options.floyd = false; break;
-            case 'f': force = true; break;
-            case arg_no_force: force = false; break;
+            case 'f': options.force = true; break;
+            case arg_no_force: options.force = false; break;
             case arg_ext: newext = optarg; break;
 
             case arg_iebug:
@@ -322,7 +338,7 @@ int main(int argc, char *argv[])
     }
 
     if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
-        using_stdin = true;
+        options.using_stdin = true;
         filename = "stdin";
         argn = argc;
     } else {
@@ -343,12 +359,12 @@ int main(int argc, char *argv[])
     while (argn <= argc) {
         int retval = 0;
 
-        verbose_printf("%s:\n", filename);
+        verbose_printf(&options, "%s:\n", filename);
 
         char *outname = NULL;
-        if (!using_stdin) {
+        if (!options.using_stdin) {
             outname = add_filename_extension(filename,newext);
-            if (!force && file_exists(outname)) {
+            if (!options.force && file_exists(outname)) {
                 fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
                 retval = NOT_OVERWRITING_ERROR;
             }
@@ -358,23 +374,23 @@ int main(int argc, char *argv[])
         png8_image output_image = {};
 
         if (!retval) {
-        retval = read_image(filename,using_stdin,&input_image);
+            retval = read_image(filename, options.using_stdin, &input_image);
         }
 
         if (!retval) {
-            verbose_printf("  read %uKB file corrected for gamma %2.1f\n", (input_image.file_size+1023)/1024,
-                           1.0/input_image.gamma);
+            verbose_printf(&options, "  read %luKB file corrected for gamma %2.1f\n",
+                                 (input_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
 
             retval = pngquant(&input_image, &output_image, &options);
         }
 
         if (!retval) {
-            retval = write_image(&output_image, NULL, outname, force, using_stdin);
-        } else if (TOO_LOW_QUALITY == retval && using_stdin) {
+            retval = write_image(&output_image, NULL, outname, &options);
+        } else if (TOO_LOW_QUALITY == retval && options.using_stdin) {
             // when outputting to stdout it'd be nasty to create 0-byte file
             // so if quality is too low, output 24-bit original
             if (options.min_opaque_val == 1.f) {
-                if (SUCCESS != write_image(NULL, &input_image, outname, force, using_stdin)) {
+                if (SUCCESS != write_image(NULL, &input_image, outname, &options)) {
                     error_count++;
                 }
             } else {
@@ -411,7 +427,7 @@ int main(int argc, char *argv[])
         }
         ++file_count;
 
-        verbose_printf("\n");
+        verbose_print(&options, "\n");
 
         filename = argv[argn];
         ++argn;
@@ -421,15 +437,15 @@ int main(int argc, char *argv[])
 
 
     if (error_count) {
-        verbose_printf("There were errors quantizing %d file%s out of a total of %d file%s.\n",
+        verbose_printf(&options, "There were errors quantizing %d file%s out of a total of %d file%s.\n",
                        error_count, (error_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (skipped_count) {
-        verbose_printf("Skipped %d file%s out of a total of %d file%s.\n",
+        verbose_printf(&options, "Skipped %d file%s out of a total of %d file%s.\n",
                        skipped_count, (skipped_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (!skipped_count && !error_count) {
-        verbose_printf("No errors detected while quantizing %d image%s.\n",
+        verbose_printf(&options, "No errors detected while quantizing %d image%s.\n",
                        file_count, (file_count == 1)? "" : "s");
     }
 
@@ -443,7 +459,7 @@ static int compare_popularity(const void *ch1, const void *ch2)
     return v1 > v2 ? 1 : -1;
 }
 
-static void sort_palette(png8_image *output_image, colormap *map, int last_index_transparent)
+static void sort_palette(png8_image *output_image, colormap *map, const struct pngquant_options *options)
 {
     assert(map); assert(output_image);
 
@@ -453,10 +469,11 @@ static void sort_palette(png8_image *output_image, colormap *map, int last_index
     ** therefore be omitted from the tRNS chunk.
     */
 
-    verbose_printf("  eliminating opaque tRNS-chunk entries...");
+    verbose_print(options, "  eliminating opaque tRNS-chunk entries...");
+
     output_image->num_palette = map->colors;
 
-    if (last_index_transparent) for(unsigned int i=0; i < map->colors; i++) {
+    if (options->last_index_transparent) for(unsigned int i=0; i < map->colors; i++) {
         if (map->palette[i].acolor.a < 1.0/256.0) {
             const int old = i;
             const int transparent_dest = map->colors-1;
@@ -488,7 +505,7 @@ static void sort_palette(png8_image *output_image, colormap *map, int last_index
         }
     }
 
-    verbose_printf("%d entr%s transparent\n", num_transparent, (num_transparent == 1)? "y" : "ies");
+    verbose_printf(options, "%d entr%s transparent\n", num_transparent, (num_transparent == 1)? "y" : "ies");
 
     /* colors sorted by popularity make pngs slightly more compressible
      * opaque and transparent are sorted separately
@@ -772,17 +789,17 @@ static void set_binary_mode(FILE *fp)
 #endif
 }
 
-static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, bool force, bool using_stdin)
+static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options)
 {
     FILE *outfile;
-    if (using_stdin) {
+    if (options->using_stdin) {
         set_binary_mode(stdout);
         outfile = stdout;
 
         if (output_image) {
-            verbose_printf("  writing %d-color image to stdout\n", output_image->num_palette);
+            verbose_printf(options, "  writing %d-color image to stdout\n", output_image->num_palette);
         } else {
-            verbose_printf("  writing truecolor image to stdout\n");
+            verbose_print(options, "  writing truecolor image to stdout\n");
         }
     } else {
 
@@ -795,9 +812,9 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         if (outfilename) outfilename++; else outfilename = outname;
 
         if (output_image) {
-            verbose_printf("  writing %d-color image as %s\n", output_image->num_palette, outfilename);
+            verbose_printf(options, "  writing %d-color image as %s\n", output_image->num_palette, outfilename);
         } else {
-            verbose_printf("  writing truecolor image as %s\n", outfilename);
+            verbose_printf(options, "  writing truecolor image as %s\n", outfilename);
         }
     }
 
@@ -809,18 +826,17 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     }
 
     if (retval) {
-        fprintf(stderr, "  Error writing image to %s\n", outname);
+        fprintf(stderr, "  error: failed writing image to %s\n", outname);
     }
 
-    if (!using_stdin)
+    if (!options->using_stdin)
         fclose(outfile);
 
-    /* now we're done with the OUTPUT data and row_pointers, too */
     return retval;
 }
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
-static histogram *get_histogram(const png24_image *input_image, const unsigned int reqcolors, const unsigned int speed_tradeoff, const float *importance_map)
+static histogram *get_histogram(const png24_image *input_image, const float *importance_map, const struct pngquant_options *options)
 {
     histogram *hist;
     unsigned int ignorebits=0;
@@ -835,20 +851,20 @@ static histogram *get_histogram(const png24_image *input_image, const unsigned i
     ** coherence and try again.
     */
 
-    if (speed_tradeoff > 7) ignorebits++;
-    unsigned int maxcolors = (1<<17) + (1<<18)*(10-speed_tradeoff);
+    if (options->speed_tradeoff > 7) ignorebits++;
+    unsigned int maxcolors = (1<<17) + (1<<18)*(10-options->speed_tradeoff);
 
-    verbose_printf("  making histogram...");
+    verbose_print(options, "  making histogram...");
     for (; ;) {
 
         hist = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, importance_map);
         if (hist) break;
 
         ignorebits++;
-        verbose_printf("too many colors!\n  scaling colors to improve clustering...");
+        verbose_print(options, "too many colors!\n  scaling colors to improve clustering...");
     }
 
-    verbose_printf("%d colors found\n", hist->size);
+    verbose_printf(options, "%d colors found\n", hist->size);
     return hist;
 }
 
@@ -862,12 +878,8 @@ static void modify_alpha(png24_image *input_image, const float min_opaque_val)
     const unsigned int rows = input_image->height, cols = input_image->width;
     const float gamma = input_image->gamma;
 
-    if (min_opaque_val > 254.f/255.f) return;
-
     const float almost_opaque_val = min_opaque_val * 169.f/256.f;
     const unsigned int almost_opaque_val_int = almost_opaque_val*255.f;
-
-    verbose_printf("  Working around IE6 bug by making image less transparent...\n");
 
     for(unsigned int row = 0; row < rows; ++row) {
         for(unsigned int col = 0; col < cols; col++) {
@@ -1038,8 +1050,9 @@ static void adjust_histogram_callback(hist_item *item, float diff)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(histogram *hist, int reqcolors, const float min_opaque_val, const double target_mse, int feedback_loop_trials, double *palette_error_p)
+static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_loop_trials, const struct pngquant_options *options, double *palette_error_p)
 {
+    const double target_mse = options->target_mse;
     colormap *acolormap = NULL;
     double least_error = MAX_DIFF;
     double target_mse_overshoot = feedback_loop_trials>0 ? 1.05 : 1.0;
@@ -1047,9 +1060,9 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, const float m
 
     do
     {
-        verbose_printf("  selecting colors");
+        verbose_print(options, "  selecting colors");
 
-        colormap *newmap = mediancut(hist, min_opaque_val, reqcolors, target_mse * target_mse_overshoot, MAX(MAX(15.0/65536.0, target_mse), least_error)*1.2);
+        colormap *newmap = mediancut(hist, options->min_opaque_val, reqcolors, target_mse * target_mse_overshoot, MAX(MAX(15.0/65536.0, target_mse), least_error)*1.2);
         if (newmap->subset_palette) {
             // nearest_search() needs subset palette to accelerate the search, I presume that
             // palette starting with most popular colors will improve search speed
@@ -1057,18 +1070,18 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, const float m
         }
 
         if (feedback_loop_trials <= 0) {
-            verbose_printf("\n");
+            verbose_print(options, "\n");
             return newmap;
         }
 
-        verbose_printf("...");
+        verbose_print(options, "...");
 
         // after palette has been created, total error (MSE) is calculated to keep the best palette
         // at the same time Voronoi iteration is done to improve the palette
         // and histogram weights are adjusted based on remapping error to give more weight to poorly matched colors
 
         const bool first_run_of_target_mse = !acolormap && target_mse > 0;
-        double total_error = viter_do_iteration(hist, newmap, min_opaque_val, first_run_of_target_mse ? NULL : adjust_histogram_callback);
+        double total_error = viter_do_iteration(hist, newmap, options->min_opaque_val, first_run_of_target_mse ? NULL : adjust_histogram_callback);
 
         // goal is to increase quality or to reduce number of colors used if quality is good enough
         if (!acolormap || total_error < least_error || (total_error <= target_mse && newmap->colors < reqcolors)) {
@@ -1096,7 +1109,7 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, const float m
             pam_freecolormap(newmap);
         }
 
-        verbose_printf("%d%%\n",100-MAX(0,(int)(feedback_loop_trials/percent)));
+        verbose_printf(options, "%d%%\n",100-MAX(0,(int)(feedback_loop_trials/percent)));
     }
     while(feedback_loop_trials > 0);
 
@@ -1107,12 +1120,15 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, const float m
 static pngquant_error pngquant(png24_image *input_image, png8_image *output_image, const struct pngquant_options *options)
 {
     const int speed_tradeoff = options->speed_tradeoff, reqcolors = options->reqcolors;
-    const double max_mse = options->max_mse, target_mse = options->target_mse;
-    const float min_opaque_val = options->min_opaque_val;
+    const double max_mse = options->max_mse;
     assert(min_opaque_val>0);
     assert(max_mse >= target_mse);
 
-    modify_alpha(input_image, min_opaque_val);
+
+    if (options->min_opaque_val <= 254.f/255.f) {
+        verbose_print(options, "  Working around IE6 bug by making image less transparent...\n");
+        modify_alpha(input_image, options->min_opaque_val);
+    }
 
 
     float *noise = NULL, *edges = NULL;
@@ -1123,22 +1139,22 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
 
     // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
     // noise map does not include edges to avoid ruining anti-aliasing
-    histogram *hist = get_histogram(input_image, reqcolors, speed_tradeoff, noise); if (noise) free(noise);
+    histogram *hist = get_histogram(input_image, noise, options); if (noise) free(noise);
 
     double palette_error = -1;
-    colormap *acolormap = find_best_palette(hist, reqcolors, min_opaque_val, target_mse, 56-9*speed_tradeoff, &palette_error);
+    colormap *acolormap = find_best_palette(hist, reqcolors, 56-9*speed_tradeoff, options, &palette_error);
 
     // Voronoi iteration approaches local minimum for the palette
     unsigned int iterations = MAX(8-speed_tradeoff,0); iterations += iterations * iterations/2;
     if (!iterations && palette_error < 0 && max_mse < MAX_DIFF) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
 
     if (iterations) {
-        verbose_printf("  moving colormap towards local minimum\n");
+        verbose_print(options, "  moving colormap towards local minimum\n");
 
         const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
         double previous_palette_error = MAX_DIFF;
         for(unsigned int i=0; i < iterations; i++) {
-            palette_error = viter_do_iteration(hist, acolormap, min_opaque_val, NULL);
+            palette_error = viter_do_iteration(hist, acolormap, options->min_opaque_val, NULL);
 
             if (fabs(previous_palette_error-palette_error) < iteration_limit) {
                 break;
@@ -1156,7 +1172,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     pam_freeacolorhist(hist);
 
     if (palette_error > max_mse) {
-        verbose_printf("  image degradation MSE=%.3f exceeded limit of %.3f\n", palette_error*65536.0, max_mse*65536.0);
+        verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f\n", palette_error*65536.0, max_mse*65536.0);
         if (edges) free(edges);
         pam_freecolormap(acolormap);
         return TOO_LOW_QUALITY;
@@ -1182,13 +1198,13 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     }
 
     // tRNS, etc.
-    sort_palette(output_image, acolormap, options->last_index_transparent);
+    sort_palette(output_image, acolormap, options);
 
     /*
      ** Step 4: map the colors in the image to their closest match in the
      ** new colormap, and write 'em out.
      */
-    verbose_printf("  mapping image to new colors...");
+    verbose_print(options, "  mapping image to new colors...");
 
     const int floyd = options->floyd,
               use_dither_map = floyd && edges && speed_tradeoff < 6;
@@ -1196,7 +1212,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     if (!floyd || use_dither_map) {
         // If no dithering is required, that's the final remapping.
         // If dithering (with dither map) is required, this image is used to find areas that require dithering
-        float remapping_error = remap_to_palette(input_image, output_image, acolormap, min_opaque_val);
+        float remapping_error = remap_to_palette(input_image, output_image, acolormap, options->min_opaque_val);
 
         // remapping error from dithered image is absurd, so always non-dithered value is used
         // palette_error includes some perceptual weighting from histogram which is closer correlated with dssim
@@ -1211,17 +1227,17 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     }
 
     if (palette_error >= 0) {
-        verbose_printf("MSE=%.3f", palette_error*65536.0);
+        verbose_printf(options, "MSE=%.3f", palette_error*65536.0);
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
     set_palette(output_image, acolormap);
 
     if (floyd) {
-        remap_to_palette_floyd(input_image, output_image, acolormap, min_opaque_val, edges, use_dither_map);
+        remap_to_palette_floyd(input_image, output_image, acolormap, options->min_opaque_val, edges, use_dither_map);
     }
 
-    verbose_printf("\n");
+    verbose_print(options, "\n");
 
     if (edges) free(edges);
     pam_freecolormap(acolormap);

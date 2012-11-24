@@ -80,8 +80,8 @@ static bool file_exists(const char *outname);
 
 static void verbose_printf(const struct pngquant_options *context, const char *fmt, ...)
 {
-    va_list va;
     if (context->log_callback) {
+        va_list va;
         va_start(va, fmt);
         int required_space = vsnprintf(NULL, 0, fmt, va)+1; // +\0
         va_end(va);
@@ -102,8 +102,7 @@ inline static void verbose_print(const struct pngquant_options *context, const c
 
 static void log_callback(const struct pngquant_options *context, const char *msg)
 {
-    fputs(msg, stderr);
-    fputc('\n', stderr);
+    fprintf(stderr, "%s\n", msg);
 }
 
 static void print_full_version(FILE *fd)
@@ -245,6 +244,8 @@ static const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
 };
 
+int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options);
+
 int main(int argc, char *argv[])
 {
     struct pngquant_options options = {
@@ -354,72 +355,19 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    /*=============================  MAIN LOOP  =============================*/
+    #pragma omp parallel for \
+        schedule(dynamic) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
+    for(int i=0; i < argc-argn; i++) {
+        struct pngquant_options opts = options;
+        const char *filename = opts.using_stdin ? "stdin" : argv[argn+i];
 
-    for(; argn < argc; argn++) {
-        const char *filename = options.using_stdin ? "stdin" : argv[argn];
-
-        int retval = 0;
-
-        verbose_printf(&options, "%s:", filename);
-
-        char *outname = NULL;
-        if (!options.using_stdin) {
-            outname = add_filename_extension(filename,newext);
-            if (!options.force && file_exists(outname)) {
-                fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
-                retval = NOT_OVERWRITING_ERROR;
-            }
-        }
-
-        png24_image input_image = {}; // initializes all fields to 0
-        png8_image output_image = {};
-
-        if (!retval) {
-            retval = read_image(filename, options.using_stdin, &input_image);
-        }
-
-        if (!retval) {
-            verbose_printf(&options, "  read %luKB file corrected for gamma %2.1f",
-                                 (input_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
-            retval = pngquant(&input_image, &output_image, &options);
-        }
-
-        if (!retval) {
-            retval = write_image(&output_image, NULL, outname, &options);
-        } else if (TOO_LOW_QUALITY == retval && options.using_stdin) {
-            // when outputting to stdout it'd be nasty to create 0-byte file
-            // so if quality is too low, output 24-bit original
-            if (options.min_opaque_val == 1.f) {
-                if (SUCCESS != write_image(NULL, &input_image, outname, &options)) {
-                    error_count++;
-                }
-            } else {
-                // iebug preprocessing changes the original image
-                fputs("  error:  can't write the original image when iebug option is enabled\n", stderr);
-                error_count++;
-            }
-        }
-
-        /* now we're done with the INPUT data and row_pointers, so free 'em */
-        if (input_image.rgba_data) {
-            free(input_image.rgba_data);
-        }
-        if (input_image.row_pointers) {
-            free(input_image.row_pointers);
-        }
-
-        if (outname) free(outname);
-
-        if (output_image.indexed_data) {
-            free(output_image.indexed_data);
-        }
-        if (output_image.row_pointers) {
-            free(output_image.row_pointers);
-        }
+        int retval = pngquant_file(filename, newext, &opts);
 
         if (retval) {
-            latest_error = retval;
+            #pragma omp critical
+            {
+                latest_error = retval;
+            }
             if (retval == TOO_LOW_QUALITY) {
                 skipped_count++;
             } else {
@@ -428,9 +376,6 @@ int main(int argc, char *argv[])
         }
         ++file_count;
     }
-
-    /*=======================================================================*/
-
 
     if (error_count) {
         verbose_printf(&options, "There were errors quantizing %d file%s out of a total of %d file%s.",
@@ -446,6 +391,79 @@ int main(int argc, char *argv[])
     }
 
     return latest_error;
+}
+
+
+int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
+{
+    int retval = 0;
+
+    verbose_printf(options, "%s:", filename);
+
+    char *outname = NULL;
+    if (!options->using_stdin) {
+        outname = add_filename_extension(filename,newext);
+        if (!options->force && file_exists(outname)) {
+            fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
+            retval = NOT_OVERWRITING_ERROR;
+        }
+    }
+
+    png24_image input_image = {}; // initializes all fields to 0
+    png8_image output_image = {};
+
+    if (!retval) {
+        #pragma omp critical (libpng)
+        {
+            retval = read_image(filename, options->using_stdin, &input_image);
+        }
+    }
+
+    if (!retval) {
+        verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
+                       (input_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
+        retval = pngquant(&input_image, &output_image, options);
+    }
+
+    if (!retval) {
+        #pragma omp critical (libpng)
+        {
+            retval = write_image(&output_image, NULL, outname, options);
+        }
+    } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
+        // when outputting to stdout it'd be nasty to create 0-byte file
+        // so if quality is too low, output 24-bit original
+        if (options->min_opaque_val == 1.f) {
+            #pragma omp critical (libpng)
+            {
+                int write_retval = write_image(NULL, &input_image, outname, options);
+                if (write_retval) retval = write_retval;
+            }
+        } else {
+            // iebug preprocessing changes the original image
+            fputs("  error:  can't write the original image when iebug option is enabled\n", stderr);
+            retval = INVALID_ARGUMENT;
+        }
+    }
+
+    /* now we're done with the INPUT data and row_pointers, so free 'em */
+    if (input_image.rgba_data) {
+        free(input_image.rgba_data);
+    }
+    if (input_image.row_pointers) {
+        free(input_image.row_pointers);
+    }
+
+    if (outname) free(outname);
+
+    if (output_image.indexed_data) {
+        free(output_image.indexed_data);
+    }
+    if (output_image.row_pointers) {
+        free(output_image.row_pointers);
+    }
+
+    return retval;
 }
 
 static int compare_popularity(const void *ch1, const void *ch2)

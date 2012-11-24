@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
         .max_mse = MAX_DIFF,
     };
     unsigned int latest_error=0, error_count=0, skipped_count=0, file_count=0;
-    const char *filename, *newext = NULL;
+    const char *newext = NULL;
 
     fix_obsolete_options(argc, argv);
 
@@ -343,11 +343,7 @@ int main(int argc, char *argv[])
 
     if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
         options.using_stdin = true;
-        filename = "stdin";
-        argn = argc;
-    } else {
-        filename = argv[argn];
-        ++argn;
+        argn = argc-1;
     }
 
 #if USE_SSE
@@ -360,7 +356,9 @@ int main(int argc, char *argv[])
 
     /*=============================  MAIN LOOP  =============================*/
 
-    while (argn <= argc) {
+    for(; argn < argc; argn++) {
+        const char *filename = options.using_stdin ? "stdin" : argv[argn];
+
         int retval = 0;
 
         verbose_printf(&options, "%s:", filename);
@@ -384,7 +382,6 @@ int main(int argc, char *argv[])
         if (!retval) {
             verbose_printf(&options, "  read %luKB file corrected for gamma %2.1f",
                                  (input_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
-
             retval = pngquant(&input_image, &output_image, &options);
         }
 
@@ -430,9 +427,6 @@ int main(int argc, char *argv[])
             }
         }
         ++file_count;
-
-        filename = argv[argn];
-        ++argn;
     }
 
     /*=======================================================================*/

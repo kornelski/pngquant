@@ -83,7 +83,7 @@ static void verbose_printf(const struct pngquant_options *context, const char *f
     va_list va;
     if (context->log_callback) {
         va_start(va, fmt);
-        int required_space = vsnprintf(NULL, 0, fmt, va)+1;
+        int required_space = vsnprintf(NULL, 0, fmt, va)+1; // +\0
         va_end(va);
 
         char buf[required_space];
@@ -103,6 +103,7 @@ inline static void verbose_print(const struct pngquant_options *context, const c
 static void log_callback(const struct pngquant_options *context, const char *msg)
 {
     fputs(msg, stderr);
+    fputc('\n', stderr);
 }
 
 static void print_full_version(FILE *fd)
@@ -362,7 +363,7 @@ int main(int argc, char *argv[])
     while (argn <= argc) {
         int retval = 0;
 
-        verbose_printf(&options, "%s:\n", filename);
+        verbose_printf(&options, "%s:", filename);
 
         char *outname = NULL;
         if (!options.using_stdin) {
@@ -381,7 +382,7 @@ int main(int argc, char *argv[])
         }
 
         if (!retval) {
-            verbose_printf(&options, "  read %luKB file corrected for gamma %2.1f\n",
+            verbose_printf(&options, "  read %luKB file corrected for gamma %2.1f",
                                  (input_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
 
             retval = pngquant(&input_image, &output_image, &options);
@@ -430,8 +431,6 @@ int main(int argc, char *argv[])
         }
         ++file_count;
 
-        verbose_print(&options, "\n");
-
         filename = argv[argn];
         ++argn;
     }
@@ -440,15 +439,15 @@ int main(int argc, char *argv[])
 
 
     if (error_count) {
-        verbose_printf(&options, "There were errors quantizing %d file%s out of a total of %d file%s.\n",
+        verbose_printf(&options, "There were errors quantizing %d file%s out of a total of %d file%s.",
                        error_count, (error_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (skipped_count) {
-        verbose_printf(&options, "Skipped %d file%s out of a total of %d file%s.\n",
+        verbose_printf(&options, "Skipped %d file%s out of a total of %d file%s.",
                        skipped_count, (skipped_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (!skipped_count && !error_count) {
-        verbose_printf(&options, "No errors detected while quantizing %d image%s.\n",
+        verbose_printf(&options, "No errors detected while quantizing %d image%s.",
                        file_count, (file_count == 1)? "" : "s");
     }
 
@@ -471,8 +470,6 @@ static void sort_palette(png8_image *output_image, colormap *map, const struct p
     ** the maximal alpha value (i.e., fully opaque) are at the end and can
     ** therefore be omitted from the tRNS chunk.
     */
-
-    verbose_print(options, "  eliminating opaque tRNS-chunk entries...");
 
     output_image->num_palette = map->colors;
 
@@ -508,7 +505,7 @@ static void sort_palette(png8_image *output_image, colormap *map, const struct p
         }
     }
 
-    verbose_printf(options, "%d entr%s transparent\n", num_transparent, (num_transparent == 1)? "y" : "ies");
+    verbose_printf(options, "  eliminated opaque tRNS-chunk entries...%d entr%s transparent", num_transparent, (num_transparent == 1)? "y" : "ies");
 
     /* colors sorted by popularity make pngs slightly more compressible
      * opaque and transparent are sorted separately
@@ -800,9 +797,9 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         outfile = stdout;
 
         if (output_image) {
-            verbose_printf(options, "  writing %d-color image to stdout\n", output_image->num_palette);
+            verbose_printf(options, "  writing %d-color image to stdout", output_image->num_palette);
         } else {
-            verbose_print(options, "  writing truecolor image to stdout\n");
+            verbose_print(options, "  writing truecolor image to stdout");
         }
     } else {
 
@@ -815,9 +812,9 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         if (outfilename) outfilename++; else outfilename = outname;
 
         if (output_image) {
-            verbose_printf(options, "  writing %d-color image as %s\n", output_image->num_palette, outfilename);
+            verbose_printf(options, "  writing %d-color image as %s", output_image->num_palette, outfilename);
         } else {
-            verbose_printf(options, "  writing truecolor image as %s\n", outfilename);
+            verbose_printf(options, "  writing truecolor image as %s", outfilename);
         }
     }
 
@@ -857,17 +854,16 @@ static histogram *get_histogram(const png24_image *input_image, const float *imp
     if (options->speed_tradeoff > 7) ignorebits++;
     unsigned int maxcolors = (1<<17) + (1<<18)*(10-options->speed_tradeoff);
 
-    verbose_print(options, "  making histogram...");
     for (; ;) {
 
         hist = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, importance_map);
         if (hist) break;
 
         ignorebits++;
-        verbose_print(options, "too many colors!\n  scaling colors to improve clustering...");
+        verbose_print(options, "too many colors!  scaling colors to improve clustering...");
     }
 
-    verbose_printf(options, "%d colors found\n", hist->size);
+    verbose_printf(options, "  made histogram...%d colors found", hist->size);
     return hist;
 }
 
@@ -1067,8 +1063,6 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_
 
     do
     {
-        verbose_print(options, "  selecting colors");
-
         colormap *newmap = mediancut(hist, options->min_opaque_val, reqcolors, target_mse * target_mse_overshoot, MAX(MAX(15.0/65536.0, target_mse), least_error)*1.2);
         if (newmap->subset_palette) {
             // nearest_search() needs subset palette to accelerate the search, I presume that
@@ -1077,11 +1071,8 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_
         }
 
         if (feedback_loop_trials <= 0) {
-            verbose_print(options, "\n");
             return newmap;
         }
-
-        verbose_print(options, "...");
 
         // after palette has been created, total error (MSE) is calculated to keep the best palette
         // at the same time Voronoi iteration is done to improve the palette
@@ -1116,7 +1107,7 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_
             pam_freecolormap(newmap);
         }
 
-        verbose_printf(options, "%d%%\n",100-MAX(0,(int)(feedback_loop_trials/percent)));
+        verbose_printf(options, "  selecting colors...%d%%",100-MAX(0,(int)(feedback_loop_trials/percent)));
     }
     while(feedback_loop_trials > 0);
 
@@ -1133,7 +1124,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
 
 
     if (options->min_opaque_val <= 254.f/255.f) {
-        verbose_print(options, "  Working around IE6 bug by making image less transparent...\n");
+        verbose_print(options, "  Working around IE6 bug by making image less transparent...");
         modify_alpha(input_image, options->min_opaque_val);
     }
 
@@ -1156,7 +1147,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     if (!iterations && palette_error < 0 && max_mse < MAX_DIFF) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
 
     if (iterations) {
-        verbose_print(options, "  moving colormap towards local minimum\n");
+        verbose_print(options, "  moving colormap towards local minimum");
 
         const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
         double previous_palette_error = MAX_DIFF;
@@ -1179,7 +1170,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     pam_freeacolorhist(hist);
 
     if (palette_error > max_mse) {
-        verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f\n", palette_error*65536.0, max_mse*65536.0);
+        verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0, max_mse*65536.0);
         if (edges) free(edges);
         pam_freecolormap(acolormap);
         return TOO_LOW_QUALITY;
@@ -1211,9 +1202,8 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
      ** Step 4: map the colors in the image to their closest match in the
      ** new colormap, and write 'em out.
      */
-    verbose_print(options, "  mapping image to new colors...");
 
-    const int floyd = options->floyd,
+    const bool floyd = options->floyd,
               use_dither_map = floyd && edges && speed_tradeoff < 6;
 
     if (!floyd || use_dither_map) {
@@ -1234,7 +1224,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     }
 
     if (palette_error >= 0) {
-        verbose_printf(options, "MSE=%.3f", palette_error*65536.0);
+        verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error*65536.0);
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
@@ -1243,8 +1233,6 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     if (floyd) {
         remap_to_palette_floyd(input_image, output_image, acolormap, options->min_opaque_val, edges, use_dither_map);
     }
-
-    verbose_print(options, "\n");
 
     if (edges) free(edges);
     pam_freecolormap(acolormap);

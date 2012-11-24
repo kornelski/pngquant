@@ -69,7 +69,9 @@ struct pngquant_options {
     unsigned int speed_tradeoff;
     bool floyd, last_index_transparent;
     bool using_stdin, force;
-    void (*log_callback)(const struct pngquant_options *context, const char *msg);
+    void (*log_callback)(void *context, const char *msg);
+    void (*log_callback_flush)(void *context);
+    void *log_callback_context;
 };
 
 static pngquant_error pngquant(png24_image *input_image, png8_image *output_image, const struct pngquant_options *options);
@@ -91,19 +93,54 @@ static void verbose_printf(const struct pngquant_options *context, const char *f
         vsnprintf(buf, required_space, fmt, va);
         va_end(va);
 
-        context->log_callback(context, buf);
+        context->log_callback(context->log_callback_context, buf);
     }
 }
 
 inline static void verbose_print(const struct pngquant_options *context, const char *msg)
 {
-    if (context->log_callback) context->log_callback(context, msg);
+    if (context->log_callback) context->log_callback(context->log_callback_context, msg);
 }
 
-static void log_callback(const struct pngquant_options *context, const char *msg)
+static void log_callback(void *context, const char *msg)
 {
     fprintf(stderr, "%s\n", msg);
 }
+
+static void verbose_printf_flush(struct pngquant_options *context)
+{
+    if (context->log_callback_flush) context->log_callback_flush(context->log_callback_context);
+}
+
+#ifdef _OPENMP
+#define LOG_BUFFER_SIZE 1300
+struct buffered_log {
+    int buf_used;
+    char buf[LOG_BUFFER_SIZE];
+};
+
+static void log_callback_buferred_flush(void *context)
+{
+    struct buffered_log *log = context;
+    if (log->buf_used) {
+        fwrite(log->buf, 1, log->buf_used, stderr);
+        log->buf_used = 0;
+    }
+}
+
+static void log_callback_buferred(void *context, const char *msg)
+{
+    struct buffered_log *log = context;
+    int len = MIN(LOG_BUFFER_SIZE-1, strlen(msg));
+
+    if (len > LOG_BUFFER_SIZE - log->buf_used - 2) log_callback_buferred_flush(log);
+    memcpy(&log->buf[log->buf_used], msg, len);
+    log->buf_used += len+1;
+    assert(log->buf_used < LOG_BUFFER_SIZE);
+    log->buf[log->buf_used-1] = '\n';
+    log->buf[log->buf_used] = '\0';
+}
+#endif
 
 static void print_full_version(FILE *fd)
 {
@@ -361,7 +398,19 @@ int main(int argc, char *argv[])
         struct pngquant_options opts = options;
         const char *filename = opts.using_stdin ? "stdin" : argv[argn+i];
 
+        #ifdef _OPENMP
+        struct buffered_log buf = {};
+        if (opts.log_callback && omp_get_num_threads() > 1 && argc-argn > 1) {
+            verbose_printf_flush(&opts);
+            opts.log_callback = log_callback_buferred;
+            opts.log_callback_flush = log_callback_buferred_flush;
+            opts.log_callback_context = &buf;
+        }
+        #endif
+
         int retval = pngquant_file(filename, newext, &opts);
+
+        verbose_printf_flush(&opts);
 
         if (retval) {
             #pragma omp critical
@@ -389,6 +438,8 @@ int main(int argc, char *argv[])
         verbose_printf(&options, "No errors detected while quantizing %d image%s.",
                        file_count, (file_count == 1)? "" : "s");
     }
+
+    verbose_printf_flush(&options);
 
     return latest_error;
 }

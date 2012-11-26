@@ -13,7 +13,7 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "1.8.0 (August 2012)"
+#define PNGQUANT_VERSION "1.8.1 (November 2012)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -116,6 +116,9 @@ static void print_full_version(FILE *fd)
         #endif
         #if _OPENMP
                     "   Compiled with OpenMP (multicore support).\n"
+        #endif
+        #if USE_COCOA
+                    "   Compiled with Apple Cocoa image reader.\n"
         #endif
         , PNGQUANT_VERSION);
     rwpng_version_info(fd);
@@ -914,7 +917,11 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
      ** Step 1: read in the alpha-channel image.
      */
     /* GRR:  returns RGBA (4 channels), 8 bps */
+#if USE_COCOA
+    pngquant_error retval = rwpng_read_image24_cocoa(infile, input_image_p);
+#else
     pngquant_error retval = rwpng_read_image24(infile, input_image_p);
+#endif
 
     if (!using_stdin)
         fclose(infile);

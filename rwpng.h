@@ -35,6 +35,10 @@
 #include "png.h"    /* libpng header; includes zlib.h */
 #include <setjmp.h>
 
+#ifndef USE_COCOA
+#define USE_COCOA 0
+#endif
+
 typedef enum {
     SUCCESS = 0,
     MISSING_ARGUMENT = 1,
@@ -84,6 +88,9 @@ typedef union {
 void rwpng_version_info(FILE *fp);
 
 pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr);
+#if USE_COCOA
+int rwpng_read_image24_cocoa(FILE *infile, png24_image *mainprog_ptr);
+#endif
 
 pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr);
 pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr);

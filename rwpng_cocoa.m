@@ -17,7 +17,9 @@ int rwpng_read_image24_cocoa(FILE *fp, png24_image *out)
     CGFloat width, height;
     @autoreleasepool {
         NSFileHandle *fh = [[NSFileHandle alloc] initWithFileDescriptor:fileno(fp)];
-        CGImageRef image = [[NSBitmapImageRep imageRepWithData:[fh readDataToEndOfFile]] CGImage];
+        NSData *data = [fh readDataToEndOfFile];
+        out->file_size = [data length];
+        CGImageRef image = [[NSBitmapImageRep imageRepWithData:data] CGImage];
         [fh release];
 
         if (!image) return READ_ERROR;

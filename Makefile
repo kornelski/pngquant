@@ -21,6 +21,13 @@ LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L/usr/local/lib/ -L/usr/lib/ -L/us
 LDFLAGS += -lz -lpng -lm $(LDFLAGSADD)
 
 OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
+COCOA_OBJS = rwpng_cocoa.o
+
+ifdef USE_COCOA
+CFLAGS += -DUSE_COCOA=1
+OBJS += $(COCOA_OBJS)
+LDFLAGS += -framework Cocoa
+endif
 
 all: $(BIN)
 
@@ -29,6 +36,9 @@ openmp::
 
 $(BIN): $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@
+
+rwpng_cocoa.o: rwpng_cocoa.m
+	clang -c $(CFLAGS) -o $@ $<
 
 $(OBJS): pam.h rwpng.h
 
@@ -39,7 +49,7 @@ uninstall:
 	rm -f $(DESTDIR)$(BINPREFIX)/$(BIN)
 
 clean:
-	rm -f $(BIN) $(OBJS)
+	rm -f $(BIN) $(OBJS) $(COCOA_OBJS)
 
 .PHONY: all install uninstall clean openmp
 

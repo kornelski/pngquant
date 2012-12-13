@@ -1,8 +1,9 @@
 #pngquant
 
-This the [official](http://www.libpng.org/pub/png/apps/pngquant.html) [new](http://pngquant.org) `pngquant`.
+This is the official new `pngquant`.
 
-pngquant converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*. Such images are compatible with all modern browsers, and a special compatibility setting exists which helps transparency degrade well in Internet Explorer 6.
+[pngquant](http://pngquant.org) converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*.
+Such images are compatible with all modern browsers, and a special compatibility setting exists which helps transparency degrade well in Internet Explorer 6.
 
 Quantized files are often 40-70% smaller than their 24/32-bit version.
 
@@ -20,25 +21,25 @@ To further reduce file size, you may want to consider [optipng](http://optipng.s
 
 * Significantly better quality of quantisation
 
+  - more accurate remapping of semitransparent colors
+  - special dithering algorithm that does not add noise in well-quantized areas of the image
   - uses variance instead of popularity for box selection (improvement suggested in the original median cut paper)
   - feedback loop that repeats median cut for poorly quantized colors
   - additional colormap improvement using Voronoi iteration
   - supports much larger number of colors in input images without degradation of quality
-  - more accurate remapping of semitransparent colors
-  - special dithering algorithm that does not add noise in well-quantized areas of the image
   - gamma correction (output is always generated with gamma 2.2 for web compatibility)
 
 * More flexible commandline usage
 
   - number of colors defaults to 256
-  - standard switches like `--` and `-` are allowed
+  - long options and standard switches like `--` and `-` are allowed
 
 * Refactored and modernised code
 
   - C99 with no workarounds for old systems
   - floating-point math used throughout
   - Intel SSE3 optimisations
-
+  - multicore support via OpenMP
 
 ##Options
 

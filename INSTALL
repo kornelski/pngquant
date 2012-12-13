@@ -78,3 +78,12 @@ image at a time is processed.
 However, it significantly increases total CPU time used, and thus it's not
 recommended for server-side and parallelized batch jobs which run many pngquant
 instances at a time.
+
+##Compilation with Cocoa image reader
+
+     $ make USE_COCOA=1
+
+On Mac OS X pngquant can use Cocoa framework to load images. This enables
+support for color profiles and other input file formats. Images will have
+slightly reduced fidelity of alpha channel, since Cocoa uses premultiplied
+alpha.

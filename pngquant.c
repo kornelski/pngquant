@@ -392,15 +392,27 @@ int main(int argc, char *argv[])
     }
 #endif
 
+    const int num_files = argc-argn;
+
+#ifdef _OPENMP
+    // if there's a lot of files, coarse parallelism can be used
+    if (num_files > 2*omp_get_max_threads()) {
+        omp_set_nested(0);
+        omp_set_dynamic(1);
+    } else {
+        omp_set_nested(1);
+    }
+#endif
+
     #pragma omp parallel for \
         schedule(dynamic) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
-    for(int i=0; i < argc-argn; i++) {
+    for(int i=0; i < num_files; i++) {
         struct pngquant_options opts = options;
         const char *filename = opts.using_stdin ? "stdin" : argv[argn+i];
 
         #ifdef _OPENMP
         struct buffered_log buf = {};
-        if (opts.log_callback && omp_get_num_threads() > 1 && argc-argn > 1) {
+        if (opts.log_callback && omp_get_num_threads() > 1 && num_files > 1) {
             verbose_printf_flush(&opts);
             opts.log_callback = log_callback_buferred;
             opts.log_callback_flush = log_callback_buferred_flush;

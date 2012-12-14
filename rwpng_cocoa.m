@@ -10,11 +10,12 @@
 #import <Cocoa/Cocoa.h>
 #import <CoreGraphics/CoreGraphics.h>
 #include <stdio.h>
+#include "pam.h"
 
 int rwpng_read_image24_cocoa(FILE *fp, png24_image *out)
 {
-    unsigned char *data_rgba;
-    CGFloat width, height;
+    rgb_pixel *pixel_data;
+    int width, height;
     @autoreleasepool {
         NSFileHandle *fh = [[NSFileHandle alloc] initWithFileDescriptor:fileno(fp)];
         NSData *data = [fh readDataToEndOfFile];
@@ -27,11 +28,11 @@ int rwpng_read_image24_cocoa(FILE *fp, png24_image *out)
         width = CGImageGetWidth(image);
         height = CGImageGetHeight(image);
 
-        data_rgba = malloc(width*height*4);
+        pixel_data = calloc(width*height,4);
 
         CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
 
-        CGContextRef context = CGBitmapContextCreate(data_rgba,
+        CGContextRef context = CGBitmapContextCreate(pixel_data,
                                                      width, height,
                                                      8, width*4,
                                                      colorspace,
@@ -44,21 +45,25 @@ int rwpng_read_image24_cocoa(FILE *fp, png24_image *out)
         CGColorSpaceRelease(colorspace);
     }
     // reverse premultiplication
-    for(int i=0; i < width*height*4; i+=4) {
-        if (data_rgba[i+3]) {
-            data_rgba[i+0] = data_rgba[i+0]*255/data_rgba[i+3];
-            data_rgba[i+1] = data_rgba[i+1]*255/data_rgba[i+3];
-            data_rgba[i+2] = data_rgba[i+2]*255/data_rgba[i+3];
+
+    for(int i=0; i < width*height; i++) {
+        if (pixel_data[i].a) {
+            pixel_data[i] = (rgb_pixel){
+                .a = pixel_data[i].a,
+                .r = pixel_data[i].r*255/pixel_data[i].a,
+                .g = pixel_data[i].g*255/pixel_data[i].a,
+                .b = pixel_data[i].b*255/pixel_data[i].a,
+            };
         }
     }
 
     out->gamma = 0.45455;
     out->width = width;
     out->height = height;
-    out->rgba_data = data_rgba;
+    out->rgba_data = (unsigned char *)pixel_data;
     out->row_pointers = malloc(sizeof(out->row_pointers[0])*out->height);
     for(int i=0; i < out->height; i++) {
-        out->row_pointers[i] = out->rgba_data + (int)width*4*i;
+        out->row_pointers[i] = (unsigned char *)&pixel_data[width*i];
     }
     return SUCCESS;
 }

@@ -144,7 +144,7 @@ static void log_callback_buferred(void *context, const char *msg)
 
 static void print_full_version(FILE *fd)
 {
-    fprintf(fd, "pngquant, version %s, by Greg Roelofs, Kornel Lesinski.\n"
+    fprintf(fd, "pngquant, %s, by Greg Roelofs, Kornel Lesinski.\n"
         #ifndef NDEBUG
                     "   DEBUG (slow) version.\n"
         #endif

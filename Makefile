@@ -1,4 +1,5 @@
 # Makefile for pngquant
+VERSION = $(shell grep 'define PNGQUANT_VERSION' pngquant.c | egrep -Eo '1\.[0-9.]*')
 
 # This changes default "cc" to "gcc", but still allows customization of the CC variable
 # if this line causes problems with non-GNU make, just remove it:
@@ -22,6 +23,10 @@ LDFLAGS += -lz -lpng -lm $(LDFLAGSADD)
 
 OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
 COCOA_OBJS = rwpng_cocoa.o
+
+DISTFILES = $(OBJS:.o=.c) *.[h1] Makefile README.md INSTALL CHANGELOG COPYRIGHT
+TARNAME = pngquant-$(VERSION)
+TARFILE = $(TARNAME).tar.gz
 
 ifdef USE_COCOA
 CFLAGS += -DUSE_COCOA=1
@@ -48,8 +53,17 @@ install: $(BIN)
 uninstall:
 	rm -f $(DESTDIR)$(BINPREFIX)/$(BIN)
 
+dist: $(TARFILE)
+
+$(TARFILE): $(DISTFILES)
+	rm -rf $(TARFILE) $(TARNAME)
+	mkdir $(TARNAME)
+	cp $(DISTFILES) $(TARNAME)
+	tar -czf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
+	rm -rf $(TARNAME)
+
 clean:
-	rm -f $(BIN) $(OBJS) $(COCOA_OBJS)
+	rm -f $(BIN) $(OBJS) $(COCOA_OBJS) $(TARFILE)
 
-.PHONY: all install uninstall clean openmp
-
+.PHONY: all openmp install uninstall dist clean
+.DELETE_ON_ERROR:

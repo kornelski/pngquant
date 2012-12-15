@@ -40,20 +40,21 @@
  */
 histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], unsigned int cols, unsigned int rows, float gamma, unsigned int maxacolors, unsigned int ignorebits, const float *importance_map)
 {
-    struct acolorhash_table *acht = pam_allocacolorhash();
+    struct acolorhash_table *acht = pam_allocacolorhash(maxacolors, ignorebits);
     histogram *hist = NULL;
 
-    if (pam_computeacolorhash(acht, apixels, cols, rows, gamma, maxacolors, ignorebits, importance_map)) {
+    if (pam_computeacolorhash(acht, apixels, cols, rows, importance_map)) {
         hist = pam_acolorhashtoacolorhist(acht, gamma);
     }
     pam_freeacolorhash(acht);
     return hist;
 }
 
-bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, double gamma, unsigned int maxacolors, unsigned int ignorebits, const float *importance_map)
+bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map)
 {
+    const unsigned int maxacolors = acht->maxcolors, ignorebits = acht->ignorebits;
     const unsigned int channel_mask = 255>>ignorebits<<ignorebits;
-    const unsigned int channel_hmask = (255>>(ignorebits)) ^ 0xFF;
+    const unsigned int channel_hmask = (255>>ignorebits) ^ 0xFF;
     const unsigned int posterize_mask = channel_mask << 24 | channel_mask << 16 | channel_mask << 8 | channel_mask;
     const unsigned int posterize_high_mask = channel_hmask << 24 | channel_hmask << 16 | channel_hmask << 8 | channel_hmask;
     struct acolorhist_arr_head *const buckets = acht->buckets;
@@ -178,12 +179,14 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
     return true;
 }
 
-struct acolorhash_table *pam_allocacolorhash()
+struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int ignorebits)
 {
     mempool m = NULL;
     struct acolorhash_table *t = mempool_new(&m, sizeof(*t));
     t->buckets = mempool_new(&m, HASH_SIZE * sizeof(t->buckets[0]));
     t->mempool = m;
+    t->maxcolors = maxcolors;
+    t->ignorebits = ignorebits;
     return t;
 }
 

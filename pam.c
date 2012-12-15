@@ -193,41 +193,36 @@ static acolorhash_table pam_allocacolorhash()
     return t;
 }
 
+#define PAM_ADD_TO_HIST(entry) { \
+    hist->achv[j].acolor = to_f(gamma, entry.color.rgb); \
+    hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = entry.perceptual_weight; \
+    ++j; \
+    total_weight += entry.perceptual_weight; \
+}
+
 static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, unsigned int hist_size, float gamma)
 {
     histogram *hist = malloc(sizeof(hist[0]));
     hist->achv = malloc(hist_size * sizeof(hist->achv[0]));
     hist->size = hist_size;
 
-    /* Loop through the hash table. */
     double total_weight=0;
     for(unsigned int j=0, i=0; i < HASH_SIZE; ++i) {
-        struct acolorhist_arr_head *achl = &acht->buckets[i];
+        const struct acolorhist_arr_head *const achl = &acht->buckets[i];
         if (achl->used) {
-            hist->achv[j].acolor = to_f(gamma, achl->inline1.color.rgb);
-            hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->inline1.perceptual_weight;
-            total_weight += achl->inline1.perceptual_weight;
-            ++j;
+            PAM_ADD_TO_HIST(achl->inline1);
 
             if (achl->used > 1) {
-                hist->achv[j].acolor = to_f(gamma, achl->inline2.color.rgb);
-                hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->inline2.perceptual_weight;
-                total_weight += achl->inline2.perceptual_weight;
-                ++j;
+                PAM_ADD_TO_HIST(achl->inline2);
 
-                struct acolorhist_arr_item *a = achl->other_items;
                 for(unsigned int i=0; i < achl->used-2; i++) {
-                    hist->achv[j].acolor = to_f(gamma, a[i].color.rgb);
-                    hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = a[i].perceptual_weight;
-                    total_weight += a[i].perceptual_weight;
-                    ++j;
+                    PAM_ADD_TO_HIST(achl->other_items[i]);
                 }
             }
         }
     }
 
     hist->total_perceptual_weight = total_weight;
-    /* All done. */
     return hist;
 }
 

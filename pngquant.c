@@ -74,7 +74,12 @@ struct pngquant_options {
     void *log_callback_context;
 };
 
-static pngquant_error pngquant(png24_image *input_image, png8_image *output_image, const struct pngquant_options *options);
+typedef struct {
+    png24_image rwpng_image;
+    float *noise, *edges;
+} pngquant_image;
+
+static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
@@ -369,9 +374,9 @@ int main(int argc, char *argv[])
     }
 
     if (options.reqcolors < 2 || options.reqcolors > 256) {
-            fputs("Number of colors must be between 2 and 256.\n", stderr);
-            return INVALID_ARGUMENT;
-        }
+        fputs("Number of colors must be between 2 and 256.\n", stderr);
+        return INVALID_ARGUMENT;
+    }
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
@@ -472,26 +477,26 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         }
     }
 
-    png24_image input_image = {}; // initializes all fields to 0
+    pngquant_image input_image = {}; // initializes all fields to 0
     png8_image output_image = {};
 
     if (!retval) {
         #pragma omp critical (libpng)
         {
-            retval = read_image(filename, options->using_stdin, &input_image);
-    }
+            retval = read_image(filename, options->using_stdin, &input_image.rwpng_image);
+        }
     }
 
     if (!retval) {
         verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
-                       (input_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
+                       (input_image.rwpng_image.file_size+1023UL)/1024UL, 1.0/input_image.rwpng_image.gamma);
         retval = pngquant(&input_image, &output_image, options);
-            }
+    }
 
     if (!retval) {
         #pragma omp critical (libpng)
         {
-        retval = write_image(&output_image, NULL, outname, options);
+            retval = write_image(&output_image, NULL, outname, options);
         }
     } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
         // when outputting to stdout it'd be nasty to create 0-byte file
@@ -499,8 +504,8 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         if (options->min_opaque_val == 1.f) {
             #pragma omp critical (libpng)
             {
-                int write_retval = write_image(NULL, &input_image, outname, options);
-            if (write_retval) retval = write_retval;
+                int write_retval = write_image(NULL, &input_image.rwpng_image, outname, options);
+                if (write_retval) retval = write_retval;
             }
         } else {
             // iebug preprocessing changes the original image
@@ -510,11 +515,11 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     }
 
     /* now we're done with the INPUT data and row_pointers, so free 'em */
-    if (input_image.rgba_data) {
-        free(input_image.rgba_data);
+    if (input_image.rwpng_image.rgba_data) {
+        free(input_image.rwpng_image.rgba_data);
     }
-    if (input_image.row_pointers) {
-        free(input_image.row_pointers);
+    if (input_image.rwpng_image.row_pointers) {
+        free(input_image.rwpng_image.row_pointers);
     }
 
     if (outname) free(outname);
@@ -894,11 +899,11 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     }
 
     pngquant_error retval;
-        if (output_image) {
-            retval = rwpng_write_image8(outfile, output_image);
-        } else {
-            retval = rwpng_write_image24(outfile, output_image24);
-        }
+    if (output_image) {
+        retval = rwpng_write_image8(outfile, output_image);
+    } else {
+        retval = rwpng_write_image24(outfile, output_image24);
+    }
 
     if (retval) {
         fprintf(stderr, "  error: failed writing image to %s\n", outname);
@@ -988,11 +993,11 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
      ** Step 1: read in the alpha-channel image.
      */
     /* GRR:  returns RGBA (4 channels), 8 bps */
-        #if USE_COCOA
+#if USE_COCOA
     pngquant_error retval = rwpng_read_image24_cocoa(infile, input_image_p);
-        #else
+#else
     pngquant_error retval = rwpng_read_image24(infile, input_image_p);
-        #endif
+#endif
 
     if (!using_stdin)
         fclose(infile);
@@ -1190,7 +1195,7 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_
     return acolormap;
 }
 
-static pngquant_error pngquant(png24_image *input_image, png8_image *output_image, const struct pngquant_options *options)
+static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options)
 {
     const int speed_tradeoff = options->speed_tradeoff, reqcolors = options->reqcolors;
     const double max_mse = options->max_mse;
@@ -1200,19 +1205,18 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
 
     if (options->min_opaque_val <= 254.f/255.f) {
         verbose_print(options, "  Working around IE6 bug by making image less transparent...");
-        modify_alpha(input_image, options->min_opaque_val);
+        modify_alpha(&input_image->rwpng_image, options->min_opaque_val);
     }
 
-
-    float *noise = NULL, *edges = NULL;
-    if (speed_tradeoff < 8 && input_image->width >= 4 && input_image->height >= 4) {
-        contrast_maps((const rgb_pixel**)input_image->row_pointers, input_image->width, input_image->height, input_image->gamma,
-                   &noise, &edges);
+    if (speed_tradeoff < 8 && input_image->rwpng_image.width >= 4 && input_image->rwpng_image.height >= 4) {
+        contrast_maps((const rgb_pixel**)input_image->rwpng_image.row_pointers, input_image->rwpng_image.width, input_image->rwpng_image.height, input_image->rwpng_image.gamma,
+                   &input_image->noise, &input_image->edges);
     }
 
     // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
     // noise map does not include edges to avoid ruining anti-aliasing
-    histogram *hist = get_histogram(input_image, noise, options); if (noise) free(noise);
+    histogram *hist = get_histogram(&input_image->rwpng_image, input_image->noise, options);
+    if (input_image->noise) free(input_image->noise);
 
     double palette_error = -1;
     colormap *acolormap = find_best_palette(hist, reqcolors, 56-9*speed_tradeoff, options, &palette_error);
@@ -1246,13 +1250,13 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
 
     if (palette_error > max_mse) {
         verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0, max_mse*65536.0);
-        if (edges) free(edges);
+        if (input_image->edges) free(input_image->edges);
         pam_freecolormap(acolormap);
         return TOO_LOW_QUALITY;
     }
 
-    output_image->width = input_image->width;
-    output_image->height = input_image->height;
+    output_image->width = input_image->rwpng_image.width;
+    output_image->height = input_image->rwpng_image.height;
     output_image->gamma = 0.45455f; // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
 
     /*
@@ -1268,7 +1272,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
 
     for(unsigned int row = 0;  row < output_image->height;  ++row) {
         output_image->row_pointers[row] = output_image->indexed_data + row*output_image->width;
-        }
+    }
 
     // tRNS, etc.
     sort_palette(output_image, acolormap, options);
@@ -1279,12 +1283,12 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
      */
 
     const bool floyd = options->floyd,
-              use_dither_map = floyd && edges && speed_tradeoff < 6;
+              use_dither_map = floyd && input_image->edges && speed_tradeoff < 6;
 
     if (!floyd || use_dither_map) {
         // If no dithering is required, that's the final remapping.
         // If dithering (with dither map) is required, this image is used to find areas that require dithering
-        float remapping_error = remap_to_palette(input_image, output_image, acolormap, options->min_opaque_val);
+        float remapping_error = remap_to_palette(&input_image->rwpng_image, output_image, acolormap, options->min_opaque_val);
 
         // remapping error from dithered image is absurd, so always non-dithered value is used
         // palette_error includes some perceptual weighting from histogram which is closer correlated with dssim
@@ -1294,7 +1298,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
         }
 
         if (use_dither_map) {
-            update_dither_map(output_image, edges);
+            update_dither_map(output_image, input_image->edges);
         }
     }
 
@@ -1303,16 +1307,16 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
-    set_palette(output_image, acolormap, input_image->gamma);
+    set_palette(output_image, acolormap, input_image->rwpng_image.gamma);
 
     if (floyd) {
-        remap_to_palette_floyd(input_image, output_image, acolormap, options->min_opaque_val, edges, use_dither_map);
+        remap_to_palette_floyd(&input_image->rwpng_image, output_image, acolormap, options->min_opaque_val, input_image->edges, use_dither_map);
     }
 
-    if (edges) free(edges);
+    if (input_image->edges) free(input_image->edges);
     pam_freecolormap(acolormap);
 
     return SUCCESS;
-    }
+}
 
 

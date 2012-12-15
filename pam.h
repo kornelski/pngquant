@@ -198,6 +198,7 @@ typedef struct colormap {
     colormap_item *palette;
     struct colormap *subset_palette;
     unsigned int colors;
+    double palette_error;
 } colormap;
 
 struct acolorhist_arr_item {

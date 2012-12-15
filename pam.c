@@ -241,6 +241,7 @@ colormap *pam_colormap(unsigned int colors)
     map->palette = calloc(colors, sizeof(map->palette[0]));
     map->subset_palette = NULL;
     map->colors = colors;
+    map->palette_error = -1;
     return map;
 }
 

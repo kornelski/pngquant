@@ -80,7 +80,11 @@ typedef struct {
     bool modified;
 } pngquant_image;
 
-static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options);
+static colormap *pngquant_quantize(histogram *hist, const struct pngquant_options *options);
+static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options);
+static void prepare_image(pngquant_image *input_image, struct pngquant_options *options);
+static void pngquant_image_free(pngquant_image *input_image);
+static histogram *get_histogram(const png24_image *input_image, const float *importance_map, const struct pngquant_options *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
@@ -512,7 +516,28 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     if (!retval) {
         verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
                        (input_image.rwpng_image.file_size+1023UL)/1024UL, 1.0/input_image.rwpng_image.gamma);
-        retval = pngquant(&input_image, &output_image, options);
+
+        prepare_image(&input_image, options);
+
+        histogram *hist = get_histogram(&input_image.rwpng_image, input_image.noise, options);
+        if (input_image.noise) {
+            free(input_image.noise);
+            input_image.noise = NULL;
+        }
+
+        colormap *palette = pngquant_quantize(hist, options);
+        pam_freeacolorhist(hist);
+
+        if (palette) {
+            retval = pngquant_remap(palette, &input_image, &output_image, options);
+            pam_freecolormap(palette);
+        } else {
+            if (input_image.edges) {
+                free(input_image.edges);
+                input_image.edges = NULL;
+            }
+            retval = TOO_LOW_QUALITY;
+        }
     }
 
     if (!retval) {
@@ -1208,44 +1233,35 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_
     return acolormap;
 }
 
-static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options)
+static void prepare_image(pngquant_image *input_image, struct pngquant_options *options)
 {
-    const int speed_tradeoff = options->speed_tradeoff, reqcolors = options->reqcolors;
-    const double max_mse = options->max_mse;
-    assert(min_opaque_val>0);
-    assert(max_mse >= target_mse);
-
-
     if (options->min_opaque_val <= 254.f/255.f) {
         verbose_print(options, "  Working around IE6 bug by making image less transparent...");
         modify_alpha(&input_image->rwpng_image, options->min_opaque_val);
         input_image->modified = true;
     }
 
-    if (speed_tradeoff < 8 && input_image->rwpng_image.width >= 4 && input_image->rwpng_image.height >= 4) {
+    if (options->speed_tradeoff < 8 && input_image->rwpng_image.width >= 4 && input_image->rwpng_image.height >= 4) {
         contrast_maps((const rgb_pixel**)input_image->rwpng_image.row_pointers, input_image->rwpng_image.width, input_image->rwpng_image.height, input_image->rwpng_image.gamma,
                    &input_image->noise, &input_image->edges);
     }
+}
 
-    // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
-    // noise map does not include edges to avoid ruining anti-aliasing
-    histogram *hist = get_histogram(&input_image->rwpng_image, input_image->noise, options);
-    if (input_image->noise) {
-        free(input_image->noise);
-        input_image->noise = NULL;
-    }
+static colormap *pngquant_quantize(histogram *hist, const struct pngquant_options *options)
+{
+    const double max_mse = options->max_mse;
 
     double palette_error = -1;
-    colormap *acolormap = find_best_palette(hist, reqcolors, 56-9*speed_tradeoff, options, &palette_error);
+    colormap *acolormap = find_best_palette(hist, options->reqcolors, 56-9*options->speed_tradeoff, options, &palette_error);
 
     // Voronoi iteration approaches local minimum for the palette
-    unsigned int iterations = MAX(8-speed_tradeoff,0); iterations += iterations * iterations/2;
+    unsigned int iterations = MAX(8-options->speed_tradeoff,0); iterations += iterations * iterations/2;
     if (!iterations && palette_error < 0 && max_mse < MAX_DIFF) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
 
     if (iterations) {
         verbose_print(options, "  moving colormap towards local minimum");
 
-        const double iteration_limit = 1.0/(double)(1<<(23-speed_tradeoff));
+        const double iteration_limit = 1.0/(double)(1<<(23-options->speed_tradeoff));
         double previous_palette_error = MAX_DIFF;
         for(unsigned int i=0; i < iterations; i++) {
             palette_error = viter_do_iteration(hist, acolormap, options->min_opaque_val, NULL);
@@ -1263,17 +1279,19 @@ static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_i
         }
     }
 
-    pam_freeacolorhist(hist);
-
     if (palette_error > max_mse) {
         verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0, max_mse*65536.0);
-        if (input_image->edges) {
-            free(input_image->edges);
-            input_image->edges = NULL;
-        }
         pam_freecolormap(acolormap);
-        return TOO_LOW_QUALITY;
+        return NULL;
     }
+
+    acolormap->palette_error = palette_error;
+    return acolormap;
+}
+
+static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options)
+{
+    double palette_error = acolormap->palette_error;
 
     output_image->width = input_image->rwpng_image.width;
     output_image->height = input_image->rwpng_image.height;
@@ -1303,7 +1321,7 @@ static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_i
      */
 
     const bool floyd = options->floyd,
-              use_dither_map = floyd && input_image->edges && speed_tradeoff < 6;
+              use_dither_map = floyd && input_image->edges && options->speed_tradeoff < 6;
 
     if (!floyd || use_dither_map) {
         // If no dithering is required, that's the final remapping.
@@ -1337,7 +1355,6 @@ static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_i
         free(input_image->edges);
         input_image->edges = NULL;
     }
-    pam_freecolormap(acolormap);
 
     return SUCCESS;
 }

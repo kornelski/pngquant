@@ -77,6 +77,7 @@ struct pngquant_options {
 typedef struct {
     png24_image rwpng_image;
     float *noise, *edges;
+    bool modified;
 } pngquant_image;
 
 static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options);
@@ -525,7 +526,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
-        if (options->min_opaque_val == 1.f) {
+        if (!input_image.modified) {
             #pragma omp critical (libpng)
             {
                 int write_retval = write_image(NULL, &input_image.rwpng_image, outname, options);
@@ -1224,6 +1225,7 @@ static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_i
     if (options->min_opaque_val <= 254.f/255.f) {
         verbose_print(options, "  Working around IE6 bug by making image less transparent...");
         modify_alpha(&input_image->rwpng_image, options->min_opaque_val);
+        input_image->modified = true;
     }
 
     if (speed_tradeoff < 8 && input_image->rwpng_image.width >= 4 && input_image->rwpng_image.height >= 4) {

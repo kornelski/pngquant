@@ -16,6 +16,7 @@
 
 #include <math.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #ifndef MAX
 #  define MAX(a,b)  ((a) > (b)? (a) : (b))
@@ -213,13 +214,18 @@ struct acolorhist_arr_head {
     } inline1, inline2;
 };
 
-typedef struct {
+struct acolorhash_table {
     struct mempool *mempool;
     struct acolorhist_arr_head *buckets;
     unsigned int colors;
     struct acolorhist_arr_item *freestack[512];
     unsigned int freestackp;
-} *acolorhash_table;
+};
+
+void pam_freeacolorhash(struct acolorhash_table *acht);
+struct acolorhash_table *pam_allocacolorhash();
+histogram *pam_acolorhashtoacolorhist(struct acolorhash_table *acht, float gamma);
+bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, double gamma, unsigned int maxacolors, unsigned int ignorebits, const float *importance_map);
 
 histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], unsigned int cols, unsigned int rows, float gamma, unsigned int maxacolors, unsigned int ignorebits, const float *imp);
 void pam_freeacolorhist(histogram *h);

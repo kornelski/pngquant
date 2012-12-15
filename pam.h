@@ -216,6 +216,9 @@ struct acolorhist_arr_head {
 typedef struct {
     struct mempool *mempool;
     struct acolorhist_arr_head *buckets;
+    unsigned int colors;
+    struct acolorhist_arr_item *freestack[512];
+    unsigned int freestackp;
 } *acolorhash_table;
 
 histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], unsigned int cols, unsigned int rows, float gamma, unsigned int maxacolors, unsigned int ignorebits, const float *imp);

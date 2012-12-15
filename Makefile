@@ -24,9 +24,9 @@ LDFLAGS += -lz -lpng -lm $(LDFLAGSADD)
 OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
 COCOA_OBJS = rwpng_cocoa.o
 
-DISTFILES = $(OBJS:.o=.c) *.[h1] Makefile README.md INSTALL CHANGELOG COPYRIGHT
+DISTFILES = $(OBJS:.o=.c) *.[hm] pngquant.1 Makefile README.md INSTALL CHANGELOG COPYRIGHT
 TARNAME = pngquant-$(VERSION)
-TARFILE = $(TARNAME).tar.gz
+TARFILE = $(TARNAME)-src.tar.bz2
 
 ifdef USE_COCOA
 CFLAGS += -DUSE_COCOA=1
@@ -59,8 +59,9 @@ $(TARFILE): $(DISTFILES)
 	rm -rf $(TARFILE) $(TARNAME)
 	mkdir $(TARNAME)
 	cp $(DISTFILES) $(TARNAME)
-	tar -czf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
+	tar -cjf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
 	rm -rf $(TARNAME)
+	shasum $(TARFILE)
 
 clean:
 	rm -f $(BIN) $(OBJS) $(COCOA_OBJS) $(TARFILE)

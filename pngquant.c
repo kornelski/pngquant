@@ -461,6 +461,30 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
+static void pngquant_image_free(pngquant_image *input_image)
+{
+    /* now we're done with the INPUT data and row_pointers, so free 'em */
+    if (input_image->rwpng_image.rgba_data) {
+        free(input_image->rwpng_image.rgba_data);
+        input_image->rwpng_image.rgba_data = NULL;
+    }
+
+    if (input_image->rwpng_image.row_pointers) {
+        free(input_image->rwpng_image.row_pointers);
+        input_image->rwpng_image.row_pointers = NULL;
+    }
+
+    if (input_image->noise) {
+        free(input_image->noise);
+        input_image->noise = NULL;
+    }
+
+    if (input_image->edges) {
+        free(input_image->edges);
+        input_image->edges = NULL;
+    }
+}
+
 
 int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
 {
@@ -514,13 +538,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         }
     }
 
-    /* now we're done with the INPUT data and row_pointers, so free 'em */
-    if (input_image.rwpng_image.rgba_data) {
-        free(input_image.rwpng_image.rgba_data);
-    }
-    if (input_image.rwpng_image.row_pointers) {
-        free(input_image.rwpng_image.row_pointers);
-    }
+    pngquant_image_free(&input_image);
 
     if (outname) free(outname);
 
@@ -1216,7 +1234,10 @@ static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_i
     // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
     // noise map does not include edges to avoid ruining anti-aliasing
     histogram *hist = get_histogram(&input_image->rwpng_image, input_image->noise, options);
-    if (input_image->noise) free(input_image->noise);
+    if (input_image->noise) {
+        free(input_image->noise);
+        input_image->noise = NULL;
+    }
 
     double palette_error = -1;
     colormap *acolormap = find_best_palette(hist, reqcolors, 56-9*speed_tradeoff, options, &palette_error);
@@ -1250,7 +1271,10 @@ static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_i
 
     if (palette_error > max_mse) {
         verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0, max_mse*65536.0);
-        if (input_image->edges) free(input_image->edges);
+        if (input_image->edges) {
+            free(input_image->edges);
+            input_image->edges = NULL;
+        }
         pam_freecolormap(acolormap);
         return TOO_LOW_QUALITY;
     }
@@ -1313,10 +1337,12 @@ static pngquant_error pngquant(pngquant_image *input_image, png8_image *output_i
         remap_to_palette_floyd(&input_image->rwpng_image, output_image, acolormap, options->min_opaque_val, input_image->edges, use_dither_map);
     }
 
-    if (input_image->edges) free(input_image->edges);
+    if (input_image->edges) {
+        free(input_image->edges);
+        input_image->edges = NULL;
+    }
     pam_freecolormap(acolormap);
 
     return SUCCESS;
 }
-
 

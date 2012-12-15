@@ -98,14 +98,14 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, un
                to reduce number of allocations of achl->other_items.
              */
             struct acolorhist_arr_head *achl = &buckets[hash];
-            if (achl->color1.l == px.l && achl->used) {
-                achl->perceptual_weight1 += boost;
+            if (achl->inline1.color.l == px.l && achl->used) {
+                achl->inline1.perceptual_weight += boost;
                 continue;
             }
             if (achl->used) {
                 if (achl->used > 1) {
-                    if (achl->color2.l == px.l) {
-                        achl->perceptual_weight2 += boost;
+                    if (achl->inline2.color.l == px.l) {
+                        achl->inline2.perceptual_weight += boost;
                         continue;
                     }
                     // other items are stored as an array (which gets reallocated if needed)
@@ -164,14 +164,14 @@ static acolorhash_table pam_computeacolorhash(const rgb_pixel*const* apixels, un
                     achl->used++;
                 } else {
                     // these are elses for first checks whether first and second inline-stored colors are used
-                    achl->color2.l = px.l;
-                    achl->perceptual_weight2 = boost;
+                    achl->inline2.color.l = px.l;
+                    achl->inline2.perceptual_weight = boost;
                     achl->used = 2;
                     ++colors;
                 }
             } else {
-                achl->color1.l = px.l;
-                achl->perceptual_weight1 = boost;
+                achl->inline1.color.l = px.l;
+                achl->inline1.perceptual_weight = boost;
                 achl->used = 1;
                 ++colors;
             }
@@ -204,15 +204,15 @@ static histogram *pam_acolorhashtoacolorhist(acolorhash_table acht, unsigned int
     for(unsigned int j=0, i=0; i < HASH_SIZE; ++i) {
         struct acolorhist_arr_head *achl = &acht->buckets[i];
         if (achl->used) {
-            hist->achv[j].acolor = to_f(gamma, achl->color1.rgb);
-            hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->perceptual_weight1;
-            total_weight += achl->perceptual_weight1;
+            hist->achv[j].acolor = to_f(gamma, achl->inline1.color.rgb);
+            hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->inline1.perceptual_weight;
+            total_weight += achl->inline1.perceptual_weight;
             ++j;
 
             if (achl->used > 1) {
-                hist->achv[j].acolor = to_f(gamma, achl->color2.rgb);
-                hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->perceptual_weight2;
-                total_weight += achl->perceptual_weight2;
+                hist->achv[j].acolor = to_f(gamma, achl->inline2.color.rgb);
+                hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = achl->inline2.perceptual_weight;
+                total_weight += achl->inline2.perceptual_weight;
                 ++j;
 
                 struct acolorhist_arr_item *a = achl->other_items;

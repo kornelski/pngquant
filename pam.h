@@ -207,8 +207,10 @@ struct acolorhist_arr_item {
 struct acolorhist_arr_head {
     unsigned int used, capacity;
     struct acolorhist_arr_item *other_items;
-    union rgb_as_long color1, color2;
-    float perceptual_weight1, perceptual_weight2;
+    struct {
+        union rgb_as_long color;
+        float perceptual_weight;
+    } inline1, inline2;
 };
 
 typedef struct {

@@ -85,7 +85,7 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
 static void prepare_image(pngquant_image *input_image, struct pngquant_options *options);
 static void pngquant_image_free(pngquant_image *input_image);
 static void pngquant_output_image_free(png8_image *output_image);
-static histogram *get_histogram(const png24_image *input_image, const float *importance_map, const struct pngquant_options *options);
+static histogram *get_histogram(pngquant_image *input_image, struct pngquant_options *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
@@ -530,7 +530,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
 
         prepare_image(&input_image, options);
 
-        histogram *hist = get_histogram(&input_image.rwpng_image, input_image.noise, options);
+        histogram *hist = get_histogram(&input_image, options);
         if (input_image.noise) {
             free(input_image.noise);
             input_image.noise = NULL;
@@ -957,14 +957,11 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
 }
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
-static histogram *get_histogram(const png24_image *input_image, const float *importance_map, const struct pngquant_options *options)
+static histogram *get_histogram(pngquant_image *input_image, struct pngquant_options *options)
 {
-    histogram *hist;
     unsigned int ignorebits=0;
-    const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->row_pointers;
-    const unsigned int cols = input_image->width, rows = input_image->height;
-    const float gamma = input_image->gamma;
-    assert(gamma > 0);
+    const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->rwpng_image.row_pointers;
+    const unsigned int cols = input_image->rwpng_image.width, rows = input_image->rwpng_image.height;
 
    /*
     ** Step 2: attempt to make a histogram of the colors, unclustered.
@@ -975,14 +972,28 @@ static histogram *get_histogram(const png24_image *input_image, const float *imp
     if (options->speed_tradeoff > 7) ignorebits++;
     unsigned int maxcolors = (1<<17) + (1<<18)*(10-options->speed_tradeoff);
 
+    struct acolorhash_table *acht = pam_allocacolorhash(maxcolors, ignorebits);
     for (; ;) {
 
-        hist = pam_computeacolorhist(input_pixels, cols, rows, gamma, maxcolors, ignorebits, importance_map);
-        if (hist) break;
+        // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
+        // noise map does not include edges to avoid ruining anti-aliasing
+        if (pam_computeacolorhash(acht, input_pixels, cols, rows, input_image->noise)) {
+            break;
+        }
 
         ignorebits++;
-        verbose_print(options, "too many colors!  scaling colors to improve clustering...");
+        verbose_print(options, "  too many colors! Scaling colors to improve clustering...");
+        pam_freeacolorhash(acht);
+        acht = pam_allocacolorhash(maxcolors, ignorebits);
     }
+
+    if (input_image->noise) {
+        free(input_image->noise);
+        input_image->noise = NULL;
+    }
+
+    histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->rwpng_image.gamma);
+    pam_freeacolorhash(acht);
 
     verbose_printf(options, "  made histogram...%d colors found", hist->size);
     return hist;

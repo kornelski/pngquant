@@ -34,22 +34,6 @@
 
 #define HASH_SIZE (((1<<19) - sizeof(struct acolorhash_table)) / sizeof(struct acolorhist_arr_head) - 1)
 
-/**
- * Builds color histogram no larger than maxacolors. Ignores (posterizes) ignorebits lower bits in each color.
- * perceptual_weight of each entry is increased by value from importance_map
- */
-histogram *pam_computeacolorhist(const rgb_pixel*const apixels[], unsigned int cols, unsigned int rows, float gamma, unsigned int maxacolors, unsigned int ignorebits, const float *importance_map)
-{
-    struct acolorhash_table *acht = pam_allocacolorhash(maxacolors, ignorebits);
-    histogram *hist = NULL;
-
-    if (pam_computeacolorhash(acht, apixels, cols, rows, importance_map)) {
-        hist = pam_acolorhashtoacolorhist(acht, gamma);
-    }
-    pam_freeacolorhash(acht);
-    return hist;
-}
-
 bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map)
 {
     const unsigned int maxacolors = acht->maxcolors, ignorebits = acht->ignorebits;

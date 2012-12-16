@@ -579,17 +579,14 @@ static int compare_popularity(const void *ch1, const void *ch2)
     return v1 > v2 ? 1 : -1;
 }
 
-static void sort_palette(png8_image *output_image, colormap *map, const struct pngquant_options *options)
+static void sort_palette(colormap *map, const struct pngquant_options *options)
 {
-    assert(map); assert(output_image);
-
     /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with
     ** the maximal alpha value (i.e., fully opaque) are at the end and can
     ** therefore be omitted from the tRNS chunk.
     */
 
-    output_image->num_palette = map->colors;
 
     if (options->last_index_transparent) for(unsigned int i=0; i < map->colors; i++) {
         if (map->palette[i].acolor.a < 1.0/256.0) {
@@ -601,8 +598,6 @@ static void sort_palette(png8_image *output_image, colormap *map, const struct p
 
             /* colors sorted by popularity make pngs slightly more compressible */
             qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
-
-            output_image->num_trans = map->colors;
             return;
         }
     }
@@ -610,8 +605,7 @@ static void sort_palette(png8_image *output_image, colormap *map, const struct p
     /* move transparent colors to the beginning to shrink trns chunk */
     int num_transparent=0;
     for(unsigned int i=0; i < map->colors; i++) {
-        rgb_pixel px = to_rgb(output_image->gamma, map->palette[i].acolor);
-        if (px.a != 255) {
+        if (map->palette[i].acolor.a < 255.0/256.0) {
             // current transparent color is swapped with earlier opaque one
             if (i != num_transparent) {
                 const colormap_item tmp = map->palette[num_transparent];
@@ -630,8 +624,6 @@ static void sort_palette(png8_image *output_image, colormap *map, const struct p
      */
     qsort(map->palette, num_transparent, sizeof(map->palette[0]), compare_popularity);
     qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
-
-    output_image->num_trans = num_transparent;
 }
 
 static void set_palette(png8_image *output_image, const colormap *map, double input_gamma)
@@ -1299,6 +1291,8 @@ static colormap *pngquant_quantize(histogram *hist, const struct pngquant_option
         return NULL;
     }
 
+    sort_palette(acolormap, options);
+
     acolormap->palette_error = palette_error;
     return acolormap;
 }
@@ -1327,7 +1321,13 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
     }
 
     // tRNS, etc.
-    sort_palette(output_image, acolormap, options);
+    output_image->num_palette = acolormap->colors;
+    output_image->num_trans = 0;
+    for(unsigned int i=0; i < acolormap->colors; i++) {
+        if (acolormap->palette[i].acolor.a < 255.0/256.0) {
+            output_image->num_trans = i+1;
+        }
+    }
 
     /*
      ** Step 4: map the colors in the image to their closest match in the

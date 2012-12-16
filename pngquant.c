@@ -84,6 +84,7 @@ static colormap *pngquant_quantize(histogram *hist, const struct pngquant_option
 static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options);
 static void prepare_image(pngquant_image *input_image, struct pngquant_options *options);
 static void pngquant_image_free(pngquant_image *input_image);
+static void pngquant_output_image_free(png8_image *output_image);
 static histogram *get_histogram(const png24_image *input_image, const float *importance_map, const struct pngquant_options *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
@@ -490,6 +491,17 @@ static void pngquant_image_free(pngquant_image *input_image)
     }
 }
 
+static void pngquant_output_image_free(png8_image *output_image)
+{
+    if (output_image->indexed_data) {
+        free(output_image->indexed_data);
+        output_image->indexed_data = NULL;
+    }
+    if (output_image->row_pointers) {
+        free(output_image->row_pointers);
+        output_image->row_pointers = NULL;
+    }
+}
 
 int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
 {
@@ -507,12 +519,11 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     }
 
     pngquant_image input_image = {}; // initializes all fields to 0
-    png8_image output_image = {};
-
     if (!retval) {
         retval = read_image(filename, options->using_stdin, &input_image.rwpng_image);
     }
 
+    png8_image output_image = {};
     if (!retval) {
         verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
                        (input_image.rwpng_image.file_size+1023UL)/1024UL, 1.0/input_image.rwpng_image.gamma);
@@ -556,15 +567,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     }
 
     pngquant_image_free(&input_image);
-
-    if (outname) free(outname);
-
-    if (output_image.indexed_data) {
-        free(output_image.indexed_data);
-    }
-    if (output_image.row_pointers) {
-        free(output_image.row_pointers);
-    }
+    pngquant_output_image_free(&output_image);
 
     return retval;
 }

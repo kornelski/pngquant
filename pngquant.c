@@ -506,10 +506,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     png8_image output_image = {};
 
     if (!retval) {
-        #pragma omp critical (libpng)
-        {
-            retval = read_image(filename, options->using_stdin, &input_image.rwpng_image);
-        }
+        retval = read_image(filename, options->using_stdin, &input_image.rwpng_image);
     }
 
     if (!retval) {
@@ -519,19 +516,13 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     }
 
     if (!retval) {
-        #pragma omp critical (libpng)
-        {
-            retval = write_image(&output_image, NULL, outname, options);
-        }
+        retval = write_image(&output_image, NULL, outname, options);
     } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
         if (!input_image.modified) {
-            #pragma omp critical (libpng)
-            {
-                int write_retval = write_image(NULL, &input_image.rwpng_image, outname, options);
-                if (write_retval) retval = write_retval;
-            }
+            int write_retval = write_image(NULL, &input_image.rwpng_image, outname, options);
+            if (write_retval) retval = write_retval;
         } else {
             // iebug preprocessing changes the original image
             fputs("  error:  can't write the original image when iebug option is enabled\n", stderr);
@@ -918,10 +909,13 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     }
 
     pngquant_error retval;
-    if (output_image) {
-        retval = rwpng_write_image8(outfile, output_image);
-    } else {
-        retval = rwpng_write_image24(outfile, output_image24);
+    #pragma omp critical (libpng)
+    {
+        if (output_image) {
+            retval = rwpng_write_image8(outfile, output_image);
+        } else {
+            retval = rwpng_write_image24(outfile, output_image24);
+        }
     }
 
     if (retval) {
@@ -1008,15 +1002,15 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
         return READ_ERROR;
     }
 
-    /*
-     ** Step 1: read in the alpha-channel image.
-     */
-    /* GRR:  returns RGBA (4 channels), 8 bps */
-#if USE_COCOA
-    pngquant_error retval = rwpng_read_image24_cocoa(infile, input_image_p);
-#else
-    pngquant_error retval = rwpng_read_image24(infile, input_image_p);
-#endif
+    pngquant_error retval;
+    #pragma omp critical (libpng)
+    {
+        #if USE_COCOA
+            retval = rwpng_read_image24_cocoa(infile, input_image_p);
+        #else
+            retval = rwpng_read_image24(infile, input_image_p);
+        #endif
+    }
 
     if (!using_stdin)
         fclose(infile);

@@ -5,7 +5,7 @@ VERSION = $(shell grep 'define PNGQUANT_VERSION' pngquant.c | egrep -Eo '1\.[0-9
 # if this line causes problems with non-GNU make, just remove it:
 CC := $(patsubst cc,gcc,$(CC))
 
-BIN = pngquant
+BIN ?= pngquant
 PREFIX ?= /usr/local
 BINPREFIX = $(PREFIX)/bin
 
@@ -19,7 +19,7 @@ CFLAGS ?= -DNDEBUG -Wall -Wno-unknown-pragmas -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZL
 CFLAGS += -std=c99 $(CFLAGSADD)
 
 LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L/usr/local/lib/ -L/usr/lib/ -L/usr/X11/lib/
-LDFLAGS += -lz -lpng -lm $(LDFLAGSADD)
+LDFLAGS += -lpng -lz -lm $(LDFLAGSADD)
 
 OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
 COCOA_OBJS = rwpng_cocoa.o
@@ -37,7 +37,7 @@ endif
 all: $(BIN)
 
 openmp::
-	$(MAKE) CFLAGSADD=-fopenmp LDFLAGSADD=-lgomp -j8 $(MAKEFLAGS)
+	$(MAKE) CFLAGSADD=-fopenmp LDFLAGSADD="-Bstatic -lgomp" -j8 $(MAKEFLAGS)
 
 $(BIN): $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@

@@ -62,7 +62,7 @@ use --force to overwrite.\n"
 #include "blur.h"
 #include "viter.h"
 
-struct pngquant_options {
+typedef struct liq_attr {
     double target_mse, max_mse;
     float min_opaque_val;
     unsigned int reqcolors;
@@ -72,7 +72,7 @@ struct pngquant_options {
     void (*log_callback)(void *context, const char *msg);
     void (*log_callback_flush)(void *context);
     void *log_callback_context;
-};
+} liq_attr;
 
 typedef struct {
     png24_image rwpng_image;
@@ -80,18 +80,18 @@ typedef struct {
     bool modified;
 } pngquant_image;
 
-static colormap *pngquant_quantize(histogram *hist, const struct pngquant_options *options);
-static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options);
-static void prepare_image(pngquant_image *input_image, struct pngquant_options *options);
+static colormap *pngquant_quantize(histogram *hist, const liq_attr *options);
+static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_image, png8_image *output_image, const liq_attr *options);
+static void prepare_image(pngquant_image *input_image, liq_attr *options);
 static void pngquant_image_free(pngquant_image *input_image);
 static void pngquant_output_image_free(png8_image *output_image);
-static histogram *get_histogram(pngquant_image *input_image, struct pngquant_options *options);
+static histogram *get_histogram(pngquant_image *input_image, liq_attr *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
-static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
+static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, liq_attr *options);
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
 
-static void verbose_printf(const struct pngquant_options *context, const char *fmt, ...)
+static void verbose_printf(const liq_attr *context, const char *fmt, ...)
 {
     if (context->log_callback) {
         va_list va;
@@ -108,7 +108,7 @@ static void verbose_printf(const struct pngquant_options *context, const char *f
     }
 }
 
-inline static void verbose_print(const struct pngquant_options *context, const char *msg)
+inline static void verbose_print(const liq_attr *context, const char *msg)
 {
     if (context->log_callback) context->log_callback(context->log_callback_context, msg);
 }
@@ -118,7 +118,7 @@ static void log_callback(void *context, const char *msg)
     fprintf(stderr, "%s\n", msg);
 }
 
-static void verbose_printf_flush(struct pngquant_options *context)
+static void verbose_printf_flush(liq_attr *context)
 {
     if (context->log_callback_flush) context->log_callback_flush(context->log_callback_context);
 }
@@ -204,7 +204,7 @@ static double quality_to_mse(long quality)
  *
  * where N,M are numbers between 0 (lousy) and 100 (perfect)
  */
-static bool parse_quality(const char *quality, struct pngquant_options *options)
+static bool parse_quality(const char *quality, liq_attr *options)
 {
     long limit, target;
     const char *str = quality; char *end;
@@ -289,11 +289,11 @@ static const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
 };
 
-int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options);
+int pngquant_file(const char *filename, const char *newext, liq_attr *options);
 
 int main(int argc, char *argv[])
 {
-    struct pngquant_options options = {
+    liq_attr options = {
         .reqcolors = 256,
         .floyd = true, // floyd-steinberg dithering
         .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
@@ -417,7 +417,7 @@ int main(int argc, char *argv[])
     #pragma omp parallel for \
         schedule(dynamic) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
     for(int i=0; i < num_files; i++) {
-        struct pngquant_options opts = options;
+        liq_attr opts = options;
         const char *filename = opts.using_stdin ? "stdin" : argv[argn+i];
 
         #ifdef _OPENMP
@@ -503,7 +503,7 @@ static void pngquant_output_image_free(png8_image *output_image)
     }
 }
 
-int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
+int pngquant_file(const char *filename, const char *newext, liq_attr *options)
 {
     int retval = 0;
 
@@ -579,7 +579,7 @@ static int compare_popularity(const void *ch1, const void *ch2)
     return v1 > v2 ? 1 : -1;
 }
 
-static void sort_palette(colormap *map, const struct pngquant_options *options)
+static void sort_palette(colormap *map, const liq_attr *options)
 {
     /*
     ** Step 3.5 [GRR]: remap the palette colors so that all entries with
@@ -930,7 +930,7 @@ static void set_binary_mode(FILE *fp)
 #endif
 }
 
-static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options)
+static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, liq_attr *options)
 {
     FILE *outfile;
     if (options->using_stdin) {
@@ -980,7 +980,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
 }
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
-static histogram *get_histogram(pngquant_image *input_image, struct pngquant_options *options)
+static histogram *get_histogram(pngquant_image *input_image, liq_attr *options)
 {
     unsigned int ignorebits=0;
     const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->rwpng_image.row_pointers;
@@ -1207,7 +1207,7 @@ static void adjust_histogram_callback(hist_item *item, float diff)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(histogram *hist, unsigned int reqcolors, int feedback_loop_trials, const struct pngquant_options *options, double *palette_error_p)
+static colormap *find_best_palette(histogram *hist, unsigned int reqcolors, int feedback_loop_trials, const liq_attr *options, double *palette_error_p)
 {
     const double target_mse = options->target_mse;
     colormap *acolormap = NULL;
@@ -1267,7 +1267,7 @@ static colormap *find_best_palette(histogram *hist, unsigned int reqcolors, int 
     return acolormap;
 }
 
-static void prepare_image(pngquant_image *input_image, struct pngquant_options *options)
+static void prepare_image(pngquant_image *input_image, liq_attr *options)
 {
     if (options->min_opaque_val <= 254.f/255.f) {
         verbose_print(options, "  Working around IE6 bug by making image less transparent...");
@@ -1281,7 +1281,7 @@ static void prepare_image(pngquant_image *input_image, struct pngquant_options *
     }
 }
 
-static colormap *pngquant_quantize(histogram *hist, const struct pngquant_options *options)
+static colormap *pngquant_quantize(histogram *hist, const liq_attr *options)
 {
     const double max_mse = options->max_mse;
 
@@ -1339,7 +1339,7 @@ static colormap *pngquant_quantize(histogram *hist, const struct pngquant_option
     return acolormap;
 }
 
-static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_image, png8_image *output_image, const struct pngquant_options *options)
+static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_image, png8_image *output_image, const liq_attr *options)
 {
     double palette_error = acolormap->palette_error;
 
@@ -1400,7 +1400,7 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
         verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error*65536.0/6.0);
     }
 
-    // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
+        // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
     set_palette(output_image, acolormap);
 
     if (floyd) {

@@ -65,7 +65,7 @@ use --force to overwrite.\n"
 typedef struct liq_attr {
     double target_mse, max_mse;
     float min_opaque_val;
-    unsigned int reqcolors;
+    unsigned int max_colors;
     unsigned int speed_tradeoff;
     bool floyd, last_index_transparent;
     bool using_stdin, force;
@@ -294,7 +294,7 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options);
 int main(int argc, char *argv[])
 {
     liq_attr options = {
-        .reqcolors = 256,
+        .max_colors = 256,
         .floyd = true, // floyd-steinberg dithering
         .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
         .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
@@ -374,11 +374,11 @@ int main(int argc, char *argv[])
     char *colors_end;
     unsigned long colors = strtoul(argv[argn], &colors_end, 10);
     if (colors_end != argv[argn] && '\0' == colors_end[0]) {
-        options.reqcolors = colors;
+        options.max_colors = colors;
         argn++;
     }
 
-    if (options.reqcolors < 2 || options.reqcolors > 256) {
+    if (options.max_colors < 2 || options.max_colors > 256) {
         fputs("Number of colors must be between 2 and 256.\n", stderr);
         return INVALID_ARGUMENT;
     }
@@ -599,8 +599,8 @@ static void sort_palette(colormap *map, const liq_attr *options)
             /* colors sorted by popularity make pngs slightly more compressible */
             qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
             return;
+            }
         }
-    }
 
     /* move transparent colors to the beginning to shrink trns chunk */
     unsigned int num_transparent=0;
@@ -1207,8 +1207,9 @@ static void adjust_histogram_callback(hist_item *item, float diff)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(histogram *hist, unsigned int reqcolors, int feedback_loop_trials, const liq_attr *options, double *palette_error_p)
+static colormap *find_best_palette(histogram *hist, int feedback_loop_trials, const liq_attr *options, double *palette_error_p)
 {
+    unsigned int max_colors = options->max_colors;
     const double target_mse = options->target_mse;
     colormap *acolormap = NULL;
     double least_error = MAX_DIFF;
@@ -1216,7 +1217,7 @@ static colormap *find_best_palette(histogram *hist, unsigned int reqcolors, int 
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
     do {
-        colormap *newmap = mediancut(hist, options->min_opaque_val, reqcolors, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2);
+        colormap *newmap = mediancut(hist, options->min_opaque_val, max_colors, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2);
 
         if (feedback_loop_trials <= 0) {
             return newmap;
@@ -1230,7 +1231,7 @@ static colormap *find_best_palette(histogram *hist, unsigned int reqcolors, int 
         double total_error = viter_do_iteration(hist, newmap, options->min_opaque_val, first_run_of_target_mse ? NULL : adjust_histogram_callback);
 
         // goal is to increase quality or to reduce number of colors used if quality is good enough
-        if (!acolormap || total_error < least_error || (total_error <= target_mse && newmap->colors < reqcolors)) {
+        if (!acolormap || total_error < least_error || (total_error <= target_mse && newmap->colors < max_colors)) {
             if (acolormap) pam_freecolormap(acolormap);
             acolormap = newmap;
 
@@ -1244,7 +1245,7 @@ static colormap *find_best_palette(histogram *hist, unsigned int reqcolors, int 
 
             // if number of colors could be reduced, try to keep it that way
             // but allow extra color as a bit of wiggle room in case quality can be improved too
-            reqcolors = MIN(newmap->colors+1, reqcolors);
+            max_colors = MIN(newmap->colors+1, max_colors);
 
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
@@ -1287,7 +1288,7 @@ static colormap *pngquant_quantize(histogram *hist, const liq_attr *options)
 
     // If image has few colors to begin with (and no quality degradation is required)
     // then it's possible to skip quantization entirely
-    if (hist->size <= options->reqcolors && options->target_mse == 0) {
+    if (hist->size <= options->max_colors && options->target_mse == 0) {
         colormap *hist_palette = pam_colormap(hist->size);
         for(unsigned int i=0; i < hist->size; i++) {
             hist_palette->palette[i].acolor = hist->achv[i].acolor;
@@ -1300,7 +1301,7 @@ static colormap *pngquant_quantize(histogram *hist, const liq_attr *options)
     }
 
     double palette_error = -1;
-    colormap *acolormap = find_best_palette(hist, options->reqcolors, 56-9*options->speed_tradeoff, options, &palette_error);
+    colormap *acolormap = find_best_palette(hist, 56-9*options->speed_tradeoff, options, &palette_error);
 
     // Voronoi iteration approaches local minimum for the palette
     unsigned int iterations = MAX(8-options->speed_tradeoff,0); iterations += iterations * iterations/2;
@@ -1400,7 +1401,7 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
         verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error*65536.0/6.0);
     }
 
-        // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
+    // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
     set_palette(output_image, acolormap);
 
     if (floyd) {

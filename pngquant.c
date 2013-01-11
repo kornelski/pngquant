@@ -62,7 +62,9 @@ use --force to overwrite.\n"
 #include "blur.h"
 #include "viter.h"
 
-typedef struct liq_attr {
+#include "pngquant.h"
+
+struct liq_attr {
     double target_mse, max_mse;
     float min_opaque_val;
     unsigned int max_colors;
@@ -72,7 +74,7 @@ typedef struct liq_attr {
     void (*log_callback)(void *context, const char *msg);
     void (*log_callback_flush)(void *context);
     void *log_callback_context;
-} liq_attr;
+};
 
 typedef struct {
     png24_image rwpng_image;
@@ -229,11 +231,34 @@ static bool parse_quality(const char *quality, liq_attr *options)
         limit = t1;
     }
 
-    if (target < 0 || target > 100 || limit < 0 || limit > 100) return false;
+    return LIQ_OK == liq_set_quality(options, target, limit);
+}
 
-    options->max_mse = quality_to_mse(limit);
-    options->target_mse = quality_to_mse(target);
-    return true;
+LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int target, int minimum)
+{
+    if (target < 0 || target > 100 || target < minimum || minimum < 0) return LIQ_VALUE_OUT_OF_RANGE;
+    attr->target_mse = quality_to_mse(target);
+    attr->max_mse = quality_to_mse(minimum);
+    return LIQ_OK;
+}
+
+LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)
+{
+    if (colors < 2 || colors > 256) return LIQ_VALUE_OUT_OF_RANGE;
+    attr->max_colors = colors;
+    return LIQ_OK;
+}
+
+LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed) {
+    if (speed < 1 || speed > 10) return LIQ_VALUE_OUT_OF_RANGE;
+    attr->speed_tradeoff = speed;
+    return LIQ_OK;
+}
+
+LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min) {
+    if (min < 0 || min > 255) return LIQ_VALUE_OUT_OF_RANGE;
+    attr->min_opaque_val = (double)min/255.0;
+    return LIQ_OK;
 }
 
 static const struct {const char *old; char *new;} obsolete_options[] = {
@@ -321,7 +346,7 @@ int main(int argc, char *argv[])
             case arg_ext: newext = optarg; break;
 
             case arg_iebug:
-            options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
+                liq_set_min_opacity(&options, 238); // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
                 break;
 
             case arg_transbug:
@@ -329,8 +354,7 @@ int main(int argc, char *argv[])
                 break;
 
             case 's':
-                options.speed_tradeoff = atoi(optarg);
-                if (options.speed_tradeoff < 1 || options.speed_tradeoff > 10) {
+                if (LIQ_OK != liq_set_speed(&options, atoi(optarg))) {
                     fputs("Speed should be between 1 (slow) and 10 (fast).\n", stderr);
                     return INVALID_ARGUMENT;
                 }
@@ -374,13 +398,11 @@ int main(int argc, char *argv[])
     char *colors_end;
     unsigned long colors = strtoul(argv[argn], &colors_end, 10);
     if (colors_end != argv[argn] && '\0' == colors_end[0]) {
-        options.max_colors = colors;
+        if (LIQ_OK != liq_set_max_colors(&options, colors)) {
+            fputs("Number of colors must be between 2 and 256.\n", stderr);
+            return INVALID_ARGUMENT;
+        }
         argn++;
-    }
-
-    if (options.max_colors < 2 || options.max_colors > 256) {
-        fputs("Number of colors must be between 2 and 256.\n", stderr);
-        return INVALID_ARGUMENT;
     }
 
     // new filename extension depends on options used. Typically basename-fs8.png

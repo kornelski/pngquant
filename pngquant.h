@@ -29,6 +29,12 @@ LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed);
 LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min);
 LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int target, int minimum);
 
+typedef void liq_log_callback_function(const liq_attr*, const char *message, void* user_info);
+typedef void liq_log_flush_callback_function(const liq_attr*, void* user_info);
+LIQ_EXPORT void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void* user_info);
+LIQ_EXPORT void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void* user_info);
+
+
 #ifdef __cplusplus
 }
 #endif

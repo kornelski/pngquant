@@ -71,9 +71,10 @@ struct liq_attr {
     unsigned int speed_tradeoff;
     bool floyd, last_index_transparent;
     bool using_stdin, force;
-    void (*log_callback)(void *context, const char *msg);
-    void (*log_callback_flush)(void *context);
-    void *log_callback_context;
+    liq_log_callback_function *log_callback;
+    void *log_callback_user_info;
+    liq_log_flush_callback_function *log_flush_callback;
+    void *log_flush_callback_user_info;
 };
 
 typedef struct {
@@ -106,23 +107,23 @@ static void verbose_printf(const liq_attr *context, const char *fmt, ...)
         vsnprintf(buf, required_space, fmt, va);
         va_end(va);
 
-        context->log_callback(context->log_callback_context, buf);
+        context->log_callback(context, buf, context->log_callback_user_info);
     }
 }
 
-inline static void verbose_print(const liq_attr *context, const char *msg)
+inline static void verbose_print(const liq_attr *attr, const char *msg)
 {
-    if (context->log_callback) context->log_callback(context->log_callback_context, msg);
+    if (attr->log_callback) attr->log_callback(attr, msg, attr->log_callback_user_info);
 }
 
-static void log_callback(void *context, const char *msg)
+static void log_callback(const liq_attr *attr, const char *msg, void* user_info)
 {
     fprintf(stderr, "%s\n", msg);
 }
 
-static void verbose_printf_flush(liq_attr *context)
+static void verbose_printf_flush(liq_attr *attr)
 {
-    if (context->log_callback_flush) context->log_callback_flush(context->log_callback_context);
+    if (attr->log_flush_callback) attr->log_flush_callback(attr, attr->log_flush_callback_user_info);
 }
 
 #ifdef _OPENMP
@@ -132,7 +133,7 @@ struct buffered_log {
     char buf[LOG_BUFFER_SIZE];
 };
 
-static void log_callback_buferred_flush(void *context)
+static void log_callback_buferred_flush(const liq_attr *attr, void *context)
 {
     struct buffered_log *log = context;
     if (log->buf_used) {
@@ -141,12 +142,12 @@ static void log_callback_buferred_flush(void *context)
     }
 }
 
-static void log_callback_buferred(void *context, const char *msg)
+static void log_callback_buferred(const liq_attr *attr, const char *msg, void* context)
 {
     struct buffered_log *log = context;
     int len = MIN(LOG_BUFFER_SIZE-1, strlen(msg));
 
-    if (len > LOG_BUFFER_SIZE - log->buf_used - 2) log_callback_buferred_flush(log);
+    if (len > LOG_BUFFER_SIZE - log->buf_used - 2) log_callback_buferred_flush(attr, log);
     memcpy(&log->buf[log->buf_used], msg, len);
     log->buf_used += len+1;
     assert(log->buf_used < LOG_BUFFER_SIZE);
@@ -261,6 +262,18 @@ LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min) {
     return LIQ_OK;
 }
 
+LIQ_EXPORT void liq_set_log_callback(liq_attr *attr, liq_log_callback_function *callback, void* user_info)
+{
+    attr->log_callback = callback;
+    attr->log_callback_user_info = user_info;
+}
+
+LIQ_EXPORT void liq_set_log_flush_callback(liq_attr *attr, liq_log_flush_callback_function *callback, void* user_info)
+{
+    attr->log_flush_callback = callback;
+    attr->log_flush_callback_user_info = user_info;
+}
+
 static const struct {const char *old; char *new;} obsolete_options[] = {
     {"-fs","--floyd"},
     {"-nofs", "--ordered"},
@@ -337,8 +350,8 @@ int main(int argc, char *argv[])
     do {
         opt = getopt_long(argc, argv, "Vvqfhs:", long_options, NULL);
         switch (opt) {
-            case 'v': options.log_callback = log_callback; break;
-            case 'q': options.log_callback = NULL; break;
+            case 'v': liq_set_log_callback(&options, log_callback, NULL); break;
+            case 'q': liq_set_log_callback(&options, NULL, NULL); break;
             case arg_floyd: options.floyd = true; break;
             case arg_ordered: options.floyd = false; break;
             case 'f': options.force = true; break;
@@ -444,11 +457,10 @@ int main(int argc, char *argv[])
 
         #ifdef _OPENMP
         struct buffered_log buf = {};
-        if (opts.log_callback && omp_get_num_threads() > 1 && num_files > 1) {
-            verbose_printf_flush(&opts);
-            opts.log_callback = log_callback_buferred;
-            opts.log_callback_flush = log_callback_buferred_flush;
-            opts.log_callback_context = &buf;
+        if (opts.liq->log_callback && omp_get_num_threads() > 1 && num_files > 1) {
+            verbose_printf_flush(opts.liq);
+            liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
+            liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
         }
         #endif
 

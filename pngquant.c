@@ -86,8 +86,14 @@ struct liq_image {
     bool modified;
 };
 
-static colormap *pngquant_quantize(histogram *hist, const liq_attr *options);
-static pngquant_error pngquant_remap(colormap *acolormap, liq_image *input_image, png8_image *output_image, const liq_attr *options);
+struct liq_result {
+    colormap *palette;
+    double palette_error;
+};
+
+static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options);
+static pngquant_error prepare_output_image(colormap *acolormap, liq_image *input_image, png8_image *output_image, const liq_attr *options);
+static void pngquant_remap(liq_result *res, liq_image *input_image, png8_image *output_image, const liq_attr *options);
 static void prepare_image(liq_image *input_image, liq_attr *options);
 static void pngquant_output_image_free(png8_image *output_image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
@@ -539,6 +545,27 @@ static void pngquant_output_image_free(png8_image *output_image)
     }
 }
 
+LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image)
+{
+    prepare_image(input_image, options);
+
+    histogram *hist = get_histogram(input_image, options);
+    if (input_image->noise) {
+        free(input_image->noise);
+        input_image->noise = NULL;
+    }
+
+    liq_result *result = pngquant_quantize(hist, options);
+    pam_freeacolorhist(hist);
+    return result;
+}
+
+LIQ_EXPORT void liq_result_destroy(liq_result *res)
+{
+    pam_freecolormap(res->palette);
+    free(res);
+}
+
 int pngquant_file(const char *filename, const char *newext, liq_attr *options)
 {
     int retval = 0;
@@ -568,20 +595,12 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
         verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
                        (input_image.rwpng_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
 
-        prepare_image(&input_image, options);
+        liq_result *result = liq_quantize_image(options, &input_image);
 
-        histogram *hist = get_histogram(&input_image, options);
-        if (input_image.noise) {
-            free(input_image.noise);
-            input_image.noise = NULL;
-        }
-
-        colormap *palette = pngquant_quantize(hist, options);
-        pam_freeacolorhist(hist);
-
-        if (palette) {
-            retval = pngquant_remap(palette, &input_image, &output_image, options);
-            pam_freecolormap(palette);
+        if (result) {
+            retval = prepare_output_image(result->palette, &input_image, &output_image, options);
+            if (!retval) pngquant_remap(result, &input_image, &output_image, options);
+            liq_result_destroy(result);
         } else {
             if (input_image.edges) {
                 free(input_image.edges);
@@ -1322,68 +1341,69 @@ static void prepare_image(liq_image *input_image, liq_attr *options)
     }
 }
 
-static colormap *pngquant_quantize(histogram *hist, const liq_attr *options)
+static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
 {
     const double max_mse = options->max_mse;
+    colormap *acolormap;
+    double palette_error = -1;
 
     // If image has few colors to begin with (and no quality degradation is required)
     // then it's possible to skip quantization entirely
     if (hist->size <= options->max_colors && options->target_mse == 0) {
-        colormap *hist_palette = pam_colormap(hist->size);
+        acolormap = pam_colormap(hist->size);
         for(unsigned int i=0; i < hist->size; i++) {
-            hist_palette->palette[i].acolor = hist->achv[i].acolor;
-            hist_palette->palette[i].popularity = hist->achv[i].perceptual_weight;
+            acolormap->palette[i].acolor = hist->achv[i].acolor;
+            acolormap->palette[i].popularity = hist->achv[i].perceptual_weight;
+        }
+        palette_error = 0;
+    }
+    else {
+        acolormap = find_best_palette(hist, 56-9*options->speed_tradeoff, options, &palette_error);
+
+        // Voronoi iteration approaches local minimum for the palette
+        unsigned int iterations = MAX(8-options->speed_tradeoff,0); iterations += iterations * iterations/2;
+        if (!iterations && palette_error < 0 && max_mse < MAX_DIFF) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
+
+        if (iterations) {
+            verbose_print(options, "  moving colormap towards local minimum");
+
+            const double iteration_limit = 1.0/(double)(1<<(23-options->speed_tradeoff));
+            double previous_palette_error = MAX_DIFF;
+            for(unsigned int i=0; i < iterations; i++) {
+                palette_error = viter_do_iteration(hist, acolormap, options->min_opaque_val, NULL);
+
+                if (fabs(previous_palette_error-palette_error) < iteration_limit) {
+                    break;
+                }
+
+                if (palette_error > max_mse*1.5) { // probably hopeless
+                    if (palette_error > max_mse*3.0) break; // definitely hopeless
+                    iterations++;
+                }
+
+                previous_palette_error = palette_error;
+            }
         }
 
-        sort_palette(hist_palette, options);
-        hist_palette->palette_error = 0;
-        return hist_palette;
-    }
-
-    double palette_error = -1;
-    colormap *acolormap = find_best_palette(hist, 56-9*options->speed_tradeoff, options, &palette_error);
-
-    // Voronoi iteration approaches local minimum for the palette
-    unsigned int iterations = MAX(8-options->speed_tradeoff,0); iterations += iterations * iterations/2;
-    if (!iterations && palette_error < 0 && max_mse < MAX_DIFF) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
-
-    if (iterations) {
-        verbose_print(options, "  moving colormap towards local minimum");
-
-        const double iteration_limit = 1.0/(double)(1<<(23-options->speed_tradeoff));
-        double previous_palette_error = MAX_DIFF;
-        for(unsigned int i=0; i < iterations; i++) {
-            palette_error = viter_do_iteration(hist, acolormap, options->min_opaque_val, NULL);
-
-            if (fabs(previous_palette_error-palette_error) < iteration_limit) {
-                break;
-            }
-
-            if (palette_error > max_mse*1.5) { // probably hopeless
-                if (palette_error > max_mse*3.0) break; // definitely hopeless
-                iterations++;
-            }
-
-            previous_palette_error = palette_error;
+        if (palette_error > max_mse) {
+            verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0/6.0, max_mse*65536.0/6.0);
+            pam_freecolormap(acolormap);
+            return NULL;
         }
-    }
-
-    if (palette_error > max_mse) {
-        verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0/6.0, max_mse*65536.0/6.0);
-        pam_freecolormap(acolormap);
-        return NULL;
     }
 
     sort_palette(acolormap, options);
 
-    acolormap->palette_error = palette_error;
-    return acolormap;
+    liq_result *result = malloc(sizeof(liq_result));
+    *result = (liq_result){
+        .palette = acolormap,
+        .palette_error = palette_error,
+    };
+    return result;
 }
 
-static pngquant_error pngquant_remap(colormap *acolormap, liq_image *input_image, png8_image *output_image, const liq_attr *options)
+static pngquant_error prepare_output_image(colormap *acolormap, liq_image *input_image, png8_image *output_image, const liq_attr *options)
 {
-    double palette_error = acolormap->palette_error;
-
     output_image->width = input_image->width;
     output_image->height = input_image->height;
     output_image->gamma = 0.45455f; // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
@@ -1412,6 +1432,13 @@ static pngquant_error pngquant_remap(colormap *acolormap, liq_image *input_image
         }
     }
 
+    return SUCCESS;
+}
+
+static void pngquant_remap(liq_result *result, liq_image *input_image, png8_image *output_image, const liq_attr *options)
+{
+    double palette_error = result->palette_error;
+
     /*
      ** Step 4: map the colors in the image to their closest match in the
      ** new colormap, and write 'em out.
@@ -1423,7 +1450,7 @@ static pngquant_error pngquant_remap(colormap *acolormap, liq_image *input_image
     if (!floyd || use_dither_map) {
         // If no dithering is required, that's the final remapping.
         // If dithering (with dither map) is required, this image is used to find areas that require dithering
-        float remapping_error = remap_to_palette(&input_image->rwpng_image, output_image, acolormap, options->min_opaque_val);
+        float remapping_error = remap_to_palette(&input_image->rwpng_image, output_image, result->palette, options->min_opaque_val);
 
         // remapping error from dithered image is absurd, so always non-dithered value is used
         // palette_error includes some perceptual weighting from histogram which is closer correlated with dssim
@@ -1442,17 +1469,15 @@ static pngquant_error pngquant_remap(colormap *acolormap, liq_image *input_image
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
-    set_palette(output_image, acolormap);
+    set_palette(output_image, result->palette);
 
     if (floyd) {
-        remap_to_palette_floyd(&input_image->rwpng_image, output_image, acolormap, options->min_opaque_val, input_image->edges, use_dither_map, MAX(palette_error*2.4, 16.f/256.f));
+        remap_to_palette_floyd(&input_image->rwpng_image, output_image, result->palette, options->min_opaque_val, input_image->edges, use_dither_map, MAX(palette_error*2.4, 16.f/256.f));
     }
 
     if (input_image->edges) {
         free(input_image->edges);
         input_image->edges = NULL;
     }
-
-    return SUCCESS;
 }
 

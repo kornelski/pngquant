@@ -247,7 +247,15 @@ void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_image *m
 
     png_set_packing(*png_ptr_p);
 
-    png_write_image(*png_ptr_p, mainprog_ptr->png8.row_pointers);
+    png_bytepp row_pointers = malloc(mainprog_ptr->png8.height * sizeof(row_pointers[0]));
+
+    for(unsigned int row = 0;  row < mainprog_ptr->png8.height;  ++row) {
+        row_pointers[row] =  mainprog_ptr->png8.indexed_data + row * mainprog_ptr->png8.width;
+    }
+
+    png_write_image(*png_ptr_p, row_pointers);
+
+    free(row_pointers);
 
     png_write_end(*png_ptr_p, NULL);
 

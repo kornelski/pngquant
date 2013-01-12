@@ -1017,7 +1017,7 @@ static void modify_alpha(png24_image *input_image, const float min_opaque_val)
                 float al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
                 if (al > 1) al = 1;
                 px.a = al;
-                input_pixels[row][col] = to_rgb(gamma, px);
+                input_pixels[row][col].a = to_rgb(gamma, px).a;
             }
         }
     }

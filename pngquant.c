@@ -3,7 +3,7 @@
 ** Copyright (C) 1989, 1991 by Jef Poskanzer.
 ** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
 **                                Stefan Schneider.
-** © 2009-2012 by Kornel Lesinski.
+** © 2009-2013 by Kornel Lesinski.
 **
 ** Permission to use, copy, modify, and distribute this software and its
 ** documentation for any purpose and without fee is hereby granted, provided
@@ -13,7 +13,7 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "1.8.1 (November 2012)"
+#define PNGQUANT_VERSION "1.8.2 (January 2013)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\

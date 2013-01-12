@@ -88,12 +88,15 @@ struct liq_image {
 
 struct liq_result {
     colormap *palette;
+    double gamma;
     double palette_error;
+    float min_opaque_val, dither_level;
+    bool use_dither_map, palette_only;
 };
 
 static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options);
-static pngquant_error prepare_output_image(colormap *acolormap, liq_image *input_image, png8_image *output_image, const liq_attr *options);
-static void pngquant_remap(liq_result *res, liq_image *input_image, png8_image *output_image, const liq_attr *options);
+static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
+static void pngquant_remap(liq_result *res, liq_image *input_image, png8_image *output_image);
 static void prepare_image(liq_image *input_image, liq_attr *options);
 static void pngquant_output_image_free(png8_image *output_image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
@@ -261,6 +264,13 @@ LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)
 LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed) {
     if (speed < 1 || speed > 10) return LIQ_VALUE_OUT_OF_RANGE;
     attr->speed_tradeoff = speed;
+    return LIQ_OK;
+}
+
+LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma)
+{
+    if (gamma <= 0 || gamma >= 1.0) return LIQ_VALUE_OUT_OF_RANGE;
+    res->gamma = gamma;
     return LIQ_OK;
 }
 
@@ -560,6 +570,13 @@ LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_im
     return result;
 }
 
+LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level)
+{
+    if (res->dither_level < 0 || res->dither_level > 1.0f) return LIQ_VALUE_OUT_OF_RANGE;
+    res->dither_level = dither_level;
+    return LIQ_OK;
+}
+
 LIQ_EXPORT void liq_result_destroy(liq_result *res)
 {
     pam_freecolormap(res->palette);
@@ -598,8 +615,15 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
         liq_result *result = liq_quantize_image(options, &input_image);
 
         if (result) {
-            retval = prepare_output_image(result->palette, &input_image, &output_image, options);
-            if (!retval) pngquant_remap(result, &input_image, &output_image, options);
+            retval = prepare_output_image(result, &input_image, &output_image);
+            if (!retval) {
+                liq_set_dithering_level(result, options->floyd ? 1.0 : 0);
+                pngquant_remap(result, &input_image, &output_image);
+
+                if (result->palette_error >= 0) {
+                    verbose_printf(options, "  mapped image to new colors...MSE=%.3f", result->palette_error*65536.0/6.0);
+                }
+            }
             liq_result_destroy(result);
         } else {
             if (input_image.edges) {
@@ -1398,15 +1422,18 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
     *result = (liq_result){
         .palette = acolormap,
         .palette_error = palette_error,
+        .use_dither_map = options->speed_tradeoff < 6,
+        .min_opaque_val = options->min_opaque_val,
+        .gamma = 0.45455, // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
     };
     return result;
 }
 
-static pngquant_error prepare_output_image(colormap *acolormap, liq_image *input_image, png8_image *output_image, const liq_attr *options)
+static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image)
 {
     output_image->width = input_image->width;
     output_image->height = input_image->height;
-    output_image->gamma = 0.45455f; // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
+    output_image->gamma = result->gamma;
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image
@@ -1424,10 +1451,10 @@ static pngquant_error prepare_output_image(colormap *acolormap, liq_image *input
     }
 
     // tRNS, etc.
-    output_image->num_palette = acolormap->colors;
+    output_image->num_palette = result->palette->colors;
     output_image->num_trans = 0;
-    for(unsigned int i=0; i < acolormap->colors; i++) {
-        if (acolormap->palette[i].acolor.a < 255.0/256.0) {
+    for(unsigned int i=0; i < result->palette->colors; i++) {
+        if (result->palette->palette[i].acolor.a < 255.0/256.0) {
             output_image->num_trans = i+1;
         }
     }
@@ -1435,7 +1462,7 @@ static pngquant_error prepare_output_image(colormap *acolormap, liq_image *input
     return SUCCESS;
 }
 
-static void pngquant_remap(liq_result *result, liq_image *input_image, png8_image *output_image, const liq_attr *options)
+static void pngquant_remap(liq_result *result, liq_image *input_image, png8_image *output_image)
 {
     double palette_error = result->palette_error;
 
@@ -1444,19 +1471,19 @@ static void pngquant_remap(liq_result *result, liq_image *input_image, png8_imag
      ** new colormap, and write 'em out.
      */
 
-    const bool floyd = options->floyd,
-              use_dither_map = floyd && input_image->edges && options->speed_tradeoff < 6;
+    const bool floyd = result->dither_level > 0,
+              use_dither_map = floyd && input_image->edges && result->use_dither_map;
 
     if (!floyd || use_dither_map) {
         // If no dithering is required, that's the final remapping.
         // If dithering (with dither map) is required, this image is used to find areas that require dithering
-        float remapping_error = remap_to_palette(&input_image->rwpng_image, output_image, result->palette, options->min_opaque_val);
+        float remapping_error = remap_to_palette(&input_image->rwpng_image, output_image, result->palette, result->min_opaque_val);
 
         // remapping error from dithered image is absurd, so always non-dithered value is used
         // palette_error includes some perceptual weighting from histogram which is closer correlated with dssim
         // so that should be used when possible.
         if (palette_error < 0) {
-            palette_error = remapping_error;
+            result->palette_error = remapping_error;
         }
 
         if (use_dither_map) {
@@ -1464,15 +1491,11 @@ static void pngquant_remap(liq_result *result, liq_image *input_image, png8_imag
         }
     }
 
-    if (palette_error >= 0) {
-        verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error*65536.0/6.0);
-    }
-
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
     set_palette(output_image, result->palette);
 
     if (floyd) {
-        remap_to_palette_floyd(&input_image->rwpng_image, output_image, result->palette, options->min_opaque_val, input_image->edges, use_dither_map, MAX(palette_error*2.4, 16.f/256.f));
+        remap_to_palette_floyd(&input_image->rwpng_image, output_image, result->palette, result->min_opaque_val, input_image->edges, use_dither_map, MAX(palette_error*2.4, 16.f/256.f));
     }
 
     if (input_image->edges) {

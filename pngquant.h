@@ -40,6 +40,9 @@ LIQ_EXPORT void liq_image_destroy(liq_image *img);
 
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image);
 
+LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma);
+LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level);
+
 LIQ_EXPORT void liq_result_destroy(liq_result *);
 
 #ifdef __cplusplus

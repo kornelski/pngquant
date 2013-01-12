@@ -60,7 +60,7 @@ typedef struct {
     float a, r, g, b;
 } SSE_ALIGN f_pixel;
 
-static const float internal_gamma = 0.45455f;
+static const float internal_gamma = 0.55;
 
 /**
  Converts 8-bit color to internal gamma and premultiplied alpha.
@@ -74,12 +74,9 @@ inline static f_pixel to_f(float gamma, rgb_pixel px)
           b = px.b/255.f,
           a = px.a/255.f;
 
-    if (gamma != internal_gamma) {
-        r = powf(r, internal_gamma/gamma);
-        g = powf(g, internal_gamma/gamma);
-        b = powf(b, internal_gamma/gamma);
-    }
-
+    r = powf(r, internal_gamma/gamma);
+    g = powf(g, internal_gamma/gamma);
+    b = powf(b, internal_gamma/gamma);
 
     return (f_pixel) {
         .a = a,
@@ -100,11 +97,9 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
           b = px.b / px.a,
           a = px.a;
 
-    if (gamma != internal_gamma) {
-        r = powf(r, gamma/internal_gamma);
-        g = powf(g, gamma/internal_gamma);
-        b = powf(b, gamma/internal_gamma);
-    }
+    r = powf(r, gamma/internal_gamma);
+    g = powf(g, gamma/internal_gamma);
+    b = powf(b, gamma/internal_gamma);
 
     // 256, because numbers are in range 1..255.9999… rounded down
     r *= 256.f;

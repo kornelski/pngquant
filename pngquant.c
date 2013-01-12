@@ -78,7 +78,7 @@ struct liq_attr {
 };
 
 struct liq_image {
-    png24_image rwpng_image;
+    rgb_pixel *pixels;
     rgb_pixel **rows;
     double gamma;
     int width, height;
@@ -521,9 +521,9 @@ int main(int argc, char *argv[])
 void liq_image_destroy(liq_image *input_image)
 {
     /* now we're done with the INPUT data and row_pointers, so free 'em */
-    if (input_image->rwpng_image.rgba_data) {
-        free(input_image->rwpng_image.rgba_data);
-        input_image->rwpng_image.rgba_data = NULL;
+    if (input_image->pixels) {
+        free(input_image->pixels);
+        input_image->pixels = NULL;
     }
 
     if (input_image->rows) {
@@ -599,18 +599,20 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
     }
 
     liq_image input_image = {}; // initializes all fields to 0
+    png24_image input_image_rwpng = {};
     if (!retval) {
-        retval = read_image(filename, options->using_stdin, &input_image.rwpng_image);
-        input_image.width = input_image.rwpng_image.width;
-        input_image.height = input_image.rwpng_image.height;
-        input_image.gamma = input_image.rwpng_image.gamma;
-        input_image.rows = (rgb_pixel**)input_image.rwpng_image.row_pointers;
+        retval = read_image(filename, options->using_stdin, &input_image_rwpng);
+        input_image.width = input_image_rwpng.width;
+        input_image.height = input_image_rwpng.height;
+        input_image.gamma = input_image_rwpng.gamma;
+        input_image.rows = (rgb_pixel**)input_image_rwpng.row_pointers;
+        input_image.pixels = (rgb_pixel*)input_image_rwpng.rgba_data;
     }
 
     png8_image output_image = {};
     if (!retval) {
         verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
-                       (input_image.rwpng_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
+                       (input_image_rwpng.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
 
         liq_result *result = liq_quantize_image(options, &input_image);
 
@@ -622,14 +624,10 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
 
                 if (result->palette_error >= 0) {
                     verbose_printf(options, "  mapped image to new colors...MSE=%.3f", result->palette_error*65536.0/6.0);
-                }
+        }
             }
             liq_result_destroy(result);
         } else {
-            if (input_image.edges) {
-                free(input_image.edges);
-                input_image.edges = NULL;
-            }
             retval = TOO_LOW_QUALITY;
         }
     }
@@ -640,7 +638,7 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
         if (!input_image.modified) {
-            int write_retval = write_image(NULL, &input_image.rwpng_image, outname, options);
+            int write_retval = write_image(NULL, &input_image_rwpng, outname, options);
             if (write_retval) retval = write_retval;
         } else {
             // iebug preprocessing changes the original image
@@ -1491,7 +1489,7 @@ static void pngquant_remap(liq_result *result, liq_image *input_image, png8_imag
 }
     }
 
-    // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
+        // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
     set_palette(output_image, result->palette);
 
     if (floyd) {

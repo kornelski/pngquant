@@ -369,9 +369,9 @@ int main(int argc, char *argv[])
     }
 
     if (options.reqcolors < 2 || options.reqcolors > 256) {
-        fputs("Number of colors must be between 2 and 256.\n", stderr);
-        return INVALID_ARGUMENT;
-    }
+            fputs("Number of colors must be between 2 and 256.\n", stderr);
+            return INVALID_ARGUMENT;
+        }
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
@@ -479,19 +479,19 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         #pragma omp critical (libpng)
         {
             retval = read_image(filename, options->using_stdin, &input_image);
-        }
+    }
     }
 
     if (!retval) {
         verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
                        (input_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
         retval = pngquant(&input_image, &output_image, options);
-    }
+            }
 
     if (!retval) {
         #pragma omp critical (libpng)
         {
-            retval = write_image(&output_image, NULL, outname, options);
+        retval = write_image(&output_image, NULL, outname, options);
         }
     } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
         // when outputting to stdout it'd be nasty to create 0-byte file
@@ -500,7 +500,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
             #pragma omp critical (libpng)
             {
                 int write_retval = write_image(NULL, &input_image, outname, options);
-                if (write_retval) retval = write_retval;
+            if (write_retval) retval = write_retval;
             }
         } else {
             // iebug preprocessing changes the original image
@@ -591,11 +591,11 @@ static void sort_palette(png8_image *output_image, colormap *map, const struct p
     output_image->num_trans = num_transparent;
 }
 
-static void set_palette(png8_image *output_image, const colormap *map)
+static void set_palette(png8_image *output_image, const colormap *map, double input_gamma)
 {
     for(unsigned int x = 0; x < map->colors; ++x) {
         rgb_pixel px = to_rgb(output_image->gamma, map->palette[x].acolor);
-        map->palette[x].acolor = to_f(output_image->gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
+        map->palette[x].acolor = to_f(input_gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
         output_image->palette[x].red   = px.r;
         output_image->palette[x].green = px.g;
@@ -894,11 +894,11 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     }
 
     pngquant_error retval;
-    if (output_image) {
-        retval = rwpng_write_image8(outfile, output_image);
-    } else {
-        retval = rwpng_write_image24(outfile, output_image24);
-    }
+        if (output_image) {
+            retval = rwpng_write_image8(outfile, output_image);
+        } else {
+            retval = rwpng_write_image24(outfile, output_image24);
+        }
 
     if (retval) {
         fprintf(stderr, "  error: failed writing image to %s\n", outname);
@@ -988,11 +988,11 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
      ** Step 1: read in the alpha-channel image.
      */
     /* GRR:  returns RGBA (4 channels), 8 bps */
-#if USE_COCOA
+        #if USE_COCOA
     pngquant_error retval = rwpng_read_image24_cocoa(infile, input_image_p);
-#else
+        #else
     pngquant_error retval = rwpng_read_image24(infile, input_image_p);
-#endif
+        #endif
 
     if (!using_stdin)
         fclose(infile);
@@ -1268,7 +1268,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
 
     for(unsigned int row = 0;  row < output_image->height;  ++row) {
         output_image->row_pointers[row] = output_image->indexed_data + row*output_image->width;
-    }
+        }
 
     // tRNS, etc.
     sort_palette(output_image, acolormap, options);
@@ -1303,7 +1303,7 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
-    set_palette(output_image, acolormap);
+    set_palette(output_image, acolormap, input_image->gamma);
 
     if (floyd) {
         remap_to_palette_floyd(input_image, output_image, acolormap, options->min_opaque_val, edges, use_dither_map);
@@ -1313,6 +1313,6 @@ static pngquant_error pngquant(png24_image *input_image, png8_image *output_imag
     pam_freecolormap(acolormap);
 
     return SUCCESS;
-}
+    }
 
 

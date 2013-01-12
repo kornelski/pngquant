@@ -77,18 +77,20 @@ struct liq_attr {
     void *log_flush_callback_user_info;
 };
 
-typedef struct {
+struct liq_image {
     png24_image rwpng_image;
+    rgb_pixel **rows;
+    double gamma;
+    int width, height;
     float *noise, *edges;
     bool modified;
-} pngquant_image;
+};
 
 static colormap *pngquant_quantize(histogram *hist, const liq_attr *options);
-static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_image, png8_image *output_image, const liq_attr *options);
-static void prepare_image(pngquant_image *input_image, liq_attr *options);
-static void pngquant_image_free(pngquant_image *input_image);
+static pngquant_error pngquant_remap(colormap *acolormap, liq_image *input_image, png8_image *output_image, const liq_attr *options);
+static void prepare_image(liq_image *input_image, liq_attr *options);
 static void pngquant_output_image_free(png8_image *output_image);
-static histogram *get_histogram(pngquant_image *input_image, liq_attr *options);
+static histogram *get_histogram(liq_image *input_image, liq_attr *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, liq_attr *options);
 static char *add_filename_extension(const char *filename, const char *newext);
@@ -500,7 +502,7 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-static void pngquant_image_free(pngquant_image *input_image)
+void liq_image_destroy(liq_image *input_image)
 {
     /* now we're done with the INPUT data and row_pointers, so free 'em */
     if (input_image->rwpng_image.rgba_data) {
@@ -508,9 +510,9 @@ static void pngquant_image_free(pngquant_image *input_image)
         input_image->rwpng_image.rgba_data = NULL;
     }
 
-    if (input_image->rwpng_image.row_pointers) {
-        free(input_image->rwpng_image.row_pointers);
-        input_image->rwpng_image.row_pointers = NULL;
+    if (input_image->rows) {
+        free(input_image->rows);
+        input_image->rows = NULL;
     }
 
     if (input_image->noise) {
@@ -552,15 +554,19 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
         }
     }
 
-    pngquant_image input_image = {}; // initializes all fields to 0
+    liq_image input_image = {}; // initializes all fields to 0
     if (!retval) {
         retval = read_image(filename, options->using_stdin, &input_image.rwpng_image);
+        input_image.width = input_image.rwpng_image.width;
+        input_image.height = input_image.rwpng_image.height;
+        input_image.gamma = input_image.rwpng_image.gamma;
+        input_image.rows = (rgb_pixel**)input_image.rwpng_image.row_pointers;
     }
 
     png8_image output_image = {};
     if (!retval) {
         verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
-                       (input_image.rwpng_image.file_size+1023UL)/1024UL, 1.0/input_image.rwpng_image.gamma);
+                       (input_image.rwpng_image.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
 
         prepare_image(&input_image, options);
 
@@ -600,7 +606,7 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
         }
     }
 
-    pngquant_image_free(&input_image);
+    liq_image_destroy(&input_image);
     pngquant_output_image_free(&output_image);
 
     return retval;
@@ -1014,11 +1020,11 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
 }
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
-static histogram *get_histogram(pngquant_image *input_image, liq_attr *options)
+static histogram *get_histogram(liq_image *input_image, liq_attr *options)
 {
     unsigned int ignorebits=0;
-    const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->rwpng_image.row_pointers;
-    const unsigned int cols = input_image->rwpng_image.width, rows = input_image->rwpng_image.height;
+    const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->rows;
+    const unsigned int cols = input_image->width, rows = input_image->height;
 
    /*
     ** Step 2: attempt to make a histogram of the colors, unclustered.
@@ -1049,20 +1055,20 @@ static histogram *get_histogram(pngquant_image *input_image, liq_attr *options)
         input_image->noise = NULL;
     }
 
-    histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->rwpng_image.gamma);
+    histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->gamma);
     pam_freeacolorhash(acht);
 
     verbose_printf(options, "  made histogram...%d colors found", hist->size);
     return hist;
 }
 
-static void modify_alpha(png24_image *input_image, const float min_opaque_val)
+static void modify_alpha(liq_image *input_image, const float min_opaque_val)
 {
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
 
-    rgb_pixel *const *const input_pixels = (rgb_pixel **)input_image->row_pointers;
+    rgb_pixel *const *const input_pixels = input_image->rows;
     const unsigned int rows = input_image->height, cols = input_image->width;
     const float gamma = input_image->gamma;
     to_f_set_gamma(gamma);
@@ -1086,6 +1092,7 @@ static void modify_alpha(png24_image *input_image, const float min_opaque_val)
             }
         }
     }
+    input_image->modified = true;
 }
 
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p)
@@ -1122,7 +1129,7 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
     noise - approximation of areas with high-frequency noise, except straight edges. 1=flat, 0=noisy.
     edges - noise map including all edges
  */
-static void contrast_maps(const rgb_pixel*const apixels[], const unsigned int cols, const unsigned int rows, const double gamma, float **noiseP, float **edgesP)
+static void contrast_maps(rgb_pixel*const apixels[], const unsigned int cols, const unsigned int rows, const double gamma, float **noiseP, float **edgesP)
 {
     float *restrict noise = malloc(sizeof(float)*cols*rows);
     float *restrict tmp = malloc(sizeof(float)*cols*rows);
@@ -1302,16 +1309,15 @@ static colormap *find_best_palette(histogram *hist, int feedback_loop_trials, co
     return acolormap;
 }
 
-static void prepare_image(pngquant_image *input_image, liq_attr *options)
+static void prepare_image(liq_image *input_image, liq_attr *options)
 {
     if (options->min_opaque_val <= 254.f/255.f) {
         verbose_print(options, "  Working around IE6 bug by making image less transparent...");
-        modify_alpha(&input_image->rwpng_image, options->min_opaque_val);
-        input_image->modified = true;
+        modify_alpha(input_image, options->min_opaque_val);
     }
 
-    if (options->speed_tradeoff < 8 && input_image->rwpng_image.width >= 4 && input_image->rwpng_image.height >= 4) {
-        contrast_maps((const rgb_pixel**)input_image->rwpng_image.row_pointers, input_image->rwpng_image.width, input_image->rwpng_image.height, input_image->rwpng_image.gamma,
+    if (options->speed_tradeoff < 8 && input_image->width >= 4 && input_image->height >= 4) {
+        contrast_maps(input_image->rows, input_image->width, input_image->height, input_image->gamma,
                    &input_image->noise, &input_image->edges);
     }
 }
@@ -1374,12 +1380,12 @@ static colormap *pngquant_quantize(histogram *hist, const liq_attr *options)
     return acolormap;
 }
 
-static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_image, png8_image *output_image, const liq_attr *options)
+static pngquant_error pngquant_remap(colormap *acolormap, liq_image *input_image, png8_image *output_image, const liq_attr *options)
 {
     double palette_error = acolormap->palette_error;
 
-    output_image->width = input_image->rwpng_image.width;
-    output_image->height = input_image->rwpng_image.height;
+    output_image->width = input_image->width;
+    output_image->height = input_image->height;
     output_image->gamma = 0.45455f; // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
 
     /*

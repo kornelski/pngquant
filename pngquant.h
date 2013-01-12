@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 typedef struct liq_attr liq_attr;
+typedef struct liq_image liq_image;
 
 typedef enum liq_error {
     LIQ_OK = 0,
@@ -34,6 +35,7 @@ typedef void liq_log_flush_callback_function(const liq_attr*, void* user_info);
 LIQ_EXPORT void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void* user_info);
 LIQ_EXPORT void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void* user_info);
 
+void liq_image_destroy(liq_image *img);
 
 #ifdef __cplusplus
 }

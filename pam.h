@@ -60,29 +60,25 @@ typedef struct {
     float a, r, g, b;
 } SSE_ALIGN f_pixel;
 
-static const float internal_gamma = 0.55;
+static const double internal_gamma = 0.5499;
+
+extern float gamma_lut[256];
+void to_f_set_gamma(double gamma);
 
 /**
  Converts 8-bit color to internal gamma and premultiplied alpha.
  (premultiplied color space is much better for blending of semitransparent colors)
  */
-inline static f_pixel to_f(float gamma, rgb_pixel px) ALWAYS_INLINE;
-inline static f_pixel to_f(float gamma, rgb_pixel px)
+inline static f_pixel to_f(rgb_pixel px) ALWAYS_INLINE;
+inline static f_pixel to_f(rgb_pixel px)
 {
-    float r = px.r/255.f,
-          g = px.g/255.f,
-          b = px.b/255.f,
-          a = px.a/255.f;
-
-    r = powf(r, internal_gamma/gamma);
-    g = powf(g, internal_gamma/gamma);
-    b = powf(b, internal_gamma/gamma);
+    float a = px.a/255.f;
 
     return (f_pixel) {
         .a = a,
-        .r = r*a,
-        .g = g*a,
-        .b = b*a,
+        .r = gamma_lut[px.r]*a,
+        .g = gamma_lut[px.g]*a,
+        .b = gamma_lut[px.b]*a,
     };
 }
 
@@ -220,7 +216,7 @@ struct acolorhash_table {
 
 void pam_freeacolorhash(struct acolorhash_table *acht);
 struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int ignorebits);
-histogram *pam_acolorhashtoacolorhist(struct acolorhash_table *acht, float gamma);
+histogram *pam_acolorhashtoacolorhist(struct acolorhash_table *acht, double gamma);
 bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map);
 
 void pam_freeacolorhist(histogram *h);

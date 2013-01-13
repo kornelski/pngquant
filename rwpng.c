@@ -151,7 +151,7 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr)
     /* get and save the gamma info (if any) for writing */
 
     double gamma;
-    mainprog_ptr->gamma = png_get_gAMA(png_ptr, info_ptr, &gamma) ? gamma : 0.45455f;
+    mainprog_ptr->gamma = png_get_gAMA(png_ptr, info_ptr, &gamma) ? gamma : 0.45455;
 
     png_set_interlace_handling(png_ptr);
 

@@ -58,7 +58,7 @@ typedef struct {
     jmp_buf jmpbuf;
     png_uint_32 width;
     png_uint_32 height;
-    float gamma;
+    double gamma;
     unsigned char **row_pointers;
     unsigned char *rgba_data;
     png_size_t file_size;
@@ -68,7 +68,7 @@ typedef struct {
     jmp_buf jmpbuf;
     png_uint_32 width;
     png_uint_32 height;
-    float gamma;
+    double gamma;
     unsigned char **row_pointers;
     unsigned char *indexed_data;
     unsigned int num_palette;

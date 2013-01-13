@@ -380,9 +380,9 @@ int main(int argc, char *argv[])
     }
 
     if (options.reqcolors < 2 || options.reqcolors > 256) {
-        fputs("Number of colors must be between 2 and 256.\n", stderr);
-        return INVALID_ARGUMENT;
-    }
+            fputs("Number of colors must be between 2 and 256.\n", stderr);
+            return INVALID_ARGUMENT;
+        }
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
@@ -500,8 +500,8 @@ static void pngquant_output_image_free(png8_image *output_image)
     if (output_image->row_pointers) {
         free(output_image->row_pointers);
         output_image->row_pointers = NULL;
-    }
 }
+    }
 
 int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
 {
@@ -534,7 +534,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         if (input_image.noise) {
             free(input_image.noise);
             input_image.noise = NULL;
-        }
+                }
 
         colormap *palette = pngquant_quantize(hist, options);
         pam_freeacolorhist(hist);
@@ -626,11 +626,13 @@ static void sort_palette(colormap *map, const struct pngquant_options *options)
     qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
 }
 
-static void set_palette(png8_image *output_image, const colormap *map, double input_gamma)
+static void set_palette(png8_image *output_image, const colormap *map, const double input_gamma)
 {
+    to_f_set_gamma(input_gamma);
+
     for(unsigned int x = 0; x < map->colors; ++x) {
         rgb_pixel px = to_rgb(output_image->gamma, map->palette[x].acolor);
-        map->palette[x].acolor = to_f(input_gamma, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
+        map->palette[x].acolor = to_f(px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
         output_image->palette[x].red   = px.r;
         output_image->palette[x].green = px.g;
@@ -644,7 +646,8 @@ static float remap_to_palette(png24_image *input_image, png8_image *output_image
     const rgb_pixel *const *const input_pixels = (const rgb_pixel **)input_image->row_pointers;
     unsigned char *const *const row_pointers = output_image->row_pointers;
     const int rows = input_image->height, cols = input_image->width;
-    const float gamma = input_image->gamma;
+
+    to_f_set_gamma(input_image->gamma);
 
     int remapped_pixels=0;
     float remapping_error=0;
@@ -661,7 +664,7 @@ static float remap_to_palette(png24_image *input_image, png8_image *output_image
     for(int row = 0; row < rows; ++row) {
         for(unsigned int col = 0; col < cols; ++col) {
 
-            f_pixel px = to_f(gamma, input_pixels[row][col]);
+            f_pixel px = to_f(input_pixels[row][col]);
             int match;
 
             if (px.a < 1.0/256.0) {
@@ -710,7 +713,8 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
     const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->row_pointers;
     unsigned char *const *const row_pointers = output_image->row_pointers;
     const int rows = input_image->height, cols = input_image->width;
-    const float gamma = input_image->gamma;
+
+    to_f_set_gamma(input_image->gamma);
 
     const colormap_item *acolormap = map->palette;
 
@@ -743,7 +747,7 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
         unsigned int col = (fs_direction) ? 0 : (cols - 1);
 
         do {
-            const f_pixel px = to_f(gamma, input_pixels[row][col]);
+            const f_pixel px = to_f(input_pixels[row][col]);
 
             float dither_level = edge_map ? edge_map[row*cols + col] : 0.9f;
 
@@ -1000,9 +1004,11 @@ static void modify_alpha(png24_image *input_image, const float min_opaque_val)
     rgb_pixel *const *const input_pixels = (rgb_pixel **)input_image->row_pointers;
     const unsigned int rows = input_image->height, cols = input_image->width;
     const float gamma = input_image->gamma;
+    to_f_set_gamma(gamma);
 
     const float almost_opaque_val = min_opaque_val * 169.f/256.f;
     const unsigned int almost_opaque_val_int = almost_opaque_val*255.f;
+
 
     for(unsigned int row = 0; row < rows; ++row) {
         for(unsigned int col = 0; col < cols; col++) {
@@ -1010,7 +1016,7 @@ static void modify_alpha(png24_image *input_image, const float min_opaque_val)
 
             /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
             if (srcpx.a >= almost_opaque_val_int) {
-                f_pixel px = to_f(gamma, srcpx);
+                f_pixel px = to_f(srcpx);
 
                 float al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
                 if (al > 1) al = 1;
@@ -1059,18 +1065,20 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
     noise - approximation of areas with high-frequency noise, except straight edges. 1=flat, 0=noisy.
     edges - noise map including all edges
  */
-static void contrast_maps(const rgb_pixel*const apixels[], const unsigned int cols, const unsigned int rows, const float gamma, float **noiseP, float **edgesP)
+static void contrast_maps(const rgb_pixel*const apixels[], const unsigned int cols, const unsigned int rows, const double gamma, float **noiseP, float **edgesP)
 {
     float *restrict noise = malloc(sizeof(float)*cols*rows);
     float *restrict tmp = malloc(sizeof(float)*cols*rows);
     float *restrict edges = malloc(sizeof(float)*cols*rows);
 
+    to_f_set_gamma(gamma);
+
     for (unsigned int j=0; j < rows; j++) {
-        f_pixel prev, curr = to_f(gamma, apixels[j][0]), next=curr;
+        f_pixel prev, curr = to_f(apixels[j][0]), next=curr;
         for (unsigned int i=0; i < cols; i++) {
             prev=curr;
             curr=next;
-            next = to_f(gamma, apixels[j][MIN(cols-1,i+1)]);
+            next = to_f(apixels[j][MIN(cols-1,i+1)]);
 
             // contrast is difference between pixels neighbouring horizontally and vertically
             const float a = fabsf(prev.a+next.a - curr.a*2.f),
@@ -1078,8 +1086,8 @@ static void contrast_maps(const rgb_pixel*const apixels[], const unsigned int co
             g = fabsf(prev.g+next.g - curr.g*2.f),
             b = fabsf(prev.b+next.b - curr.b*2.f);
 
-            const f_pixel prevl = to_f(gamma, apixels[MIN(rows-1,j+1)][i]);
-            const f_pixel nextl = to_f(gamma, apixels[j > 1 ? j-1 : 0][i]);
+            const f_pixel prevl = to_f(apixels[MIN(rows-1,j+1)][i]);
+            const f_pixel nextl = to_f(apixels[j > 1 ? j-1 : 0][i]);
 
             const float a1 = fabsf(prevl.a+nextl.a - curr.a*2.f),
             r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),

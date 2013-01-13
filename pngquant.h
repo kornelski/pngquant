@@ -26,6 +26,11 @@ typedef enum liq_error {
     LIQ_BUFFER_TOO_SMALL,
 } liq_error;
 
+LIQ_EXPORT liq_attr* liq_attr_create(void);
+LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), void (*free)(void*));
+LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig);
+LIQ_EXPORT void liq_attr_destroy(liq_attr *attr);
+
 LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors);
 LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed);
 LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min);

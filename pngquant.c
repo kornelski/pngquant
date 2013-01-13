@@ -65,6 +65,9 @@ use --force to overwrite.\n"
 #include "pngquant.h"
 
 struct liq_attr {
+    void* (*malloc)(size_t);
+    void (*free)(void*);
+
     double target_mse, max_mse;
     float min_opaque_val;
     unsigned int max_colors;
@@ -357,12 +360,30 @@ static const struct option long_options[] = {
 
 int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options);
 
-int main(int argc, char *argv[])
+
+LIQ_EXPORT liq_attr* liq_attr_create()
 {
-    struct pngquant_options options = {
-        .floyd = true, // floyd-steinberg dithering
-    };
-    options.liq = &(liq_attr) {
+    return liq_attr_create_with_allocator(malloc, free);
+}
+
+LIQ_EXPORT void liq_attr_destroy(liq_attr *attr)
+{
+    attr->free(attr);
+}
+
+LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
+{
+    liq_attr *attr = orig->malloc(sizeof(liq_attr));
+    *attr = *orig;
+    return attr;
+}
+
+LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), void (*free)(void*))
+{
+    liq_attr *attr = malloc(sizeof(liq_attr));
+    *attr = (liq_attr) {
+        .malloc = malloc,
+        .free = free,
         .max_colors = 256,
         .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
         .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
@@ -370,6 +391,15 @@ int main(int argc, char *argv[])
         .target_mse = 0,
         .max_mse = MAX_DIFF,
     };
+    return attr;
+}
+
+int main(int argc, char *argv[])
+{
+    struct pngquant_options options = {
+        .floyd = true, // floyd-steinberg dithering
+    };
+    options.liq = liq_attr_create();
 
     unsigned int error_count=0, skipped_count=0, file_count=0;
     pngquant_error latest_error=SUCCESS;
@@ -486,6 +516,8 @@ int main(int argc, char *argv[])
         schedule(dynamic) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
     for(int i=0; i < num_files; i++) {
         struct pngquant_options opts = options;
+        opts.liq = liq_attr_copy(options.liq);
+
         const char *filename = opts.using_stdin ? "stdin" : argv[argn+i];
 
         #ifdef _OPENMP
@@ -500,6 +532,8 @@ int main(int argc, char *argv[])
         pngquant_error retval = pngquant_file(filename, newext, &opts);
 
         verbose_printf_flush(opts.liq);
+
+        liq_attr_destroy(opts.liq);
 
         if (retval) {
             #pragma omp critical
@@ -529,6 +563,8 @@ int main(int argc, char *argv[])
     }
 
     verbose_printf_flush(options.liq);
+
+    liq_attr_destroy(options.liq);
 
     return latest_error;
 }

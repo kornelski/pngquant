@@ -89,7 +89,7 @@ struct liq_image {
     rgb_pixel **rows;
     double gamma;
     int width, height;
-    float *noise, *edges;
+    float *noise, *edges, *dither_map;
     bool modified;
 };
 
@@ -592,6 +592,11 @@ void liq_image_destroy(liq_image *input_image)
         free(input_image->edges);
         input_image->edges = NULL;
     }
+
+    if (input_image->dither_map) {
+        free(input_image->dither_map);
+        input_image->dither_map = NULL;
+    }
 }
 
 static void pngquant_output_image_free(png8_image *output_image)
@@ -909,7 +914,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 {
     const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->rows;
     const unsigned int rows = input_image->height, cols = input_image->width;
-    const float *dither_map = use_dither_map ? input_image->edges : NULL;
+    const float *dither_map = use_dither_map ? (input_image->dither_map ? input_image->dither_map : input_image->edges) : NULL;
 
     to_f_set_gamma(input_image->gamma);
 
@@ -1350,6 +1355,8 @@ static void update_dither_map(unsigned char *const *const row_pointers, liq_imag
             }
         }
     }
+    input_image->dither_map = input_image->edges;
+    input_image->edges = NULL;
 }
 
 static void adjust_histogram_callback(hist_item *item, float diff)
@@ -1559,7 +1566,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *result, liq_image
         set_rounded_palette(result);
         remapping_error = remap_to_palette(input_image, row_pointers, result->palette, result->min_opaque_val);
     } else {
-        const bool generate_dither_map = result->use_dither_map && input_image->edges;
+        const bool generate_dither_map = result->use_dither_map && (input_image->edges && !input_image->dither_map);
         if (generate_dither_map) {
             // If dithering (with dither map) is required, this image is used to find areas that require dithering
             remapping_error = remap_to_palette(input_image, row_pointers, result->palette, result->min_opaque_val);

@@ -552,7 +552,7 @@ static void pngquant_output_image_free(png8_image *output_image)
     if (output_image->row_pointers) {
         free(output_image->row_pointers);
         output_image->row_pointers = NULL;
-    }
+}
 }
 
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image)
@@ -682,8 +682,8 @@ static void sort_palette(colormap *map, const liq_attr *options)
             /* colors sorted by popularity make pngs slightly more compressible */
             qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
             return;
-            }
         }
+    }
 
     /* move transparent colors to the beginning to shrink trns chunk */
     unsigned int num_transparent=0;
@@ -724,10 +724,9 @@ static void set_palette(png8_image *output_image, const colormap *map)
     }
 }
 
-static float remap_to_palette(png24_image *input_image, png8_image *output_image, colormap *const map, const float min_opaque_val)
+static float remap_to_palette(liq_image *input_image, unsigned char *const output_pixels[], colormap *const map, const float min_opaque_val)
 {
-    const rgb_pixel *const *const input_pixels = (const rgb_pixel **)input_image->row_pointers;
-    unsigned char *const *const output_pixels = output_image->row_pointers;
+    const rgb_pixel *const *const input_pixels = (const rgb_pixel **)input_image->rows;
     const int rows = input_image->height;
     const unsigned int cols = input_image->width;
 
@@ -836,11 +835,11 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
 
   If output_image_is_remapped is true, only pixels noticeably changed by error diffusion will be written to output image.
  */
-static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_image, const colormap *map, const float min_opaque_val, const float *dither_map, const int output_image_is_remapped, const float max_dither_error)
+static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], const colormap *map, const float min_opaque_val, bool use_dither_map, bool output_image_is_remapped, const float max_dither_error)
 {
-    const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->row_pointers;
-    unsigned char *const *const output_pixels = output_image->row_pointers;
+    const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->rows;
     const unsigned int rows = input_image->height, cols = input_image->width;
+    const float *dither_map = use_dither_map ? input_image->edges : NULL;
 
     to_f_set_gamma(input_image->gamma);
 
@@ -852,8 +851,8 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
     float difference_tolerance[map->colors];
 
     if (output_image_is_remapped) for(unsigned int i=0; i < map->colors; i++) {
-            difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
-        }
+        difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
+    }
 
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;
@@ -888,7 +887,7 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
                     ind = curr_ind;
                 } else {
                     ind = nearest_search(n, spx, min_opaque_val, NULL);
-                }
+            }
             }
 
             output_pixels[row][col] = ind;
@@ -1165,20 +1164,22 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
     }
 
     return SUCCESS;
-}
+    }
 
 /**
  Builds two maps:
     noise - approximation of areas with high-frequency noise, except straight edges. 1=flat, 0=noisy.
     edges - noise map including all edges
  */
-static void contrast_maps(rgb_pixel*const apixels[], const unsigned int cols, const unsigned int rows, const double gamma, float **noiseP, float **edgesP)
+static void contrast_maps(liq_image *image)
 {
+    const int cols = image->width, rows = image->height;
+    rgb_pixel **apixels = image->rows;
     float *restrict noise = malloc(sizeof(float)*cols*rows);
     float *restrict tmp = malloc(sizeof(float)*cols*rows);
     float *restrict edges = malloc(sizeof(float)*cols*rows);
 
-    to_f_set_gamma(gamma);
+    to_f_set_gamma(image->gamma);
 
     for (unsigned int j=0; j < rows; j++) {
         f_pixel prev, curr = to_f(apixels[j][0]), next=curr;
@@ -1211,7 +1212,7 @@ static void contrast_maps(rgb_pixel*const apixels[], const unsigned int cols, co
 
             noise[j*cols+i] = z;
             edges[j*cols+i] = 1.f-edge;
-        }
+}
     }
 
     // noise areas are shrunk and then expanded to remove thin edges from the map
@@ -1232,8 +1233,8 @@ static void contrast_maps(rgb_pixel*const apixels[], const unsigned int cols, co
 
     free(tmp);
 
-    *noiseP = noise;
-    *edgesP = edges;
+    image->noise = noise;
+    image->edges = edges;
 }
 
 /**
@@ -1243,18 +1244,18 @@ static void contrast_maps(rgb_pixel*const apixels[], const unsigned int cols, co
  * and peeks 1 pixel above/below. Full 2d algorithm doesn't improve it significantly.
  * Correct flood fill doesn't have visually good properties.
  */
-static void update_dither_map(const png8_image *output_image, float *edges)
+static void update_dither_map(unsigned char *const *const row_pointers, liq_image *input_image)
 {
-    const unsigned int width = output_image->width;
-    const unsigned int height = output_image->height;
-    const unsigned char *restrict pixels = output_image->indexed_data;
+    const unsigned int width = input_image->width;
+    const unsigned int height = input_image->height;
+    float *const edges = input_image->edges;
 
     for(unsigned int row=0; row < height; row++) {
-        unsigned char lastpixel = pixels[row*width];
+        unsigned char lastpixel = row_pointers[row][0];
         unsigned int lastcol=0;
 
         for(unsigned int col=1; col < width; col++) {
-            const unsigned char px = pixels[row*width + col];
+            const unsigned char px = row_pointers[row][col];
 
             if (px != lastpixel || col == width-1) {
                 float neighbor_count = 2.5f + col-lastcol;
@@ -1262,11 +1263,11 @@ static void update_dither_map(const png8_image *output_image, float *edges)
                 unsigned int i=lastcol;
                 while(i < col) {
                     if (row > 0) {
-                        unsigned char pixelabove = pixels[(row-1)*width + i];
+                        unsigned char pixelabove = row_pointers[row-1][i];
                         if (pixelabove == lastpixel) neighbor_count += 1.f;
                     }
                     if (row < height-1) {
-                        unsigned char pixelbelow = pixels[(row+1)*width + i];
+                        unsigned char pixelbelow = row_pointers[row+1][i];
                         if (pixelbelow == lastpixel) neighbor_count += 1.f;
                     }
                     i++;
@@ -1360,8 +1361,7 @@ static void prepare_image(liq_image *input_image, liq_attr *options)
     }
 
     if (options->speed_tradeoff < 8 && input_image->width >= 4 && input_image->height >= 4) {
-        contrast_maps(input_image->rows, input_image->width, input_image->height, input_image->gamma,
-                   &input_image->noise, &input_image->edges);
+        contrast_maps(input_image);
     }
 }
 
@@ -1476,26 +1476,26 @@ static void pngquant_remap(liq_result *result, liq_image *input_image, png8_imag
 
     if (!floyd || use_dither_map) {
         // If no dithering is required, that's the final remapping.
-        // If dithering (with dither map) is required, this image is used to find areas that require dithering
-        float remapping_error = remap_to_palette(&input_image->rwpng_image, output_image, result->palette, result->min_opaque_val);
+            // If dithering (with dither map) is required, this image is used to find areas that require dithering
+        float remapping_error = remap_to_palette(input_image, output_image->row_pointers, result->palette, result->min_opaque_val);
 
-        // remapping error from dithered image is absurd, so always non-dithered value is used
-        // palette_error includes some perceptual weighting from histogram which is closer correlated with dssim
-        // so that should be used when possible.
+    // remapping error from dithered image is absurd, so always non-dithered value is used
+    // palette_error includes some perceptual weighting from histogram which is closer correlated with dssim
+    // so that should be used when possible.
         if (palette_error < 0) {
-            result->palette_error = remapping_error;
-        }
+        result->palette_error = remapping_error;
+    }
 
         if (use_dither_map) {
-            update_dither_map(output_image, input_image->edges);
-        }
+            update_dither_map(output_image->row_pointers, input_image);
+}
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
     set_palette(output_image, result->palette);
 
     if (floyd) {
-        remap_to_palette_floyd(&input_image->rwpng_image, output_image, result->palette, result->min_opaque_val, input_image->edges, use_dither_map, MAX(palette_error*2.4, 16.f/256.f));
+        remap_to_palette_floyd(input_image, output_image->row_pointers, result->palette, result->min_opaque_val, input_image->edges, use_dither_map, MAX(palette_error*2.4, 16.f/256.f));
     }
 
     if (input_image->edges) {

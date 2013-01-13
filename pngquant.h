@@ -13,6 +13,8 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
+
 typedef struct liq_attr liq_attr;
 typedef struct liq_image liq_image;
 typedef struct liq_result liq_result;
@@ -36,6 +38,8 @@ typedef enum liq_error {
     LIQ_BUFFER_TOO_SMALL,
 } liq_error;
 
+enum liq_ownership {LIQ_OWN_ROWS=4, LIQ_OWN_PIXELS=8};
+
 LIQ_EXPORT liq_attr* liq_attr_create(void);
 LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), void (*free)(void*));
 LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig);
@@ -52,6 +56,8 @@ typedef void liq_log_flush_callback_function(const liq_attr*, void* user_info);
 LIQ_EXPORT void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void* user_info);
 LIQ_EXPORT void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void* user_info);
 
+LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma, int ownership_flags);
+LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma, int ownership_flags);
 LIQ_EXPORT void liq_image_destroy(liq_image *img);
 
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image);

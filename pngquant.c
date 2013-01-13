@@ -90,7 +90,7 @@ struct liq_image {
     double gamma;
     int width, height;
     float *noise, *edges, *dither_map;
-    bool modified;
+    bool modified, free_rows, free_pixels;
 };
 
 struct liq_result {
@@ -105,7 +105,8 @@ struct liq_result {
 static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options);
 static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
 static void set_palette(liq_result *result, liq_image *input_image, png8_image *output_image);
-static void prepare_image(liq_image *input_image, liq_attr *options);
+static void modify_alpha(liq_image *input_image, const float min_opaque_val);
+static void contrast_maps(liq_image *image);
 static void pngquant_output_image_free(png8_image *output_image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
@@ -570,15 +571,58 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-void liq_image_destroy(liq_image *input_image)
+LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma, int ownership_flags)
+{
+    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !rows) return NULL;
+
+    liq_image *img = malloc(sizeof(liq_image));
+    *img = (liq_image){
+        .width = width, .height = height,
+        .gamma = gamma ? gamma : 0.45455,
+        .rows = (rgb_pixel **)rows,
+        .free_rows = (ownership_flags & LIQ_OWN_ROWS) != 0,
+        .free_pixels = (ownership_flags & LIQ_OWN_PIXELS) != 0,
+    };
+    if (img->free_pixels) {
+        // for simplicity of this API there's no explicit bitmap argument,
+        // so the row with the lowest address is assumed to be at the start of the bitmap
+        img->pixels = img->rows[0];
+        for(int i=1; i < img->height; i++) if (img->rows[i] < img->pixels) img->pixels = img->rows[i];
+    }
+
+    if (attr->min_opaque_val <= 254.f/255.f) {
+        verbose_print(attr, "  Working around IE6 bug by making image less transparent...");
+        modify_alpha(img, attr->min_opaque_val);
+    }
+
+    if (attr->speed_tradeoff < 8 && img->width >= 4 && img->height >= 4) {
+        contrast_maps(img);
+    }
+
+    return img;
+}
+
+LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma, int ownership_flags)
+{
+    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !bitmap || (ownership_flags & LIQ_OWN_ROWS)) return NULL;
+
+    rgb_pixel *pixels = bitmap;
+    rgb_pixel **rows = malloc(sizeof(rows[0])*height);
+    for(int i=0; i < height; i++) {
+        rows[i] = pixels + width * i;
+    }
+    return liq_image_create_rgba_rows(attr, (void**)rows, width, height, gamma, ownership_flags | LIQ_OWN_ROWS);
+}
+
+LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
 {
     /* now we're done with the INPUT data and row_pointers, so free 'em */
-    if (input_image->pixels) {
+    if (input_image->free_pixels && input_image->pixels) {
         free(input_image->pixels);
         input_image->pixels = NULL;
     }
 
-    if (input_image->rows) {
+    if (input_image->free_rows && input_image->rows) {
         free(input_image->rows);
         input_image->rows = NULL;
     }
@@ -614,8 +658,6 @@ static void pngquant_output_image_free(png8_image *output_image)
 
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image)
 {
-    prepare_image(input_image, options);
-
     histogram *hist = get_histogram(input_image, options);
     if (input_image->noise) {
         free(input_image->noise);
@@ -655,31 +697,31 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         }
     }
 
-    liq_image input_image = {}; // initializes all fields to 0
+    liq_image *input_image = NULL;
     png24_image input_image_rwpng = {};
     if (!retval) {
         retval = read_image(filename, options->using_stdin, &input_image_rwpng);
-        input_image.width = input_image_rwpng.width;
-        input_image.height = input_image_rwpng.height;
-        input_image.gamma = input_image_rwpng.gamma;
-        input_image.rows = (rgb_pixel**)input_image_rwpng.row_pointers;
-        input_image.pixels = (rgb_pixel*)input_image_rwpng.rgba_data;
+        input_image = liq_image_create_rgba_rows(options->liq, (void**)input_image_rwpng.row_pointers,
+                                                 input_image_rwpng.width, input_image_rwpng.height, input_image_rwpng.gamma, LIQ_OWN_PIXELS | LIQ_OWN_ROWS);
+        if (!input_image) {
+            retval = OUT_OF_MEMORY_ERROR;
+        }
     }
 
     png8_image output_image = {};
     if (!retval) {
         verbose_printf(options->liq, "  read %luKB file corrected for gamma %2.1f",
-                       (input_image_rwpng.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
+                       (input_image_rwpng.file_size+1023UL)/1024UL, 1.0/input_image_rwpng.gamma);
 
-        liq_result *result = liq_quantize_image(options->liq, &input_image);
+        liq_result *result = liq_quantize_image(options->liq, input_image);
 
         if (result) {
-            retval = prepare_output_image(result, &input_image, &output_image);
+            retval = prepare_output_image(result, input_image, &output_image);
             if (!retval) {
                 liq_set_dithering_level(result, options->floyd ? 1.0 : 0);
-                liq_write_remapped_image_rows(result, &input_image, output_image.row_pointers);
+                liq_write_remapped_image_rows(result, input_image, output_image.row_pointers);
 
-                set_palette(result, &input_image, &output_image);
+                set_palette(result, input_image, &output_image);
 
                 if (result->palette_error >= 0) {
                     verbose_printf(options->liq, "  mapped image to new colors...MSE=%.3f", result->palette_error*65536.0/6.0);
@@ -706,7 +748,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         }
     }
 
-    liq_image_destroy(&input_image);
+    liq_image_destroy(input_image);
     pngquant_output_image_free(&output_image);
 
     return retval;
@@ -1428,18 +1470,6 @@ static colormap *find_best_palette(histogram *hist, int feedback_loop_trials, co
 
     *palette_error_p = least_error;
     return acolormap;
-}
-
-static void prepare_image(liq_image *input_image, liq_attr *options)
-{
-    if (options->min_opaque_val <= 254.f/255.f) {
-        verbose_print(options, "  Working around IE6 bug by making image less transparent...");
-        modify_alpha(input_image, options->min_opaque_val);
-    }
-
-    if (options->speed_tradeoff < 8 && input_image->width >= 4 && input_image->height >= 4) {
-        contrast_maps(input_image);
-    }
 }
 
 static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)

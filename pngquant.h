@@ -30,6 +30,7 @@ LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors);
 LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed);
 LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min);
 LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int target, int minimum);
+LIQ_EXPORT liq_error liq_set_last_index_transparent(liq_attr* attr, int is_last);
 
 typedef void liq_log_callback_function(const liq_attr*, const char *message, void* user_info);
 typedef void liq_log_flush_callback_function(const liq_attr*, void* user_info);

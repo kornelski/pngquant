@@ -69,12 +69,16 @@ struct liq_attr {
     float min_opaque_val;
     unsigned int max_colors;
     unsigned int speed_tradeoff;
-    bool floyd, last_index_transparent;
-    bool using_stdin, force;
+    bool last_index_transparent;
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
     liq_log_flush_callback_function *log_flush_callback;
     void *log_flush_callback_user_info;
+};
+
+struct pngquant_options {
+    liq_attr *liq;
+    bool floyd, using_stdin, force, ie_mode;
 };
 
 struct liq_image {
@@ -101,7 +105,7 @@ static void prepare_image(liq_image *input_image, liq_attr *options);
 static void pngquant_output_image_free(png8_image *output_image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
 static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
-static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, liq_attr *options);
+static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
 
@@ -280,6 +284,12 @@ LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min) {
     return LIQ_OK;
 }
 
+LIQ_EXPORT liq_error liq_set_last_index_transparent(liq_attr* attr, int is_last)
+{
+    attr->last_index_transparent = !!is_last;
+    return LIQ_OK;
+}
+
 LIQ_EXPORT void liq_set_log_callback(liq_attr *attr, liq_log_callback_function *callback, void* user_info)
 {
     attr->log_callback = callback;
@@ -345,19 +355,22 @@ static const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
 };
 
-int pngquant_file(const char *filename, const char *newext, liq_attr *options);
+int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options);
 
 int main(int argc, char *argv[])
 {
-    liq_attr options = {
-        .max_colors = 256,
+    struct pngquant_options options = {
         .floyd = true, // floyd-steinberg dithering
+    };
+    options.liq = &(liq_attr) {
+        .max_colors = 256,
         .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
         .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
         .last_index_transparent = false, // puts transparent color at last index. This is workaround for blu-ray subtitles.
         .target_mse = 0,
         .max_mse = MAX_DIFF,
     };
+
     unsigned int error_count=0, skipped_count=0, file_count=0;
     pngquant_error latest_error=SUCCESS;
     const char *newext = NULL;
@@ -368,8 +381,8 @@ int main(int argc, char *argv[])
     do {
         opt = getopt_long(argc, argv, "Vvqfhs:", long_options, NULL);
         switch (opt) {
-            case 'v': liq_set_log_callback(&options, log_callback, NULL); break;
-            case 'q': liq_set_log_callback(&options, NULL, NULL); break;
+            case 'v': liq_set_log_callback(options.liq, log_callback, NULL); break;
+            case 'q': liq_set_log_callback(options.liq, NULL, NULL); break;
             case arg_floyd: options.floyd = true; break;
             case arg_ordered: options.floyd = false; break;
             case 'f': options.force = true; break;
@@ -377,22 +390,24 @@ int main(int argc, char *argv[])
             case arg_ext: newext = optarg; break;
 
             case arg_iebug:
-                liq_set_min_opacity(&options, 238); // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
+                // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
+                liq_set_min_opacity(options.liq, 238);
+                options.ie_mode = true;
                 break;
 
             case arg_transbug:
-                options.last_index_transparent = true;
+                liq_set_last_index_transparent(options.liq, true);
                 break;
 
             case 's':
-                if (LIQ_OK != liq_set_speed(&options, atoi(optarg))) {
+                if (LIQ_OK != liq_set_speed(options.liq, atoi(optarg))) {
                     fputs("Speed should be between 1 (slow) and 10 (fast).\n", stderr);
                     return INVALID_ARGUMENT;
                 }
                 break;
 
             case arg_quality:
-                if (!parse_quality(optarg, &options)) {
+                if (!parse_quality(optarg, options.liq)) {
                     fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
                     return INVALID_ARGUMENT;
                 }
@@ -429,7 +444,7 @@ int main(int argc, char *argv[])
     char *colors_end;
     unsigned long colors = strtoul(argv[argn], &colors_end, 10);
     if (colors_end != argv[argn] && '\0' == colors_end[0]) {
-        if (LIQ_OK != liq_set_max_colors(&options, colors)) {
+        if (LIQ_OK != liq_set_max_colors(options.liq, colors)) {
             fputs("Number of colors must be between 2 and 256.\n", stderr);
             return INVALID_ARGUMENT;
         }
@@ -439,7 +454,7 @@ int main(int argc, char *argv[])
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
         newext = options.floyd ? "-ie-fs8.png" : "-ie-or8.png";
-        if (options.min_opaque_val == 1.f) newext += 3; /* skip "-ie" */
+        if (!options.ie_mode) newext += 3; /* skip "-ie" */
     }
 
     if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
@@ -470,7 +485,7 @@ int main(int argc, char *argv[])
     #pragma omp parallel for \
         schedule(dynamic) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
     for(int i=0; i < num_files; i++) {
-        liq_attr opts = options;
+        struct pngquant_options opts = options;
         const char *filename = opts.using_stdin ? "stdin" : argv[argn+i];
 
         #ifdef _OPENMP
@@ -484,7 +499,7 @@ int main(int argc, char *argv[])
 
         pngquant_error retval = pngquant_file(filename, newext, &opts);
 
-        verbose_printf_flush(&opts);
+        verbose_printf_flush(opts.liq);
 
         if (retval) {
             #pragma omp critical
@@ -501,19 +516,19 @@ int main(int argc, char *argv[])
     }
 
     if (error_count) {
-        verbose_printf(&options, "There were errors quantizing %d file%s out of a total of %d file%s.",
+        verbose_printf(options.liq, "There were errors quantizing %d file%s out of a total of %d file%s.",
                        error_count, (error_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (skipped_count) {
-        verbose_printf(&options, "Skipped %d file%s out of a total of %d file%s.",
+        verbose_printf(options.liq, "Skipped %d file%s out of a total of %d file%s.",
                        skipped_count, (skipped_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (!skipped_count && !error_count) {
-        verbose_printf(&options, "No errors detected while quantizing %d image%s.",
+        verbose_printf(options.liq, "No errors detected while quantizing %d image%s.",
                        file_count, (file_count == 1)? "" : "s");
     }
 
-    verbose_printf_flush(&options);
+    verbose_printf_flush(options.liq);
 
     return latest_error;
 }
@@ -583,11 +598,11 @@ LIQ_EXPORT void liq_result_destroy(liq_result *res)
     free(res);
 }
 
-int pngquant_file(const char *filename, const char *newext, liq_attr *options)
+int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
 {
     int retval = 0;
 
-    verbose_printf(options, "%s:", filename);
+    verbose_printf(options->liq, "%s:", filename);
 
     char *outname = NULL;
     if (!options->using_stdin) {
@@ -611,10 +626,10 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
 
     png8_image output_image = {};
     if (!retval) {
-        verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
+        verbose_printf(options->liq, "  read %luKB file corrected for gamma %2.1f",
                        (input_image_rwpng.file_size+1023UL)/1024UL, 1.0/input_image.gamma);
 
-        liq_result *result = liq_quantize_image(options, &input_image);
+        liq_result *result = liq_quantize_image(options->liq, &input_image);
 
         if (result) {
             retval = prepare_output_image(result, &input_image, &output_image);
@@ -623,8 +638,8 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
                 pngquant_remap(result, &input_image, &output_image);
 
                 if (result->palette_error >= 0) {
-                    verbose_printf(options, "  mapped image to new colors...MSE=%.3f", result->palette_error*65536.0/6.0);
-        }
+                    verbose_printf(options->liq, "  mapped image to new colors...MSE=%.3f", result->palette_error*65536.0/6.0);
+                }
             }
             liq_result_destroy(result);
         } else {
@@ -637,7 +652,7 @@ int pngquant_file(const char *filename, const char *newext, liq_attr *options)
     } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
-        if (!input_image.modified) {
+        if (!options->ie_mode) {
             int write_retval = write_image(NULL, &input_image_rwpng, outname, options);
             if (write_retval) retval = write_retval;
         } else {
@@ -1010,7 +1025,7 @@ static void set_binary_mode(FILE *fp)
 #endif
 }
 
-static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, liq_attr *options)
+static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options)
 {
     FILE *outfile;
     if (options->using_stdin) {
@@ -1018,9 +1033,9 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         outfile = stdout;
 
         if (output_image) {
-            verbose_printf(options, "  writing %d-color image to stdout", output_image->num_palette);
+            verbose_printf(options->liq, "  writing %d-color image to stdout", output_image->num_palette);
         } else {
-            verbose_print(options, "  writing truecolor image to stdout");
+            verbose_print(options->liq, "  writing truecolor image to stdout");
         }
     } else {
 
@@ -1033,9 +1048,9 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         if (outfilename) outfilename++; else outfilename = outname;
 
         if (output_image) {
-            verbose_printf(options, "  writing %d-color image as %s", output_image->num_palette, outfilename);
+            verbose_printf(options->liq, "  writing %d-color image as %s", output_image->num_palette, outfilename);
         } else {
-            verbose_printf(options, "  writing truecolor image as %s", outfilename);
+            verbose_printf(options->liq, "  writing truecolor image as %s", outfilename);
         }
     }
 
@@ -1489,7 +1504,7 @@ static void pngquant_remap(liq_result *result, liq_image *input_image, png8_imag
 }
     }
 
-        // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
+    // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
     set_palette(output_image, result->palette);
 
     if (floyd) {

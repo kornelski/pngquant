@@ -370,6 +370,7 @@ LIQ_EXPORT liq_attr* liq_attr_create()
 
 LIQ_EXPORT void liq_attr_destroy(liq_attr *attr)
 {
+    if (!attr) return;
     attr->free(attr);
 }
 
@@ -616,6 +617,8 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
 
 LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
 {
+    if (!input_image) return;
+
     /* now we're done with the INPUT data and row_pointers, so free 'em */
     if (input_image->free_pixels && input_image->pixels) {
         free(input_image->pixels);
@@ -678,6 +681,7 @@ LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level
 
 LIQ_EXPORT void liq_result_destroy(liq_result *res)
 {
+    if (!res) return;
     pam_freecolormap(res->palette);
     free(res);
 }

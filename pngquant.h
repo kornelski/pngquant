@@ -17,6 +17,16 @@ typedef struct liq_attr liq_attr;
 typedef struct liq_image liq_image;
 typedef struct liq_result liq_result;
 
+
+typedef struct liq_color {
+    unsigned char r, g, b, a;
+} liq_color;
+
+typedef struct liq_palette {
+    unsigned int count;
+    liq_color entries[256];
+} liq_palette;
+
 typedef enum liq_error {
     LIQ_OK = 0,
     LIQ_VALUE_OUT_OF_RANGE = 100,
@@ -48,6 +58,10 @@ LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_im
 
 LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma);
 LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level);
+
+LIQ_EXPORT const liq_palette *liq_get_palette(liq_result *result, liq_image *image);
+LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *input_image, void *buffer, size_t buffer_size);
+LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *result, liq_image *input_image, unsigned char **row_pointers);
 
 LIQ_EXPORT void liq_result_destroy(liq_result *);
 

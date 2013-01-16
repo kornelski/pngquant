@@ -229,9 +229,6 @@ pngquant_error rwpng_write_image_init(png_image *mainprog_ptr, png_structpp png_
 
     png_set_compression_level(*png_ptr_p, Z_BEST_COMPRESSION);
 
-    // Palette images generally don't gain anything from filtering
-    png_set_filter(*png_ptr_p, PNG_FILTER_TYPE_BASE, PNG_FILTER_VALUE_NONE);
-
     return SUCCESS;
 }
 
@@ -267,6 +264,9 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 
     pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile);
     if (retval) return retval;
+
+    // Palette images generally don't gain anything from filtering
+    png_set_filter(png_ptr, PNG_FILTER_TYPE_BASE, PNG_FILTER_VALUE_NONE);
 
     rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma);
 

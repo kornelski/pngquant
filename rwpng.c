@@ -62,6 +62,17 @@ static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t lengt
     read_data->bytes_read += read;
 }
 
+static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_ptr, unsigned char *base, int height)
+{
+    int rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+
+    png_bytepp row_pointers = malloc(height * sizeof(row_pointers[0]));
+    for(unsigned int row = 0;  row < height;  ++row) {
+        row_pointers[row] = base + row * rowbytes;
+    }
+    return row_pointers;
+}
+
 
 /*
    retval:
@@ -77,7 +88,6 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr)
 {
     png_structp  png_ptr = NULL;
     png_infop    info_ptr = NULL;
-    png_uint_32  i;
     png_size_t   rowbytes;
     int          color_type, bit_depth;
 
@@ -167,24 +177,12 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr)
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         return PNG_OUT_OF_MEMORY_ERROR;
     }
-    if ((mainprog_ptr->row_pointers = (png_bytepp)malloc(mainprog_ptr->height*sizeof(png_bytep))) == NULL) {
-        fprintf(stderr, "pngquant readpng:  unable to allocate row pointers\n");
-        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        free(mainprog_ptr->rgba_data);
-        mainprog_ptr->rgba_data = NULL;
-        return PNG_OUT_OF_MEMORY_ERROR;
-    }
 
-    /* set the individual row_pointers to point at the correct offsets */
-
-    for (i = 0;  i < mainprog_ptr->height;  ++i)
-        mainprog_ptr->row_pointers[i] = mainprog_ptr->rgba_data + i*rowbytes;
-
+    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->rgba_data, mainprog_ptr->height);
 
     /* now we can go ahead and just read the whole image */
 
-    png_read_image(png_ptr, (png_bytepp)mainprog_ptr->row_pointers);
-
+    png_read_image(png_ptr, row_pointers);
 
     /* and we're done!  (png_read_end() can be omitted if no processing of
      * post-IDAT text/time/etc. is desired) */
@@ -194,6 +192,7 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr)
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
     mainprog_ptr->file_size = read_data.bytes_read;
+    mainprog_ptr->row_pointers = (unsigned char **)row_pointers;
 
     return SUCCESS;
 }
@@ -241,27 +240,18 @@ pngquant_error rwpng_write_image_init(png_image *mainprog_ptr, png_structpp png_
 }
 
 
-void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_image *mainprog_ptr)
+void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_bytepp row_pointers)
 {
     png_write_info(*png_ptr_p, *info_ptr_p);
 
     png_set_packing(*png_ptr_p);
 
-    png_bytepp row_pointers = malloc(mainprog_ptr->png8.height * sizeof(row_pointers[0]));
-
-    for(unsigned int row = 0;  row < mainprog_ptr->png8.height;  ++row) {
-        row_pointers[row] =  mainprog_ptr->png8.indexed_data + row * mainprog_ptr->png8.width;
-    }
-
     png_write_image(*png_ptr_p, row_pointers);
-
-    free(row_pointers);
 
     png_write_end(*png_ptr_p, NULL);
 
     png_destroy_write_struct(png_ptr_p, info_ptr_p);
 }
-
 
 pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 {
@@ -292,7 +282,12 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     if (mainprog_ptr->num_trans > 0)
         png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans, mainprog_ptr->num_trans, NULL);
 
-    rwpng_write_end(&info_ptr, &png_ptr, (png_image*)mainprog_ptr);
+
+    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->indexed_data, mainprog_ptr->height);
+
+    rwpng_write_end(&info_ptr, &png_ptr, row_pointers);
+
+    free(row_pointers);
 
     return SUCCESS;
 }
@@ -311,7 +306,11 @@ pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
                  PNG_FILTER_TYPE_BASE);
 
 
-    rwpng_write_end(&info_ptr, &png_ptr, (png_image*)mainprog_ptr);
+    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->rgba_data, mainprog_ptr->height);
+
+    rwpng_write_end(&info_ptr, &png_ptr, row_pointers);
+
+    free(row_pointers);
 
     return SUCCESS;
 }

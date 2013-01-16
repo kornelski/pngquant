@@ -232,10 +232,6 @@ pngquant_error rwpng_write_image_init(png_image *mainprog_ptr, png_structpp png_
     // Palette images generally don't gain anything from filtering
     png_set_filter(*png_ptr_p, PNG_FILTER_TYPE_BASE, PNG_FILTER_VALUE_NONE);
 
-    if (mainprog_ptr->png8.gamma > 0.0) {
-        png_set_gAMA(*png_ptr_p, *info_ptr_p, mainprog_ptr->png8.gamma);
-    }
-
     return SUCCESS;
 }
 
@@ -253,6 +249,17 @@ void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_bytepp r
     png_destroy_write_struct(png_ptr_p, info_ptr_p);
 }
 
+void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma)
+{
+    if (gamma > 0.0) {
+        png_set_gAMA(png_ptr, info_ptr, gamma);
+
+        if (gamma == 0.45455) {
+            png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
+        }
+    }
+}
+
 pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 {
     png_structp png_ptr;
@@ -260,6 +267,8 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 
     pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile);
     if (retval) return retval;
+
+    rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma);
 
     /* set the image parameters appropriately */
     int sample_depth;
@@ -299,6 +308,8 @@ pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
 
     pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile);
     if (retval) return retval;
+
+    rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma);
 
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,
                  8, PNG_COLOR_TYPE_RGB_ALPHA,

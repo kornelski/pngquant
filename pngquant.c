@@ -380,9 +380,9 @@ int main(int argc, char *argv[])
     }
 
     if (options.reqcolors < 2 || options.reqcolors > 256) {
-            fputs("Number of colors must be between 2 and 256.\n", stderr);
-            return INVALID_ARGUMENT;
-        }
+        fputs("Number of colors must be between 2 and 256.\n", stderr);
+        return INVALID_ARGUMENT;
+    }
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
@@ -517,7 +517,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     pngquant_image input_image = {}; // initializes all fields to 0
     if (!retval) {
         retval = read_image(filename, options->using_stdin, &input_image.rwpng_image);
-    }
+        }
 
     png8_image output_image = {};
     if (!retval) {
@@ -530,7 +530,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         if (input_image.noise) {
             free(input_image.noise);
             input_image.noise = NULL;
-        }
+    }
 
         colormap *palette = pngquant_quantize(hist, options);
         pam_freeacolorhist(hist);
@@ -548,13 +548,13 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     }
 
     if (!retval) {
-        retval = write_image(&output_image, NULL, outname, options);
+            retval = write_image(&output_image, NULL, outname, options);
     } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
         if (!input_image.modified) {
             int write_retval = write_image(NULL, &input_image.rwpng_image, outname, options);
-            if (write_retval) retval = write_retval;
+                if (write_retval) retval = write_retval;
         } else {
             // iebug preprocessing changes the original image
             fputs("  error:  can't write the original image when iebug option is enabled\n", stderr);
@@ -622,9 +622,9 @@ static void sort_palette(colormap *map, const struct pngquant_options *options)
     qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
 }
 
-static void set_palette(png8_image *output_image, const colormap *map, const double input_gamma)
+static void set_palette(png8_image *output_image, const colormap *map)
 {
-    to_f_set_gamma(input_gamma);
+    to_f_set_gamma(output_image->gamma);
 
     for(unsigned int x = 0; x < map->colors; ++x) {
         rgb_pixel px = to_rgb(output_image->gamma, map->palette[x].acolor);
@@ -931,11 +931,11 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     pngquant_error retval;
     #pragma omp critical (libpng)
     {
-        if (output_image) {
-            retval = rwpng_write_image8(outfile, output_image);
-        } else {
-            retval = rwpng_write_image24(outfile, output_image24);
-        }
+    if (output_image) {
+        retval = rwpng_write_image8(outfile, output_image);
+    } else {
+        retval = rwpng_write_image24(outfile, output_image24);
+    }
     }
 
     if (retval) {
@@ -1038,11 +1038,11 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
     pngquant_error retval;
     #pragma omp critical (libpng)
     {
-        #if USE_COCOA
+#if USE_COCOA
             retval = rwpng_read_image24_cocoa(infile, input_image_p);
-        #else
+#else
             retval = rwpng_read_image24(infile, input_image_p);
-        #endif
+#endif
     }
 
     if (!using_stdin)
@@ -1325,7 +1325,7 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
     for(unsigned int i=0; i < acolormap->colors; i++) {
         if (acolormap->palette[i].acolor.a < 255.0/256.0) {
             output_image->num_trans = i+1;
-        }
+    }
     }
 
     /*
@@ -1358,7 +1358,7 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
     }
 
     // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
-    set_palette(output_image, acolormap, input_image->rwpng_image.gamma);
+    set_palette(output_image, acolormap);
 
     if (floyd) {
         remap_to_palette_floyd(&input_image->rwpng_image, output_image, acolormap, options->min_opaque_val, input_image->edges, use_dither_map);

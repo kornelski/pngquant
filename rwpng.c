@@ -37,6 +37,7 @@
 #include "rwpng.h"
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
+int rwpng_read_image24_cocoa(FILE *infile, png24_image *mainprog_ptr);
 
 
 void rwpng_version_info(FILE *fp)
@@ -45,6 +46,9 @@ void rwpng_version_info(FILE *fp)
       PNG_LIBPNG_VER_STRING, png_get_header_ver(NULL));
     fprintf(fp, "   Compiled with zlib %s; using zlib %s.\n",
       ZLIB_VERSION, zlib_version);
+#if USE_COCOA
+    fputs("   Compiled with Apple Cocoa image reader.\n", fp);
+#endif
 }
 
 
@@ -84,7 +88,7 @@ static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_
     26 = wrong PNG color type (no alpha channel)
  */
 
-pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr)
+pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr)
 {
     png_structp  png_ptr = NULL;
     png_infop    info_ptr = NULL;
@@ -195,6 +199,16 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr)
     mainprog_ptr->row_pointers = (unsigned char **)row_pointers;
 
     return SUCCESS;
+}
+
+
+pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p)
+{
+#if USE_COCOA
+    return rwpng_read_image24_cocoa(infile, input_image_p);
+#else
+    return rwpng_read_image24_libpng(infile, input_image_p);
+#endif
 }
 
 

@@ -104,9 +104,9 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
     a *= 256.f;
 
     return (rgb_pixel){
-        .r = r>=255.f ? 255 : (r<=0.f ? 0 : r),
-        .g = g>=255.f ? 255 : (g<=0.f ? 0 : g),
-        .b = b>=255.f ? 255 : (b<=0.f ? 0 : b),
+        .r = r>=255.f ? 255 : r,
+        .g = g>=255.f ? 255 : g,
+        .b = b>=255.f ? 255 : b,
         .a = a>=255.f ? 255 : a,
     };
 }

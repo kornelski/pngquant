@@ -1221,6 +1221,10 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_
 
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
+            for(int j=0; j < hist->size; j++) {
+                hist->achv[j].adjusted_weight = (hist->achv[j].perceptual_weight + hist->achv[j].adjusted_weight)/2.0;
+            }
+
             target_mse_overshoot = 1.0;
             feedback_loop_trials -= 6;
             // if error is really bad, it's unlikely to improve, so end sooner

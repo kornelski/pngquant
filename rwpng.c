@@ -66,9 +66,9 @@ static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t lengt
     read_data->bytes_read += read;
 }
 
-static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_ptr, unsigned char *base, int height)
+static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_ptr, unsigned char *base, int height, int rowbytes)
 {
-    int rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+    if (!rowbytes) rowbytes = png_get_rowbytes(png_ptr, info_ptr);
 
     png_bytepp row_pointers = malloc(height * sizeof(row_pointers[0]));
     for(unsigned int row = 0;  row < height;  ++row) {
@@ -182,7 +182,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
         return PNG_OUT_OF_MEMORY_ERROR;
     }
 
-    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->rgba_data, mainprog_ptr->height);
+    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->rgba_data, mainprog_ptr->height, 0);
 
     /* now we can go ahead and just read the whole image */
 
@@ -306,7 +306,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
         png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans, mainprog_ptr->num_trans, NULL);
 
 
-    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->indexed_data, mainprog_ptr->height);
+    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->indexed_data, mainprog_ptr->height, mainprog_ptr->width);
 
     rwpng_write_end(&info_ptr, &png_ptr, row_pointers);
 
@@ -331,7 +331,7 @@ pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
                  PNG_FILTER_TYPE_BASE);
 
 
-    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->rgba_data, mainprog_ptr->height);
+    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->rgba_data, mainprog_ptr->height, 0);
 
     rwpng_write_end(&info_ptr, &png_ptr, row_pointers);
 

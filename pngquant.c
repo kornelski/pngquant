@@ -1276,6 +1276,20 @@ static colormap *pngquant_quantize(histogram *hist, const struct pngquant_option
 {
     const double max_mse = options->max_mse;
 
+    // If image has few colors to begin with (and no quality degradation is required)
+    // then it's possible to skip quantization entirely
+    if (hist->size <= options->reqcolors && options->target_mse == 0) {
+        colormap *hist_palette = pam_colormap(hist->size);
+        for(unsigned int i=0; i < hist->size; i++) {
+            hist_palette->palette[i].acolor = hist->achv[i].acolor;
+            hist_palette->palette[i].popularity = hist->achv[i].perceptual_weight;
+        }
+
+        sort_palette(hist_palette, options);
+        hist_palette->palette_error = 0;
+        return hist_palette;
+    }
+
     double palette_error = -1;
     colormap *acolormap = find_best_palette(hist, options->reqcolors, 56-9*options->speed_tradeoff, options, &palette_error);
 

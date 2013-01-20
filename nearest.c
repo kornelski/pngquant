@@ -129,8 +129,7 @@ struct nearest_map *nearest_init(const colormap *map)
     centroids->heads = mempool_new(&centroids->mempool, sizeof(centroids->heads[0])*(num_vantage_points+1), mempool_size); // +1 is fallback head
 
     unsigned int h=0;
-    for(; h < num_vantage_points; h++)
-    {
+    for(; h < num_vantage_points; h++) {
         unsigned int num_candiadtes = 1+(map->colors - skipped)/((1+num_vantage_points-h)/2);
 
         centroids->heads[h] = build_head(subset_palette->palette[h].acolor, map, num_candiadtes, &centroids->mempool, skip_index, &skipped);

@@ -323,6 +323,7 @@ int main(int argc, char *argv[])
             case arg_iebug:
             options.min_opaque_val = 238.0/256.0; // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
                 break;
+
             case arg_transbug:
                 options.last_index_transparent = true;
                 break;
@@ -378,9 +379,9 @@ int main(int argc, char *argv[])
     }
 
     if (options.reqcolors < 2 || options.reqcolors > 256) {
-            fputs("Number of colors must be between 2 and 256.\n", stderr);
-            return INVALID_ARGUMENT;
-        }
+        fputs("Number of colors must be between 2 and 256.\n", stderr);
+        return INVALID_ARGUMENT;
+    }
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
@@ -528,7 +529,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         if (input_image.noise) {
             free(input_image.noise);
             input_image.noise = NULL;
-    }
+        }
 
         colormap *palette = pngquant_quantize(hist, options);
         pam_freeacolorhist(hist);
@@ -593,8 +594,8 @@ static void sort_palette(colormap *map, const struct pngquant_options *options)
             /* colors sorted by popularity make pngs slightly more compressible */
             qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
             return;
+            }
         }
-    }
 
     /* move transparent colors to the beginning to shrink trns chunk */
     unsigned int num_transparent=0;
@@ -757,6 +758,7 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
     const unsigned int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     float difference_tolerance[map->colors];
+
     if (output_image_is_remapped) for(unsigned int i=0; i < map->colors; i++) {
             difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
         }
@@ -1154,12 +1156,11 @@ static void update_dither_map(const png8_image *output_image, float *edges)
     const unsigned int height = output_image->height;
     const unsigned char *restrict pixels = output_image->indexed_data;
 
-    for(unsigned int row=0; row < height; row++)
-    {
+    for(unsigned int row=0; row < height; row++) {
         unsigned char lastpixel = pixels[row*width];
         unsigned int lastcol=0;
-        for(unsigned int col=1; col < width; col++)
-        {
+
+        for(unsigned int col=1; col < width; col++) {
             const unsigned char px = pixels[row*width + col];
 
             if (px != lastpixel || col == width-1) {
@@ -1205,8 +1206,7 @@ static colormap *find_best_palette(histogram *hist, unsigned int reqcolors, int 
     double target_mse_overshoot = feedback_loop_trials>0 ? 1.05 : 1.0;
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
-    do
-    {
+    do {
         colormap *newmap = mediancut(hist, options->min_opaque_val, reqcolors, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2);
 
         if (feedback_loop_trials <= 0) {
@@ -1386,7 +1386,7 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
         verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error*65536.0/6.0);
     }
 
-        // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
+    // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
     set_palette(output_image, acolormap);
 
     if (floyd) {

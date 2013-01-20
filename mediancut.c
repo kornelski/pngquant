@@ -84,7 +84,7 @@ static inline void hist_item_swap(hist_item *l, hist_item *r)
         hist_item t = *l;
         *l = *r;
         *r = t;
-}
+    }
 }
 
 inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len) ALWAYS_INLINE;
@@ -157,14 +157,15 @@ static hist_item *hist_item_sort_halfvar(hist_item *base, unsigned int len, doub
                 // End of left recursion. This will be executed in order from the first element.
                 *lowervar += base[0].color_weight;
                 if (*lowervar > halfvar) return &base[0];
-}
-    }
+            }
+        }
+
         if (len > r) {
             base += r; len -= r; // tail-recursive "call"
         } else {
             *lowervar += base[r].color_weight;
             return (*lowervar > halfvar) ? &base[r] : NULL;
-    }
+        }
     } while(1);
 }
 
@@ -218,10 +219,11 @@ static f_pixel get_median(const struct box *b, hist_item achv[])
     const unsigned int median_start = (b->colors-1)/2;
 
     hist_item_sort_range(&(achv[b->ind]), b->colors,
-                    median_start,
-                    b->colors&1 ? 1 : 2);
+                         median_start,
+                         b->colors&1 ? 1 : 2);
 
     if (b->colors&1) return achv[b->ind + median_start].acolor;
+
     return averagepixels(2, &achv[b->ind + median_start], 1.0);
 }
 

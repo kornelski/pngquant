@@ -81,6 +81,7 @@ struct liq_attr {
 
 struct pngquant_options {
     liq_attr *liq;
+    liq_image *fixed_palette_image;
     bool floyd, using_stdin, force, ie_mode;
 };
 
@@ -109,7 +110,7 @@ static void modify_alpha(liq_image *input_image, const float min_opaque_val);
 static void contrast_maps(liq_image *image);
 static void pngquant_output_image_free(png8_image *output_image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
-static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p);
+static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
@@ -354,7 +355,7 @@ static void fix_obsolete_options(const unsigned int argc, char *argv[])
     }
 }
 
-enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug, arg_quality};
+enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug, arg_quality, arg_map};
 
 static const struct option long_options[] = {
     {"verbose", no_argument, NULL, 'v'},
@@ -369,6 +370,7 @@ static const struct option long_options[] = {
     {"ext", required_argument, NULL, arg_ext},
     {"speed", required_argument, NULL, 's'},
     {"quality", required_argument, NULL, arg_quality},
+    {"map", required_argument, NULL, arg_map},
     {"version", no_argument, NULL, 'V'},
     {"help", no_argument, NULL, 'h'},
 };
@@ -455,6 +457,13 @@ int main(int argc, char *argv[])
             case arg_quality:
                 if (!parse_quality(optarg, options.liq)) {
                     fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
+                    return INVALID_ARGUMENT;
+                }
+                break;
+
+            case arg_map:
+                if (SUCCESS != read_image(options.liq, optarg, false, &(png24_image){}, &options.fixed_palette_image)) {
+                    fprintf(stderr, "  error: Unable to load %s", optarg);
                     return INVALID_ARGUMENT;
                 }
                 break;
@@ -580,6 +589,7 @@ int main(int argc, char *argv[])
 
     verbose_printf_flush(options.liq);
 
+    liq_image_destroy(options.fixed_palette_image);
     liq_attr_destroy(options.liq);
 
     return latest_error;
@@ -717,12 +727,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     liq_image *input_image = NULL;
     png24_image input_image_rwpng = {};
     if (!retval) {
-        retval = read_image(filename, options->using_stdin, &input_image_rwpng);
-        input_image = liq_image_create_rgba_rows(options->liq, (void**)input_image_rwpng.row_pointers,
-                                                 input_image_rwpng.width, input_image_rwpng.height, input_image_rwpng.gamma, LIQ_OWN_PIXELS | LIQ_OWN_ROWS);
-        if (!input_image) {
-            retval = OUT_OF_MEMORY_ERROR;
-        }
+        retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image);
     }
 
     png8_image output_image = {};
@@ -730,7 +735,8 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         verbose_printf(options->liq, "  read %luKB file corrected for gamma %2.1f",
                        (input_image_rwpng.file_size+1023UL)/1024UL, 1.0/input_image_rwpng.gamma);
 
-        liq_result *result = liq_quantize_image(options->liq, input_image);
+        // when using image as source of a fixed palette the palette is extracted using regular quantization
+        liq_result *result = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
 
         if (result) {
             retval = prepare_output_image(result, input_image, &output_image);
@@ -798,8 +804,8 @@ static void sort_palette(colormap *map, const liq_attr *options)
             /* colors sorted by popularity make pngs slightly more compressible */
             qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
             return;
+            }
         }
-    }
 
     /* move transparent colors to the beginning to shrink trns chunk */
     unsigned int num_transparent=0;
@@ -1270,7 +1276,7 @@ static void modify_alpha(liq_image *input_image, const float min_opaque_val)
     input_image->modified = true;
 }
 
-static pngquant_error read_image(const char *filename, int using_stdin, png24_image *input_image_p)
+static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p)
 {
     FILE *infile;
 
@@ -1296,8 +1302,14 @@ static pngquant_error read_image(const char *filename, int using_stdin, png24_im
         return retval;
     }
 
-    return SUCCESS;
+    *liq_image_p = liq_image_create_rgba_rows(options, (void**)input_image_p->row_pointers,
+                                         input_image_p->width, input_image_p->height, input_image_p->gamma, LIQ_OWN_PIXELS | LIQ_OWN_ROWS);
+    if (!*liq_image_p) {
+        return OUT_OF_MEMORY_ERROR;
     }
+
+    return SUCCESS;
+}
 
 /**
  Builds two maps:

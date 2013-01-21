@@ -192,7 +192,7 @@ static double quality_to_mse(long quality)
     if (quality == 0) return MAX_DIFF;
 
     // curve fudged to be roughly similar to quality of libjpeg
-    return 1.1/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
+    return 2.5/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
 }
 
 
@@ -1282,7 +1282,7 @@ static colormap *pngquant_quantize(histogram *hist, const struct pngquant_option
     }
 
     if (palette_error > max_mse) {
-        verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0, max_mse*65536.0);
+        verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0/6.0, max_mse*65536.0/6.0);
         pam_freecolormap(acolormap);
         return NULL;
     }
@@ -1346,7 +1346,7 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
     }
 
     if (palette_error >= 0) {
-        verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error*65536.0);
+        verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error*65536.0/6.0);
     }
 
         // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping

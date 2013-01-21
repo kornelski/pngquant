@@ -254,7 +254,7 @@ inline static double color_weight(f_pixel median, hist_item h)
 {
     float diff = colordifference(median, h.acolor);
     // if color is "good enough", don't split further
-    if (diff < 1.f/256.f/256.f) diff /= 2.f;
+    if (diff < 2.f/256.f/256.f) diff /= 2.f;
     return sqrt(diff) * (sqrt(1.0+h.adjusted_weight)-1.0);
 }
 
@@ -428,7 +428,7 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
 {
     for(unsigned int bi = 0; bi < boxes; ++bi) {
         for(unsigned int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
-            achv[i].adjusted_weight *= sqrt(1.0 +colordifference(map->palette[bi].acolor, achv[i].acolor)/2.0);
+            achv[i].adjusted_weight *= sqrt(1.0 +colordifference(map->palette[bi].acolor, achv[i].acolor)/4.0);
         }
     }
 }

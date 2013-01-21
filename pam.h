@@ -117,7 +117,7 @@ inline static double colordifference_ch(const double x, const double y, const do
     // maximum of channel blended on white, and blended on black
     // premultiplied alpha and backgrounds 0/1 shorten the formula
     const double black = x-y, white = black+alphas;
-    return MAX(black*black, white*white);
+    return black*black + white*white;
 }
 
 inline static float colordifference_stdc(const f_pixel px, const f_pixel py) ALWAYS_INLINE;
@@ -140,12 +140,12 @@ inline static float colordifference(f_pixel px, f_pixel py)
     __m128 alphas = _mm_sub_ss(vpy, vpx);
     alphas = _mm_shuffle_ps(alphas,alphas,0); // copy first to all four
 
-    const __m128 black = _mm_sub_ps(vpx, vpy);
+    __m128 onblack = _mm_sub_ps(vpx, vpy); // x - y
+    __m128 onwhite = _mm_add_ps(onblack, alphas); // x - y + (y.a - x.a)
 
-    // x - y + (y.a - x.a)
-    const __m128 white = _mm_add_ps(black, alphas);
-
-    const __m128 max = _mm_max_ps(_mm_mul_ps(black, black), _mm_mul_ps(white, white));
+    onblack = _mm_mul_ps(onblack, onblack);
+    onwhite = _mm_mul_ps(onwhite, onwhite);
+    const __m128 max = _mm_add_ps(onwhite, onblack);
 
     // add rgb, not a
     const __m128 maxhl = _mm_movehl_ps(max, max);

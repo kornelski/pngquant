@@ -342,9 +342,9 @@ int main(int argc, char *argv[])
                 break;
 
             case 'h':
-            print_full_version(stdout);
-            print_usage(stdout);
-            return SUCCESS;
+                print_full_version(stdout);
+                print_usage(stdout);
+                return SUCCESS;
 
             case 'V':
                 puts(PNGQUANT_VERSION);
@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
 
             default:
                 return INVALID_ARGUMENT;
-            }
+        }
     } while (opt != -1);
 
     int argn = optind;
@@ -592,8 +592,8 @@ static void sort_palette(colormap *map, const struct pngquant_options *options)
             /* colors sorted by popularity make pngs slightly more compressible */
             qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
             return;
+            }
         }
-    }
 
     /* move transparent colors to the beginning to shrink trns chunk */
     int num_transparent=0;
@@ -696,6 +696,42 @@ static float distance_from_closest_other_color(const colormap *map, const int i)
     return second_best;
 }
 
+inline static float min_4(float a, float b, float c, float d)
+{
+    float x = MIN(a,b), y = MIN(b,c);
+    return MIN(x,y);
+}
+
+inline static f_pixel get_dithered_pixel(const float dither_level, const f_pixel thiserr, const f_pixel px)
+{
+    /* Use Floyd-Steinberg errors to adjust actual color. */
+    const float sr = thiserr.r * dither_level,
+                sg = thiserr.g * dither_level,
+                sb = thiserr.b * dither_level,
+                sa = thiserr.a * dither_level;
+
+    float ratio = min_4((sr < 0) ? px.r/-sr : (sr > 0) ? (1.0-px.r)/sr : 1.0,
+                        (sg < 0) ? px.g/-sg : (sg > 0) ? (1.0-px.g)/sg : 1.0,
+                        (sb < 0) ? px.b/-sb : (sb > 0) ? (1.0-px.b)/sb : 1.0,
+                        (sa < 0) ? px.a/-sa : (sa > 0) ? (1.0-px.a)/sa : 1.0);
+
+     // If dithering error is crazy high, don't propagate it that much
+     // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
+     if (sr*sr + sg*sg + sb*sb + sa*sa > 16.f/256.f) {
+         ratio *= 0.8;
+     }
+
+     if (ratio > 1.0) ratio = 1.0;
+     if (ratio < 0) ratio = 0;
+
+     return (f_pixel){
+         .r=px.r + sr * ratio,
+         .g=px.g + sg * ratio,
+         .b=px.b + sb * ratio,
+         .a=px.a + sa * ratio,
+     };
+}
+
 /**
   Uses edge/noise map to apply dithering only to flat areas. Dithering on edges creates jagged lines, and noisy areas are "naturally" dithered.
 
@@ -716,8 +752,8 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
 
     float difference_tolerance[map->colors];
     if (output_image_is_remapped) for(unsigned int i=0; i < map->colors; i++) {
-        difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
-    }
+            difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
+        }
 
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;
@@ -740,48 +776,29 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
         unsigned int col = (fs_direction) ? 0 : (cols - 1);
 
         do {
-            const f_pixel px = to_f(input_pixels[row][col]);
-
-            float dither_level = edge_map ? edge_map[row*cols + col] : 0.9f;
-
-            /* Use Floyd-Steinberg errors to adjust actual color. */
-            float sr = px.r + thiserr[col + 1].r * dither_level,
-                  sg = px.g + thiserr[col + 1].g * dither_level,
-                  sb = px.b + thiserr[col + 1].b * dither_level,
-            sa = px.a + thiserr[col + 1].a * dither_level;
-
-            // Error must be clamped, otherwise it can accumulate so much that it will be
-            // impossible to compensate it, causing color streaks
-            if (sr < 0) sr = 0;
-            else if (sr > 1) sr = 1;
-            if (sg < 0) sg = 0;
-            else if (sg > 1) sg = 1;
-            if (sb < 0) sb = 0;
-            else if (sb > 1) sb = 1;
-            if (sa < 0) sa = 0;
-            else if (sa > 1) sa = 1;
+            float dither_level = edge_map ? edge_map[row*cols + col] : 15.f/16.f;
+            const f_pixel spx = get_dithered_pixel(dither_level, thiserr[col + 1], to_f(input_pixels[row][col]));
 
             unsigned int ind;
-            if (sa < 1.0/256.0) {
+            if (spx.a < 1.0/256.0) {
                 ind = transparent_ind;
             } else {
-                const f_pixel spx = (f_pixel){.r=sr, .g=sg, .b=sb, .a=sa};
                 unsigned int curr_ind = remapped[row*cols + col];
                 if (output_image_is_remapped && colordifference(map->palette[curr_ind].acolor, spx) < difference_tolerance[curr_ind]) {
                     ind = curr_ind;
                 } else {
                     ind = nearest_search(n, spx, min_opaque_val, NULL);
-            }
+                }
             }
 
             remapped[row*cols + col] = ind;
 
             const f_pixel xp = acolormap[ind].acolor;
             f_pixel err = {
-                .r = (sr - xp.r),
-                .g = (sg - xp.g),
-                .b = (sb - xp.b),
-                .a = (sa - xp.a),
+                .r = (spx.r - xp.r),
+                .g = (spx.g - xp.g),
+                .b = (spx.b - xp.b),
+                .a = (spx.a - xp.a),
             };
 
             // If dithering error is crazy high, don't propagate it that much

@@ -1184,7 +1184,7 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_
 
     do
     {
-        colormap *newmap = mediancut(hist, options->min_opaque_val, reqcolors, target_mse * target_mse_overshoot, MAX(MAX(30.0/65536.0, target_mse), least_error)*1.2);
+        colormap *newmap = mediancut(hist, options->min_opaque_val, reqcolors, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2);
 
         if (feedback_loop_trials <= 0) {
             return newmap;

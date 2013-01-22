@@ -231,10 +231,24 @@ void pam_freeacolorhist(histogram *hist)
 colormap *pam_colormap(unsigned int colors)
 {
     colormap *map = malloc(sizeof(colormap));
-    map->palette = calloc(colors, sizeof(map->palette[0]));
-    map->subset_palette = NULL;
-    map->colors = colors;
+    *map = (colormap){
+        .palette = calloc(colors, sizeof(map->palette[0])),
+        .subset_palette = NULL,
+        .colors = colors,
+    };
     return map;
+}
+
+colormap *pam_duplicate_colormap(colormap *map)
+{
+    colormap *dupe = pam_colormap(map->colors);
+    for(int i=0; i < map->colors; i++) {
+        dupe->palette[i] = map->palette[i];
+    }
+    if (map->subset_palette) {
+        dupe->subset_palette = pam_duplicate_colormap(map->subset_palette);
+    }
+    return dupe;
 }
 
 void pam_freecolormap(colormap *c)

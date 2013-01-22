@@ -240,6 +240,7 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
 void pam_freeacolorhist(histogram *h);
 
 colormap *pam_colormap(unsigned int colors);
+colormap *pam_duplicate_colormap(colormap *map);
 void pam_freecolormap(colormap *c);
 
 #endif

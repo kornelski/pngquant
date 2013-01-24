@@ -702,7 +702,7 @@ inline static float min_4(float a, float b, float c, float d)
     return MIN(x,y);
 }
 
-inline static f_pixel get_dithered_pixel(const float dither_level, const f_pixel thiserr, const f_pixel px)
+inline static f_pixel get_dithered_pixel(const float dither_level, const float max_dither_error, const f_pixel thiserr, const f_pixel px)
 {
     /* Use Floyd-Steinberg errors to adjust actual color. */
     const float sr = thiserr.r * dither_level,
@@ -717,7 +717,7 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const f_pixel
 
      // If dithering error is crazy high, don't propagate it that much
      // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
-     if (sr*sr + sg*sg + sb*sb + sa*sa > 16.f/256.f) {
+     if (sr*sr + sg*sg + sb*sb + sa*sa > max_dither_error) {
          ratio *= 0.8;
      }
 
@@ -737,7 +737,7 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const f_pixel
 
   If output_image_is_remapped is true, only pixels noticeably changed by error diffusion will be written to output image.
  */
-static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_image, const colormap *map, const float min_opaque_val, const float *edge_map, const int output_image_is_remapped)
+static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_image, const colormap *map, const float min_opaque_val, const float *dither_map, const int output_image_is_remapped, const float max_dither_error)
 {
     const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->row_pointers;
     unsigned char *const remapped = output_image->indexed_data;
@@ -776,8 +776,8 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
         unsigned int col = (fs_direction) ? 0 : (cols - 1);
 
         do {
-            float dither_level = edge_map ? edge_map[row*cols + col] : 15.f/16.f;
-            const f_pixel spx = get_dithered_pixel(dither_level, thiserr[col + 1], to_f(input_pixels[row][col]));
+            float dither_level = dither_map ? dither_map[row*cols + col] : 15.f/16.f;
+            const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], to_f(input_pixels[row][col]));
 
             unsigned int ind;
             if (spx.a < 1.0/256.0) {
@@ -803,7 +803,7 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
 
             // If dithering error is crazy high, don't propagate it that much
             // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
-            if (err.r*err.r + err.g*err.g + err.b*err.b + err.a*err.a > 16.f/256.f/256.f) {
+            if (err.r*err.r + err.g*err.g + err.b*err.b + err.a*err.a > max_dither_error) {
                 dither_level *= 0.75;
             }
 
@@ -1370,14 +1370,14 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
     set_palette(output_image, acolormap);
 
     if (floyd) {
-        remap_to_palette_floyd(&input_image->rwpng_image, output_image, acolormap, options->min_opaque_val, input_image->edges, use_dither_map);
+        remap_to_palette_floyd(&input_image->rwpng_image, output_image, acolormap, options->min_opaque_val, input_image->edges, use_dither_map, MAX(palette_error*2.4, 16.f/256.f));
     }
 
     if (input_image->edges) {
         free(input_image->edges);
         input_image->edges = NULL;
-        }
+    }
 
     return SUCCESS;
-        }
+}
 

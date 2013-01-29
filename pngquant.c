@@ -68,11 +68,11 @@ struct liq_attr {
     void* (*malloc)(size_t);
     void (*free)(void*);
 
-    double target_mse, max_mse;
+    double target_mse, max_mse, voronoi_iteration_limit;
     float min_opaque_val;
-    unsigned int max_colors;
-    unsigned int speed_tradeoff;
-    bool last_index_transparent;
+    bool last_index_transparent, use_contrast_maps, use_dither_map;
+    unsigned int max_colors, max_histogram_entries, min_posterization, voronoi_iterations, feedback_loop_trials;
+
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
     liq_log_flush_callback_function *log_flush_callback;
@@ -270,9 +270,20 @@ LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed) {
+LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed)
+{
     if (speed < 1 || speed > 10) return LIQ_VALUE_OUT_OF_RANGE;
-    attr->speed_tradeoff = speed;
+
+    int iterations = MAX(8-speed,0); iterations += iterations * iterations/2;
+    attr->voronoi_iterations = iterations;
+    attr->voronoi_iteration_limit = 1.0/(double)(1<<(23-speed));
+    attr->feedback_loop_trials = MAX(56-9*speed, 0);
+
+    attr->max_histogram_entries = (1<<17) + (1<<18)*(10-speed);
+    attr->min_posterization = (speed >= 8) ? 1 : 0;
+    attr->use_contrast_maps = speed <= 7;
+    attr->use_dither_map = speed <= 5;
+
     return LIQ_OK;
 }
 
@@ -283,8 +294,10 @@ LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min) {
+LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min)
+{
     if (min < 0 || min > 255) return LIQ_VALUE_OUT_OF_RANGE;
+
     attr->min_opaque_val = (double)min/255.0;
     return LIQ_OK;
 }
@@ -389,11 +402,11 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), voi
         .free = free,
         .max_colors = 256,
         .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
-        .speed_tradeoff = 3, // 1 max quality, 10 rough & fast. 3 is optimum.
         .last_index_transparent = false, // puts transparent color at last index. This is workaround for blu-ray subtitles.
         .target_mse = 0,
         .max_mse = MAX_DIFF,
     };
+    liq_set_speed(attr, 3);
     return attr;
 }
 
@@ -596,7 +609,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
         modify_alpha(img, attr->min_opaque_val);
     }
 
-    if (attr->speed_tradeoff < 8 && img->width >= 4 && img->height >= 4) {
+    if (attr->use_contrast_maps && img->width >= 4 && img->height >= 4) {
         contrast_maps(img);
     }
 
@@ -1185,7 +1198,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
 static histogram *get_histogram(liq_image *input_image, liq_attr *options)
 {
-    unsigned int ignorebits=0;
+    unsigned int ignorebits=options->min_posterization;
     const rgb_pixel **input_pixels = (const rgb_pixel **)input_image->rows;
     const unsigned int cols = input_image->width, rows = input_image->height;
 
@@ -1195,8 +1208,7 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
     ** coherence and try again.
     */
 
-    if (options->speed_tradeoff > 7) ignorebits++;
-    unsigned int maxcolors = (1<<17) + (1<<18)*(10-options->speed_tradeoff);
+    unsigned int maxcolors = options->max_histogram_entries;
 
     struct acolorhash_table *acht = pam_allocacolorhash(maxcolors, rows*cols, ignorebits);
     for (; ;) {
@@ -1415,10 +1427,11 @@ static void adjust_histogram_callback(hist_item *item, float diff)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(histogram *hist, int feedback_loop_trials, const liq_attr *options, double *palette_error_p)
+static colormap *find_best_palette(histogram *hist, const liq_attr *options, double *palette_error_p)
 {
     unsigned int max_colors = options->max_colors;
     const double target_mse = options->target_mse;
+    int feedback_loop_trials = options->feedback_loop_trials;
     colormap *acolormap = NULL;
     double least_error = MAX_DIFF;
     double target_mse_overshoot = feedback_loop_trials>0 ? 1.05 : 1.0;
@@ -1478,7 +1491,6 @@ static colormap *find_best_palette(histogram *hist, int feedback_loop_trials, co
 
 static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
 {
-    const double max_mse = options->max_mse;
     colormap *acolormap;
     double palette_error = -1;
 
@@ -1491,19 +1503,21 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
             acolormap->palette[i].popularity = hist->achv[i].perceptual_weight;
         }
         palette_error = 0;
-    }
-    else {
-        acolormap = find_best_palette(hist, 56-9*options->speed_tradeoff, options, &palette_error);
+    } else {
+        acolormap = find_best_palette(hist, options, &palette_error);
 
         // Voronoi iteration approaches local minimum for the palette
-        unsigned int iterations = MAX(8-options->speed_tradeoff,0); iterations += iterations * iterations/2;
+        const double max_mse = options->max_mse;
+        const double iteration_limit = options->voronoi_iteration_limit;
+        unsigned int iterations = options->voronoi_iterations;
+
         if (!iterations && palette_error < 0 && max_mse < MAX_DIFF) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
 
         if (iterations) {
             verbose_print(options, "  moving colormap towards local minimum");
 
-            const double iteration_limit = 1.0/(double)(1<<(23-options->speed_tradeoff));
             double previous_palette_error = MAX_DIFF;
+
             for(unsigned int i=0; i < iterations; i++) {
                 palette_error = viter_do_iteration(hist, acolormap, options->min_opaque_val, NULL);
 
@@ -1533,7 +1547,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
     *result = (liq_result){
         .palette = acolormap,
         .palette_error = palette_error,
-        .use_dither_map = options->speed_tradeoff < 6,
+        .use_dither_map = options->use_dither_map,
         .min_opaque_val = options->min_opaque_val,
         .gamma = 0.45455, // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
     };

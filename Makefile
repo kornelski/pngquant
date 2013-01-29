@@ -31,7 +31,7 @@ TARFILE = $(TARNAME)-src.tar.bz2
 ifdef USE_COCOA
 CFLAGS += -DUSE_COCOA=1
 OBJS += $(COCOA_OBJS)
-LDFLAGS += -framework Cocoa
+FRAMEWORKS += -framework Cocoa
 endif
 
 BUILD_CONFIGURATION="$(CFLAGS) $(LDFLAGS)"
@@ -39,10 +39,10 @@ BUILD_CONFIGURATION="$(CFLAGS) $(LDFLAGS)"
 all: $(BIN)
 
 openmp::
-	$(MAKE) CFLAGSADD=-fopenmp LDFLAGSADD="-Bstatic -lgomp" -j8 $(MAKEFLAGS)
+	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8 $(MAKEFLAGS)
 
 $(BIN): $(OBJS)
-	$(CC) $(OBJS) $(LDFLAGS) -o $@
+	$(CC) $(OBJS) $(LDFLAGS) $(OPENMPFLAGS) $(FRAMEWORKS) -o $@
 
 rwpng_cocoa.o: rwpng_cocoa.m
 	clang -c $(CFLAGS) -o $@ $<

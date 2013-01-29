@@ -717,8 +717,12 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
 
      // If dithering error is crazy high, don't propagate it that much
      // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
-     if (sr*sr + sg*sg + sb*sb + sa*sa > max_dither_error) {
+     const float dither_error = sr*sr + sg*sg + sb*sb + sa*sa;
+     if (dither_error > max_dither_error) {
          ratio *= 0.8;
+     } else if (dither_error < 2.f/256.f/256.f) {
+        // don't dither areas that don't have noticeable error — makes file smaller
+        return px;
      }
 
      if (ratio > 1.0) ratio = 1.0;

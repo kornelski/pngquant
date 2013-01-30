@@ -34,6 +34,8 @@ OBJS += $(COCOA_OBJS)
 LDFLAGS += -framework Cocoa
 endif
 
+BUILD_CONFIGURATION="$(CFLAGS) $(LDFLAGS)"
+
 all: $(BIN)
 
 openmp::
@@ -45,7 +47,7 @@ $(BIN): $(OBJS)
 rwpng_cocoa.o: rwpng_cocoa.m
 	clang -c $(CFLAGS) -o $@ $<
 
-$(OBJS): pam.h rwpng.h
+$(OBJS): pam.h rwpng.h build_configuration
 
 install: $(BIN)
 	install -m 0755 -p -D $(BIN) $(DESTDIR)$(BINPREFIX)/$(BIN)
@@ -64,7 +66,10 @@ $(TARFILE): $(DISTFILES)
 	shasum $(TARFILE)
 
 clean:
-	rm -f $(BIN) $(OBJS) $(COCOA_OBJS) $(TARFILE)
+	rm -f $(BIN) $(OBJS) $(COCOA_OBJS) $(TARFILE) build_configuration
+
+build_configuration::
+	@test -f build_configuration -a $(BUILD_CONFIGURATION) = "`cat build_configuration`" || echo > build_configuration $(BUILD_CONFIGURATION)
 
 .PHONY: all openmp install uninstall dist clean
 .DELETE_ON_ERROR:

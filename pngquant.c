@@ -94,18 +94,25 @@ struct liq_image {
     bool modified, free_rows, free_pixels;
 };
 
-struct liq_result {
+struct liq_remapping_result {
+    unsigned char *pixels;
     colormap *palette;
     liq_palette int_palette;
-    double gamma;
-    double palette_error;
+    double gamma, palette_error;
     float min_opaque_val, dither_level;
-    bool use_dither_map, palette_only;
+    bool use_dither_map;
+};
+
+struct liq_result {
+    colormap *palette;
+    double gamma, palette_error;
+    float min_opaque_val, dither_level;
+    bool use_dither_map;
 };
 
 static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options);
-static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
-static void set_palette(liq_result *result, liq_image *input_image, png8_image *output_image);
+static pngquant_error prepare_output_image(liq_remapping_result *result, liq_image *input_image, png8_image *output_image);
+static void set_palette(liq_remapping_result *result, png8_image *output_image);
 static void modify_alpha(liq_image *input_image, const float min_opaque_val);
 static void contrast_maps(liq_image *image);
 static void pngquant_output_image_free(png8_image *output_image);
@@ -638,6 +645,16 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     return liq_image_create_rgba_rows(attr, (void**)rows, width, height, gamma, ownership_flags | LIQ_OWN_ROWS);
 }
 
+LIQ_EXPORT int liq_image_get_width(const liq_image *input_image)
+{
+    return input_image->width;
+}
+
+LIQ_EXPORT int liq_image_get_height(const liq_image *input_image)
+{
+    return input_image->height;
+}
+
 LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
 {
     if (!input_image) return;
@@ -702,11 +719,44 @@ LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level
     return LIQ_OK;
 }
 
+LIQ_EXPORT liq_remapping_result *liq_remap(liq_result *result, liq_image *image)
+{
+    liq_remapping_result *res = malloc(sizeof(liq_remapping_result));
+    *res = (liq_remapping_result) {
+        .dither_level = result->dither_level,
+        .use_dither_map = result->use_dither_map,
+        .palette_error = result->palette_error,
+        .gamma = result->gamma,
+        .min_opaque_val = result->min_opaque_val,
+        .palette = pam_duplicate_colormap(result->palette),
+    };
+    return res;
+}
+
+LIQ_EXPORT double liq_get_output_gamma(const liq_remapping_result *result)
+{
+    return result->gamma;
+}
+
+LIQ_EXPORT void liq_remapping_result_destroy(liq_remapping_result *result)
+{
+    if (result) {
+        if (result->palette) pam_freecolormap(result->palette);
+        if (result->pixels) free(result->pixels);
+        free(result);
+    }
+}
+
 LIQ_EXPORT void liq_result_destroy(liq_result *res)
 {
     if (!res) return;
     pam_freecolormap(res->palette);
     free(res);
+}
+
+LIQ_EXPORT double liq_get_remapping_error(liq_remapping_result *result)
+{
+    return result->palette_error >= 0 ? result->palette_error*65536.0/6.0 : result->palette_error;
 }
 
 int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
@@ -739,16 +789,20 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         liq_result *result = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
 
         if (result) {
-            retval = prepare_output_image(result, input_image, &output_image);
+            liq_set_dithering_level(result, options->floyd ? 1.0 : 0);
+            liq_remapping_result *remap = liq_remap(result, input_image);
+
+            retval = prepare_output_image(remap, input_image, &output_image);
             if (!retval) {
-                liq_set_dithering_level(result, options->floyd ? 1.0 : 0);
-                liq_write_remapped_image_rows(result, input_image, output_image.row_pointers);
+                liq_write_remapped_image_rows(remap, input_image, output_image.row_pointers);
 
-                set_palette(result, input_image, &output_image);
+                set_palette(remap, &output_image);
 
-                if (result->palette_error >= 0) {
-                    verbose_printf(options->liq, "  mapped image to new colors...MSE=%.3f", result->palette_error*65536.0/6.0);
+                double palette_error = liq_get_remapping_error(remap);
+                if (palette_error >= 0) {
+                    verbose_printf(options->liq, "  mapped image to new colors...MSE=%.3f", palette_error);
                 }
+                liq_remapping_result_destroy(remap);
             }
             liq_result_destroy(result);
         } else {
@@ -831,7 +885,7 @@ static void sort_palette(colormap *map, const liq_attr *options)
     qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
 }
 
-static void set_palette(liq_result *result, liq_image *input_image, png8_image *output_image)
+static void set_palette(liq_remapping_result *result, png8_image *output_image)
 {
     const liq_palette *palette = &result->int_palette;
 
@@ -848,7 +902,7 @@ static void set_palette(liq_result *result, liq_image *input_image, png8_image *
     }
 }
 
-static void set_rounded_palette(liq_result *result)
+static void set_rounded_palette(liq_remapping_result *result)
 {
     liq_palette *dest = &result->int_palette;
     colormap *const map = result->palette;
@@ -1566,11 +1620,11 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
     return result;
 }
 
-static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image)
+static pngquant_error prepare_output_image(liq_remapping_result *result, liq_image *input_image, png8_image *output_image)
 {
-    output_image->width = input_image->width;
-    output_image->height = input_image->height;
-    output_image->gamma = result->gamma;
+    output_image->width = liq_image_get_width(input_image);
+    output_image->height = liq_image_get_height(input_image);
+    output_image->gamma = liq_get_output_gamma(result);
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image
@@ -1599,7 +1653,7 @@ static pngquant_error prepare_output_image(liq_result *result, liq_image *input_
     return SUCCESS;
 }
 
-LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *input_image, void *buffer, size_t buffer_size)
+LIQ_EXPORT liq_error liq_write_remapped_image(liq_remapping_result *result, liq_image *input_image, void *buffer, size_t buffer_size)
 {
     const size_t required_size = input_image->width * input_image->height;
     if (buffer_size < required_size) {
@@ -1614,7 +1668,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *inp
     return liq_write_remapped_image_rows(result, input_image, rows);
 }
 
-LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *result, liq_image *input_image, unsigned char **row_pointers)
+LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_remapping_result *result, liq_image *input_image, unsigned char **row_pointers)
 {
     /*
      ** Step 4: map the colors in the image to their closest match in the
@@ -1648,4 +1702,3 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *result, liq_image
 
     return LIQ_OK;
 }
-

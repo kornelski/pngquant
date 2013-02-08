@@ -39,5 +39,3 @@ void mempool_free(mempool m)
         m = next;
     }
 }
-
-

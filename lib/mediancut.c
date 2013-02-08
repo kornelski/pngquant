@@ -482,4 +482,3 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[static clrs
 
     return (f_pixel){.r=r, .g=g, .b=b, .a=a};
 }
-

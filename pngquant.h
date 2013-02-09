@@ -68,7 +68,8 @@ LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma);
 LIQ_EXPORT double liq_get_output_gamma(const liq_remapping_result *result);
 LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level);
 
-LIQ_EXPORT const liq_palette *liq_get_palette(liq_result *result, liq_image *image);
+LIQ_EXPORT const liq_palette *liq_get_generic_palette(liq_result *result);
+LIQ_EXPORT const liq_palette *liq_get_remapped_palette(liq_remapping_result *result);
 
 LIQ_EXPORT liq_remapping_result *liq_remap(liq_result *result, liq_image *image);
 

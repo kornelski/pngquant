@@ -831,6 +831,11 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     return retval;
 }
 
+LIQ_EXPORT const liq_palette *liq_get_remapped_palette(liq_remapping_result *result)
+{
+    return &result->int_palette;
+}
+
 static int compare_popularity(const void *ch1, const void *ch2)
 {
     const float v1 = ((const colormap_item*)ch1)->popularity;
@@ -887,7 +892,7 @@ static void sort_palette(colormap *map, const liq_attr *options)
 
 static void set_palette(liq_remapping_result *result, png8_image *output_image)
 {
-    const liq_palette *palette = &result->int_palette;
+    const liq_palette *palette = liq_get_remapped_palette(result);
 
     // tRNS, etc.
     output_image->num_palette = palette->count;
@@ -1081,7 +1086,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
                     ind = curr_ind;
                 } else {
                     ind = nearest_search(n, spx, min_opaque_val, NULL);
-            }
+                }
             }
 
             output_pixels[row][col] = ind;
@@ -1411,7 +1416,7 @@ static void contrast_maps(liq_image *image)
 
             noise[j*cols+i] = z;
             edges[j*cols+i] = 1.f-edge;
-}
+        }
     }
 
     // noise areas are shrunk and then expanded to remove thin edges from the map
@@ -1641,11 +1646,12 @@ static pngquant_error prepare_output_image(liq_remapping_result *result, liq_ima
         output_image->row_pointers[row] = output_image->indexed_data + row*output_image->width;
     }
 
+    const liq_palette *palette = liq_get_remapped_palette(result);
     // tRNS, etc.
-    output_image->num_palette = result->palette->colors;
+    output_image->num_palette = palette->count;
     output_image->num_trans = 0;
-    for(unsigned int i=0; i < result->palette->colors; i++) {
-        if (result->palette->palette[i].acolor.a < 255.0/256.0) {
+    for(unsigned int i=0; i < palette->count; i++) {
+        if (palette->entries[i].a < 255) {
             output_image->num_trans = i+1;
         }
     }

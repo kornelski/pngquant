@@ -318,6 +318,8 @@ LIQ_EXPORT liq_error liq_set_last_index_transparent(liq_attr* attr, int is_last)
 
 LIQ_EXPORT void liq_set_log_callback(liq_attr *attr, liq_log_callback_function *callback, void* user_info)
 {
+    verbose_printf_flush(attr);
+
     attr->log_callback = callback;
     attr->log_callback_user_info = user_info;
 }
@@ -393,6 +395,9 @@ LIQ_EXPORT liq_attr* liq_attr_create()
 LIQ_EXPORT void liq_attr_destroy(liq_attr *attr)
 {
     if (!attr) return;
+
+    verbose_printf_flush(attr);
+
     attr->free(attr);
 }
 
@@ -555,15 +560,12 @@ int main(int argc, char *argv[])
         #ifdef _OPENMP
         struct buffered_log buf = {};
         if (opts.liq->log_callback && omp_get_num_threads() > 1 && num_files > 1) {
-            verbose_printf_flush(opts.liq);
             liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
             liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
         }
         #endif
 
         pngquant_error retval = pngquant_file(filename, newext, &opts);
-
-        verbose_printf_flush(opts.liq);
 
         liq_attr_destroy(opts.liq);
 
@@ -593,8 +595,6 @@ int main(int argc, char *argv[])
         verbose_printf(options.liq, "No errors detected while quantizing %d image%s.",
                        file_count, (file_count == 1)? "" : "s");
     }
-
-    verbose_printf_flush(options.liq);
 
     liq_image_destroy(options.fixed_palette_image);
     liq_attr_destroy(options.liq);

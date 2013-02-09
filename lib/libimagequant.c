@@ -13,6 +13,7 @@
 ** implied warranty.
 */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
@@ -84,7 +85,7 @@ static void modify_alpha(liq_image *input_image, const float min_opaque_val);
 static void contrast_maps(liq_image *image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
 
-static void verbose_printf(const liq_attr *context, const char *fmt, ...)
+static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
 {
     if (context->log_callback) {
         va_list va;
@@ -106,7 +107,7 @@ inline static void verbose_print(const liq_attr *attr, const char *msg)
     if (attr->log_callback) attr->log_callback(attr, msg, attr->log_callback_user_info);
 }
 
-static void verbose_printf_flush(liq_attr *attr)
+static void liq_verbose_printf_flush(liq_attr *attr)
 {
     if (attr->log_flush_callback) attr->log_flush_callback(attr, attr->log_flush_callback_user_info);
 }
@@ -188,7 +189,7 @@ LIQ_EXPORT liq_error liq_set_last_index_transparent(liq_attr* attr, int is_last)
 
 LIQ_EXPORT void liq_set_log_callback(liq_attr *attr, liq_log_callback_function *callback, void* user_info)
 {
-    verbose_printf_flush(attr);
+    liq_verbose_printf_flush(attr);
 
     attr->log_callback = callback;
     attr->log_callback_user_info = user_info;
@@ -209,7 +210,7 @@ LIQ_EXPORT void liq_attr_destroy(liq_attr *attr)
 {
     if (!attr) return;
 
-    verbose_printf_flush(attr);
+    liq_verbose_printf_flush(attr);
 
     attr->free(attr);
 }
@@ -437,7 +438,7 @@ static void sort_palette(colormap *map, const liq_attr *options)
         }
     }
 
-    verbose_printf(options, "  eliminated opaque tRNS-chunk entries...%d entr%s transparent", num_transparent, (num_transparent == 1)? "y" : "ies");
+    liq_verbose_printf(options, "  eliminated opaque tRNS-chunk entries...%d entr%s transparent", num_transparent, (num_transparent == 1)? "y" : "ies");
 
     /* colors sorted by popularity make pngs slightly more compressible
      * opaque and transparent are sorted separately
@@ -754,7 +755,7 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
     histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->gamma);
     pam_freeacolorhash(acht);
 
-    verbose_printf(options, "  made histogram...%d colors found", hist->size);
+    liq_verbose_printf(options, "  made histogram...%d colors found", hist->size);
     return hist;
 }
 
@@ -973,7 +974,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
             pam_freecolormap(newmap);
         }
 
-        verbose_printf(options, "  selecting colors...%d%%",100-MAX(0,(int)(feedback_loop_trials/percent)));
+        liq_verbose_printf(options, "  selecting colors...%d%%",100-MAX(0,(int)(feedback_loop_trials/percent)));
     }
     while(feedback_loop_trials > 0);
 
@@ -1027,7 +1028,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
         }
 
         if (palette_error > max_mse) {
-            verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0/6.0, max_mse*65536.0/6.0);
+            liq_verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0/6.0, max_mse*65536.0/6.0);
             pam_freecolormap(acolormap);
             return NULL;
         }

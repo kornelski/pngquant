@@ -62,6 +62,9 @@ struct pngquant_options {
     liq_attr *liq;
     liq_image *fixed_palette_image;
     bool floyd, using_stdin, force, ie_mode;
+
+    liq_log_callback_function *log_callback;
+    void *log_callback_user_info;
 };
 
 static pngquant_error prepare_output_image(liq_remapping_result *result, liq_image *input_image, png8_image *output_image);
@@ -72,6 +75,22 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
 
+static void verbose_printf(struct pngquant_options *context, const char *fmt, ...)
+{
+    if (context->log_callback) {
+        va_list va;
+        va_start(va, fmt);
+        int required_space = vsnprintf(NULL, 0, fmt, va)+1; // +\0
+        va_end(va);
+
+        char buf[required_space];
+        va_start(va, fmt);
+        vsnprintf(buf, required_space, fmt, va);
+        va_end(va);
+
+        context->log_callback(context->liq, buf, context->log_callback_user_info);
+    }
+}
 
 static void log_callback(const liq_attr *attr, const char *msg, void* user_info)
 {
@@ -248,8 +267,14 @@ int main(int argc, char *argv[])
     do {
         opt = getopt_long(argc, argv, "Vvqfhs:", long_options, NULL);
         switch (opt) {
-            case 'v': liq_set_log_callback(options.liq, log_callback, NULL); break;
-            case 'q': liq_set_log_callback(options.liq, NULL, NULL); break;
+            case 'v':
+                liq_set_log_callback(options.liq, log_callback, NULL);
+                options.log_callback = log_callback;
+                break;
+            case 'q':
+                liq_set_log_callback(options.liq, NULL, NULL);
+                options.log_callback = NULL;
+                break;
             case arg_floyd: options.floyd = true; break;
             case arg_ordered: options.floyd = false; break;
             case 'f': options.force = true; break;
@@ -358,9 +383,11 @@ int main(int argc, char *argv[])
 
         #ifdef _OPENMP
         struct buffered_log buf = {};
-        if (opts.liq->log_callback && omp_get_num_threads() > 1 && num_files > 1) {
+        if (opts->log_callback && omp_get_num_threads() > 1 && num_files > 1) {
             liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
             liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
+            options.log_callback = log_callback_buferred;
+            options.log_callback_user_info = &buf;
         }
         #endif
 
@@ -383,15 +410,15 @@ int main(int argc, char *argv[])
     }
 
     if (error_count) {
-        verbose_printf(options.liq, "There were errors quantizing %d file%s out of a total of %d file%s.",
+        verbose_printf(&options, "There were errors quantizing %d file%s out of a total of %d file%s.",
                        error_count, (error_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (skipped_count) {
-        verbose_printf(options.liq, "Skipped %d file%s out of a total of %d file%s.",
+        verbose_printf(&options, "Skipped %d file%s out of a total of %d file%s.",
                        skipped_count, (skipped_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (!skipped_count && !error_count) {
-        verbose_printf(options.liq, "No errors detected while quantizing %d image%s.",
+        verbose_printf(&options, "No errors detected while quantizing %d image%s.",
                        file_count, (file_count == 1)? "" : "s");
     }
 
@@ -419,7 +446,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
 {
     int retval = 0;
 
-    verbose_printf(options->liq, "%s:", filename);
+    verbose_printf(options, "%s:", filename);
 
     char *outname = NULL;
     if (!options->using_stdin) {
@@ -438,7 +465,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
 
     png8_image output_image = {};
     if (!retval) {
-        verbose_printf(options->liq, "  read %luKB file corrected for gamma %2.1f",
+        verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
                        (input_image_rwpng.file_size+1023UL)/1024UL, 1.0/input_image_rwpng.gamma);
 
         // when using image as source of a fixed palette the palette is extracted using regular quantization
@@ -456,7 +483,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
 
                 double palette_error = liq_get_remapping_error(remap);
                 if (palette_error >= 0) {
-                    verbose_printf(options->liq, "  mapped image to new colors...MSE=%.3f", palette_error);
+                    verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error);
                 }
                 liq_remapping_result_destroy(remap);
             }
@@ -548,9 +575,9 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         outfile = stdout;
 
         if (output_image) {
-            verbose_printf(options->liq, "  writing %d-color image to stdout", output_image->num_palette);
+            verbose_printf(options, "  writing %d-color image to stdout", output_image->num_palette);
         } else {
-            verbose_print(options->liq, "  writing truecolor image to stdout");
+            verbose_printf(options, "  writing truecolor image to stdout");
         }
     } else {
 
@@ -563,9 +590,9 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         if (outfilename) outfilename++; else outfilename = outname;
 
         if (output_image) {
-            verbose_printf(options->liq, "  writing %d-color image as %s", output_image->num_palette, outfilename);
+            verbose_printf(options, "  writing %d-color image as %s", output_image->num_palette, outfilename);
         } else {
-            verbose_printf(options->liq, "  writing truecolor image as %s", outfilename);
+            verbose_printf(options, "  writing truecolor image as %s", outfilename);
         }
     }
 

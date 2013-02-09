@@ -20,7 +20,8 @@ CFLAGS += -std=c99 $(CFLAGSADD)
 LDFLAGS ?= -L$(CUSTOMLIBPNG) -L/usr/local/lib/ -L/usr/lib/ -L/usr/X11/lib/
 LDFLAGS += -lpng -lm $(LDFLAGSADD)
 
-OBJS = pngquant.o rwpng.o pam.o mediancut.o blur.o mempool.o viter.o nearest.o
+LIBOBJS = rwpng.o lib/pam.o lib/mediancut.o lib/blur.o lib/mempool.o lib/viter.o lib/nearest.o lib/libimagequant.o
+OBJS = pngquant.o $(LIBOBJS)
 COCOA_OBJS = rwpng_cocoa.o
 
 DISTFILES = $(OBJS:.o=.c) *.[hm] pngquant.1 Makefile README.md INSTALL CHANGELOG COPYRIGHT
@@ -46,7 +47,7 @@ $(BIN): $(OBJS)
 rwpng_cocoa.o: rwpng_cocoa.m
 	clang -c $(CFLAGS) -o $@ $<
 
-$(OBJS): pam.h rwpng.h build_configuration
+$(OBJS): lib/pam.h rwpng.h build_configuration
 
 install: $(BIN)
 	install -m 0755 -p -D $(BIN) $(DESTDIR)$(BINPREFIX)/$(BIN)

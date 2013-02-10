@@ -211,11 +211,12 @@ inline static bool is_sse2_available()
 {
 #if (defined(__x86_64__) || defined(__amd64))
     return true;
-#endif
+#else
     int a,b,c,d;
         cpuid(1, a, b, c, d);
     return d & (1<<26); // edx bit 26 is set when SSE2 is present
-        }
+#endif
+}
 #endif
 
 static double quality_to_mse(long quality)
@@ -410,6 +411,12 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
 
 LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), void (*free)(void*))
 {
+#if USE_SSE
+    if (!is_sse2_available()) {
+        return NULL;
+    }
+#endif
+
     liq_attr *attr = malloc(sizeof(liq_attr));
     *attr = (liq_attr) {
         .malloc = malloc,
@@ -430,6 +437,14 @@ int main(int argc, char *argv[])
         .floyd = true, // floyd-steinberg dithering
     };
     options.liq = liq_attr_create();
+
+#if USE_SSE
+    if (!options.liq) {
+        print_full_version(stderr);
+        fputs("SSE2-capable CPU is required for this build.\n", stderr);
+        return WRONG_ARCHITECTURE;
+    }
+#endif
 
     unsigned int error_count=0, skipped_count=0, file_count=0;
     pngquant_error latest_error=SUCCESS;
@@ -528,14 +543,6 @@ int main(int argc, char *argv[])
         options.using_stdin = true;
         argn = argc-1;
     }
-
-#if USE_SSE
-    if (!is_sse2_available()) {
-        print_full_version(stderr);
-        fputs("SSE2-capable CPU is required for this build.\n", stderr);
-        return WRONG_ARCHITECTURE;
-    }
-#endif
 
     const int num_files = argc-argn;
 

@@ -254,7 +254,7 @@ static const struct {const char *old; char *new;} obsolete_options[] = {
     {"-speed", "--speed"},
 };
 
-static void fix_obsolete_options(const int argc, char *argv[])
+static void fix_obsolete_options(const unsigned int argc, char *argv[])
 {
     for(unsigned int argn=1; argn < argc; argn++) {
         if ('-' != argv[argn][0]) continue;
@@ -302,7 +302,8 @@ int main(int argc, char *argv[])
         .target_mse = 0,
         .max_mse = MAX_DIFF,
     };
-    unsigned int latest_error=0, error_count=0, skipped_count=0, file_count=0;
+    unsigned int error_count=0, skipped_count=0, file_count=0;
+    pngquant_error latest_error=SUCCESS;
     const char *newext = NULL;
 
     fix_obsolete_options(argc, argv);
@@ -428,7 +429,7 @@ int main(int argc, char *argv[])
         }
         #endif
 
-        int retval = pngquant_file(filename, newext, &opts);
+        pngquant_error retval = pngquant_file(filename, newext, &opts);
 
         verbose_printf_flush(&opts);
 
@@ -583,8 +584,8 @@ static void sort_palette(colormap *map, const struct pngquant_options *options)
 
     if (options->last_index_transparent) for(unsigned int i=0; i < map->colors; i++) {
         if (map->palette[i].acolor.a < 1.0/256.0) {
-            const int old = i;
-            const int transparent_dest = map->colors-1;
+            const unsigned int old = i, transparent_dest = map->colors-1;
+
             const colormap_item tmp = map->palette[transparent_dest];
             map->palette[transparent_dest] = map->palette[old];
             map->palette[old] = tmp;
@@ -592,11 +593,11 @@ static void sort_palette(colormap *map, const struct pngquant_options *options)
             /* colors sorted by popularity make pngs slightly more compressible */
             qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
             return;
-            }
         }
+    }
 
     /* move transparent colors to the beginning to shrink trns chunk */
-    int num_transparent=0;
+    unsigned int num_transparent=0;
     for(unsigned int i=0; i < map->colors; i++) {
         if (map->palette[i].acolor.a < 255.0/256.0) {
             // current transparent color is swapped with earlier opaque one
@@ -638,7 +639,8 @@ static float remap_to_palette(png24_image *input_image, png8_image *output_image
 {
     const rgb_pixel *const *const input_pixels = (const rgb_pixel **)input_image->row_pointers;
     unsigned char *const remapped = output_image->indexed_data;
-    const int rows = input_image->height, cols = input_image->width;
+    const int rows = input_image->height;
+    const unsigned int cols = input_image->width;
 
     to_f_set_gamma(input_image->gamma);
 
@@ -646,9 +648,9 @@ static float remap_to_palette(png24_image *input_image, png8_image *output_image
     float remapping_error=0;
 
     struct nearest_map *const n = nearest_init(map);
-    const int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
+    const unsigned int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
-    const int max_threads = omp_get_max_threads();
+    const unsigned int max_threads = omp_get_max_threads();
     viter_state average_color[map->colors * max_threads];
     viter_init(map, max_threads, average_color);
 
@@ -658,7 +660,7 @@ static float remap_to_palette(png24_image *input_image, png8_image *output_image
         for(unsigned int col = 0; col < cols; ++col) {
 
             f_pixel px = to_f(input_pixels[row][col]);
-            int match;
+            unsigned int match;
 
             if (px.a < 1.0/256.0) {
                 match = transparent_ind;
@@ -683,7 +685,7 @@ static float remap_to_palette(png24_image *input_image, png8_image *output_image
     return remapping_error / MAX(1,remapped_pixels);
 }
 
-static float distance_from_closest_other_color(const colormap *map, const int i)
+static float distance_from_closest_other_color(const colormap *map, const unsigned int i)
 {
     float second_best=MAX_DIFF;
     for(unsigned int j=0; j < map->colors; j++) {
@@ -745,14 +747,14 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
 {
     const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->row_pointers;
     unsigned char *const remapped = output_image->indexed_data;
-    const int rows = input_image->height, cols = input_image->width;
+    const unsigned int rows = input_image->height, cols = input_image->width;
 
     to_f_set_gamma(input_image->gamma);
 
     const colormap_item *acolormap = map->palette;
 
     struct nearest_map *const n = nearest_init(map);
-    const int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
+    const unsigned int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     float difference_tolerance[map->colors];
     if (output_image_is_remapped) for(unsigned int i=0; i < map->colors; i++) {
@@ -1155,7 +1157,7 @@ static void update_dither_map(const png8_image *output_image, float *edges)
     for(unsigned int row=0; row < height; row++)
     {
         unsigned char lastpixel = pixels[row*width];
-        int lastcol=0;
+        unsigned int lastcol=0;
         for(unsigned int col=1; col < width; col++)
         {
             const unsigned char px = pixels[row*width + col];
@@ -1163,7 +1165,7 @@ static void update_dither_map(const png8_image *output_image, float *edges)
             if (px != lastpixel || col == width-1) {
                 float neighbor_count = 2.5f + col-lastcol;
 
-                int i=lastcol;
+                unsigned int i=lastcol;
                 while(i < col) {
                     if (row > 0) {
                         unsigned char pixelabove = pixels[(row-1)*width + i];
@@ -1195,7 +1197,7 @@ static void adjust_histogram_callback(hist_item *item, float diff)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_loop_trials, const struct pngquant_options *options, double *palette_error_p)
+static colormap *find_best_palette(histogram *hist, unsigned int reqcolors, int feedback_loop_trials, const struct pngquant_options *options, double *palette_error_p)
 {
     const double target_mse = options->target_mse;
     colormap *acolormap = NULL;
@@ -1237,7 +1239,7 @@ static colormap *find_best_palette(histogram *hist, int reqcolors, int feedback_
 
             feedback_loop_trials -= 1; // asymptotic improvement could make it go on forever
         } else {
-            for(int j=0; j < hist->size; j++) {
+            for(unsigned int j=0; j < hist->size; j++) {
                 hist->achv[j].adjusted_weight = (hist->achv[j].perceptual_weight + hist->achv[j].adjusted_weight)/2.0;
             }
 

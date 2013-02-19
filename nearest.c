@@ -37,7 +37,7 @@ static int compareradius(const void *ap, const void *bp)
 
 const float error_margin = 2.f/256.f;
 
-static struct head build_head(f_pixel px, const colormap *map, int num_candidates, mempool *m, unsigned int skip_index[], unsigned int *skipped)
+static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, unsigned int skip_index[], unsigned int *skipped)
 {
     struct sorttmp colors[map->colors];
     unsigned int colorsused=0;
@@ -82,7 +82,7 @@ static struct head build_head(f_pixel px, const colormap *map, int num_candidate
 static colormap *get_subset_palette(const colormap *map)
 {
     // it may happen that it gets palette without subset palette or the subset is too large
-    int subset_size = (map->colors+3)/4;
+    unsigned int subset_size = (map->colors+3)/4;
 
     if (map->subset_palette && map->subset_palette->colors <= subset_size) {
         return map->subset_palette;
@@ -108,7 +108,7 @@ struct nearest_map *nearest_init(const colormap *map)
     unsigned int skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=0;
 
     colormap *subset_palette = get_subset_palette(map);
-    const int selected_heads = subset_palette->colors;
+    const unsigned int selected_heads = subset_palette->colors;
     centroids->heads = mempool_new(&centroids->mempool, sizeof(centroids->heads[0])*(selected_heads+1)); // +1 is fallback head
 
     unsigned int h=0;
@@ -133,6 +133,7 @@ struct nearest_map *nearest_init(const colormap *map)
 
     return centroids;
 }
+
 unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, const float min_opaque_val, float *diff)
 {
     const bool iebug = px.a > min_opaque_val;

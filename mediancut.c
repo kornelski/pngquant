@@ -122,7 +122,7 @@ inline static unsigned int qsort_partition(hist_item *const base, const unsigned
 }
 
 /** this is a simple qsort that completely sorts only elements between sort_start and +sort_len. Used to find median of the set. */
-static void hist_item_sort_range(hist_item *base, unsigned int len, int sort_start, const unsigned int sort_len)
+static void hist_item_sort_range(hist_item *base, unsigned int len, int sort_start, const int sort_len)
 {
     do {
         const unsigned int l = qsort_partition(base, len), r = l+1;
@@ -266,7 +266,7 @@ double box_error(const struct box *box, const hist_item achv[])
     f_pixel avg = box->color;
 
     double total_error=0;
-    for (int i = 0; i < box->colors; ++i) {
+    for (unsigned int i = 0; i < box->colors; ++i) {
         total_error += colordifference(avg, achv[box->ind + i].acolor) * achv[box->ind + i].perceptual_weight;
     }
 
@@ -274,27 +274,28 @@ double box_error(const struct box *box, const hist_item achv[])
 }
 
 
-static int total_box_error_below_target(double target_mse, struct box bv[], int boxes, const histogram *hist)
+static bool total_box_error_below_target(double target_mse, struct box bv[], unsigned int boxes, const histogram *hist)
 {
     target_mse *= hist->total_perceptual_weight;
     double total_error=0;
-    for(int i=0; i < boxes; i++) {
+
+    for(unsigned int i=0; i < boxes; i++) {
         // error is (re)calculated lazily
         if (bv[i].total_error >= 0) {
             total_error += bv[i].total_error;
         }
-        if (total_error > target_mse) return 0;
+        if (total_error > target_mse) return false;
     }
 
-    for(int i=0; i < boxes; i++) {
+    for(unsigned int i=0; i < boxes; i++) {
         if (bv[i].total_error < 0) {
             bv[i].total_error = box_error(&bv[i], hist->achv);
             total_error += bv[i].total_error;
         }
-        if (total_error > target_mse) return 0;
+        if (total_error > target_mse) return false;
     }
 
-    return 1;
+    return true;
 }
 
 /*

@@ -37,8 +37,8 @@
 bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map)
 {
     const unsigned int maxacolors = acht->maxcolors, ignorebits = acht->ignorebits;
-    const unsigned int channel_mask = 255>>ignorebits<<ignorebits;
-    const unsigned int channel_hmask = (255>>ignorebits) ^ 0xFF;
+    const unsigned int channel_mask = 255U>>ignorebits<<ignorebits;
+    const unsigned int channel_hmask = (255U>>ignorebits) ^ 0xFFU;
     const unsigned int posterize_mask = channel_mask << 24 | channel_mask << 16 | channel_mask << 8 | channel_mask;
     const unsigned int posterize_high_mask = channel_hmask << 24 | channel_hmask << 16 | channel_hmask << 8 | channel_hmask;
     struct acolorhist_arr_head *const buckets = acht->buckets;

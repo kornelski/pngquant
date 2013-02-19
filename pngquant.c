@@ -698,7 +698,7 @@ static float distance_from_closest_other_color(const colormap *map, const int i)
 
 inline static float min_4(float a, float b, float c, float d)
 {
-    float x = MIN(a,b), y = MIN(b,c);
+    float x = MIN(a,b), y = MIN(c,d);
     return MIN(x,y);
 }
 

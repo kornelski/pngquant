@@ -171,7 +171,8 @@ typedef struct {
     float adjusted_weight,   // perceptual weight changed to tweak how mediancut selects colors
           perceptual_weight; // number of pixels weighted by importance of different areas of the picture
 
-    float color_weight; unsigned long sort_value; // these two change every time histogram subset is sorted
+    float color_weight;      // these two change every time histogram subset is sorted
+    unsigned int sort_value;
 } hist_item;
 
 typedef struct {

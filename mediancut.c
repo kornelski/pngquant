@@ -93,7 +93,7 @@ inline static unsigned int qsort_pivot(const hist_item *const base, const unsign
     if (len < 32) return len/2;
 
     const unsigned int aidx=8, bidx=len/2, cidx=len-1;
-    const unsigned long a=base[aidx].sort_value, b=base[bidx].sort_value, c=base[cidx].sort_value;
+    const unsigned int a=base[aidx].sort_value, b=base[bidx].sort_value, c=base[cidx].sort_value;
     return (a < b) ? ((b < c) ? bidx : ((a < c) ? cidx : aidx ))
                    : ((b > c) ? bidx : ((a < c) ? aidx : cidx ));
 }
@@ -106,7 +106,7 @@ inline static unsigned int qsort_partition(hist_item *const base, const unsigned
         hist_item_swap(&base[0], &base[qsort_pivot(base,len)]);
     }
 
-    const unsigned long pivot_value = base[0].sort_value;
+    const unsigned int pivot_value = base[0].sort_value;
     while (l < r) {
         if (base[l].sort_value >= pivot_value) {
             l++;
@@ -199,8 +199,8 @@ static double prepare_sort(struct box *b, hist_item achv[])
         const float *chans = (const float *)&achv[b->ind + i].acolor;
         // Only the first channel really matters. When trying median cut many times
         // with different histogram weights, I don't want sort randomness to influence outcome.
-        achv[b->ind + i].sort_value = ((unsigned long)(chans[channels[0].chan]*65535.0)<<16) |
-                                       (unsigned long)((chans[channels[2].chan] + chans[channels[1].chan]/2.0 + chans[channels[3].chan]/4.0)*65535.0);
+        achv[b->ind + i].sort_value = ((unsigned int)(chans[channels[0].chan]*65535.0)<<16) |
+                                       (unsigned int)((chans[channels[2].chan] + chans[channels[1].chan]/2.0 + chans[channels[3].chan]/4.0)*65535.0);
     }
 
     const f_pixel median = get_median(b, achv);

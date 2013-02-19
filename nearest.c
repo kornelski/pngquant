@@ -55,7 +55,7 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
     num_candidates = MIN(colorsused, num_candidates);
 
     struct head h;
-    h.candidates = mempool_new(m, num_candidates * sizeof(h.candidates[0]));
+    h.candidates = mempool_new(m, num_candidates * sizeof(h.candidates[0]), 0);
     h.center = px;
     h.num_candidates = num_candidates;
     for(unsigned int i=0; i < num_candidates; i++) {
@@ -100,16 +100,19 @@ static colormap *get_subset_palette(const colormap *map)
 
 struct nearest_map *nearest_init(const colormap *map)
 {
+    colormap *subset_palette = get_subset_palette(map);
+
+    const unsigned long mempool_size = sizeof(struct color_entry) * subset_palette->colors * map->colors/5 + (1<<14);
     mempool m = NULL;
-    struct nearest_map *centroids = mempool_new(&m, sizeof(*centroids));
+    struct nearest_map *centroids = mempool_new(&m, sizeof(*centroids), mempool_size);
     centroids->mempool = m;
 
     unsigned int skipped=0;
     unsigned int skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=0;
 
-    colormap *subset_palette = get_subset_palette(map);
+
     const unsigned int selected_heads = subset_palette->colors;
-    centroids->heads = mempool_new(&centroids->mempool, sizeof(centroids->heads[0])*(selected_heads+1)); // +1 is fallback head
+    centroids->heads = mempool_new(&centroids->mempool, sizeof(centroids->heads[0])*(selected_heads+1), mempool_size); // +1 is fallback head
 
     unsigned int h=0;
     for(; h < selected_heads; h++)

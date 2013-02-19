@@ -216,7 +216,7 @@ struct acolorhash_table {
 };
 
 void pam_freeacolorhash(struct acolorhash_table *acht);
-struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int ignorebits);
+struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int image_surface, unsigned int ignorebits);
 histogram *pam_acolorhashtoacolorhist(struct acolorhash_table *acht, double gamma);
 bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map);
 

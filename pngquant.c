@@ -984,7 +984,7 @@ static histogram *get_histogram(pngquant_image *input_image, struct pngquant_opt
     if (options->speed_tradeoff > 7) ignorebits++;
     unsigned int maxcolors = (1<<17) + (1<<18)*(10-options->speed_tradeoff);
 
-    struct acolorhash_table *acht = pam_allocacolorhash(maxcolors, ignorebits);
+    struct acolorhash_table *acht = pam_allocacolorhash(maxcolors, rows*cols, ignorebits);
     for (; ;) {
 
         // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
@@ -996,7 +996,7 @@ static histogram *get_histogram(pngquant_image *input_image, struct pngquant_opt
         ignorebits++;
         verbose_print(options, "  too many colors! Scaling colors to improve clustering...");
         pam_freeacolorhash(acht);
-        acht = pam_allocacolorhash(maxcolors, ignorebits);
+        acht = pam_allocacolorhash(maxcolors, rows*cols, ignorebits);
     }
 
     if (input_image->noise) {

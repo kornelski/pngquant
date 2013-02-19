@@ -117,7 +117,9 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
                     if (!other_items) { // there was no array previously, alloc "small" array
                         capacity = 8;
                         if (freestackp <= 0) {
-                            new_items = mempool_new(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity);
+                            // estimate how many colors are going to be + headroom
+                            const int mempool_size = ((rows-row) * 2 * colors / (1+row) + 1024) * sizeof(struct acolorhist_arr_item);
+                            new_items = mempool_new(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity, mempool_size);
                         } else {
                             // freestack stores previously freed (reallocated) arrays that can be reused
                             // (all pesimistically assumed to be capacity = 8)
@@ -129,7 +131,8 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
                         if (freestackp < stacksize-1) {
                             freestack[freestackp++] = other_items;
                         }
-                        new_items = mempool_new(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity);
+                        const int mempool_size = ((rows-row) * 2 * colors / (1+row) + 32*capacity) * sizeof(struct acolorhist_arr_item);
+                        new_items = mempool_new(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity, mempool_size);
                         memcpy(new_items, other_items, sizeof(other_items[0])*achl->capacity);
                     }
 
@@ -163,11 +166,12 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
     return true;
 }
 
-struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int ignorebits)
+struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits)
 {
     mempool m = NULL;
-    struct acolorhash_table *t = mempool_new(&m, sizeof(*t));
-    t->buckets = mempool_new(&m, HASH_SIZE * sizeof(t->buckets[0]));
+    unsigned long mempool_size = HASH_SIZE * sizeof(struct acolorhist_arr_head) + MIN(maxcolors, surface/(4+ignorebits)) * sizeof(struct acolorhist_arr_item);
+    struct acolorhash_table *t = mempool_new(&m, sizeof(*t), mempool_size);
+    t->buckets = mempool_new(&m, HASH_SIZE * sizeof(t->buckets[0]), 0);
     t->mempool = m;
     t->maxcolors = maxcolors;
     t->ignorebits = ignorebits;

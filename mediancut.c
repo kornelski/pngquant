@@ -258,7 +258,7 @@ inline static double color_weight(f_pixel median, hist_item h)
     return sqrt(diff) * (sqrt(1.0+h.adjusted_weight)-1.0);
 }
 
-static colormap *colormap_from_boxes(struct box* bv,unsigned int boxes,hist_item *achv,float min_opaque_val);
+static colormap *colormap_from_boxes(struct box* bv, unsigned int boxes, hist_item *achv);
 static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, unsigned int boxes);
 
 double box_error(const struct box *box, const hist_item achv[])
@@ -332,7 +332,7 @@ colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int ne
     while (boxes < newcolors) {
 
         if (boxes == subset_size) {
-            representative_subset = colormap_from_boxes(bv, boxes, achv, min_opaque_val);
+            representative_subset = colormap_from_boxes(bv, boxes, achv);
         }
 
         // first splits boxes that exceed quality limit (to have colors for things like odd green pixel),
@@ -392,14 +392,14 @@ colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int ne
         }
     }
 
-    colormap *map = colormap_from_boxes(bv, boxes, achv, min_opaque_val);
+    colormap *map = colormap_from_boxes(bv, boxes, achv);
     map->subset_palette = representative_subset;
     adjust_histogram(achv, map, bv, boxes);
 
     return map;
 }
 
-static colormap *colormap_from_boxes(struct box* bv, unsigned int boxes, hist_item *achv, float min_opaque_val)
+static colormap *colormap_from_boxes(struct box* bv, unsigned int boxes, hist_item *achv)
 {
     /*
      ** Ok, we've got enough boxes.  Now choose a representative color for

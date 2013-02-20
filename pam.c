@@ -59,8 +59,8 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
             }
 
             // RGBA color is casted to long for easier hasing/comparisons
-            union rgb_as_long px = {apixels[row][col]};
-            unsigned long hash;
+            union rgba_as_int px = {apixels[row][col]};
+            unsigned int hash;
             if (!px.rgb.a) {
                 // "dirty alpha" has different RGBA values that end up being the same fully transparent color
                 px.l=0; hash=0;

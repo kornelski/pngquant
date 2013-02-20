@@ -161,9 +161,9 @@ inline static float colordifference(f_pixel px, f_pixel py)
 }
 
 /* from pamcmap.h */
-union rgb_as_long {
+union rgba_as_int {
     rgb_pixel rgb;
-    unsigned long l;
+    unsigned int l;
 };
 
 typedef struct {
@@ -194,7 +194,7 @@ typedef struct colormap {
 } colormap;
 
 struct acolorhist_arr_item {
-    union rgb_as_long color;
+    union rgba_as_int color;
     float perceptual_weight;
 };
 
@@ -202,7 +202,7 @@ struct acolorhist_arr_head {
     unsigned int used, capacity;
     struct acolorhist_arr_item *other_items;
     struct {
-        union rgb_as_long color;
+        union rgba_as_int color;
         float perceptual_weight;
     } inline1, inline2;
 };

@@ -4,6 +4,7 @@ version 1.8
  - switched option parsing to getopt_long (syntax such as -s1 and --ext=ext is supported)
  - significantly improved performance thanks to custom partial sorting
  - optional Cocoa (Mac OS X) image reader for color profile support
+ - reduced memory usage by 20%
 
 version 1.7
 -----------

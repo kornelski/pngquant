@@ -32,8 +32,6 @@
  ** implied warranty.
  */
 
-#define HASH_SIZE (((1<<19) - sizeof(struct acolorhash_table)) / sizeof(struct acolorhist_arr_head) - 1)
-
 bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map)
 {
     const unsigned int maxacolors = acht->maxcolors, ignorebits = acht->ignorebits;
@@ -44,6 +42,7 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
     struct acolorhist_arr_head *const buckets = acht->buckets;
 
     unsigned int colors = acht->colors;
+    const unsigned int hash_size = acht->hash_size;
 
     const unsigned int stacksize = sizeof(acht->freestack)/sizeof(acht->freestack[0]);
     struct acolorhist_arr_item **freestack = acht->freestack;
@@ -68,7 +67,7 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
                 // mask posterizes all 4 channels in one go
                 px.l = (px.l & posterize_mask) | ((px.l & posterize_high_mask) >> (8-ignorebits));
                 // fancier hashing algorithms didn't improve much
-                hash = px.l % HASH_SIZE;
+                hash = px.l % hash_size;
             }
 
             /* head of the hash function stores first 2 colors inline (achl->used = 1..2),
@@ -168,11 +167,15 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
 
 struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits)
 {
+    const unsigned int estimated_colors = MIN(maxcolors, surface/(4+ignorebits));
+    const unsigned int hash_size = estimated_colors < 66000 ? 6673 : (estimated_colors < 200000 ? 12011 : 24019);
+
     mempool m = NULL;
-    unsigned long mempool_size = HASH_SIZE * sizeof(struct acolorhist_arr_head) + MIN(maxcolors, surface/(4+ignorebits)) * sizeof(struct acolorhist_arr_item);
+    unsigned long mempool_size = hash_size * sizeof(struct acolorhist_arr_head) + estimated_colors * sizeof(struct acolorhist_arr_item);
     struct acolorhash_table *t = mempool_new(&m, sizeof(*t), mempool_size);
-    t->buckets = mempool_new(&m, HASH_SIZE * sizeof(t->buckets[0]), 0);
+    t->buckets = mempool_new(&m, hash_size * sizeof(struct acolorhist_arr_head), 0);
     t->mempool = m;
+    t->hash_size = hash_size;
     t->maxcolors = maxcolors;
     t->ignorebits = ignorebits;
     return t;
@@ -185,7 +188,7 @@ struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned in
     total_weight += entry.perceptual_weight; \
 }
 
-histogram *pam_acolorhashtoacolorhist(struct acolorhash_table *acht, double gamma)
+histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma)
 {
     histogram *hist = malloc(sizeof(hist[0]));
     hist->achv = malloc(acht->colors * sizeof(hist->achv[0]));
@@ -194,7 +197,7 @@ histogram *pam_acolorhashtoacolorhist(struct acolorhash_table *acht, double gamm
     to_f_set_gamma(gamma);
 
     double total_weight=0;
-    for(unsigned int j=0, i=0; i < HASH_SIZE; ++i) {
+    for(unsigned int j=0, i=0; i < acht->hash_size; ++i) {
         const struct acolorhist_arr_head *const achl = &acht->buckets[i];
         if (achl->used) {
             PAM_ADD_TO_HIST(achl->inline1);

@@ -213,11 +213,12 @@ struct acolorhash_table {
     unsigned int ignorebits, maxcolors, colors;
     struct acolorhist_arr_item *freestack[512];
     unsigned int freestackp;
+    unsigned int hash_size;
 };
 
 void pam_freeacolorhash(struct acolorhash_table *acht);
 struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int image_surface, unsigned int ignorebits);
-histogram *pam_acolorhashtoacolorhist(struct acolorhash_table *acht, double gamma);
+histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma);
 bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map);
 
 void pam_freeacolorhist(histogram *h);

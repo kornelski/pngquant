@@ -33,8 +33,11 @@
 #include <stdlib.h>
 
 #include "png.h"
-#include "zlib.h"
 #include "rwpng.h"
+
+#ifndef Z_BEST_COMPRESSION
+#define Z_BEST_COMPRESSION 9
+#endif
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
 int rwpng_read_image24_cocoa(FILE *infile, png24_image *mainprog_ptr);
@@ -44,8 +47,6 @@ void rwpng_version_info(FILE *fp)
 {
     fprintf(fp, "   Compiled with libpng %s; using libpng %s.\n",
       PNG_LIBPNG_VER_STRING, png_get_header_ver(NULL));
-    fprintf(fp, "   Compiled with zlib %s; using zlib %s.\n",
-      ZLIB_VERSION, zlib_version);
 #if USE_COCOA
     fputs("   Compiled with Apple Cocoa image reader.\n", fp);
 #endif

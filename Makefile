@@ -12,9 +12,9 @@ BINPREFIX = $(PREFIX)/bin
 # Alternatively, build libpng in this directory:
 CUSTOMLIBPNG ?= ../libpng
 
-CFLAGSOPT ?= -O3 -fearly-inlining -fstrict-aliasing -ffast-math -funroll-loops -fomit-frame-pointer -momit-leaf-frame-pointer -ffinite-math-only -fno-trapping-math -funsafe-loop-optimizations
+CFLAGSOPT ?= -DNDEBUG -O3 -fstrict-aliasing -ffast-math -funroll-loops -fomit-frame-pointer -ffinite-math-only
 
-CFLAGS ?= -DNDEBUG -Wall -Wno-unknown-pragmas -I. -I$(CUSTOMLIBPNG) -I/usr/local/include/ -I/usr/include/ -I/usr/X11/include/ $(CFLAGSOPT)
+CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I$(CUSTOMLIBPNG) -I/usr/local/include/ -I/usr/include/ -I/usr/X11/include/ $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)
 
 LDFLAGS ?= -L$(CUSTOMLIBPNG) -L/usr/local/lib/ -L/usr/lib/ -L/usr/X11/lib/
@@ -33,7 +33,7 @@ OBJS += $(COCOA_OBJS)
 FRAMEWORKS += -framework Cocoa
 endif
 
-BUILD_CONFIGURATION="$(CFLAGS) $(LDFLAGS)"
+BUILD_CONFIGURATION="$(CC) $(CFLAGS) $(LDFLAGS)"
 
 all: $(BIN)
 

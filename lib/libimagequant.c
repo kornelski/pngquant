@@ -56,6 +56,9 @@ struct pngquant_options {
 };
 
 struct liq_image {
+    void* (*malloc)(size_t);
+    void (*free)(void*);
+
     rgb_pixel *pixels;
     rgb_pixel **rows;
     double gamma;
@@ -65,6 +68,9 @@ struct liq_image {
 };
 
 struct liq_remapping_result {
+    void* (*malloc)(size_t);
+    void (*free)(void*);
+
     unsigned char *pixels;
     colormap *palette;
     liq_palette int_palette;
@@ -74,6 +80,9 @@ struct liq_remapping_result {
 };
 
 struct liq_result {
+    void* (*malloc)(size_t);
+    void (*free)(void*);
+
     colormap *palette;
     double gamma, palette_error;
     float min_opaque_val, dither_level;
@@ -247,8 +256,10 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
 {
     if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !rows) return NULL;
 
-    liq_image *img = malloc(sizeof(liq_image));
+    liq_image *img = attr->malloc(sizeof(liq_image));
     *img = (liq_image){
+        .malloc = attr->malloc,
+        .free = attr->free,
         .width = width, .height = height,
         .gamma = gamma ? gamma : 0.45455,
         .rows = (rgb_pixel **)rows,
@@ -280,7 +291,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !bitmap || (ownership_flags & LIQ_OWN_ROWS)) return NULL;
 
     rgb_pixel *pixels = bitmap;
-    rgb_pixel **rows = malloc(sizeof(rows[0])*height);
+    rgb_pixel **rows = attr->malloc(sizeof(rows[0])*height);
     for(int i=0; i < height; i++) {
         rows[i] = pixels + width * i;
     }
@@ -303,36 +314,36 @@ LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
 
     /* now we're done with the INPUT data and row_pointers, so free 'em */
     if (input_image->free_pixels && input_image->pixels) {
-        free(input_image->pixels);
+        input_image->free(input_image->pixels);
         input_image->pixels = NULL;
     }
 
     if (input_image->free_rows && input_image->rows) {
-        free(input_image->rows);
+        input_image->free(input_image->rows);
         input_image->rows = NULL;
     }
 
     if (input_image->noise) {
-        free(input_image->noise);
+        input_image->free(input_image->noise);
         input_image->noise = NULL;
     }
 
     if (input_image->edges) {
-        free(input_image->edges);
+        input_image->free(input_image->edges);
         input_image->edges = NULL;
     }
 
     if (input_image->dither_map) {
-        free(input_image->dither_map);
+        input_image->free(input_image->dither_map);
         input_image->dither_map = NULL;
-}
+   }
 }
 
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image)
 {
     histogram *hist = get_histogram(input_image, options);
     if (input_image->noise) {
-        free(input_image->noise);
+        input_image->free(input_image->noise);
         input_image->noise = NULL;
     }
 
@@ -350,8 +361,10 @@ LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level
 
 LIQ_EXPORT liq_remapping_result *liq_remap(liq_result *result, liq_image *image)
 {
-    liq_remapping_result *res = malloc(sizeof(liq_remapping_result));
+    liq_remapping_result *res = result->malloc(sizeof(liq_remapping_result));
     *res = (liq_remapping_result) {
+        .malloc = result->malloc,
+        .free = result->free,
         .dither_level = result->dither_level,
         .use_dither_map = result->use_dither_map,
         .palette_error = result->palette_error,
@@ -371,8 +384,8 @@ LIQ_EXPORT void liq_remapping_result_destroy(liq_remapping_result *result)
 {
     if (result) {
         if (result->palette) pam_freecolormap(result->palette);
-        if (result->pixels) free(result->pixels);
-        free(result);
+        if (result->pixels) result->free(result->pixels);
+        result->free(result);
     }
 }
 
@@ -380,7 +393,7 @@ LIQ_EXPORT void liq_result_destroy(liq_result *res)
 {
     if (!res) return;
     pam_freecolormap(res->palette);
-    free(res);
+    res->free(res);
 }
 
 LIQ_EXPORT double liq_get_remapping_error(liq_remapping_result *result)
@@ -594,8 +607,8 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;
-    thiserr = malloc((cols + 2) * sizeof(*thiserr));
-    nexterr = malloc((cols + 2) * sizeof(*thiserr));
+    thiserr = input_image->malloc((cols + 2) * sizeof(*thiserr));
+    nexterr = input_image->malloc((cols + 2) * sizeof(*thiserr));
     srand(12345); /* deterministic dithering is better for comparing results */
 
     for (unsigned int col = 0; col < cols + 2; ++col) {
@@ -710,8 +723,8 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
         fs_direction = !fs_direction;
     }
 
-    free(thiserr);
-    free(nexterr);
+    input_image->free(thiserr);
+    input_image->free(nexterr);
     nearest_free(n);
 }
 
@@ -747,7 +760,7 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
     }
 
     if (input_image->noise) {
-        free(input_image->noise);
+        input_image->free(input_image->noise);
         input_image->noise = NULL;
     }
 
@@ -800,9 +813,9 @@ static void contrast_maps(liq_image *image)
 {
     const int cols = image->width, rows = image->height;
     rgb_pixel **apixels = image->rows;
-    float *restrict noise = malloc(sizeof(float)*cols*rows);
-    float *restrict tmp = malloc(sizeof(float)*cols*rows);
-    float *restrict edges = malloc(sizeof(float)*cols*rows);
+    float *restrict noise = image->malloc(sizeof(float)*cols*rows);
+    float *restrict edges = image->malloc(sizeof(float)*cols*rows);
+    float *restrict tmp = image->malloc(sizeof(float)*cols*rows);
 
     to_f_set_gamma(image->gamma);
 
@@ -856,7 +869,7 @@ static void contrast_maps(liq_image *image)
     max3(tmp, edges, cols, rows);
     for(unsigned int i=0; i < cols*rows; i++) edges[i] = MIN(noise[i], edges[i]);
 
-    free(tmp);
+    image->free(tmp);
 
     image->noise = noise;
     image->edges = edges;
@@ -1035,8 +1048,10 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
 
     sort_palette(acolormap, options);
 
-    liq_result *result = malloc(sizeof(liq_result));
+    liq_result *result = options->malloc(sizeof(liq_result));
     *result = (liq_result){
+        .malloc = options->malloc,
+        .free = options->free,
         .palette = acolormap,
         .palette_error = palette_error,
         .use_dither_map = options->use_dither_map,

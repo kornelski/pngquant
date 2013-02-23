@@ -159,8 +159,8 @@ LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed)
 
     attr->max_histogram_entries = (1<<17) + (1<<18)*(10-speed);
     attr->min_posterization = (speed >= 8) ? 1 : 0;
-    attr->use_contrast_maps = speed <= 7;
-    attr->use_dither_map = speed <= 5;
+    attr->use_dither_map = (speed <= (omp_get_max_threads() > 1 ? 7 : 5)); // parallelized dither map might speed up floyd remapping
+    attr->use_contrast_maps = (speed <= 7) || attr->use_dither_map;
 
     return LIQ_OK;
 }

@@ -133,7 +133,6 @@ static double quality_to_mse(long quality)
     return 2.5/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
 }
 
-
 LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int target, int minimum)
 {
     if (target < 0 || target > 100 || target < minimum || minimum < 0) return LIQ_VALUE_OUT_OF_RANGE;
@@ -256,6 +255,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
         .free_rows = (ownership_flags & LIQ_OWN_ROWS) != 0,
         .free_pixels = (ownership_flags & LIQ_OWN_PIXELS) != 0,
     };
+
     if (img->free_pixels) {
         // for simplicity of this API there's no explicit bitmap argument,
         // so the row with the lowest address is assumed to be at the start of the bitmap
@@ -407,7 +407,6 @@ static void sort_palette(colormap *map, const liq_attr *options)
     ** the maximal alpha value (i.e., fully opaque) are at the end and can
     ** therefore be omitted from the tRNS chunk.
     */
-
 
     if (options->last_index_transparent) for(unsigned int i=0; i < map->colors; i++) {
         if (map->palette[i].acolor.a < 1.0/256.0) {
@@ -591,7 +590,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 
     if (output_image_is_remapped) for(unsigned int i=0; i < map->colors; i++) {
             difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
-        }
+    }
 
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;

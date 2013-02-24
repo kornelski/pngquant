@@ -118,7 +118,7 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
                         if (freestackp <= 0) {
                             // estimate how many colors are going to be + headroom
                             const int mempool_size = ((rows-row) * 2 * colors / (1+row) + 1024) * sizeof(struct acolorhist_arr_item);
-                            new_items = mempool_new(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity, mempool_size);
+                            new_items = mempool_alloc(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity, mempool_size);
                         } else {
                             // freestack stores previously freed (reallocated) arrays that can be reused
                             // (all pesimistically assumed to be capacity = 8)
@@ -131,7 +131,7 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
                             freestack[freestackp++] = other_items;
                         }
                         const int mempool_size = ((rows-row) * 2 * colors / (1+row) + 32*capacity) * sizeof(struct acolorhist_arr_item);
-                        new_items = mempool_new(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity, mempool_size);
+                        new_items = mempool_alloc(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity, mempool_size);
                         memcpy(new_items, other_items, sizeof(other_items[0])*achl->capacity);
                     }
 
@@ -172,12 +172,15 @@ struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned in
 
     mempool m = NULL;
     unsigned long mempool_size = hash_size * sizeof(struct acolorhist_arr_head) + estimated_colors * sizeof(struct acolorhist_arr_item);
-    struct acolorhash_table *t = mempool_new(&m, sizeof(*t), mempool_size);
-    t->buckets = mempool_new(&m, hash_size * sizeof(struct acolorhist_arr_head), 0);
-    t->mempool = m;
-    t->hash_size = hash_size;
-    t->maxcolors = maxcolors;
-    t->ignorebits = ignorebits;
+    struct acolorhash_table *t = mempool_create(&m, sizeof(*t), mempool_size, malloc, free);
+    *t = (struct acolorhash_table){
+        .buckets = mempool_alloc(&m, hash_size * sizeof(struct acolorhist_arr_head), 0),
+        .mempool = m,
+        .hash_size = hash_size,
+        .maxcolors = maxcolors,
+        .ignorebits = ignorebits,
+    };
+    memset(t->buckets, 0, hash_size * sizeof(struct acolorhist_arr_head));
     return t;
 }
 
@@ -219,7 +222,7 @@ histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const
 
 void pam_freeacolorhash(struct acolorhash_table *acht)
 {
-    mempool_free(acht->mempool);
+    mempool_destroy(acht->mempool);
 }
 
 void pam_freeacolorhist(histogram *hist)

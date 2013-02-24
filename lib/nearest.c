@@ -25,7 +25,6 @@ struct head {
 struct nearest_map {
     struct head *heads;
     mempool mempool;
-    unsigned int num_heads;
 };
 
 static int find_slow(const f_pixel px, const colormap *map)
@@ -71,7 +70,7 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
     num_candidates = MIN(colorsused, num_candidates);
 
     struct head h = {
-        .candidates = mempool_new(m, num_candidates * sizeof(h.candidates[0]), 0),
+        .candidates = mempool_alloc(m, num_candidates * sizeof(h.candidates[0]), 0),
         .vantage_point = px,
         .num_candidates = num_candidates,
     };
@@ -118,7 +117,7 @@ struct nearest_map *nearest_init(const colormap *map)
 
     const unsigned long mempool_size = sizeof(struct color_entry) * subset_palette->colors * map->colors/5 + (1<<14);
     mempool m = NULL;
-    struct nearest_map *centroids = mempool_new(&m, sizeof(*centroids), mempool_size);
+    struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids), mempool_size, malloc, free);
     centroids->mempool = m;
 
     unsigned int skipped=0;
@@ -126,7 +125,7 @@ struct nearest_map *nearest_init(const colormap *map)
 
 
     const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
-    centroids->heads = mempool_new(&centroids->mempool, sizeof(centroids->heads[0])*(num_vantage_points+1), mempool_size); // +1 is fallback head
+    centroids->heads = mempool_alloc(&centroids->mempool, sizeof(centroids->heads[0])*(num_vantage_points+1), mempool_size); // +1 is fallback head
 
     unsigned int h=0;
     for(; h < num_vantage_points; h++) {
@@ -166,7 +165,6 @@ struct nearest_map *nearest_init(const colormap *map)
 
     centroids->heads[h] = build_head((f_pixel){0,0,0,0}, map, map->colors, &centroids->mempool, skip_index, &skipped);
     centroids->heads[h].radius = MAX_DIFF;
-    centroids->num_heads = ++h;
 
     // get_subset_palette could have created a copy
     if (subset_palette != map->subset_palette) {
@@ -215,5 +213,5 @@ unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel p
 
 void nearest_free(struct nearest_map *centroids)
 {
-    mempool_free(centroids->mempool);
+    mempool_destroy(centroids->mempool);
 }

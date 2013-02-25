@@ -1,4 +1,4 @@
-.Dd 2012-04-09
+.Dd 2013-02-25
 .Dt pngquant 1
 .Sh NAME
 .Nm pngquant
@@ -15,11 +15,9 @@
 .Fl
 .Cm < Ns Pa file
 .Cm > Ns Pa file
-
 .Sh DESCRIPTION
 .Nm
 converts 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette PNGs, optionally using Floyd-Steinberg dithering.
-
 The output filename is the same as the input name except that it ends in
 .Ql -fs8.png
 or
@@ -46,15 +44,7 @@ can be used to convert files in place (which is unsafe).
 .It Fl Fl nofs , Fl Fl ordered
 Disable Floyd-Steinberg dithering. It's enabled by default
 .Pq Fl Fl floyd .
-.It Fl Fl iebug
-Workaround for Internet Explorer 6, which only displays fully opaque pixels.
-.Nm
-will make almost-opaque pixels fully opaque and will reduce amount of semi-transparent colors. When this option is enabled the default filename suffix is
-.Ql -ie-fs8.png
-/
-.Ql -ie-or8.png .
 .It Fl s Ar N , Fl Fl speed Ar N
-Speed/quality trade-off from
 .Cm 1
 (brute-force) to
 .Cm 10
@@ -63,6 +53,31 @@ Speed/quality trade-off from
 Speed
 .Cm 10
 has 5% lower quality, but is about 8 times faster than the default.
+.It Fl q Ar min-max , Fl Fl quality Ar min-max
+.Va min
+and
+.Va max
+are numbers in range
+.Cm 0
+(worst) to
+.Cm 100
+(perfect), similar to JPEG.
+.Nm
+will use the least amount of colors required to meet or exceed the
+.Va max
+quality. If conversion results in quality below the
+.Va min
+quality the image won't be saved (or if outputting to stdin, 24-bit original will be output) and pngquant will exit with status code
+.Er 99 .
+.It Fl Fl iebug
+Workaround for Internet Explorer 6, which only displays fully opaque pixels.
+.Nm
+will make almost-opaque pixels fully opaque and will reduce amount of semi-transparent colors. When this option is enabled the default filename suffix is
+.Ql -ie-fs8.png
+/
+.Ql -ie-or8.png .
+.It Fl Fl transbug
+Workaround for readers that expect fully transparent color to be the last entry in the palette.
 .It Fl v , Fl Fl verbose
 Enable verbose messages showing progress and information about input/output. Opposite is
 .Fl Fl quiet .
@@ -78,18 +93,24 @@ Display help and exit.
 .El
 .Sh EXAMPLE
 Creating a new image with the number of colors reduced to 64:
-.Bd -offset indent
+.Bd -ragged -offset indent
 .Nm
 .Cm 64 image.png
+.Ed
 .Pp
 The resulting image will have 64 colors and will be saved as
 .Pa image-fs8.png .
+.Pp
+Overwriting image in-place if it can be reduced without too much quality loss:
+.Bd -ragged -offset indent
+.Nm
+.Cm -f --ext .png --quality 70-95 image.png
+.Ed
 .Sh AUTHOR
 .Nm
-pngquant was written by Greg Roelofs
-.Aq Mt newt@pobox.com
-and Kornel Lesinski
-.Aq Mt kornel@pngquant.org .
-.Lk http://pngquant.org "Pngquant homepage" .
-.Ed
-
+is developed by Kornel Lesinski
+.Aq Mt kornel@pngquant.org
+based on code by Greg Roelofs
+.Aq Mt newt@pobox.com .
+.Pp
+.Lk http://pngquant.org "pngquant homepage" .

@@ -1,15 +1,13 @@
 Name:           pngquant
-Version:        1.8.1
+Version:        1.8.3
 Release:        1%{?dist}
 Summary:        PNG quantization tool for reducing image file size
 License:        BSD
 URL:            http://pngquant.org
 Source0:        https://github.com/pornel/improved-pngquant/tarball/%{version}
 BuildRequires:  libpng-devel%{?_isa} >= 1.2.46-1
-BuildRequires:  zlib-devel%{?_isa} >= 1.2.3-1
 BuildRequires:  gcc%{?_isa} >= 4.2-1
 Requires:       libpng%{?_isa} >= 1.2.46-1
-Requires:       zlib%{?isa} >= 1.2.3-1
 
 %description
 pngquant converts 24/32-bit RGBA PNG images to 8-bit palette with
@@ -21,7 +19,7 @@ median cut algorithm.
 
 
 %prep
-%setup -q -n pornel-improved-pngquant-35d2664
+%setup -q -n pornel-improved-pngquant-6f6e12c
 
 %build
 make %{?_smp_mflags}

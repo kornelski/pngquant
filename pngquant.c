@@ -13,7 +13,7 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "1.8.2 (January 2013)"
+#define PNGQUANT_VERSION "1.8.3 (February 2013)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\

@@ -81,18 +81,15 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
 
 static colormap *get_subset_palette(const colormap *map)
 {
-    // it may happen that it gets palette without subset palette or the subset is too large
-    unsigned int subset_size = (map->colors+3)/4;
-
-    if (map->subset_palette && map->subset_palette->colors <= subset_size) {
+    if (map->subset_palette) {
         return map->subset_palette;
     }
 
-    const colormap *source = map->subset_palette ? map->subset_palette : map;
+    unsigned int subset_size = (map->colors+3)/4;
     colormap *subset_palette = pam_colormap(subset_size);
 
     for(unsigned int i=0; i < subset_size; i++) {
-        subset_palette->palette[i] = source->palette[i];
+        subset_palette->palette[i] = map->palette[i];
     }
 
     return subset_palette;
@@ -111,7 +108,7 @@ struct nearest_map *nearest_init(const colormap *map)
     unsigned int skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=0;
 
 
-    const unsigned int selected_heads = subset_palette->colors;
+    const unsigned int selected_heads = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
     centroids->heads = mempool_new(&centroids->mempool, sizeof(centroids->heads[0])*(selected_heads+1), mempool_size); // +1 is fallback head
 
     unsigned int h=0;

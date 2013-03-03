@@ -15,8 +15,8 @@ struct sorttmp {
 };
 
 struct head {
-    f_pixel center;
     // colors less than radius away from vantage_point color will have best match in candidates
+    f_pixel vantage_point;
     float radius;
     unsigned int num_candidates;
     struct color_entry *candidates;
@@ -57,7 +57,7 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
 
     struct head h = {
         .candidates = mempool_new(m, num_candidates * sizeof(h.candidates[0]), 0),
-        .center = px,
+        .vantage_point = px,
         .num_candidates = num_candidates,
     };
     for(unsigned int i=0; i < num_candidates; i++) {
@@ -112,13 +112,13 @@ struct nearest_map *nearest_init(const colormap *map)
     bool skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=false;
 
 
-    const unsigned int selected_heads = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
-    centroids->heads = mempool_new(&centroids->mempool, sizeof(centroids->heads[0])*(selected_heads+1), mempool_size); // +1 is fallback head
+    const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
+    centroids->heads = mempool_new(&centroids->mempool, sizeof(centroids->heads[0])*(num_vantage_points+1), mempool_size); // +1 is fallback head
 
     unsigned int h=0;
-    for(; h < selected_heads; h++)
+    for(; h < num_vantage_points; h++)
     {
-        unsigned int num_candiadtes = 1+(map->colors - skipped)/((1+selected_heads-h)/2);
+        unsigned int num_candiadtes = 1+(map->colors - skipped)/((1+num_vantage_points-h)/2);
 
         centroids->heads[h] = build_head(subset_palette->palette[h].acolor, map, num_candiadtes, &centroids->mempool, skip_index, &skipped);
         if (centroids->heads[h].num_candidates == 0) {
@@ -144,9 +144,9 @@ unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel p
 
     const struct head *const heads = centroids->heads;
     for(unsigned int i=0; /* last head will always be selected */ ; i++) {
-        float headdist = colordifference(px, heads[i].center);
+        float vantage_point_dist = colordifference(px, heads[i].vantage_point);
 
-        if (headdist <= heads[i].radius) {
+        if (vantage_point_dist <= heads[i].radius) {
             assert(heads[i].num_candidates);
             unsigned int ind=heads[i].candidates[0].index;
             float dist = colordifference(px, heads[i].candidates[0].color);

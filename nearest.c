@@ -37,7 +37,7 @@ static int compareradius(const void *ap, const void *bp)
 
 const float error_margin = 2.f/256.f;
 
-static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, unsigned int skip_index[], unsigned int *skipped)
+static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, bool skip_index[], unsigned int *skipped)
 {
     struct sorttmp colors[map->colors];
     unsigned int colorsused=0;
@@ -72,7 +72,7 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
         // divide again as that's matching certain subset within radius-limited subset
         // - 1/256 is a tolerance for miscalculation (seems like colordifference isn't exact)
         if (colors[i].radius < h.radius/4.f - error_margin) {
-            skip_index[colors[i].index]=1;
+            skip_index[colors[i].index]=true;
             (*skipped)++;
         }
     }
@@ -105,7 +105,7 @@ struct nearest_map *nearest_init(const colormap *map)
     centroids->mempool = m;
 
     unsigned int skipped=0;
-    unsigned int skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=0;
+    bool skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=false;
 
 
     const unsigned int selected_heads = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;

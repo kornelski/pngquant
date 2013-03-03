@@ -28,6 +28,21 @@ struct nearest_map {
     unsigned int num_heads;
 };
 
+static int find_slow(const f_pixel px, const colormap *map)
+{
+    int best=0;
+    float bestdiff = colordifference(px, map->palette[0].acolor);
+
+    for(int i=1; i < map->colors; i++) {
+        float diff = colordifference(px, map->palette[i].acolor);
+        if (diff < bestdiff) {
+            best = i;
+            bestdiff = diff;
+        }
+    }
+    return best;
+}
+
 static int compareradius(const void *ap, const void *bp)
 {
     float a = ((const struct sorttmp*)ap)->radius;
@@ -67,7 +82,7 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
         };
     }
     // if all colors within this radius are included in candidates, then there cannot be any other better match
-    // farther away from the center than half of the radius. Due to alpha channel must assume pessimistic radius.
+    // farther away from the vantage point than half of the radius. Due to alpha channel must assume pessimistic radius.
     h.radius = min_colordifference(px, h.candidates[num_candidates-1].color)/4.0f; // /4 = half of radius, but radius is squared
 
     for(unsigned int i=0; i < num_candidates; i++) {
@@ -124,6 +139,32 @@ struct nearest_map *nearest_init(const colormap *map)
         if (centroids->heads[h].num_candidates == 0) {
             break;
         }
+    }
+
+    // assumption that there is no better color within radius of vantage point color
+    // holds true only for colors within convex hull formed by palette colors.
+    // since finding proper convex hull is more than a few lines, this
+    // is a cheap shot at finding just few key points.
+    const f_pixel extrema[] = {
+        {.a=0,0,0,0},
+
+        {.a=.5,0,0,0}, {.a=.5,1,0,0},
+        {.a=.5,0,0,1}, {.a=.5,1,0,1},
+        {.a=.5,0,1,0}, {.a=.5,1,1,0},
+        {.a=.5,0,1,1}, {.a=.5,1,1,1},
+
+        {.a=1,0,0,0}, {.a=1,1,0,0},
+        {.a=1,0,0,1}, {.a=1,1,0,1},
+        {.a=1,0,1,0}, {.a=1,1,1,0},
+        {.a=1,0,1,1}, {.a=1,1,1,1},
+
+        {.a=1,.5, 0, 0}, {.a=1, 0,.5, 0}, {.a=1, 0, 0, .5},
+        {.a=1,.5, 0, 1}, {.a=1, 0,.5, 1}, {.a=1, 0, 1, .5},
+        {.a=1,.5, 1, 0}, {.a=1, 1,.5, 0}, {.a=1, 1, 0, .5},
+        {.a=1,.5, 1, 1}, {.a=1, 1,.5, 1}, {.a=1, 1, 1, .5},
+    };
+    for(unsigned int i=0; i < sizeof(extrema)/sizeof(extrema[0]); i++) {
+        skip_index[find_slow(extrema[i], map)]=0;
     }
 
     centroids->heads[h] = build_head((f_pixel){0,0,0,0}, map, map->colors, &centroids->mempool, skip_index, &skipped);

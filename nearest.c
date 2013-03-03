@@ -16,6 +16,7 @@ struct sorttmp {
 
 struct head {
     f_pixel center;
+    // colors less than radius away from vantage_point color will have best match in candidates
     float radius;
     unsigned int num_candidates;
     struct color_entry *candidates;
@@ -34,7 +35,7 @@ static int compareradius(const void *ap, const void *bp)
     return a > b ? 1 : (a < b ? -1 : 0);
 }
 
-
+// floats and colordifference calculations are not perfect
 const float error_margin = 2.f/256.f;
 
 static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, bool skip_index[], unsigned int *skipped)
@@ -43,28 +44,31 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
     unsigned int colorsused=0;
 
     for(unsigned int i=0; i < map->colors; i++) {
-        if (skip_index[i]) continue;
+        if (skip_index[i]) continue; // colors in skip_index have been eliminated already in previous heads
         colors[colorsused].index = i;
         colors[colorsused].radius = colordifference(px, map->palette[i].acolor);
         colorsused++;
     }
 
     qsort(&colors, colorsused, sizeof(colors[0]), compareradius);
-    assert(colorsused < 2 || colors[0].radius <= colors[1].radius);
+    assert(colorsused < 2 || colors[0].radius <= colors[1].radius); // closest first
 
     num_candidates = MIN(colorsused, num_candidates);
 
-    struct head h;
-    h.candidates = mempool_new(m, num_candidates * sizeof(h.candidates[0]), 0);
-    h.center = px;
-    h.num_candidates = num_candidates;
+    struct head h = {
+        .candidates = mempool_new(m, num_candidates * sizeof(h.candidates[0]), 0),
+        .center = px,
+        .num_candidates = num_candidates,
+    };
     for(unsigned int i=0; i < num_candidates; i++) {
         h.candidates[i] = (struct color_entry) {
             .color = map->palette[colors[i].index].acolor,
             .index = colors[i].index,
         };
     }
-    h.radius = colors[num_candidates-1].radius/4.0f; // /2 squared
+    // if all colors within this radius are included in candidates, then there cannot be any other better match
+    // farther away from the center than half of the radius. Due to alpha channel must assume pessimistic radius.
+    h.radius = min_colordifference(px, h.candidates[num_candidates-1].color)/4.0f; // /4 = half of radius, but radius is squared
 
     for(unsigned int i=0; i < num_candidates; i++) {
 

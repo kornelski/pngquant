@@ -129,6 +129,23 @@ inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
            colordifference_ch(px.b, py.b, alphas);
 }
 
+inline static double min_colordifference_ch(const double x, const double y, const double alphas) ALWAYS_INLINE;
+inline static double min_colordifference_ch(const double x, const double y, const double alphas)
+{
+    const double black = x-y, white = black+alphas;
+    return MIN(black*black , white*white);
+}
+
+/* least possible difference between colors (difference varies depending on background they're blended on) */
+inline static float min_colordifference(const f_pixel px, const f_pixel py) ALWAYS_INLINE;
+inline static float min_colordifference(const f_pixel px, const f_pixel py)
+{
+    const double alphas = py.a-px.a;
+    return min_colordifference_ch(px.r, py.r, alphas) +
+           min_colordifference_ch(px.g, py.g, alphas) +
+           min_colordifference_ch(px.b, py.b, alphas);
+}
+
 inline static float colordifference(f_pixel px, f_pixel py) ALWAYS_INLINE;
 inline static float colordifference(f_pixel px, f_pixel py)
 {

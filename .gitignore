@@ -7,3 +7,4 @@ build
 DerivedData
 pngquant
 build_configuration
+lib/libimagequant.a

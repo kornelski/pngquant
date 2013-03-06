@@ -116,12 +116,12 @@ static void log_callback_buferred_flush(const liq_attr *attr, void *context)
 static void log_callback_buferred(const liq_attr *attr, const char *msg, void* context)
 {
     struct buffered_log *log = context;
-    int len = MIN(LOG_BUFFER_SIZE-1, strlen(msg));
+    int len = strlen(msg);
+    if (len > LOG_BUFFER_SIZE-2) len = LOG_BUFFER_SIZE-2;
 
     if (len > LOG_BUFFER_SIZE - log->buf_used - 2) log_callback_buferred_flush(attr, log);
     memcpy(&log->buf[log->buf_used], msg, len);
     log->buf_used += len+1;
-    assert(log->buf_used < LOG_BUFFER_SIZE);
     log->buf[log->buf_used-1] = '\n';
     log->buf[log->buf_used] = '\0';
 }
@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
 
         #ifdef _OPENMP
         struct buffered_log buf = {};
-        if (opts->log_callback && omp_get_num_threads() > 1 && num_files > 1) {
+        if (opts.log_callback && omp_get_num_threads() > 1 && num_files > 1) {
             liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
             liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
             options.log_callback = log_callback_buferred;

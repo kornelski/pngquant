@@ -32,7 +32,7 @@
 #include "blur.h"
 #include "viter.h"
 
-#include "lib/libimagequant.h"
+#include "libimagequant.h"
 
 struct liq_attr {
     void* (*malloc)(size_t);

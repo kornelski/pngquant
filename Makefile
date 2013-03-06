@@ -68,7 +68,7 @@ clean:
 	rm -f $(BIN) $(OBJS) $(COCOA_OBJS) $(TARFILE) build_configuration
 
 build_configuration::
-	@test -f build_configuration -a $(BUILD_CONFIGURATION) = "`cat build_configuration`" || echo > build_configuration $(BUILD_CONFIGURATION)
+	@test -f build_configuration && test $(BUILD_CONFIGURATION) = "`cat build_configuration`" || echo > build_configuration $(BUILD_CONFIGURATION)
 
 .PHONY: all openmp install uninstall dist clean
 .DELETE_ON_ERROR:

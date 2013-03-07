@@ -1,36 +1,22 @@
-/**
- ** Copyright (C) 1989, 1991 by Jef Poskanzer.
- ** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
- **                                Stefan Schneider.
- ** (C) 2011 by Kornel Lesinski.
- **
- ** Permission to use, copy, modify, and distribute this software and its
- ** documentation for any purpose and without fee is hereby granted, provided
- ** that the above copyright notice appear in all copies and that both that
- ** copyright notice and this permission notice appear in supporting
- ** documentation.  This software is provided "as is" without express or
- ** implied warranty.
- */
+/* pam.c - pam (portable alpha map) utility library
+**
+** Copyright (C) 1989, 1991 by Jef Poskanzer.
+** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
+**                                Stefan Schneider.
+** © 2009-2013 by Kornel Lesinski.
+**
+** Permission to use, copy, modify, and distribute this software and its
+** documentation for any purpose and without fee is hereby granted, provided
+** that the above copyright notice appear in all copies and that both that
+** copyright notice and this permission notice appear in supporting
+** documentation.  This software is provided "as is" without express or
+** implied warranty.
+*/
 
 #include <stdlib.h>
 #include <string.h>
 #include "pam.h"
 #include "mempool.h"
-
-/* libpam3.c - pam (portable alpha map) utility library part 3
- **
- ** Colormap routines.
- **
- ** Copyright (C) 1989, 1991 by Jef Poskanzer.
- ** Copyright (C) 1997 by Greg Roelofs.
- **
- ** Permission to use, copy, modify, and distribute this software and its
- ** documentation for any purpose and without fee is hereby granted, provided
- ** that the above copyright notice appear in all copies and that both that
- ** copyright notice and this permission notice appear in supporting
- ** documentation.  This software is provided "as is" without express or
- ** implied warranty.
- */
 
 bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map)
 {

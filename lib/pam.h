@@ -1,8 +1,9 @@
-/**
+/* pam.h - pam (portable alpha map) utility library
+ **
+ ** Colormap routines.
+ **
  ** Copyright (C) 1989, 1991 by Jef Poskanzer.
- ** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
- **                                Stefan Schneider.
- ** (C) 2011 by Kornel Lesinski.
+ ** Copyright (C) 1997 by Greg Roelofs.
  **
  ** Permission to use, copy, modify, and distribute this software and its
  ** documentation for any purpose and without fee is hereby granted, provided
@@ -11,6 +12,7 @@
  ** documentation.  This software is provided "as is" without express or
  ** implied warranty.
  */
+
 #ifndef PAM_H
 #define PAM_H
 

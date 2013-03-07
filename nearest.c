@@ -86,8 +86,6 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
     h.radius = min_colordifference(px, h.candidates[num_candidates-1].color)/4.0f; // /4 = half of radius, but radius is squared
 
     for(unsigned int i=0; i < num_candidates; i++) {
-
-        assert(colors[i].radius <= h.radius*4.0f);
         // divide again as that's matching certain subset within radius-limited subset
         // - 1/256 is a tolerance for miscalculation (seems like colordifference isn't exact)
         if (colors[i].radius < h.radius/4.f - error_margin) {

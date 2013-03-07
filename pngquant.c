@@ -642,8 +642,9 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
         return retval;
     }
 
-    *liq_image_p = liq_image_create_rgba_rows(options, (void**)input_image_p->row_pointers,
-                                         input_image_p->width, input_image_p->height, input_image_p->gamma, LIQ_OWN_PIXELS | LIQ_OWN_ROWS);
+    *liq_image_p = liq_image_create_rgba_rows(options, (void**)input_image_p->row_pointers, input_image_p->width, input_image_p->height, input_image_p->gamma);
+    liq_image_set_memory_ownership(*liq_image_p, LIQ_OWN_PIXELS | LIQ_OWN_ROWS);
+
     if (!*liq_image_p) {
         return OUT_OF_MEMORY_ERROR;
     }

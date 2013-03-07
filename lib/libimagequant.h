@@ -56,8 +56,9 @@ typedef void liq_log_flush_callback_function(const liq_attr*, void* user_info);
 LIQ_EXPORT void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void* user_info);
 LIQ_EXPORT void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void* user_info);
 
-LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma, int ownership_flags);
-LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma, int ownership_flags);
+LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma);
+LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma);
+LIQ_EXPORT liq_error liq_image_set_memory_ownership(liq_image *image, int ownership_flags);
 LIQ_EXPORT int liq_image_get_width(const liq_image *img);
 LIQ_EXPORT int liq_image_get_height(const liq_image *img);
 LIQ_EXPORT void liq_image_destroy(liq_image *img);

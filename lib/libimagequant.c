@@ -252,7 +252,7 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), voi
     return attr;
 }
 
-LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma, int ownership_flags)
+LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma)
 {
     if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !rows) return NULL;
 
@@ -263,16 +263,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
         .width = width, .height = height,
         .gamma = gamma ? gamma : 0.45455,
         .rows = (rgb_pixel **)rows,
-        .free_rows = (ownership_flags & LIQ_OWN_ROWS) != 0,
-        .free_pixels = (ownership_flags & LIQ_OWN_PIXELS) != 0,
     };
-
-    if (img->free_pixels) {
-        // for simplicity of this API there's no explicit bitmap argument,
-        // so the row with the lowest address is assumed to be at the start of the bitmap
-        img->pixels = img->rows[0];
-        for(int i=1; i < img->height; i++) if (img->rows[i] < img->pixels) img->pixels = img->rows[i];
-    }
 
     if (attr->min_opaque_val <= 254.f/255.f) {
         verbose_print(attr, "  Working around IE6 bug by making image less transparent...");
@@ -286,16 +277,44 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
     return img;
 }
 
-LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma, int ownership_flags)
+LIQ_EXPORT liq_error liq_image_set_memory_ownership(liq_image *img, int ownership_flags)
 {
-    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !bitmap || (ownership_flags & LIQ_OWN_ROWS)) return NULL;
+    if (!ownership_flags || (ownership_flags & ~(LIQ_OWN_ROWS|LIQ_OWN_PIXELS))) {
+        return LIQ_VALUE_OUT_OF_RANGE;
+    }
+
+    if (ownership_flags & LIQ_OWN_ROWS) {
+        img->free_rows = true;
+    }
+
+    if (ownership_flags & LIQ_OWN_PIXELS) {
+        img->free_pixels = true;
+        if (!img->pixels) {
+            // for simplicity of this API there's no explicit bitmap argument,
+            // so the row with the lowest address is assumed to be at the start of the bitmap
+            img->pixels = img->rows[0];
+            for(int i=1; i < img->height; i++) {
+                img->pixels = MIN(img->pixels, img->rows[i]);
+            }
+        }
+    }
+
+    return LIQ_OK;
+}
+
+LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma)
+{
+    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !bitmap) return NULL;
 
     rgb_pixel *pixels = bitmap;
     rgb_pixel **rows = attr->malloc(sizeof(rows[0])*height);
     for(int i=0; i < height; i++) {
         rows[i] = pixels + width * i;
     }
-    return liq_image_create_rgba_rows(attr, (void**)rows, width, height, gamma, ownership_flags | LIQ_OWN_ROWS);
+
+    liq_image *image = liq_image_create_rgba_rows(attr, (void**)rows, width, height, gamma);
+    liq_image_set_memory_ownership(image, LIQ_OWN_ROWS);
+    return image;
 }
 
 LIQ_EXPORT int liq_image_get_width(const liq_image *input_image)

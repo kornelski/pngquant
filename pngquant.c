@@ -496,6 +496,11 @@ static void pngquant_output_image_free(png8_image *output_image)
         free(output_image->indexed_data);
         output_image->indexed_data = NULL;
     }
+
+    if (output_image->row_pointers) {
+        free(output_image->row_pointers);
+        output_image->row_pointers = NULL;
+    }
 }
 
 int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
@@ -594,8 +599,8 @@ static void sort_palette(colormap *map, const struct pngquant_options *options)
             /* colors sorted by popularity make pngs slightly more compressible */
             qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
             return;
-            }
         }
+    }
 
     /* move transparent colors to the beginning to shrink trns chunk */
     unsigned int num_transparent=0;
@@ -639,7 +644,7 @@ static void set_palette(png8_image *output_image, const colormap *map)
 static float remap_to_palette(png24_image *input_image, png8_image *output_image, colormap *const map, const float min_opaque_val)
 {
     const rgb_pixel *const *const input_pixels = (const rgb_pixel **)input_image->row_pointers;
-    unsigned char *const remapped = output_image->indexed_data;
+    unsigned char *const *const output_pixels = output_image->row_pointers;
     const int rows = input_image->height;
     const unsigned int cols = input_image->width;
 
@@ -673,7 +678,7 @@ static float remap_to_palette(png24_image *input_image, png8_image *output_image
                 remapping_error += diff;
             }
 
-            remapped[row*cols + col] = match;
+            output_pixels[row][col] = match;
 
             viter_update_color(px, 1.0, map, match, omp_get_thread_num(), average_color);
         }
@@ -751,7 +756,7 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
 static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_image, const colormap *map, const float min_opaque_val, const float *dither_map, const int output_image_is_remapped, const float max_dither_error)
 {
     const rgb_pixel *const *const input_pixels = (const rgb_pixel *const *const)input_image->row_pointers;
-    unsigned char *const remapped = output_image->indexed_data;
+    unsigned char *const *const output_pixels = output_image->row_pointers;
     const unsigned int rows = input_image->height, cols = input_image->width;
 
     to_f_set_gamma(input_image->gamma);
@@ -795,7 +800,7 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
             if (spx.a < 1.0/256.0) {
                 ind = transparent_ind;
             } else {
-                unsigned int curr_ind = remapped[row*cols + col];
+                unsigned int curr_ind = output_pixels[row][col];
                 if (output_image_is_remapped && colordifference(map->palette[curr_ind].acolor, spx) < difference_tolerance[curr_ind]) {
                     ind = curr_ind;
                 } else {
@@ -803,7 +808,7 @@ static void remap_to_palette_floyd(png24_image *input_image, png8_image *output_
                 }
             }
 
-            remapped[row*cols + col] = ind;
+            output_pixels[row][col] = ind;
 
             const f_pixel xp = acolormap[ind].acolor;
             f_pixel err = {
@@ -1347,9 +1352,14 @@ static pngquant_error pngquant_remap(colormap *acolormap, pngquant_image *input_
     */
 
     output_image->indexed_data = malloc(output_image->height * output_image->width);
+    output_image->row_pointers = malloc(output_image->height * sizeof(output_image->row_pointers[0]));
 
-    if (!output_image->indexed_data) {
+    if (!output_image->indexed_data || !output_image->row_pointers) {
         return OUT_OF_MEMORY_ERROR;
+    }
+
+    for(unsigned int row = 0;  row < output_image->height;  ++row) {
+        output_image->row_pointers[row] = output_image->indexed_data + row*output_image->width;
     }
 
     // tRNS, etc.

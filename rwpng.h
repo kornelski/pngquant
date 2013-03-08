@@ -69,6 +69,7 @@ typedef struct {
     png_uint_32 width;
     png_uint_32 height;
     double gamma;
+    unsigned char **row_pointers;
     unsigned char *indexed_data;
     unsigned int num_palette;
     unsigned int num_trans;

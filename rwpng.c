@@ -306,12 +306,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     if (mainprog_ptr->num_trans > 0)
         png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans, mainprog_ptr->num_trans, NULL);
 
-
-    png_bytepp row_pointers = rwpng_create_row_pointers(info_ptr, png_ptr, mainprog_ptr->indexed_data, mainprog_ptr->height, mainprog_ptr->width);
-
-    rwpng_write_end(&info_ptr, &png_ptr, row_pointers);
-
-    free(row_pointers);
+    rwpng_write_end(&info_ptr, &png_ptr, mainprog_ptr->row_pointers);
 
     return SUCCESS;
 }

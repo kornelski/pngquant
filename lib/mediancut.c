@@ -20,7 +20,7 @@
 
 #define index_of_channel(ch) (offsetof(f_pixel,ch)/sizeof(float))
 
-static f_pixel averagepixels(unsigned int clrs, const hist_item achv[static clrs], float min_opaque_val);
+static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], float min_opaque_val);
 
 struct box {
     f_pixel color;
@@ -435,7 +435,7 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
     }
 }
 
-static f_pixel averagepixels(unsigned int clrs, const hist_item achv[static clrs], const float min_opaque_val)
+static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const float min_opaque_val)
 {
     double r = 0, g = 0, b = 0, a = 0, sum = 0;
     float maxa = 0;

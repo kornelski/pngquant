@@ -58,6 +58,10 @@ LIQ_EXPORT void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_fun
 
 LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma);
 LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma);
+
+typedef void liq_image_get_rgba_row_callback(liq_color row_out[], int row, int width, void* user_info);
+LIQ_EXPORT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma);
+
 LIQ_EXPORT liq_error liq_image_set_memory_ownership(liq_image *image, int ownership_flags);
 LIQ_EXPORT int liq_image_get_width(const liq_image *img);
 LIQ_EXPORT int liq_image_get_height(const liq_image *img);

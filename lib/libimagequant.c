@@ -59,12 +59,14 @@ struct liq_image {
     void* (*malloc)(size_t);
     void (*free)(void*);
 
-    rgba_pixel *pixels;
     f_pixel *f_pixels;
     rgba_pixel **rows;
     double gamma;
     int width, height;
     float *noise, *edges, *dither_map;
+    rgba_pixel *pixels, *temp_row;
+    liq_image_get_rgba_row_callback *row_callback;
+    void *row_callback_user_info;
     bool free_rows, free_pixels;
 };
 
@@ -255,18 +257,22 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), voi
     return attr;
 }
 
-LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma)
+static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], liq_image_get_rgba_row_callback *row_callback, void *row_callback_user_info, int width, int height, double gamma)
 {
-    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !rows) return NULL;
+    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr) return NULL;
+    if (!rows && !row_callback) return NULL;
 
     liq_image *img = attr->malloc(sizeof(liq_image));
     *img = (liq_image){
         .malloc = attr->malloc,
-        .f_pixels = attr->malloc(sizeof(img->f_pixels[0]) * width * height),
         .free = attr->free,
         .width = width, .height = height,
         .gamma = gamma ? gamma : 0.45455,
-        .rows = (rgba_pixel **)rows,
+        .f_pixels = attr->malloc(sizeof(img->f_pixels[0]) * width * height),
+        .temp_row = rows ? 0 : attr->malloc(sizeof(img->temp_row[0]) * width),
+        .rows = rows,
+        .row_callback = row_callback,
+        .row_callback_user_info = row_callback_user_info,
     };
 
     if (attr->min_opaque_val <= 254.f/255.f) {
@@ -277,8 +283,16 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
     to_f_set_gamma(img->gamma);
 
     for(unsigned int row=0; row < height; row++) {
+        rgba_pixel *row_pixels;
+        if (img->rows) {
+            row_pixels = img->rows[row];
+        } else {
+            row_pixels = img->temp_row;
+            row_callback((liq_color*)row_pixels, row, width, row_callback_user_info);
+        }
+
         for(unsigned int col=0; col < width; col++) {
-            img->f_pixels[row*width + col] = to_f(img->rows[row][col]);
+            img->f_pixels[row*width + col] = to_f(row_pixels[col]);
         }
     }
 
@@ -291,7 +305,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
 
 LIQ_EXPORT liq_error liq_image_set_memory_ownership(liq_image *img, int ownership_flags)
 {
-    if (!ownership_flags || (ownership_flags & ~(LIQ_OWN_ROWS|LIQ_OWN_PIXELS))) {
+    if (!img->rows || !ownership_flags || (ownership_flags & ~(LIQ_OWN_ROWS|LIQ_OWN_PIXELS))) {
         return LIQ_VALUE_OUT_OF_RANGE;
     }
 
@@ -314,6 +328,16 @@ LIQ_EXPORT liq_error liq_image_set_memory_ownership(liq_image *img, int ownershi
     return LIQ_OK;
 }
 
+LIQ_EXPORT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma)
+{
+    return liq_image_create_internal(attr, NULL, row_callback, user_info, width, height, gamma);
+}
+
+LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma)
+{
+    return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
+}
+
 LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma)
 {
     if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !bitmap) return NULL;
@@ -324,14 +348,19 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
         rows[i] = pixels + width * i;
     }
 
-    liq_image *image = liq_image_create_rgba_rows(attr, (void**)rows, width, height, gamma);
+    liq_image *image = liq_image_create_internal(attr, rows, NULL, NULL, width, height, gamma);
     liq_image_set_memory_ownership(image, LIQ_OWN_ROWS);
     return image;
 }
 
-static rgba_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row)
+static rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
 {
-    return input_image->rows[row];
+    if (img->rows) {
+        return img->rows[row];
+    }
+
+    img->row_callback((liq_color*)img->temp_row, row, img->width, img->row_callback_user_info);
+    return img->temp_row;
 }
 
 static f_pixel *liq_image_get_row_f(liq_image *input_image, unsigned int row)
@@ -386,6 +415,11 @@ LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
     if (input_image->f_pixels) {
         input_image->free(input_image->f_pixels);
         input_image->f_pixels = NULL;
+    }
+
+    if (input_image->temp_row) {
+        input_image->free(input_image->temp_row);
+        input_image->temp_row = NULL;
     }
 
     input_image->free(input_image);

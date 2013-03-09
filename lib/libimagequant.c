@@ -631,8 +631,8 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;
-    thiserr = input_image->malloc((cols + 2) * sizeof(*thiserr));
-    nexterr = input_image->malloc((cols + 2) * sizeof(*thiserr));
+    thiserr = input_image->malloc((cols + 2) * sizeof(*thiserr) * 2); // +2 saves from checking out of bounds access
+    nexterr = thiserr + (cols + 2);
     srand(12345); /* deterministic dithering is better for comparing results */
 
     for (unsigned int col = 0; col < cols + 2; ++col) {
@@ -748,8 +748,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
         fs_direction = !fs_direction;
     }
 
-    input_image->free(thiserr);
-    input_image->free(nexterr);
+    input_image->free(MIN(thiserr, nexterr)); // MIN because pointers were swapped
     nearest_free(n);
 }
 

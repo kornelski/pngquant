@@ -59,9 +59,9 @@ struct liq_image {
     void* (*malloc)(size_t);
     void (*free)(void*);
 
-    rgb_pixel *pixels;
+    rgba_pixel *pixels;
     f_pixel *f_pixels;
-    rgb_pixel **rows;
+    rgba_pixel **rows;
     double gamma;
     int width, height;
     float *noise, *edges, *dither_map;
@@ -94,7 +94,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options);
 static void modify_alpha(liq_image *input_image, const float min_opaque_val);
 static void contrast_maps(liq_image *image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
-static rgb_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row);
+static rgba_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row);
 static f_pixel *liq_image_get_row_f(liq_image *input_image, unsigned int row);
 
 static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
@@ -266,7 +266,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
         .free = attr->free,
         .width = width, .height = height,
         .gamma = gamma ? gamma : 0.45455,
-        .rows = (rgb_pixel **)rows,
+        .rows = (rgba_pixel **)rows,
     };
 
     if (attr->min_opaque_val <= 254.f/255.f) {
@@ -318,8 +318,8 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
 {
     if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !bitmap) return NULL;
 
-    rgb_pixel *pixels = bitmap;
-    rgb_pixel **rows = attr->malloc(sizeof(rows[0])*height);
+    rgba_pixel *pixels = bitmap;
+    rgba_pixel **rows = attr->malloc(sizeof(rows[0])*height);
     for(int i=0; i < height; i++) {
         rows[i] = pixels + width * i;
     }
@@ -329,7 +329,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     return image;
 }
 
-static rgb_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row)
+static rgba_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row)
 {
     return input_image->rows[row];
 }
@@ -517,7 +517,7 @@ static void set_rounded_palette(liq_remapping_result *result)
 
     dest->count = map->colors;
     for(unsigned int x = 0; x < map->colors; ++x) {
-        rgb_pixel px = to_rgb(result->gamma, map->palette[x].acolor);
+        rgba_pixel px = to_rgb(result->gamma, map->palette[x].acolor);
         map->palette[x].acolor = to_f(px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
         dest->entries[x] = (liq_color){.r=px.r,.g=px.g,.b=px.b,.a=px.a};
@@ -794,7 +794,7 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
         // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
         // noise map does not include edges to avoid ruining anti-aliasing
         for(unsigned int row=0; row < rows; row++) {
-            const rgb_pixel* rows_p[1] = { liq_image_get_row_rgba(input_image, row) };
+            const rgba_pixel* rows_p[1] = { liq_image_get_row_rgba(input_image, row) };
             if (!pam_computeacolorhash(acht, rows_p, cols, 1, input_image->noise ? &input_image->noise[row * cols] : NULL)) {
 
                 ignorebits++;

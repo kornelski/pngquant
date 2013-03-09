@@ -18,7 +18,7 @@
 #include "pam.h"
 #include "mempool.h"
 
-bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map)
+bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const float *importance_map)
 {
     const unsigned int maxacolors = acht->maxcolors, ignorebits = acht->ignorebits;
     const unsigned int channel_mask = 255U>>ignorebits<<ignorebits;
@@ -44,9 +44,9 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const*
             }
 
             // RGBA color is casted to long for easier hasing/comparisons
-            union rgba_as_int px = {apixels[row][col]};
+            union rgba_as_int px = {pixels[row][col]};
             unsigned int hash;
-            if (!px.rgb.a) {
+            if (!px.rgba.a) {
                 // "dirty alpha" has different RGBA values that end up being the same fully transparent color
                 px.l=0; hash=0;
             } else {
@@ -171,7 +171,7 @@ struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned in
 }
 
 #define PAM_ADD_TO_HIST(entry) { \
-    hist->achv[j].acolor = to_f(entry.color.rgb); \
+    hist->achv[j].acolor = to_f(entry.color.rgba); \
     hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = entry.perceptual_weight; \
     ++j; \
     total_weight += entry.perceptual_weight; \

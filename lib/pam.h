@@ -56,7 +56,7 @@
 
 typedef struct {
     unsigned char r, g, b, a;
-} rgb_pixel;
+} rgba_pixel;
 
 typedef struct {
     float a, r, g, b;
@@ -71,8 +71,8 @@ void to_f_set_gamma(double gamma);
  Converts 8-bit color to internal gamma and premultiplied alpha.
  (premultiplied color space is much better for blending of semitransparent colors)
  */
-inline static f_pixel to_f(rgb_pixel px) ALWAYS_INLINE;
-inline static f_pixel to_f(rgb_pixel px)
+inline static f_pixel to_f(rgba_pixel px) ALWAYS_INLINE;
+inline static f_pixel to_f(rgba_pixel px)
 {
     float a = px.a/255.f;
 
@@ -84,10 +84,10 @@ inline static f_pixel to_f(rgb_pixel px)
     };
 }
 
-inline static rgb_pixel to_rgb(float gamma, f_pixel px)
+inline static rgba_pixel to_rgb(float gamma, f_pixel px)
 {
     if (px.a < 1.f/256.f) {
-        return (rgb_pixel){0,0,0,0};
+        return (rgba_pixel){0,0,0,0};
     }
 
     float r = px.r / px.a,
@@ -105,7 +105,7 @@ inline static rgb_pixel to_rgb(float gamma, f_pixel px)
     b *= 256.f;
     a *= 256.f;
 
-    return (rgb_pixel){
+    return (rgba_pixel){
         .r = r>=255.f ? 255 : r,
         .g = g>=255.f ? 255 : g,
         .b = b>=255.f ? 255 : b,
@@ -181,7 +181,7 @@ inline static float colordifference(f_pixel px, f_pixel py)
 
 /* from pamcmap.h */
 union rgba_as_int {
-    rgb_pixel rgb;
+    rgba_pixel rgba;
     unsigned int l;
 };
 
@@ -237,7 +237,7 @@ struct acolorhash_table {
 void pam_freeacolorhash(struct acolorhash_table *acht);
 struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int image_surface, unsigned int ignorebits);
 histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma);
-bool pam_computeacolorhash(struct acolorhash_table *acht, const rgb_pixel*const* apixels, unsigned int cols, unsigned int rows, const float *importance_map);
+bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const float *importance_map);
 
 void pam_freeacolorhist(histogram *h);
 

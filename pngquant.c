@@ -61,7 +61,7 @@ use --force to overwrite.\n"
 struct pngquant_options {
     liq_attr *liq;
     liq_image *fixed_palette_image;
-    bool floyd, using_stdin, force, ie_mode;
+    bool floyd, using_stdin, force, ie_mode, min_quality_limit;
 
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
@@ -70,7 +70,7 @@ struct pngquant_options {
 static pngquant_error prepare_output_image(liq_remapping_result *result, liq_image *input_image, png8_image *output_image);
 static void set_palette(liq_remapping_result *result, png8_image *output_image);
 static void pngquant_output_image_free(png8_image *output_image);
-static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p);
+static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
@@ -157,7 +157,7 @@ static void print_usage(FILE *fd)
  *
  * where N,M are numbers between 0 (lousy) and 100 (perfect)
  */
-static bool parse_quality(const char *quality, liq_attr *options)
+static bool parse_quality(const char *quality, liq_attr *options, bool *min_quality_limit)
 {
     long limit, target;
     const char *str = quality; char *end;
@@ -182,6 +182,7 @@ static bool parse_quality(const char *quality, liq_attr *options)
         limit = t1;
     }
 
+    *min_quality_limit = (limit > 0);
     return LIQ_OK == liq_set_quality(options, target, limit);
 }
 
@@ -299,14 +300,14 @@ int main(int argc, char *argv[])
                 break;
 
             case arg_quality:
-                if (!parse_quality(optarg, options.liq)) {
+                if (!parse_quality(optarg, options.liq, &options.min_quality_limit)) {
                     fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
                     return INVALID_ARGUMENT;
                 }
                 break;
 
             case arg_map:
-                if (SUCCESS != read_image(options.liq, optarg, false, &(png24_image){}, &options.fixed_palette_image)) {
+                if (SUCCESS != read_image(options.liq, optarg, false, &(png24_image){}, &options.fixed_palette_image, false)) {
                     fprintf(stderr, "  error: Unable to load %s", optarg);
                     return INVALID_ARGUMENT;
                 }
@@ -459,8 +460,9 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
 
     liq_image *input_image = NULL;
     png24_image input_image_rwpng = {};
+    bool keep_input_pixels = options->using_stdin && options->min_quality_limit; // original may need to be output to stdout
     if (!retval) {
-        retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image);
+        retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels);
     }
 
     png8_image output_image = {};
@@ -498,18 +500,19 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
-        if (!options->ie_mode) {
-            int write_retval = write_image(NULL, &input_image_rwpng, outname, options);
-            if (write_retval) retval = write_retval;
-        } else {
-            // iebug preprocessing changes the original image
-            fputs("  error:  can't write the original image when iebug option is enabled\n", stderr);
-            retval = INVALID_ARGUMENT;
-        }
+        int write_retval = write_image(NULL, &input_image_rwpng, outname, options);
+        if (write_retval) retval = write_retval;
     }
 
     liq_image_destroy(input_image);
     pngquant_output_image_free(&output_image);
+
+    if (input_image_rwpng.row_pointers) {
+        free(input_image_rwpng.row_pointers);
+    }
+    if (input_image_rwpng.rgba_data) {
+        free(input_image_rwpng.rgba_data);
+    }
 
     return retval;
 }
@@ -616,7 +619,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     return retval;
 }
 
-static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p)
+static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels)
 {
     FILE *infile;
 
@@ -643,10 +646,15 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     }
 
     *liq_image_p = liq_image_create_rgba_rows(options, (void**)input_image_p->row_pointers, input_image_p->width, input_image_p->height, input_image_p->gamma);
-    liq_image_set_memory_ownership(*liq_image_p, LIQ_OWN_PIXELS | LIQ_OWN_ROWS);
 
     if (!*liq_image_p) {
         return OUT_OF_MEMORY_ERROR;
+    }
+
+    if (!keep_input_pixels) {
+        liq_image_set_memory_ownership(*liq_image_p, LIQ_OWN_ROWS | LIQ_OWN_PIXELS);
+        input_image_p->row_pointers = NULL;
+        input_image_p->rgba_data = NULL;
     }
 
     return SUCCESS;

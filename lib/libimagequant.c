@@ -60,11 +60,12 @@ struct liq_image {
     void (*free)(void*);
 
     rgb_pixel *pixels;
+    f_pixel *f_pixels;
     rgb_pixel **rows;
     double gamma;
     int width, height;
     float *noise, *edges, *dither_map;
-    bool modified, free_rows, free_pixels;
+    bool free_rows, free_pixels;
 };
 
 struct liq_remapping_result {
@@ -94,6 +95,7 @@ static void modify_alpha(liq_image *input_image, const float min_opaque_val);
 static void contrast_maps(liq_image *image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
 static rgb_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row);
+static f_pixel *liq_image_get_row_f(liq_image *input_image, unsigned int row);
 
 static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
 {
@@ -260,6 +262,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
     liq_image *img = attr->malloc(sizeof(liq_image));
     *img = (liq_image){
         .malloc = attr->malloc,
+        .f_pixels = attr->malloc(sizeof(img->f_pixels[0]) * width * height),
         .free = attr->free,
         .width = width, .height = height,
         .gamma = gamma ? gamma : 0.45455,
@@ -269,6 +272,14 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
     if (attr->min_opaque_val <= 254.f/255.f) {
         verbose_print(attr, "  Working around IE6 bug by making image less transparent...");
         modify_alpha(img, attr->min_opaque_val);
+    }
+
+    to_f_set_gamma(img->gamma);
+
+    for(unsigned int row=0; row < height; row++) {
+        for(unsigned int col=0; col < width; col++) {
+            img->f_pixels[row*width + col] = to_f(img->rows[row][col]);
+        }
     }
 
     if (attr->use_contrast_maps && img->width >= 4 && img->height >= 4) {
@@ -323,6 +334,11 @@ static rgb_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int ro
     return input_image->rows[row];
 }
 
+static f_pixel *liq_image_get_row_f(liq_image *input_image, unsigned int row)
+{
+    return input_image->f_pixels + input_image->width * row;
+}
+
 LIQ_EXPORT int liq_image_get_width(const liq_image *input_image)
 {
     return input_image->width;
@@ -333,11 +349,8 @@ LIQ_EXPORT int liq_image_get_height(const liq_image *input_image)
     return input_image->height;
 }
 
-LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
+static void liq_image_free_rgba_source(liq_image *input_image)
 {
-    if (!input_image) return;
-
-    /* now we're done with the INPUT data and row_pointers, so free 'em */
     if (input_image->free_pixels && input_image->pixels) {
         input_image->free(input_image->pixels);
         input_image->pixels = NULL;
@@ -347,6 +360,13 @@ LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
         input_image->free(input_image->rows);
         input_image->rows = NULL;
     }
+}
+
+LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
+{
+    if (!input_image) return;
+
+    liq_image_free_rgba_source(input_image);
 
     if (input_image->noise) {
         input_image->free(input_image->noise);
@@ -362,17 +382,21 @@ LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
         input_image->free(input_image->dither_map);
         input_image->dither_map = NULL;
     }
+
+    if (input_image->f_pixels) {
+        input_image->free(input_image->f_pixels);
+        input_image->f_pixels = NULL;
     }
+
+    input_image->free(input_image);
+}
 
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image)
 {
     histogram *hist = get_histogram(input_image, options);
-    if (input_image->noise) {
-        input_image->free(input_image->noise);
-        input_image->noise = NULL;
-    }
 
     liq_result *result = pngquant_quantize(hist, options);
+
     pam_freeacolorhist(hist);
     return result;
 }
@@ -408,10 +432,10 @@ LIQ_EXPORT double liq_get_output_gamma(const liq_remapping_result *result)
 LIQ_EXPORT void liq_remapping_result_destroy(liq_remapping_result *result)
 {
     if (result) {
-    if (result->palette) pam_freecolormap(result->palette);
-    if (result->pixels) result->free(result->pixels);
-    result->free(result);
-}
+        if (result->palette) pam_freecolormap(result->palette);
+        if (result->pixels) result->free(result->pixels);
+        result->free(result);
+    }
 }
 
 LIQ_EXPORT void liq_result_destroy(liq_result *res)
@@ -424,12 +448,12 @@ LIQ_EXPORT void liq_result_destroy(liq_result *res)
 LIQ_EXPORT double liq_get_remapping_error(liq_remapping_result *result)
 {
     return result->palette_error >= 0 ? result->palette_error*65536.0/6.0 : result->palette_error;
-    }
+}
 
 LIQ_EXPORT const liq_palette *liq_get_remapped_palette(liq_remapping_result *result)
 {
     return &result->int_palette;
-    }
+}
 
 static int compare_popularity(const void *ch1, const void *ch2)
 {
@@ -505,8 +529,6 @@ static float remap_to_palette(liq_image *input_image, unsigned char *const outpu
     const int rows = input_image->height;
     const unsigned int cols = input_image->width;
 
-    to_f_set_gamma(input_image->gamma);
-
     int remapped_pixels=0;
     float remapping_error=0;
 
@@ -520,10 +542,10 @@ static float remap_to_palette(liq_image *input_image, unsigned char *const outpu
     #pragma omp parallel for if (rows*cols > 3000) \
         default(none) shared(average_color) reduction(+:remapping_error) reduction(+:remapped_pixels)
     for(int row = 0; row < rows; ++row) {
-        rgb_pixel *row_pixels = liq_image_get_row_rgba(input_image, row);
+        f_pixel *row_pixels = liq_image_get_row_f(input_image, row);
         for(unsigned int col = 0; col < cols; ++col) {
 
-            f_pixel px = to_f(row_pixels[col]);
+            f_pixel px = row_pixels[col];
             unsigned int match;
 
             if (px.a < 1.0/256.0) {
@@ -616,8 +638,6 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
     const unsigned int rows = input_image->height, cols = input_image->width;
     const float *dither_map = use_dither_map ? (input_image->dither_map ? input_image->dither_map : input_image->edges) : NULL;
 
-    to_f_set_gamma(input_image->gamma);
-
     const colormap_item *acolormap = map->palette;
 
     struct nearest_map *const n = nearest_init(map);
@@ -648,11 +668,11 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
         memset(nexterr, 0, (cols + 2) * sizeof(*nexterr));
 
         unsigned int col = (fs_direction) ? 0 : (cols - 1);
-        rgb_pixel *row_pixels = liq_image_get_row_rgba(input_image, row);
+        f_pixel *row_pixels = liq_image_get_row_f(input_image, row);
 
         do {
             float dither_level = dither_map ? dither_map[row*cols + col] : 15.f/16.f;
-            const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], to_f(row_pixels[col]));
+            const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], row_pixels[col]);
 
             unsigned int ind;
             if (spx.a < 1.0/256.0) {
@@ -791,10 +811,12 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
         input_image->noise = NULL;
     }
 
+    liq_image_free_rgba_source(input_image); // creation if liq_image makes copy of source pixels
+
     histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->gamma);
     pam_freeacolorhash(acht);
 
-        liq_verbose_printf(options, "  made histogram...%d colors found", hist->size);
+    liq_verbose_printf(options, "  made histogram...%d colors found", hist->size);
     return hist;
 }
 
@@ -805,30 +827,20 @@ static void modify_alpha(liq_image *input_image, const float min_opaque_val)
        completely opaque */
 
     const unsigned int rows = input_image->height, cols = input_image->width;
-    const float gamma = input_image->gamma;
-    to_f_set_gamma(gamma);
-
     const float almost_opaque_val = min_opaque_val * 169.f/256.f;
-    const unsigned int almost_opaque_val_int = almost_opaque_val*255.f;
-
 
     for(unsigned int row = 0; row < rows; ++row) {
-        rgb_pixel *row_pixels = liq_image_get_row_rgba(input_image, row);
+        f_pixel *row_pixels = liq_image_get_row_f(input_image, row);
         for(unsigned int col = 0; col < cols; col++) {
-            const rgb_pixel srcpx = row_pixels[col];
+            float al = row_pixels[col].a;
 
             /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
-            if (srcpx.a >= almost_opaque_val_int) {
-                f_pixel px = to_f(srcpx);
-
-                float al = almost_opaque_val + (px.a-almost_opaque_val) * (1-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
-                if (al > 1) al = 1;
-                px.a = al;
-                row_pixels[col].a = to_rgb(gamma, px).a;
+            if (al > almost_opaque_val) {
+                al = almost_opaque_val + (al-almost_opaque_val) * (1.f-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
+                row_pixels[col].a = MIN(1.f, al);
+            }
         }
     }
-}
-    input_image->modified = true;
 }
 
 /**
@@ -843,21 +855,19 @@ static void contrast_maps(liq_image *image)
     float *restrict edges = image->malloc(sizeof(float)*cols*rows);
     float *restrict tmp = image->malloc(sizeof(float)*cols*rows);
 
-    to_f_set_gamma(image->gamma);
-
-    rgb_pixel *curr_row, *prev_row, *next_row;
-    curr_row = prev_row = next_row = liq_image_get_row_rgba(image, 0);
+    f_pixel *curr_row, *prev_row, *next_row;
+    curr_row = prev_row = next_row = liq_image_get_row_f(image, 0);
 
     for (unsigned int j=0; j < rows; j++) {
         prev_row = curr_row;
         curr_row = next_row;
-        next_row = liq_image_get_row_rgba(image, MIN(rows-1,j+1));
+        next_row = liq_image_get_row_f(image, MIN(rows-1,j+1));
 
-        f_pixel prev, curr = to_f(curr_row[0]), next=curr;
+        f_pixel prev, curr = curr_row[0], next=curr;
         for (unsigned int i=0; i < cols; i++) {
             prev=curr;
             curr=next;
-            next = to_f(curr_row[MIN(cols-1,i+1)]);
+            next = curr_row[MIN(cols-1,i+1)];
 
             // contrast is difference between pixels neighbouring horizontally and vertically
             const float a = fabsf(prev.a+next.a - curr.a*2.f),
@@ -865,8 +875,8 @@ static void contrast_maps(liq_image *image)
             g = fabsf(prev.g+next.g - curr.g*2.f),
             b = fabsf(prev.b+next.b - curr.b*2.f);
 
-            const f_pixel prevl = to_f(prev_row[i]);
-            const f_pixel nextl = to_f(next_row[i]);
+            const f_pixel prevl = prev_row[i];
+            const f_pixel nextl = next_row[i];
 
             const float a1 = fabsf(prevl.a+nextl.a - curr.a*2.f),
             r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),

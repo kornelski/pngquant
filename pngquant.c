@@ -67,8 +67,8 @@ struct pngquant_options {
     void *log_callback_user_info;
 };
 
-static pngquant_error prepare_output_image(liq_remapping_result *result, liq_image *input_image, png8_image *output_image);
-static void set_palette(liq_remapping_result *result, png8_image *output_image);
+static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
+static void set_palette(liq_result *result, png8_image *output_image);
 static void pngquant_output_image_free(png8_image *output_image);
 static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
@@ -471,11 +471,10 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
                        (input_image_rwpng.file_size+1023UL)/1024UL, 1.0/input_image_rwpng.gamma);
 
         // when using image as source of a fixed palette the palette is extracted using regular quantization
-        liq_result *result = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
+        liq_result *remap = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
 
-        if (result) {
-            liq_set_dithering_level(result, options->floyd ? 1.0 : 0);
-            liq_remapping_result *remap = liq_remap(result, input_image);
+        if (remap) {
+            liq_set_dithering_level(remap, options->floyd ? 1.0 : 0);
 
             retval = prepare_output_image(remap, input_image, &output_image);
             if (!retval) {
@@ -483,13 +482,12 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
 
                 set_palette(remap, &output_image);
 
-                double palette_error = liq_get_remapping_error(remap);
+                double palette_error = liq_get_quantization_error(remap);
                 if (palette_error >= 0) {
                     verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error);
                 }
-                liq_remapping_result_destroy(remap);
             }
-            liq_result_destroy(result);
+            liq_result_destroy(remap);
         } else {
             retval = TOO_LOW_QUALITY;
         }
@@ -517,9 +515,9 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     return retval;
 }
 
-static void set_palette(liq_remapping_result *result, png8_image *output_image)
+static void set_palette(liq_result *result, png8_image *output_image)
 {
-    const liq_palette *palette = liq_get_remapped_palette(result);
+    const liq_palette *palette = liq_get_palette(result);
 
     // tRNS, etc.
     output_image->num_palette = palette->count;
@@ -660,7 +658,7 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     return SUCCESS;
 }
 
-static pngquant_error prepare_output_image(liq_remapping_result *result, liq_image *input_image, png8_image *output_image)
+static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image)
 {
     output_image->width = liq_image_get_width(input_image);
     output_image->height = liq_image_get_height(input_image);
@@ -681,7 +679,7 @@ static pngquant_error prepare_output_image(liq_remapping_result *result, liq_ima
         output_image->row_pointers[row] = output_image->indexed_data + row*output_image->width;
     }
 
-    const liq_palette *palette = liq_get_remapped_palette(result);
+    const liq_palette *palette = liq_get_palette(result);
     // tRNS, etc.
     output_image->num_palette = palette->count;
     output_image->num_trans = 0;

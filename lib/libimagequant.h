@@ -18,7 +18,6 @@ extern "C" {
 typedef struct liq_attr liq_attr;
 typedef struct liq_image liq_image;
 typedef struct liq_result liq_result;
-typedef struct liq_remapping_result liq_remapping_result;
 
 typedef struct liq_color {
     unsigned char r, g, b, a;
@@ -70,21 +69,18 @@ LIQ_EXPORT void liq_image_destroy(liq_image *img);
 
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image);
 
-LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma);
-LIQ_EXPORT double liq_get_output_gamma(const liq_remapping_result *result);
 LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level);
+LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma);
+LIQ_EXPORT double liq_get_output_gamma(const liq_result *result);
 
-LIQ_EXPORT const liq_palette *liq_get_generic_palette(liq_result *result);
-LIQ_EXPORT const liq_palette *liq_get_remapped_palette(liq_remapping_result *result);
+LIQ_EXPORT const liq_palette *liq_get_palette(liq_result *result);
 
-LIQ_EXPORT liq_remapping_result *liq_remap(liq_result *result, liq_image *image);
+LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *input_image, void *buffer, size_t buffer_size);
+LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *result, liq_image *input_image, unsigned char **row_pointers);
 
-LIQ_EXPORT liq_error liq_write_remapped_image(liq_remapping_result *result, liq_image *input_image, void *buffer, size_t buffer_size);
-LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_remapping_result *result, liq_image *input_image, unsigned char **row_pointers);
-LIQ_EXPORT double liq_get_remapping_error(liq_remapping_result *result);
+LIQ_EXPORT double liq_get_quantization_error(liq_result *result);
 
 LIQ_EXPORT void liq_result_destroy(liq_result *);
-LIQ_EXPORT void liq_remapping_result_destroy(liq_remapping_result *result);
 
 #ifdef __cplusplus
 }

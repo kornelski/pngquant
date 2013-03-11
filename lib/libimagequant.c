@@ -78,7 +78,7 @@ struct liq_image {
     bool free_rows, free_pixels;
 };
 
-struct liq_remapping_result {
+typedef struct liq_remapping_result {
     const char *magic_header;
     void* (*malloc)(size_t);
     void (*free)(void*);
@@ -89,14 +89,16 @@ struct liq_remapping_result {
     double gamma, palette_error;
     float min_opaque_val, dither_level;
     bool use_dither_map;
-};
+} liq_remapping_result;
 
 struct liq_result {
     const char *magic_header;
     void* (*malloc)(size_t);
     void (*free)(void*);
 
+    liq_remapping_result *remapping;
     colormap *palette;
+    liq_palette int_palette;
     double gamma, palette_error;
     float min_opaque_val, dither_level;
     bool use_dither_map;
@@ -206,6 +208,11 @@ LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma)
 {
     if (!CHECK_STRUCT_TYPE(res, liq_result)) return LIQ_INVALID_POINTER;
     if (gamma <= 0 || gamma >= 1.0) return LIQ_VALUE_OUT_OF_RANGE;
+
+    if (res->remapping) {
+        liq_remapping_result_destroy(res->remapping);
+        res->remapping = NULL;
+    }
 
     res->gamma = gamma;
     return LIQ_OK;
@@ -478,6 +485,11 @@ LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level
 {
     if (!CHECK_STRUCT_TYPE(res, liq_result)) return LIQ_INVALID_POINTER;
 
+    if (res->remapping) {
+        liq_remapping_result_destroy(res->remapping);
+        res->remapping = NULL;
+    }
+
     if (res->dither_level < 0 || res->dither_level > 1.0f) return LIQ_VALUE_OUT_OF_RANGE;
     res->dither_level = dither_level;
     return LIQ_OK;
@@ -502,14 +514,14 @@ LIQ_EXPORT liq_remapping_result *liq_remap(liq_result *result, liq_image *image)
     return res;
 }
 
-LIQ_EXPORT double liq_get_output_gamma(const liq_remapping_result *result)
+LIQ_EXPORT double liq_get_output_gamma(const liq_result *result)
 {
-    if (!CHECK_STRUCT_TYPE(result, liq_remapping_result)) return -1;
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) return -1;
 
     return result->gamma;
 }
 
-LIQ_EXPORT void liq_remapping_result_destroy(liq_remapping_result *result)
+static void liq_remapping_result_destroy(liq_remapping_result *result)
 {
     if (!CHECK_STRUCT_TYPE(result, liq_remapping_result)) return;
 
@@ -524,24 +536,29 @@ LIQ_EXPORT void liq_result_destroy(liq_result *res)
 {
     if (!CHECK_STRUCT_TYPE(res, liq_result)) return;
 
+    if (res->remapping) {
+        liq_remapping_result_destroy(res->remapping);
+    }
+
     pam_freecolormap(res->palette);
 
     res->magic_header = liq_freed_magic;
     res->free(res);
 }
 
-LIQ_EXPORT double liq_get_remapping_error(liq_remapping_result *result)
+LIQ_EXPORT double liq_get_quantization_error(liq_result *result)
 {
-    if (!CHECK_STRUCT_TYPE(result, liq_remapping_result)) return -1;
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) return -1;
 
-    return result->palette_error >= 0 ? result->palette_error*65536.0/6.0 : result->palette_error;
-}
+    if (result->palette_error >= 0) {
+        return result->palette_error*65536.0/6.0;
+    }
 
-LIQ_EXPORT const liq_palette *liq_get_remapped_palette(liq_remapping_result *result)
-{
-    if (!CHECK_STRUCT_TYPE(result, liq_remapping_result)) return NULL;
+    if (result->remapping && result->remapping->palette_error >= 0) {
+        return result->remapping->palette_error*65536.0/6.0;
+    }
 
-    return &result->int_palette;
+    return result->palette_error;
 }
 
 static int compare_popularity(const void *ch1, const void *ch2)
@@ -597,20 +614,31 @@ static void sort_palette(colormap *map, const liq_attr *options)
     qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
 }
 
-static void set_rounded_palette(liq_remapping_result *result)
+static void set_rounded_palette(liq_palette *const dest, colormap *const map, const double gamma)
 {
-    liq_palette *dest = &result->int_palette;
-    colormap *const map = result->palette;
-
-    to_f_set_gamma(result->gamma);
+    to_f_set_gamma(gamma);
 
     dest->count = map->colors;
     for(unsigned int x = 0; x < map->colors; ++x) {
-        rgba_pixel px = to_rgb(result->gamma, map->palette[x].acolor);
+        rgba_pixel px = to_rgb(gamma, map->palette[x].acolor);
         map->palette[x].acolor = to_f(px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
         dest->entries[x] = (liq_color){.r=px.r,.g=px.g,.b=px.b,.a=px.a};
     }
+}
+
+LIQ_EXPORT const liq_palette *liq_get_palette(liq_result *result)
+{
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) return NULL;
+
+    if (result->remapping && result->remapping->int_palette.count) {
+        return &result->remapping->int_palette;
+    }
+
+    if (!result->int_palette.count) {
+        set_rounded_palette(&result->int_palette, result->palette, result->gamma);
+    }
+    return &result->int_palette;
 }
 
 static float remap_to_palette(liq_image *input_image, unsigned char *const output_pixels[], colormap *const map, const float min_opaque_val)
@@ -1194,9 +1222,9 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
     return result;
 }
 
-LIQ_EXPORT liq_error liq_write_remapped_image(liq_remapping_result *result, liq_image *input_image, void *buffer, size_t buffer_size)
+LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *input_image, void *buffer, size_t buffer_size)
 {
-    if (!CHECK_STRUCT_TYPE(result, liq_remapping_result)) return LIQ_INVALID_POINTER;
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) return LIQ_INVALID_POINTER;
     if (!CHECK_STRUCT_TYPE(input_image, liq_image)) return LIQ_INVALID_POINTER;
 
     const size_t required_size = input_image->width * input_image->height;
@@ -1212,10 +1240,15 @@ LIQ_EXPORT liq_error liq_write_remapped_image(liq_remapping_result *result, liq_
     return liq_write_remapped_image_rows(result, input_image, rows);
 }
 
-LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_remapping_result *result, liq_image *input_image, unsigned char **row_pointers)
+LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image *input_image, unsigned char **row_pointers)
 {
-    if (!CHECK_STRUCT_TYPE(result, liq_remapping_result)) return LIQ_INVALID_POINTER;
+    if (!CHECK_STRUCT_TYPE(quant, liq_result)) return LIQ_INVALID_POINTER;
     if (!CHECK_STRUCT_TYPE(input_image, liq_image)) return LIQ_INVALID_POINTER;
+
+    if (quant->remapping) {
+        liq_remapping_result_destroy(quant->remapping);
+    }
+    liq_remapping_result *const result = quant->remapping = liq_remap(quant, input_image);
 
     /*
      ** Step 4: map the colors in the image to their closest match in the
@@ -1224,7 +1257,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_remapping_result *result,
 
     float remapping_error = result->palette_error;
     if (result->dither_level == 0) {
-        set_rounded_palette(result);
+        set_rounded_palette(&result->int_palette, result->palette, result->gamma);
         remapping_error = remap_to_palette(input_image, row_pointers, result->palette, result->min_opaque_val);
     } else {
         const bool generate_dither_map = result->use_dither_map && (input_image->edges && !input_image->dither_map);
@@ -1235,7 +1268,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_remapping_result *result,
         }
 
         // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
-        set_rounded_palette(result);
+        set_rounded_palette(&result->int_palette, result->palette, result->gamma);
 
         remap_to_palette_floyd(input_image, row_pointers, result->palette, result->min_opaque_val, result->use_dither_map, generate_dither_map, MAX(remapping_error*2.4, 16.f/256.f));
     }

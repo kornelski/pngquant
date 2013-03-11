@@ -149,23 +149,11 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if dithering level is outside the 0-1 range.
 
 ----
 
-    liq_remapping_result *liq_remap(liq_result *result, liq_image *image);
+    liq_error liq_write_remapped_image(liq_result *result, liq_image *input_image, void *buffer, size_t buffer_size);
 
-Prepares image for remapping. Should be freed with `liq_remapping_result_destroy()`.
+Remaps the image to palette and writes it to the given buffer, 1 pixel per byte. Buffer must be large enough to fit entire image (width*height bytes). For safety, pass size of the buffer as `buffer_size`.
 
-See `liq_write_remapped_image()`.
-
-Returns `NULL` on error.
-
-----
-
-    liq_error liq_write_remapped_image(liq_remapping_result *result, liq_image *input_image, void *buffer, size_t buffer_size);
-
-Remaps the image to palette, 1 pixel per byte, and writes it to the given buffer. Buffer must be large enough to fit entire image (width*height bytes). For safety, pass size of the buffer as `buffer_size`.
-
-The image *must* be the same as image passed to `liq_remap()`. If you want to remap muliple images, you must call `liq_remap()` with different images.
-
-For best performance call `liq_get_remapped_palette()` *after* this function, as remapping may change the palette.
+For best performance call `liq_get_palette()` *after* this function, as remapping may change the palette.
 
 Returns `LIQ_BUFFER_TOO_SMALL` if given size of the buffer is not enough to fit the entire image.
 
@@ -180,23 +168,13 @@ See `liq_get_palette()` and `liq_write_remapped_image_rows()`.
 
 ----
 
-    const liq_palette *liq_get_remapped_palette(liq_remapping_result *result);
+    const liq_palette *liq_get_palette(liq_result *result);
 
 Returns pointer to palette optimized for image that has been remapped (final refinements are applied to the palette during remapping).
 
-This function should be called after `liq_write_remapped_image()`.
+This function should be called *after* `liq_write_remapped_image()`.
 
 The palette is **temporary and read-only** and it's valid only until `liq_result_destroy()` is called, so you must copy the palette elsewhere.
-
-Returns `NULL` on error.
-
-----
-
-    const liq_palette *liq_get_generic_palette(liq_result *result);
-
-Returns pointer to a palette that may have slightly lower quality than the palette from `liq_get_remapped_palette()`. This function is only useful if you are not going to remap any images or want to share same palette between multiple images. Otherwise you should use `liq_get_remapped_palette()`.
-
-The palette is read-only and it's valid only until `liq_remapping_result_destroy()` is called, so you must copy the palette elsewhere.
 
 Returns `NULL` on error.
 
@@ -205,7 +183,6 @@ Returns `NULL` on error.
     void liq_attr_destroy(liq_attr *);
     void liq_image_destroy(liq_image *);
     void liq_result_destroy(liq_result *);
-    void liq_remapping_result_destroy(liq_remapping_result *);
 
 Releases memory owned by the given object. Object must not be used any more after it has been freed.
 
@@ -273,7 +250,7 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if invalid flags are specified or image is not 
 
 ----
 
-    liq_error liq_write_remapped_image_rows(liq_remapping_result *result, liq_image *input_image, unsigned char **row_pointers);
+    liq_error liq_write_remapped_image_rows(liq_result *result, liq_image *input_image, unsigned char **row_pointers);
 
 Similar to `liq_write_remapped_image()`. Writes remapped image, at 1 byte per pixel, to each row pointed by `row_pointers` array. The array must have at least as many elements as height of the image, and each row must have at least as many bytes as width of the image. Rows must not overlap.
 
@@ -283,9 +260,9 @@ Returns `LIQ_INVALID_POINTER` if `result` or `input_image` is `NULL`.
 
 ----
 
-    double liq_get_remapping_error(liq_remapping_result *result);
+    double liq_get_quantization_error(liq_result *result);
 
-Returns mean square error of remapping (square of difference between pixel values in the original image and remapped image). Alpha channel and gamma correction are taken into account, so the result isn't exactly the mean square error of all channels.
+Returns mean square error of quantization (square of difference between pixel values in the original image and remapped image). Alpha channel and gamma correction are taken into account, so the result isn't exactly the mean square error of all channels.
 
 For most images MSE 1-5 is excellent. 7-10 is OK. 20-30 will have noticeable errors. 100 is awful.
 
@@ -339,7 +316,7 @@ Sets gamma correction for generated palette and remapped image. Must be > 0 and 
 
     int liq_image_get_width(const liq_image *img);
     int liq_image_get_height(const liq_image *img);
-    double liq_get_output_gamma(const liq_remapping_result *result);
+    double liq_get_output_gamma(const liq_result *result);
 
 Getters for `width`, `height` and `gamma` of the input image.
 

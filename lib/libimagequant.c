@@ -641,7 +641,7 @@ LIQ_EXPORT const liq_palette *liq_get_palette(liq_result *result)
     return &result->int_palette;
 }
 
-static float remap_to_palette(liq_image *input_image, unsigned char *const output_pixels[], colormap *const map, const float min_opaque_val)
+static float remap_to_palette(liq_image *const input_image, unsigned char *const *const output_pixels, colormap *const map, const float min_opaque_val)
 {
     const int rows = input_image->height;
     const unsigned int cols = input_image->width;

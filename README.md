@@ -1,6 +1,6 @@
-#pngquant
+#pngquant 2
 
-This is the official new `pngquant`.
+This is the official `pngquant` and `libimagequant`.
 
 [pngquant](http://pngquant.org) converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*.
 Such images are compatible with all modern browsers, and a special compatibility setting exists which helps transparency degrade well in Internet Explorer 6.
@@ -11,13 +11,14 @@ This utility works on Linux, Mac OS X and Windows.
 
 ##Usage
 
-- batch conversion of multiple files: `pngquant 256 *.png`
-- Unix-style stdin/stdout chaining: `… | pngquant 16 | …`
+- batch conversion of multiple files: `pngquant *.png`
+- Unix-style stdin/stdout chaining: `… | pngquant - | …`
 
-To further reduce file size, you may want to consider [optipng](http://optipng.sourceforge.net) or [ImageOptim](http://imageoptim.pornel.net).
-
+To further reduce file size, try [optipng](http://optipng.sourceforge.net) or [ImageOptim](http://imageoptim.pornel.net).
 
 ##Improvements since 1.0
+
+Generated files are both smaller and look much better.
 
 * Significantly better quality of quantisation
 
@@ -38,8 +39,9 @@ To further reduce file size, you may want to consider [optipng](http://optipng.s
 
   - C99 with no workarounds for old systems
   - floating-point math used throughout
-  - Intel SSE3 optimisations
+  - Intel SSE optimisations
   - multicore support via OpenMP
+  - quantization moved to standalone libimagequant
 
 ##Options
 
@@ -53,7 +55,7 @@ See `pngquant -h` for full list.
 
 ###`--ext new.png`
 
-Set custom extension (suffix) for output filename. By default `-or8.png` or `-fs8.png` is used. If you use `-ext .png -force` options pngquant will overwrite input files in place (use with caution).
+Set custom extension (suffix) for output filename. By default `-or8.png` or `-fs8.png` is used. If you use `--ext=.png --force` options pngquant will overwrite input files in place (use with caution).
 
 ###`--speed N`
 

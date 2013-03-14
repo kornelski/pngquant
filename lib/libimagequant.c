@@ -104,7 +104,7 @@ struct liq_result {
     bool use_dither_map;
 };
 
-static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options);
+static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, double gamma);
 static void modify_alpha(liq_image *input_image, const float min_opaque_val);
 static void contrast_maps(liq_image *image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
@@ -475,7 +475,7 @@ LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *attr, liq_image *img)
 
     histogram *hist = get_histogram(img, attr);
 
-    liq_result *result = pngquant_quantize(hist, attr);
+    liq_result *result = pngquant_quantize(hist, attr, img->gamma);
 
     pam_freeacolorhist(hist);
     return result;
@@ -1154,7 +1154,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
     return acolormap;
 }
 
-static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
+static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, const double gamma)
 {
     colormap *acolormap;
     double palette_error = -1;
@@ -1217,7 +1217,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options)
         .palette_error = palette_error,
         .use_dither_map = options->use_dither_map,
         .min_opaque_val = options->min_opaque_val,
-        .gamma = 0.45455, // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
+        .gamma = gamma,
     };
     return result;
 }

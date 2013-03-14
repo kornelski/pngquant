@@ -474,6 +474,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
         liq_result *remap = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
 
         if (remap) {
+            liq_set_output_gamma(remap, 0.45455); // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
             liq_set_dithering_level(remap, options->floyd ? 1.0 : 0);
 
             retval = prepare_output_image(remap, input_image, &output_image);

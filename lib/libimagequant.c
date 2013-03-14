@@ -35,8 +35,10 @@
 #include "libimagequant.h"
 
 // each structure has a pointer as a unique identifier that allows type checking at run time
-static const char *const liq_attr_magic = "a", *const liq_image_magic = "i", *const liq_result_magic = "q", *const liq_remapping_result_magic = "r";
-#define CHECK_STRUCT_TYPE(attr, kind) (attr && attr->magic_header == kind ## _magic)
+static const char *const liq_attr_magic = "a", *const liq_image_magic = "i",
+     *const liq_result_magic = "q", *const liq_remapping_result_magic = "r",
+     *const liq_freed_magic = "X";
+#define CHECK_STRUCT_TYPE(attr, kind) (attr && (attr->magic_header != liq_freed_magic || memory_used_after_free()) && attr->magic_header == kind ## _magic)
 
 struct liq_attr {
     const char *magic_header;
@@ -106,6 +108,7 @@ static void contrast_maps(liq_image *image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
 static rgba_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row);
 static f_pixel *liq_image_get_row_f(liq_image *input_image, unsigned int row);
+static void liq_remapping_result_destroy(liq_remapping_result *result);
 
 static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
 {
@@ -146,6 +149,13 @@ inline static bool is_sse2_available()
 #endif
 }
 #endif
+
+static bool memory_used_after_free(void)
+{
+    fputs("memory_used_after_free", stderr);
+    abort(); // program should have crashed already, so don't blame me.
+    return false;
+}
 
 static double quality_to_mse(long quality)
 {
@@ -245,6 +255,7 @@ LIQ_EXPORT void liq_attr_destroy(liq_attr *attr)
 
     liq_verbose_printf_flush(attr);
 
+    attr->magic_header = liq_freed_magic;
     attr->free(attr);
 }
 
@@ -428,29 +439,25 @@ LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
 
     if (input_image->noise) {
         input_image->free(input_image->noise);
-        input_image->noise = NULL;
     }
 
     if (input_image->edges) {
         input_image->free(input_image->edges);
-        input_image->edges = NULL;
     }
 
     if (input_image->dither_map) {
         input_image->free(input_image->dither_map);
-        input_image->dither_map = NULL;
     }
 
     if (input_image->f_pixels) {
         input_image->free(input_image->f_pixels);
-        input_image->f_pixels = NULL;
     }
 
     if (input_image->temp_row) {
         input_image->free(input_image->temp_row);
-        input_image->temp_row = NULL;
     }
 
+    input_image->magic_header = liq_freed_magic;
     input_image->free(input_image);
 }
 
@@ -506,11 +513,11 @@ LIQ_EXPORT void liq_remapping_result_destroy(liq_remapping_result *result)
 {
     if (!CHECK_STRUCT_TYPE(result, liq_remapping_result)) return;
 
-    if (result) {
-        if (result->palette) pam_freecolormap(result->palette);
-        if (result->pixels) result->free(result->pixels);
-        result->free(result);
-    }
+    if (result->palette) pam_freecolormap(result->palette);
+    if (result->pixels) result->free(result->pixels);
+
+    result->magic_header = liq_freed_magic;
+    result->free(result);
 }
 
 LIQ_EXPORT void liq_result_destroy(liq_result *res)
@@ -518,6 +525,8 @@ LIQ_EXPORT void liq_result_destroy(liq_result *res)
     if (!CHECK_STRUCT_TYPE(res, liq_result)) return;
 
     pam_freecolormap(res->palette);
+
+    res->magic_header = liq_freed_magic;
     res->free(res);
 }
 

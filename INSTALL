@@ -15,59 +15,6 @@ pngquant uses GNU Makefile. To compile on FreeBSD you will need to use gmake,
 and on Windows the MinGW compiler (MSVC does not support C99).
 
 
-##Compilation with custom libpng and zlib
-
-If you have custom libpng and zlib compiled, you can specify their paths:
-
-      $ CUSTOMLIBPNG=/path/to/libpng/ CUSTOMZLIB=/path/to/zlib/ make
-
-Alternatively, you can build your own versions in ../zlib and ../libpng
-directories. Use this only if you can't get your system's libpng/zlib to work.
-
-1. Download the zlib source code from:
-   http://www.zlib.net/
-
-      $ cd ..
-      $ wget http://prdownloads.sourceforge.net/libpng/zlib-1.2.5.tar.gz?download
-
-   Unpack it into the parent directory of the 'pngquant' directory and rename
-   it to 'zlib' - e.g.:
-
-      $ tar zxf zlib-1.2.5.tar.gz
-      $ mv zlib-1.2.5 zlib
-
-   Build it:
-
-      $ make
-
-2. Download the libpng source code from:
-   http://www.libpng.org/pub/png/libpng.html - e.g.:
-
-      $ cd ..
-      $ wget http://prdownloads.sourceforge.net/libpng/libpng-1.2.46.tar.gz?download
-
-   Unpack it into the parent directory of the 'pngquant' directory and rename
-   it to 'libpng' - e.g.:
-
-      $ tar zxf libpng-1.2.46.tar.gz
-      $ mv libpng-1.2.46 libpng
-
-   Build libpng:
-
-      $ cd libpng
-      $ ./configure && make
-
-3. Go back to the pngquant directory and make using the Makefile make file:
-
-      $ cd ../pngquant/
-      $ make
-
-
-##Compilation for 32-bit x86
-
-pngquant will use SSE2 instructions only when compiled for x86-64. If you want
-to enable SSE2 optimisation on 32-bit Intel, add -DUSE_SSE=1 to CFLAGS.
-
 ##Compilation with OpenMP
 
      $ make openmp
@@ -79,11 +26,18 @@ However, it significantly increases total CPU time used, and thus it's not
 recommended for server-side and parallelized batch jobs which run many pngquant
 instances at a time.
 
+
 ##Compilation with Cocoa image reader
 
      $ make USE_COCOA=1
 
 On Mac OS X pngquant can use Cocoa framework to load images. This enables
-support for color profiles and other input file formats. Images will have
-slightly reduced fidelity of alpha channel, since Cocoa uses premultiplied
-alpha.
+support for color profiles and other input file formats.
+
+
+##Compilation of `libimagequant.a` only
+
+If you want to use pngquant's conversion algorithm without loading/saving PNG
+files, then you can run make in `lib/` directory.
+The library doesn't need libpng or zlib.
+

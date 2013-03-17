@@ -317,7 +317,6 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
         .free = attr->free,
         .width = width, .height = height,
         .gamma = gamma ? gamma : 0.45455,
-        .f_pixels = attr->malloc(sizeof(img->f_pixels[0]) * width * height),
         .temp_row = rows ? 0 : attr->malloc(sizeof(img->temp_row[0]) * width),
         .rows = rows,
         .row_callback = row_callback,
@@ -328,26 +327,6 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
     if (img->min_opaque_val <= 254.f/255.f) {
         verbose_print(attr, "  Working around IE6 bug by making image less transparent...");
         modify_alpha(img);
-    }
-
-    to_f_set_gamma(img->gamma);
-
-    for(unsigned int row=0; row < height; row++) {
-        rgba_pixel *row_pixels;
-        if (img->rows) {
-            row_pixels = img->rows[row];
-        } else {
-            row_pixels = img->temp_row;
-            row_callback((liq_color*)row_pixels, row, width, row_callback_user_info);
-        }
-
-        for(unsigned int col=0; col < width; col++) {
-            img->f_pixels[row*width + col] = to_f(row_pixels[col]);
-        }
-    }
-
-    if (attr->use_contrast_maps && img->width >= 4 && img->height >= 4) {
-        contrast_maps(img);
     }
 
     return img;
@@ -415,9 +394,27 @@ static rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
     return img->temp_row;
 }
 
-static f_pixel *liq_image_get_row_f(liq_image *input_image, unsigned int row)
+static f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
 {
-    return input_image->f_pixels + input_image->width * row;
+    if (!img->f_pixels) {
+        img->f_pixels = img->malloc(sizeof(img->f_pixels[0]) * img->width * img->height);
+
+        to_f_set_gamma(img->gamma);
+        for(unsigned int row=0; row < img->height; row++) {
+            rgba_pixel *row_pixels;
+            if (img->rows) {
+                row_pixels = img->rows[row];
+            } else {
+                row_pixels = img->temp_row;
+                img->row_callback((liq_color*)row_pixels, row, img->width, img->row_callback_user_info);
+            }
+
+            for(unsigned int col=0; col < img->width; col++) {
+                img->f_pixels[row*img->width + col] = to_f(row_pixels[col]);
+            }
+        }
+    }
+    return img->f_pixels + img->width * row;
 }
 
 LIQ_EXPORT int liq_image_get_width(const liq_image *input_image)
@@ -904,6 +901,10 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
     unsigned int ignorebits=options->min_posterization;
     const unsigned int cols = input_image->width, rows = input_image->height;
 
+    if (!input_image->noise && options->use_contrast_maps) {
+        contrast_maps(input_image);
+    }
+
    /*
     ** Step 2: attempt to make a histogram of the colors, unclustered.
     ** If at first we don't succeed, increase ignorebits to increase color
@@ -936,7 +937,9 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
         input_image->noise = NULL;
     }
 
-    liq_image_free_rgba_source(input_image); // creation if liq_image makes copy of source pixels
+    if (input_image->free_pixels && input_image->f_pixels) {
+        liq_image_free_rgba_source(input_image); // bow can free the RGBA source if copy has been made in f_pixels
+    }
 
     histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->gamma, options->malloc, options->free);
     pam_freeacolorhash(acht);
@@ -980,6 +983,8 @@ static void contrast_maps(liq_image *image)
     float *restrict noise = image->malloc(sizeof(float)*cols*rows);
     float *restrict edges = image->malloc(sizeof(float)*cols*rows);
     float *restrict tmp = image->malloc(sizeof(float)*cols*rows);
+
+    if (cols < 4 || rows < 4) return;
 
     f_pixel *curr_row, *prev_row, *next_row;
     curr_row = prev_row = next_row = liq_image_get_row_f(image, 0);
@@ -1257,6 +1262,10 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
         liq_remapping_result_destroy(quant->remapping);
     }
     liq_remapping_result *const result = quant->remapping = liq_remap(quant, input_image);
+
+    if (!input_image->edges && !input_image->dither_map && quant->use_dither_map) {
+        contrast_maps(input_image);
+    }
 
     /*
      ** Step 4: map the colors in the image to their closest match in the

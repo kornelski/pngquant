@@ -653,7 +653,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     const unsigned int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     const unsigned int max_threads = omp_get_max_threads();
-    viter_state average_color[map->colors * max_threads];
+    viter_state average_color[(VITER_CACHE_LINE_GAP+map->colors) * max_threads];
     viter_init(map, max_threads, average_color);
 
     #pragma omp parallel for if (rows*cols > 3000) \

@@ -17,12 +17,12 @@
  */
 void viter_init(const colormap *map, const unsigned int max_threads, viter_state average_color[])
 {
-    memset(average_color, 0, sizeof(average_color[0])*map->colors*max_threads);
+    memset(average_color, 0, sizeof(average_color[0])*(VITER_CACHE_LINE_GAP+map->colors)*max_threads);
 }
 
 void viter_update_color(const f_pixel acolor, const float value, const colormap *map, unsigned int match, const unsigned int thread, viter_state average_color[])
 {
-    match += thread * map->colors;
+    match += thread * (VITER_CACHE_LINE_GAP+map->colors);
     average_color[match].a += acolor.a * value;
     average_color[match].r += acolor.r * value;
     average_color[match].g += acolor.g * value;
@@ -37,7 +37,7 @@ void viter_finalize(colormap *map, const unsigned int max_threads, const viter_s
 
         // Aggregate results from all threads
         for(unsigned int t=0; t < max_threads; t++) {
-            const unsigned int offset = map->colors * t + i;
+            const unsigned int offset = (VITER_CACHE_LINE_GAP+map->colors) * t + i;
 
             a += average_color[offset].a;
             r += average_color[offset].r;
@@ -61,7 +61,7 @@ void viter_finalize(colormap *map, const unsigned int max_threads, const viter_s
 double viter_do_iteration(histogram *hist, colormap *const map, const float min_opaque_val, viter_callback callback)
 {
     const unsigned int max_threads = omp_get_max_threads();
-    viter_state average_color[map->colors * max_threads];
+    viter_state average_color[(VITER_CACHE_LINE_GAP+map->colors) * max_threads];
     viter_init(map, max_threads, average_color);
     struct nearest_map *const n = nearest_init(map);
     hist_item *const achv = hist->achv;

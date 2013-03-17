@@ -2,8 +2,11 @@
 #ifndef VITER_H
 #define VITER_H
 
+// Spread memory touched by different threads at least 64B apart which I assume is the cache line size. This should avoid memory write contention.
+#define VITER_CACHE_LINE_GAP ((64+sizeof(viter_state)-1)/sizeof(viter_state))
+
 typedef struct {
-    double a, r, g, b, total;
+    float a, r, g, b, total;
 } viter_state;
 
 typedef void (*viter_callback)(hist_item *item, float diff);

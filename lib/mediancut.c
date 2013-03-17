@@ -437,12 +437,28 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
 
 static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const float min_opaque_val)
 {
-    double r = 0, g = 0, b = 0, a = 0, sum = 0;
+    double r = 0, g = 0, b = 0, a = 0, new_a=0, sum = 0;
     float maxa = 0;
 
+    // first find final opacity in order to blend colors at that opacity
     for(unsigned int i = 0; i < clrs; ++i) {
         const f_pixel px = achv[i].acolor;
+        new_a += px.a * achv[i].adjusted_weight;
+        sum += achv[i].adjusted_weight;
+
+        /* find if there are opaque colors, in case we're supposed to preserve opacity exactly (ie_bug) */
+        if (px.a > maxa) maxa = px.a;
+    }
+
+    if (sum) new_a /= sum;
+
+    /** if there was at least one completely opaque color, "round" final color to opaque */
+    if (new_a >= min_opaque_val && maxa >= (255.0/256.0)) new_a = 1;
+
+    sum=0;
+    for(unsigned int i = 0; i < clrs; ++i) {
         double tmp, weight = 1.0f;
+        f_pixel px = achv[i].acolor;
 
         /* give more weight to colors that are further away from average
          this is intended to prevent desaturation of images and fading of whites
@@ -457,27 +473,26 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const fl
         weight *= achv[i].adjusted_weight;
         sum += weight;
 
-        r += px.r * weight;
-        g += px.g * weight;
-        b += px.b * weight;
-        a += px.a * weight;
+        if (px.a) {
+            px.r /= px.a;
+            px.g /= px.a;
+            px.b /= px.a;
+        }
 
-        /* find if there are opaque colors, in case we're supposed to preserve opacity exactly (ie_bug) */
-        if (px.a > maxa) maxa = px.a;
+        r += px.r * new_a * weight;
+        g += px.g * new_a * weight;
+        b += px.b * new_a * weight;
+        a += new_a * weight;
     }
 
-    /* Colors are in premultiplied alpha colorspace, so they'll blend OK
-     even if different opacities were mixed together */
-    if (!sum) sum=1;
-    a /= sum;
-    r /= sum;
-    g /= sum;
-    b /= sum;
+    if (sum) {
+        a /= sum;
+        r /= sum;
+        g /= sum;
+        b /= sum;
+    }
 
     assert(!isnan(r) && !isnan(g) && !isnan(b) && !isnan(a));
-
-    /** if there was at least one completely opaque color, "round" final color to opaque */
-    if (a >= min_opaque_val && maxa >= (255.0/256.0)) a = 1;
 
     return (f_pixel){.r=r, .g=g, .b=b, .a=a};
 }

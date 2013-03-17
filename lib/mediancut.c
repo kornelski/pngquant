@@ -20,7 +20,7 @@
 
 #define index_of_channel(ch) (offsetof(f_pixel,ch)/sizeof(float))
 
-static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], float min_opaque_val);
+static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], float min_opaque_val, const f_pixel center);
 
 struct box {
     f_pixel color;
@@ -223,7 +223,7 @@ static f_pixel get_median(const struct box *b, hist_item achv[])
 
     if (b->colors&1) return achv[b->ind + median_start].acolor;
 
-    return averagepixels(2, &achv[b->ind + median_start], 1.0);
+    return averagepixels(2, &achv[b->ind + median_start], 1.0, (f_pixel){0.5,0.5,0.5,0.5});
 }
 
 /*
@@ -314,7 +314,7 @@ colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int ne
      */
     bv[0].ind = 0;
     bv[0].colors = hist->size;
-    bv[0].color = averagepixels(bv[0].colors, &achv[bv[0].ind], min_opaque_val);
+    bv[0].color = averagepixels(bv[0].colors, &achv[bv[0].ind], min_opaque_val, (f_pixel){0.5,0.5,0.5,0.5});
     bv[0].variance = box_variance(achv, &bv[0]);
     bv[0].max_error = box_max_error(achv, &bv[0]);
     bv[0].sum = 0;
@@ -372,16 +372,17 @@ colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int ne
         double lowersum = 0;
         for(unsigned int i=0; i < break_at; i++) lowersum += achv[indx + i].adjusted_weight;
 
+        const f_pixel previous_center = bv[bi].color;
         bv[bi].colors = break_at;
         bv[bi].sum = lowersum;
-        bv[bi].color = averagepixels(bv[bi].colors, &achv[bv[bi].ind], min_opaque_val);
+        bv[bi].color = averagepixels(bv[bi].colors, &achv[bv[bi].ind], min_opaque_val, previous_center);
         bv[bi].total_error = -1;
         bv[bi].variance = box_variance(achv, &bv[bi]);
         bv[bi].max_error = box_max_error(achv, &bv[bi]);
         bv[boxes].ind = indx + break_at;
         bv[boxes].colors = clrs - break_at;
         bv[boxes].sum = sm - lowersum;
-        bv[boxes].color = averagepixels(bv[boxes].colors, &achv[bv[boxes].ind], min_opaque_val);
+        bv[boxes].color = averagepixels(bv[boxes].colors, &achv[bv[boxes].ind], min_opaque_val, previous_center);
         bv[boxes].total_error = -1;
         bv[boxes].variance = box_variance(achv, &bv[boxes]);
         bv[boxes].max_error = box_max_error(achv, &bv[boxes]);
@@ -435,7 +436,7 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
     }
 }
 
-static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const float min_opaque_val)
+static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const float min_opaque_val, const f_pixel center)
 {
     double r = 0, g = 0, b = 0, a = 0, new_a=0, sum = 0;
     float maxa = 0;
@@ -463,11 +464,11 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const fl
         /* give more weight to colors that are further away from average
          this is intended to prevent desaturation of images and fading of whites
          */
-        tmp = (0.5f - px.r);
+        tmp = (center.r - px.r);
         weight += tmp*tmp;
-        tmp = (0.5f - px.g);
+        tmp = (center.g - px.g);
         weight += tmp*tmp;
-        tmp = (0.5f - px.b);
+        tmp = (center.b - px.b);
         weight += tmp*tmp;
 
         weight *= achv[i].adjusted_weight;

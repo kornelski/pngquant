@@ -18,6 +18,7 @@
 
 #include <math.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 #ifndef MAX
@@ -196,6 +197,7 @@ typedef struct {
 
 typedef struct {
     hist_item *achv;
+    void (*free)(void*);
     double total_perceptual_weight;
     unsigned int size;
 } histogram;
@@ -235,8 +237,8 @@ struct acolorhash_table {
 };
 
 void pam_freeacolorhash(struct acolorhash_table *acht);
-struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int image_surface, unsigned int ignorebits);
-histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma);
+struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits, void* (*malloc)(size_t), void (*free)(void*));
+histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma, void* (*malloc)(size_t), void (*free)(void*));
 bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const float *importance_map);
 
 void pam_freeacolorhist(histogram *h);

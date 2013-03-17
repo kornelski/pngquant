@@ -878,7 +878,7 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
 
     struct acolorhash_table *acht;
     do {
-        acht = pam_allocacolorhash(maxcolors, rows*cols, ignorebits);
+        acht = pam_allocacolorhash(maxcolors, rows*cols, ignorebits, options->malloc, options->free);
 
         // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
         // noise map does not include edges to avoid ruining anti-aliasing
@@ -902,7 +902,7 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
 
     liq_image_free_rgba_source(input_image); // creation if liq_image makes copy of source pixels
 
-    histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->gamma);
+    histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->gamma, options->malloc, options->free);
     pam_freeacolorhash(acht);
 
     liq_verbose_printf(options, "  made histogram...%d colors found", hist->size);

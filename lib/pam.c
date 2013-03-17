@@ -151,7 +151,7 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *cons
     return true;
 }
 
-struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits)
+struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits, void* (*malloc)(size_t), void (*free)(void*))
 {
     const unsigned int estimated_colors = MIN(maxcolors, surface/(4+ignorebits));
     const unsigned int hash_size = estimated_colors < 66000 ? 6673 : (estimated_colors < 200000 ? 12011 : 24019);
@@ -177,11 +177,12 @@ struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned in
     total_weight += entry.perceptual_weight; \
 }
 
-histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma)
+histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma, void* (*malloc)(size_t), void (*free)(void*))
 {
     histogram *hist = malloc(sizeof(hist[0]));
     hist->achv = malloc(acht->colors * sizeof(hist->achv[0]));
     hist->size = acht->colors;
+    hist->free = free;
 
     to_f_set_gamma(gamma);
 
@@ -213,8 +214,8 @@ void pam_freeacolorhash(struct acolorhash_table *acht)
 
 void pam_freeacolorhist(histogram *hist)
 {
-    free(hist->achv);
-    free(hist);
+    hist->free(hist->achv);
+    hist->free(hist);
 }
 
 colormap *pam_colormap(unsigned int colors)

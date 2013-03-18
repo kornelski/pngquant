@@ -111,7 +111,7 @@ struct liq_result {
 };
 
 static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, double gamma);
-static void modify_alpha(liq_image *input_image);
+static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels);
 static void contrast_maps(liq_image *image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
 static rgba_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row);
@@ -317,16 +317,15 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
         .free = attr->free,
         .width = width, .height = height,
         .gamma = gamma ? gamma : 0.45455,
-        .temp_row = rows ? 0 : attr->malloc(sizeof(img->temp_row[0]) * width),
+        .temp_row = rows && attr->min_opaque_val >= 1.f ? 0 : attr->malloc(sizeof(img->temp_row[0]) * width),
         .rows = rows,
         .row_callback = row_callback,
         .row_callback_user_info = row_callback_user_info,
         .min_opaque_val = attr->min_opaque_val,
     };
 
-    if (img->min_opaque_val <= 254.f/255.f) {
+    if (img->min_opaque_val < 1.f) {
         verbose_print(attr, "  Working around IE6 bug by making image less transparent...");
-        modify_alpha(img);
     }
 
     return img;
@@ -386,11 +385,17 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
 
 static rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
 {
-    if (img->rows) {
+    if (img->rows && img->min_opaque_val >= 1.f) {
         return img->rows[row];
     }
 
-    img->row_callback((liq_color*)img->temp_row, row, img->width, img->row_callback_user_info);
+    if (img->rows) {
+        memcpy(img->temp_row, img->rows[row], img->width * sizeof(img->temp_row[0]));
+    } else {
+        img->row_callback((liq_color*)img->temp_row, row, img->width, img->row_callback_user_info);
+    }
+
+    modify_alpha(img, img->temp_row);
     return img->temp_row;
 }
 
@@ -948,26 +953,25 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
     return hist;
 }
 
-static void modify_alpha(liq_image *input_image)
+static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels)
 {
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
 
-    const unsigned int rows = input_image->height, cols = input_image->width;
     const float min_opaque_val = input_image->min_opaque_val;
     const float almost_opaque_val = min_opaque_val * 169.f/256.f;
+    const unsigned int almost_opaque_val_int = (min_opaque_val * 169.f/256.f)*255.f;
 
-    for(unsigned int row = 0; row < rows; ++row) {
-        f_pixel *row_pixels = liq_image_get_row_f(input_image, row);
-        for(unsigned int col = 0; col < cols; col++) {
-            float al = row_pixels[col].a;
+    for(unsigned int col = 0; col < input_image->width; col++) {
+        const rgba_pixel px = row_pixels[col];
 
             /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
-            if (al > almost_opaque_val) {
+        if (px.a >= almost_opaque_val_int) {
+            float al = px.a / 255.f;
                 al = almost_opaque_val + (al-almost_opaque_val) * (1.f-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
-                row_pixels[col].a = MIN(1.f, al);
-            }
+            al *= 256.f;
+            row_pixels[col].a = al > 256.f ? 255 : al;
         }
     }
 }

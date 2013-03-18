@@ -114,8 +114,8 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, d
 static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels);
 static void contrast_maps(liq_image *image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
-static rgba_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row);
-static f_pixel *liq_image_get_row_f(liq_image *input_image, unsigned int row);
+static const rgba_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row);
+static const f_pixel *liq_image_get_row_f(liq_image *input_image, unsigned int row);
 static void liq_remapping_result_destroy(liq_remapping_result *result);
 
 static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
@@ -383,7 +383,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     return image;
 }
 
-static rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
+static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
 {
     if (img->rows && img->min_opaque_val >= 1.f) {
         return img->rows[row];
@@ -399,24 +399,23 @@ static rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
     return img->temp_row;
 }
 
-static f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
+static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsigned int row)
+{
+    const rgba_pixel *const row_pixels = liq_image_get_row_rgba(img, row);
+
+    for(unsigned int col=0; col < img->width; col++) {
+        row_f_pixels[col] = to_f(row_pixels[col]);
+    }
+}
+
+static const f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
 {
     if (!img->f_pixels) {
         img->f_pixels = img->malloc(sizeof(img->f_pixels[0]) * img->width * img->height);
 
         to_f_set_gamma(img->gamma);
         for(unsigned int row=0; row < img->height; row++) {
-            rgba_pixel *row_pixels;
-            if (img->rows) {
-                row_pixels = img->rows[row];
-            } else {
-                row_pixels = img->temp_row;
-                img->row_callback((liq_color*)row_pixels, row, img->width, img->row_callback_user_info);
-            }
-
-            for(unsigned int col=0; col < img->width; col++) {
-                img->f_pixels[row*img->width + col] = to_f(row_pixels[col]);
-            }
+            convert_row_to_f(img, &img->f_pixels[row*img->width], row);
         }
     }
     return img->f_pixels + img->width * row;
@@ -668,7 +667,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     #pragma omp parallel for if (rows*cols > 3000) \
         default(none) shared(average_color) reduction(+:remapping_error) reduction(+:remapped_pixels)
     for(int row = 0; row < rows; ++row) {
-        f_pixel *row_pixels = liq_image_get_row_f(input_image, row);
+        const f_pixel *const row_pixels = liq_image_get_row_f(input_image, row);
         for(unsigned int col = 0; col < cols; ++col) {
 
             f_pixel px = row_pixels[col];
@@ -795,7 +794,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
         memset(nexterr, 0, (cols + 2) * sizeof(*nexterr));
 
         unsigned int col = (fs_direction) ? 0 : (cols - 1);
-        f_pixel *row_pixels = liq_image_get_row_f(input_image, row);
+        const f_pixel *const row_pixels = liq_image_get_row_f(input_image, row);
 
         do {
             float dither_level = dither_map ? dither_map[row*cols + col] : 15.f/16.f;
@@ -990,7 +989,7 @@ static void contrast_maps(liq_image *image)
 
     if (cols < 4 || rows < 4) return;
 
-    f_pixel *curr_row, *prev_row, *next_row;
+    const f_pixel *curr_row, *prev_row, *next_row;
     curr_row = prev_row = next_row = liq_image_get_row_f(image, 0);
 
     for (unsigned int j=0; j < rows; j++) {

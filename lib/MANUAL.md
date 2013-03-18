@@ -196,6 +196,13 @@ Higher speed levels disable expensive algorithms and reduce quantization precisi
 
 High speeds combined with `liq_set_quality()` will use more colors than necessary and will be less likely to meet minimum required quality.
 
+<table><caption>Features dependent on speed</caption>
+<tr><th>Noise-sensitive dithering</th><td>speed 1 to 5</td></tr>
+<tr><th>Forced posterization</th><td>8-10 or if image has more than million colors</td></tr>
+<tr><th>Quantization error known</th><td>1-7 or if minimum quality is set</td></tr>
+<tr><th>Additional quantization techniques</th><td>1-6</td></tr>
+</table>
+
 Returns `LIQ_VALUE_OUT_OF_RANGE` if the speed is outside the 1-10 range.
 
 ----
@@ -267,6 +274,52 @@ Returns mean square error of quantization (square of difference between pixel va
 For most images MSE 1-5 is excellent. 7-10 is OK. 20-30 will have noticeable errors. 100 is awful.
 
 This function should be called *after* `liq_write_remapped_image()`. It may return `-1` if the value is not available (this is affected by `liq_set_speed()` and `liq_set_quality()`).
+
+----
+
+    double liq_get_quantization_quality(liq_result *result);
+
+Analoguous to `liq_get_quantization_error()`, but returns quantization error as quality value in the same 0-100 range that is used by `liq_set_quality()`.
+
+This function should be called *after* `liq_write_remapped_image()`. It may return `-1` if the value is not available (this is affected by `liq_set_speed()` and `liq_set_quality()`).
+
+This function can be used to add upper limit to quality options presented to the user, e.g.
+
+    liq_attr *attr = liq_attr_create();
+    liq_image *img = liq_image_create_rgba(…);
+    liq_result *res = liq_quantize_image(attr, img);
+    int max_attainable_quality = liq_get_quantization_quality(res);
+    printf("Please select quality between 0 and %d: ", max_attainable_quality);
+    int user_selected_quality = prompt();
+    if (user_selected_quality < max_attainable_quality) {
+        liq_set_quality(user_selected_quality, 0);
+        liq_result_destroy(res);
+        res = liq_quantize_image(attr, img);
+    }
+    liq_write_remapped_image(…);
+
+----
+
+    double liq_get_quantization_quality(liq_result *result);
+
+Analoguous to `liq_get_quantization_error()`, but returns quantization error as quality value in the same 0-100 range that is used by `liq_set_quality()`.
+
+This function should be called *after* `liq_write_remapped_image()`. It may return `-1` if the value is not available (this is affected by `liq_set_speed()` and `liq_set_quality()`).
+
+This function can be used to add upper limit to quality options presented to the user, e.g.
+
+    liq_attr *attr = liq_attr_create();
+    liq_image *img = liq_image_create_rgba(…);
+    liq_result *res = liq_quantize_image(attr, img);
+    int max_attainable_quality = liq_get_quantization_quality(res);
+    printf("Please select quality between 0 and %d: ", max_attainable_quality);
+    int user_selected_quality = prompt();
+    if (user_selected_quality < max_attainable_quality) {
+        liq_set_quality(user_selected_quality, 0);
+        liq_result_destroy(res);
+        res = liq_quantize_image(attr, img);
+    }
+    liq_write_remapped_image(…);
 
 ----
 

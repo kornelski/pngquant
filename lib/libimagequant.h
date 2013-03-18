@@ -79,6 +79,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *inp
 LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *result, liq_image *input_image, unsigned char **row_pointers);
 
 LIQ_EXPORT double liq_get_quantization_error(liq_result *result);
+LIQ_EXPORT int liq_get_quantization_quality(liq_result *result);
 
 LIQ_EXPORT void liq_result_destroy(liq_result *);
 

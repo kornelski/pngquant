@@ -176,6 +176,14 @@ static double quality_to_mse(long quality)
     return 2.5/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
 }
 
+static unsigned int mse_to_quality(double mse)
+{
+    for(int i=100; i > 0; i--) {
+        if (mse <= quality_to_mse(i)) return i;
+    }
+    return 0;
+}
+
 LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int target, int minimum)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
@@ -607,6 +615,21 @@ LIQ_EXPORT double liq_get_quantization_error(liq_result *result)
 
     if (result->remapping && result->remapping->palette_error >= 0) {
         return result->remapping->palette_error*65536.0/6.0;
+    }
+
+    return result->palette_error;
+}
+
+LIQ_EXPORT int liq_get_quantization_quality(liq_result *result)
+{
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) return -1;
+
+    if (result->palette_error >= 0) {
+        return mse_to_quality(result->palette_error);
+    }
+
+    if (result->remapping && result->remapping->palette_error >= 0) {
+        return mse_to_quality(result->remapping->palette_error);
     }
 
     return result->palette_error;
@@ -1275,7 +1298,9 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
         }
 
         if (palette_error > max_mse) {
-            liq_verbose_printf(options, "  image degradation MSE=%.3f exceeded limit of %.3f", palette_error*65536.0/6.0, max_mse*65536.0/6.0);
+            liq_verbose_printf(options, "  image degradation MSE=%.3f (Q=%d) exceeded limit of %.3f (%d)",
+                palette_error*65536.0/6.0, mse_to_quality(palette_error),
+                max_mse*65536.0/6.0, mse_to_quality(max_mse));
             pam_freecolormap(acolormap);
             return NULL;
         }

@@ -490,7 +490,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
 
                 double palette_error = liq_get_quantization_error(remap);
                 if (palette_error >= 0) {
-                    verbose_printf(options, "  mapped image to new colors...MSE=%.3f", palette_error);
+                    verbose_printf(options, "  mapped image to new colors...MSE=%.3f (Q=%d)", palette_error, liq_get_quantization_quality(remap));
                 }
             }
             liq_result_destroy(remap);

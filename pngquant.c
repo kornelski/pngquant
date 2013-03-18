@@ -482,7 +482,9 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
 
             retval = prepare_output_image(remap, input_image, &output_image);
             if (!retval) {
-                liq_write_remapped_image_rows(remap, input_image, output_image.row_pointers);
+                if (LIQ_OK != liq_write_remapped_image_rows(remap, input_image, output_image.row_pointers)) {
+                    retval = OUT_OF_MEMORY_ERROR;
+                }
 
                 set_palette(remap, &output_image);
 

@@ -118,6 +118,7 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *cons
                         }
                         const int mempool_size = ((rows-row) * 2 * colors / (1+row) + 32*capacity) * sizeof(struct acolorhist_arr_item);
                         new_items = mempool_alloc(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity, mempool_size);
+                        if (!new_items) return false;
                         memcpy(new_items, other_items, sizeof(other_items[0])*achl->capacity);
                     }
 
@@ -159,6 +160,7 @@ struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned in
     mempool m = NULL;
     unsigned long mempool_size = hash_size * sizeof(struct acolorhist_arr_head) + estimated_colors * sizeof(struct acolorhist_arr_item);
     struct acolorhash_table *t = mempool_create(&m, sizeof(*t), mempool_size, malloc, free);
+    if (!t) return NULL;
     *t = (struct acolorhash_table){
         .buckets = mempool_alloc(&m, hash_size * sizeof(struct acolorhist_arr_head), 0),
         .mempool = m,
@@ -166,6 +168,7 @@ struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned in
         .maxcolors = maxcolors,
         .ignorebits = ignorebits,
     };
+    if (!t->buckets) return NULL;
     memset(t->buckets, 0, hash_size * sizeof(struct acolorhist_arr_head));
     return t;
 }
@@ -180,7 +183,9 @@ struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned in
 histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma, void* (*malloc)(size_t), void (*free)(void*))
 {
     histogram *hist = malloc(sizeof(hist[0]));
+    if (!hist || !acht) return NULL;
     hist->achv = malloc(acht->colors * sizeof(hist->achv[0]));
+    if (!hist->achv) return NULL;
     hist->size = acht->colors;
     hist->free = free;
 
@@ -221,11 +226,13 @@ void pam_freeacolorhist(histogram *hist)
 colormap *pam_colormap(unsigned int colors)
 {
     colormap *map = malloc(sizeof(colormap));
+    if (!map) return NULL;
     *map = (colormap){
         .palette = calloc(colors, sizeof(map->palette[0])),
         .subset_palette = NULL,
         .colors = colors,
     };
+    if (!map->palette) return NULL;
     return map;
 }
 

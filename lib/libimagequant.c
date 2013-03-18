@@ -277,6 +277,7 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
     if (!CHECK_STRUCT_TYPE(orig, liq_attr)) return NULL;
 
     liq_attr *attr = orig->malloc(sizeof(liq_attr));
+    if (!attr) return NULL;
     *attr = *orig;
     return attr;
 }
@@ -291,6 +292,7 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), voi
     if ((malloc != NULL) != (free != NULL)) return NULL; // either specify both or none
 
     liq_attr *attr = malloc(sizeof(liq_attr));
+    if (!attr) return NULL;
     *attr = (liq_attr) {
         .magic_header = liq_attr_magic,
         .malloc = malloc,
@@ -311,18 +313,23 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
     if (!rows && !row_callback) return NULL;
 
     liq_image *img = attr->malloc(sizeof(liq_image));
+    if (!img) return NULL;
     *img = (liq_image){
         .magic_header = liq_image_magic,
         .malloc = attr->malloc,
         .free = attr->free,
         .width = width, .height = height,
         .gamma = gamma ? gamma : 0.45455,
-        .temp_row = rows && attr->min_opaque_val >= 1.f ? 0 : attr->malloc(sizeof(img->temp_row[0]) * width),
         .rows = rows,
         .row_callback = row_callback,
         .row_callback_user_info = row_callback_user_info,
         .min_opaque_val = attr->min_opaque_val,
     };
+
+    if (!rows || attr->min_opaque_val < 1.f) {
+        img->temp_row = attr->malloc(sizeof(img->temp_row[0]) * width);
+        if (!img->temp_row) return NULL;
+    }
 
     if (img->min_opaque_val < 1.f) {
         verbose_print(attr, "  Working around IE6 bug by making image less transparent...");
@@ -374,6 +381,8 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
 
     rgba_pixel *pixels = bitmap;
     rgba_pixel **rows = attr->malloc(sizeof(rows[0])*height);
+    if (!rows) return NULL;
+
     for(int i=0; i < height; i++) {
         rows[i] = pixels + width * i;
     }
@@ -389,6 +398,7 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
         return img->rows[row];
     }
 
+    assert(img->temp_row);
     if (img->rows) {
         memcpy(img->temp_row, img->rows[row], img->width * sizeof(img->temp_row[0]));
     } else {
@@ -401,6 +411,8 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
 
 static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsigned int row)
 {
+    assert(row_f_pixels);
+
     const rgba_pixel *const row_pixels = liq_image_get_row_rgba(img, row);
 
     for(unsigned int col=0; col < img->width; col++) {
@@ -482,6 +494,7 @@ LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *attr, liq_image *img)
     if (!CHECK_STRUCT_TYPE(img, liq_image)) return NULL;
 
     histogram *hist = get_histogram(img, attr);
+    if (!hist) return NULL;
 
     liq_result *result = pngquant_quantize(hist, attr, img->gamma);
 
@@ -508,6 +521,7 @@ LIQ_EXPORT liq_remapping_result *liq_remap(liq_result *result, liq_image *image)
     if (!CHECK_STRUCT_TYPE(result, liq_result)) return NULL;
 
     liq_remapping_result *res = result->malloc(sizeof(liq_remapping_result));
+    if (!res) return NULL;
     *res = (liq_remapping_result) {
         .magic_header = liq_remapping_result_magic,
         .malloc = result->malloc,
@@ -780,6 +794,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
     thiserr = input_image->malloc((cols + 2) * sizeof(*thiserr) * 2); // +2 saves from checking out of bounds access
     nexterr = thiserr + (cols + 2);
     srand(12345); /* deterministic dithering is better for comparing results */
+    if (!thiserr) return;
 
     for (unsigned int col = 0; col < cols + 2; ++col) {
         const double rand_max = RAND_MAX;
@@ -920,6 +935,7 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
     struct acolorhash_table *acht;
     do {
         acht = pam_allocacolorhash(maxcolors, rows*cols, ignorebits, options->malloc, options->free);
+        if (!acht) return NULL;
 
         // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
         // noise map does not include edges to avoid ruining anti-aliasing
@@ -948,7 +964,9 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
     histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->gamma, options->malloc, options->free);
     pam_freeacolorhash(acht);
 
-    liq_verbose_printf(options, "  made histogram...%d colors found", hist->size);
+    if (hist) {
+        liq_verbose_printf(options, "  made histogram...%d colors found", hist->size);
+    }
     return hist;
 }
 
@@ -987,7 +1005,7 @@ static void contrast_maps(liq_image *image)
     float *restrict edges = image->malloc(sizeof(float)*cols*rows);
     float *restrict tmp = image->malloc(sizeof(float)*cols*rows);
 
-    if (cols < 4 || rows < 4) return;
+    if (cols < 4 || rows < 4 || !noise ||!edges ||!tmp) return;
 
     const f_pixel *curr_row, *prev_row, *next_row;
     curr_row = prev_row = next_row = liq_image_get_row_f(image, 0);
@@ -1226,6 +1244,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
     sort_palette(acolormap, options);
 
     liq_result *result = options->malloc(sizeof(liq_result));
+    if (!result) return NULL;
     *result = (liq_result){
         .magic_header = liq_result_magic,
         .malloc = options->malloc,
@@ -1265,6 +1284,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
         liq_remapping_result_destroy(quant->remapping);
     }
     liq_remapping_result *const result = quant->remapping = liq_remap(quant, input_image);
+    if (!result) return LIQ_OUT_OF_MEMORY;
 
     if (!input_image->edges && !input_image->dither_map && quant->use_dither_map) {
         contrast_maps(input_image);

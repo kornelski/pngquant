@@ -26,6 +26,7 @@ void* mempool_create(mempool *mptr, unsigned int size, unsigned int max_size, vo
     if (!max_size) max_size = size > (1<<17) ? size : 1<<17;
 
     *mptr = malloc(MEMPOOL_RESERVED + max_size);
+    if (!*mptr) return NULL;
     **mptr = (struct mempool){
         .malloc = malloc,
         .free = free,

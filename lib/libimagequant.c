@@ -1031,11 +1031,13 @@ static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels)
 static void contrast_maps(liq_image *image)
 {
     const int cols = image->width, rows = image->height;
+    if (cols < 4 || rows < 4 || (sizeof(float)*3*cols*rows) > LIQ_HIGH_MEMORY_LIMIT) return;
+
     float *restrict noise = image->malloc(sizeof(float)*cols*rows);
     float *restrict edges = image->malloc(sizeof(float)*cols*rows);
     float *restrict tmp = image->malloc(sizeof(float)*cols*rows);
 
-    if (cols < 4 || rows < 4 || !noise ||!edges ||!tmp) return;
+    if (!noise || !edges || !tmp) return;
 
     const f_pixel *curr_row, *prev_row, *next_row;
     curr_row = prev_row = next_row = liq_image_get_row_f(image, 0);

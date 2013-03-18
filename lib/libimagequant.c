@@ -75,11 +75,12 @@ struct liq_image {
     f_pixel *f_pixels;
     rgba_pixel **rows;
     double gamma;
-    int width, height;
+    unsigned int width, height;
     float *noise, *edges, *dither_map;
     rgba_pixel *pixels, *temp_row;
     liq_image_get_rgba_row_callback *row_callback;
     void *row_callback_user_info;
+    float min_opaque_val;
     bool free_rows, free_pixels;
 };
 
@@ -92,7 +93,7 @@ typedef struct liq_remapping_result {
     colormap *palette;
     liq_palette int_palette;
     double gamma, palette_error;
-    float min_opaque_val, dither_level;
+    float dither_level;
     bool use_dither_map;
 } liq_remapping_result;
 
@@ -105,12 +106,12 @@ struct liq_result {
     colormap *palette;
     liq_palette int_palette;
     double gamma, palette_error;
-    float min_opaque_val, dither_level;
+    float dither_level;
     bool use_dither_map;
 };
 
 static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, double gamma);
-static void modify_alpha(liq_image *input_image, const float min_opaque_val);
+static void modify_alpha(liq_image *input_image);
 static void contrast_maps(liq_image *image);
 static histogram *get_histogram(liq_image *input_image, liq_attr *options);
 static rgba_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row);
@@ -321,11 +322,12 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
         .rows = rows,
         .row_callback = row_callback,
         .row_callback_user_info = row_callback_user_info,
+        .min_opaque_val = attr->min_opaque_val,
     };
 
-    if (attr->min_opaque_val <= 254.f/255.f) {
+    if (img->min_opaque_val <= 254.f/255.f) {
         verbose_print(attr, "  Working around IE6 bug by making image less transparent...");
-        modify_alpha(img, attr->min_opaque_val);
+        modify_alpha(img);
     }
 
     to_f_set_gamma(img->gamma);
@@ -513,7 +515,6 @@ LIQ_EXPORT liq_remapping_result *liq_remap(liq_result *result, liq_image *image)
         .use_dither_map = result->use_dither_map,
         .palette_error = result->palette_error,
         .gamma = result->gamma,
-        .min_opaque_val = result->min_opaque_val,
         .palette = pam_duplicate_colormap(result->palette),
     };
     return res;
@@ -646,10 +647,11 @@ LIQ_EXPORT const liq_palette *liq_get_palette(liq_result *result)
     return &result->int_palette;
 }
 
-static float remap_to_palette(liq_image *const input_image, unsigned char *const *const output_pixels, colormap *const map, const float min_opaque_val)
+static float remap_to_palette(liq_image *const input_image, unsigned char *const *const output_pixels, colormap *const map)
 {
     const int rows = input_image->height;
     const unsigned int cols = input_image->width;
+    const float min_opaque_val = input_image->min_opaque_val;
 
     int remapped_pixels=0;
     float remapping_error=0;
@@ -755,10 +757,11 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
 
   If output_image_is_remapped is true, only pixels noticeably changed by error diffusion will be written to output image.
  */
-static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], const colormap *map, const float min_opaque_val, bool use_dither_map, bool output_image_is_remapped, const float max_dither_error)
+static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], const colormap *map, bool use_dither_map, bool output_image_is_remapped, const float max_dither_error)
 {
     const unsigned int rows = input_image->height, cols = input_image->width;
     const float *dither_map = use_dither_map ? (input_image->dither_map ? input_image->dither_map : input_image->edges) : NULL;
+    const float min_opaque_val = input_image->min_opaque_val;
 
     const colormap_item *acolormap = map->palette;
 
@@ -942,13 +945,14 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
     return hist;
 }
 
-static void modify_alpha(liq_image *input_image, const float min_opaque_val)
+static void modify_alpha(liq_image *input_image)
 {
     /* IE6 makes colors with even slightest transparency completely transparent,
        thus to improve situation in IE, make colors that are less than ~10% transparent
        completely opaque */
 
     const unsigned int rows = input_image->height, cols = input_image->width;
+    const float min_opaque_val = input_image->min_opaque_val;
     const float almost_opaque_val = min_opaque_val * 169.f/256.f;
 
     for(unsigned int row = 0; row < rows; ++row) {
@@ -1221,7 +1225,6 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
         .palette = acolormap,
         .palette_error = palette_error,
         .use_dither_map = options->use_dither_map,
-        .min_opaque_val = options->min_opaque_val,
         .gamma = gamma,
     };
     return result;
@@ -1263,19 +1266,19 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
     float remapping_error = result->palette_error;
     if (result->dither_level == 0) {
         set_rounded_palette(&result->int_palette, result->palette, result->gamma);
-        remapping_error = remap_to_palette(input_image, row_pointers, result->palette, result->min_opaque_val);
+        remapping_error = remap_to_palette(input_image, row_pointers, result->palette);
     } else {
         const bool generate_dither_map = result->use_dither_map && (input_image->edges && !input_image->dither_map);
         if (generate_dither_map) {
             // If dithering (with dither map) is required, this image is used to find areas that require dithering
-            remapping_error = remap_to_palette(input_image, row_pointers, result->palette, result->min_opaque_val);
+            remapping_error = remap_to_palette(input_image, row_pointers, result->palette);
             update_dither_map(row_pointers, input_image);
         }
 
         // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
         set_rounded_palette(&result->int_palette, result->palette, result->gamma);
 
-        remap_to_palette_floyd(input_image, row_pointers, result->palette, result->min_opaque_val, result->use_dither_map, generate_dither_map, MAX(remapping_error*2.4, 16.f/256.f));
+        remap_to_palette_floyd(input_image, row_pointers, result->palette, result->use_dither_map, generate_dither_map, MAX(remapping_error*2.4, 16.f/256.f));
     }
 
     // remapping error from dithered image is absurd, so always non-dithered value is used

@@ -219,7 +219,7 @@ static void fix_obsolete_options(const unsigned int argc, char *argv[])
     }
 }
 
-enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug, arg_quality, arg_map};
+enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug, arg_map};
 
 static const struct option long_options[] = {
     {"verbose", no_argument, NULL, 'v'},
@@ -233,7 +233,7 @@ static const struct option long_options[] = {
     {"transbug", no_argument, NULL, arg_transbug},
     {"ext", required_argument, NULL, arg_ext},
     {"speed", required_argument, NULL, 's'},
-    {"quality", required_argument, NULL, arg_quality},
+    {"quality", required_argument, NULL, 'Q'},
     {"map", required_argument, NULL, arg_map},
     {"version", no_argument, NULL, 'V'},
     {"help", no_argument, NULL, 'h'},
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
 
     int opt;
     do {
-        opt = getopt_long(argc, argv, "Vvqfhs:", long_options, NULL);
+        opt = getopt_long(argc, argv, "Vvqfhs:Q:", long_options, NULL);
         switch (opt) {
             case 'v':
                 liq_set_log_callback(options.liq, log_callback, NULL);
@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
                 }}
                 break;
 
-            case arg_quality:
+            case 'Q':
                 if (!parse_quality(optarg, options.liq, &options.min_quality_limit)) {
                     fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
                     return INVALID_ARGUMENT;

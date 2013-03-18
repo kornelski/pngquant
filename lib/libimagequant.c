@@ -616,8 +616,13 @@ static int compare_popularity(const void *ch1, const void *ch2)
 {
     const float v1 = ((const colormap_item*)ch1)->popularity;
     const float v2 = ((const colormap_item*)ch2)->popularity;
-    return v1 > v2 ? 1 : -1;
+    return v1 > v2 ? -1 : 1;
 }
+
+#define SWAP_PALETTE(map, a,b) { \
+    const colormap_item tmp = (map)->palette[(a)]; \
+    (map)->palette[(a)] = (map)->palette[(b)]; \
+    (map)->palette[(b)] = tmp; }
 
 static void sort_palette(colormap *map, const liq_attr *options)
 {
@@ -626,14 +631,11 @@ static void sort_palette(colormap *map, const liq_attr *options)
     ** the maximal alpha value (i.e., fully opaque) are at the end and can
     ** therefore be omitted from the tRNS chunk.
     */
-
     if (options->last_index_transparent) for(unsigned int i=0; i < map->colors; i++) {
         if (map->palette[i].acolor.a < 1.0/256.0) {
             const unsigned int old = i, transparent_dest = map->colors-1;
 
-            const colormap_item tmp = map->palette[transparent_dest];
-            map->palette[transparent_dest] = map->palette[old];
-            map->palette[old] = tmp;
+            SWAP_PALETTE(map, transparent_dest, old);
 
             /* colors sorted by popularity make pngs slightly more compressible */
             qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
@@ -663,6 +665,12 @@ static void sort_palette(colormap *map, const liq_attr *options)
      */
     qsort(map->palette, num_transparent, sizeof(map->palette[0]), compare_popularity);
     qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
+
+    if (map->colors > 16) {
+        SWAP_PALETTE(map, 7, 1); // slightly improves compression
+        SWAP_PALETTE(map, 8, 2);
+        SWAP_PALETTE(map, 9, 3);
+    }
 }
 
 static void set_rounded_palette(liq_palette *const dest, colormap *const map, const double gamma)

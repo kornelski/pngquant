@@ -39,6 +39,8 @@
 
 #include "libimagequant.h"
 
+#define LIQ_HIGH_MEMORY_LIMIT (1<<26)  /* avoid allocating buffers larger than 64MB */
+
 // each structure has a pointer as a unique identifier that allows type checking at run time
 static const char *const liq_attr_magic = "a", *const liq_image_magic = "i",
      *const liq_result_magic = "q", *const liq_remapping_result_magic = "r",
@@ -78,6 +80,7 @@ struct liq_image {
     unsigned int width, height;
     float *noise, *edges, *dither_map;
     rgba_pixel *pixels, *temp_row;
+    f_pixel *temp_f_row;
     liq_image_get_rgba_row_callback *row_callback;
     void *row_callback_user_info;
     float min_opaque_val;
@@ -307,6 +310,17 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), voi
     return attr;
 }
 
+static bool liq_image_use_low_memory(liq_image *img)
+{
+    img->temp_f_row = img->malloc(sizeof(img->f_pixels[0]) * img->width * omp_get_max_threads());
+    return img->temp_f_row != NULL;
+}
+
+static bool liq_image_should_use_low_memory(liq_image *img)
+{
+    return img->width * img->height * sizeof(f_pixel) > LIQ_HIGH_MEMORY_LIMIT;
+}
+
 static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], liq_image_get_rgba_row_callback *row_callback, void *row_callback_user_info, int width, int height, double gamma)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr) || width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0) return NULL;
@@ -329,6 +343,11 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
     if (!rows || attr->min_opaque_val < 1.f) {
         img->temp_row = attr->malloc(sizeof(img->temp_row[0]) * width);
         if (!img->temp_row) return NULL;
+    }
+
+    if (liq_image_should_use_low_memory(img)) {
+        verbose_print(attr, "  Conserving memory");
+        if (!liq_image_use_low_memory(img)) return NULL;
     }
 
     if (img->min_opaque_val < 1.f) {
@@ -423,7 +442,18 @@ static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsign
 static const f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
 {
     if (!img->f_pixels) {
-        img->f_pixels = img->malloc(sizeof(img->f_pixels[0]) * img->width * img->height);
+        if (img->temp_f_row) {
+            f_pixel *row_for_thread = img->temp_f_row + img->width * omp_get_thread_num();
+            convert_row_to_f(img, row_for_thread, row);
+            return row_for_thread;
+        }
+        if (!liq_image_should_use_low_memory(img)) {
+            img->f_pixels = img->malloc(sizeof(img->f_pixels[0]) * img->width * img->height);
+        }
+        if (!img->f_pixels) {
+            if (!liq_image_use_low_memory(img)) return NULL;
+            return liq_image_get_row_f(img, row);
+        }
 
         to_f_set_gamma(img->gamma);
         for(unsigned int row=0; row < img->height; row++) {

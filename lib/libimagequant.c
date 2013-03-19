@@ -439,6 +439,15 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     return image;
 }
 
+LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *callback, liq_color *temp_row, int row, int width, void *user_info) NEVER_INLINE;
+LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *callback, liq_color *temp_row, int row, int width, void *user_info)
+{
+    assert(callback);
+    assert(temp_row);
+    callback(temp_row, row, width, user_info);
+}
+
+
 static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
 {
     if (img->rows && img->min_opaque_val >= 1.f) {
@@ -449,7 +458,7 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
     if (img->rows) {
         memcpy(img->temp_row, img->rows[row], img->width * sizeof(img->temp_row[0]));
     } else {
-        img->row_callback((liq_color*)img->temp_row, row, img->width, img->row_callback_user_info);
+        liq_executing_user_callback(img->row_callback, (liq_color*)img->temp_row, row, img->width, img->row_callback_user_info);
     }
 
     modify_alpha(img, img->temp_row);

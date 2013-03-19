@@ -49,8 +49,10 @@
 
 #if defined(__GNUC__) || defined (__llvm__)
 #define ALWAYS_INLINE __attribute__((always_inline))
+#define NEVER_INLINE __attribute__ ((noinline))
 #else
 #define ALWAYS_INLINE
+#define NEVER_INLINE
 #endif
 
 /* from pam.h */

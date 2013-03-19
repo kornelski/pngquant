@@ -42,10 +42,10 @@
 #define LIQ_HIGH_MEMORY_LIMIT (1<<26)  /* avoid allocating buffers larger than 64MB */
 
 // each structure has a pointer as a unique identifier that allows type checking at run time
-static const char *const liq_attr_magic = "a", *const liq_image_magic = "i",
-     *const liq_result_magic = "q", *const liq_remapping_result_magic = "r",
-     *const liq_freed_magic = "X";
-#define CHECK_STRUCT_TYPE(attr, kind) (attr && (attr->magic_header != liq_freed_magic || memory_used_after_free()) && attr->magic_header == kind ## _magic)
+static const char *const liq_attr_magic = "liq_attr", *const liq_image_magic = "liq_image",
+     *const liq_result_magic = "liq_result", *const liq_remapping_result_magic = "liq_remapping_result",
+     *const liq_freed_magic = "free";
+#define CHECK_STRUCT_TYPE(attr, kind) liq_crash_if_invalid_handle_pointer_given((liq_attr*)attr, kind ## _magic)
 
 struct liq_attr {
     const char *magic_header;
@@ -161,11 +161,18 @@ inline static bool is_sse2_available()
 }
 #endif
 
-static bool memory_used_after_free(void)
+/* make it clear in backtrace when user-supplied handle points to invalid memory */
+LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header) NEVER_INLINE;
+LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header)
 {
-    fputs("memory_used_after_free", stderr);
-    abort(); // program should have crashed already, so don't blame me.
-    return false;
+    if (!user_supplied_pointer) return false;
+
+    if (user_supplied_pointer->magic_header == liq_freed_magic) {
+        fprintf(stderr, "%s used after being freed", expected_magic_header);
+        abort(); // program should have crashed already, so don't blame me.
+    }
+
+    return user_supplied_pointer->magic_header == expected_magic_header;
 }
 
 static double quality_to_mse(long quality)

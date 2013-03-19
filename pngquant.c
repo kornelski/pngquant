@@ -21,7 +21,7 @@ options:\n\
   --force           overwrite existing output files (synonym: -f)\n\
   --nofs            disable Floyd-Steinberg dithering\n\
   --ext new.png     set custom suffix/extension for output filename\n\
-  --speed N         speed/quality trade-off. 1=slow, 3=default, 10=fast & rough\n\
+  --speed N         speed/quality trade-off. 1=slow, 3=default, 11=fast & rough\n\
   --quality min-max don't save below min, use less colors below max (0-100)\n\
   --verbose         print status messages (synonym: -v)\n\
   --iebug           increase opacity to work around Internet Explorer 6 bug\n\
@@ -292,14 +292,20 @@ int main(int argc, char *argv[])
                 break;
 
             case 's':
-                { int speed = atoi(optarg);
-                if (LIQ_OK != liq_set_speed(options.liq, speed)) {
-                    fputs("Speed should be between 1 (slow) and 10 (fast).\n", stderr);
-                    return INVALID_ARGUMENT;
+                {
+                    int speed = atoi(optarg);
+                    if (speed >= 10) {
+                        options.fast_compression = true;
+                    }
+                    if (speed == 11) {
+                        options.floyd = false;
+                        speed = 10;
+                    }
+                    if (LIQ_OK != liq_set_speed(options.liq, speed)) {
+                        fputs("Speed should be between 1 (slow) and 11 (fast).\n", stderr);
+                        return INVALID_ARGUMENT;
+                    }
                 }
-                if (speed == 10) {
-                    options.fast_compression = true;
-                }}
                 break;
 
             case 'Q':

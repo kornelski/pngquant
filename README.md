@@ -59,7 +59,11 @@ Set custom extension (suffix) for output filename. By default `-or8.png` or `-fs
 
 ###`--speed N`
 
-Speed/quality trade-off from 1 (brute-force) to 10 (fastest). The default is 3. Speed 10 has 5% lower quality, but is 8 times faster than the default.
+Speed/quality trade-off from 1 (brute-force) to 11 (fastest). The default is 3. Speed 10 has 5% lower quality, but is 8 times faster than the default. Speed 11 disables dithering and lowers compression level.
+
+###`--nofs`
+
+Disables Floyd-Steinberg dithering.
 
 ###`--iebug`
 

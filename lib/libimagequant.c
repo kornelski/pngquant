@@ -46,6 +46,7 @@ static const char *const liq_attr_magic = "liq_attr", *const liq_image_magic = "
      *const liq_result_magic = "liq_result", *const liq_remapping_result_magic = "liq_remapping_result",
      *const liq_freed_magic = "free";
 #define CHECK_STRUCT_TYPE(attr, kind) liq_crash_if_invalid_handle_pointer_given((liq_attr*)attr, kind ## _magic)
+#define CHECK_USER_POINTER(ptr) liq_crash_if_invalid_pointer_given(ptr)
 
 struct liq_attr {
     const char *magic_header;
@@ -173,6 +174,14 @@ LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_s
     }
 
     return user_supplied_pointer->magic_header == expected_magic_header;
+}
+
+LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer)
+{
+    if (!pointer) return false;
+    volatile unsigned char *pointer_char = pointer;
+    *pointer_char;
+    return true;
 }
 
 static double quality_to_mse(long quality)
@@ -405,13 +414,17 @@ LIQ_EXPORT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba
 
 LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma)
 {
+    for(int i=0; i < height; i++) {
+        if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) return NULL;
+    }
     return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
 }
 
 LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma)
 {
+    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0) return NULL;
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return NULL;
-    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0 || !attr || !bitmap) return NULL;
+    if (!CHECK_USER_POINTER(bitmap)) return NULL;
 
     rgba_pixel *pixels = bitmap;
     rgba_pixel **rows = attr->malloc(sizeof(rows[0])*height);
@@ -1337,6 +1350,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *inp
 {
     if (!CHECK_STRUCT_TYPE(result, liq_result)) return LIQ_INVALID_POINTER;
     if (!CHECK_STRUCT_TYPE(input_image, liq_image)) return LIQ_INVALID_POINTER;
+    if (!CHECK_USER_POINTER(buffer)) return LIQ_INVALID_POINTER;
 
     const size_t required_size = input_image->width * input_image->height;
     if (buffer_size < required_size) {
@@ -1355,6 +1369,9 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
 {
     if (!CHECK_STRUCT_TYPE(quant, liq_result)) return LIQ_INVALID_POINTER;
     if (!CHECK_STRUCT_TYPE(input_image, liq_image)) return LIQ_INVALID_POINTER;
+    for(int i=0; i < input_image->height; i++) {
+        if (!CHECK_USER_POINTER(row_pointers+i) || !CHECK_USER_POINTER(row_pointers[i])) return LIQ_INVALID_POINTER;
+    }
 
     if (quant->remapping) {
         liq_remapping_result_destroy(quant->remapping);

@@ -30,7 +30,7 @@
 
 // it's safe to assume that 64-bit x86 has SSE2.
 #ifndef USE_SSE
-#  if defined(__SSE2__) && (defined(__x86_64__) || defined(__amd64))
+#  if defined(__SSE2__) && (defined(__x86_64__) || defined(__amd64) || defined(WIN32) || defined(__WIN32__))
 #    define USE_SSE 1
 #  else
 #    define USE_SSE 0

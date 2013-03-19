@@ -38,6 +38,9 @@
 #ifndef Z_BEST_COMPRESSION
 #define Z_BEST_COMPRESSION 9
 #endif
+#ifndef Z_BEST_SPEED
+#define Z_BEST_SPEED 1
+#endif
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
 int rwpng_read_image24_cocoa(FILE *infile, png24_image *mainprog_ptr);
@@ -213,7 +216,7 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p)
 }
 
 
-pngquant_error rwpng_write_image_init(png_image *mainprog_ptr, png_structpp png_ptr_p, png_infopp info_ptr_p, FILE *outfile)
+static pngquant_error rwpng_write_image_init(png_image *mainprog_ptr, png_structpp png_ptr_p, png_infopp info_ptr_p, FILE *outfile, int fast_compression)
 {
     /* could also replace libpng warning-handler (final NULL), but no need: */
 
@@ -242,7 +245,7 @@ pngquant_error rwpng_write_image_init(png_image *mainprog_ptr, png_structpp png_
 
     png_init_io(*png_ptr_p, outfile);
 
-    png_set_compression_level(*png_ptr_p, Z_BEST_COMPRESSION);
+    png_set_compression_level(*png_ptr_p, fast_compression ? Z_BEST_SPEED : Z_BEST_COMPRESSION);
 
     return SUCCESS;
 }
@@ -266,7 +269,7 @@ void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma)
     if (gamma > 0.0) {
         png_set_gAMA(png_ptr, info_ptr, gamma);
 
-        if (gamma == 0.45455) {
+        if (gamma > 0.45454 && gamma < 0.45456) {
             png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
         }
     }
@@ -277,7 +280,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     png_structp png_ptr;
     png_infop info_ptr;
 
-    pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile);
+    pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile, mainprog_ptr->fast_compression);
     if (retval) return retval;
 
     // Palette images generally don't gain anything from filtering
@@ -316,7 +319,7 @@ pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
     png_structp png_ptr;
     png_infop info_ptr;
 
-    pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile);
+    pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile, 0);
     if (retval) return retval;
 
     rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma);

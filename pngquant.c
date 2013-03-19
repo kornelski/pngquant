@@ -61,10 +61,9 @@ use --force to overwrite.\n"
 struct pngquant_options {
     liq_attr *liq;
     liq_image *fixed_palette_image;
-    bool floyd, using_stdin, force, ie_mode, min_quality_limit;
-
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
+    bool floyd, using_stdin, force, ie_mode, min_quality_limit, fast_compression;
 };
 
 static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
@@ -293,10 +292,14 @@ int main(int argc, char *argv[])
                 break;
 
             case 's':
-                if (LIQ_OK != liq_set_speed(options.liq, atoi(optarg))) {
+                { int speed = atoi(optarg);
+                if (LIQ_OK != liq_set_speed(options.liq, speed)) {
                     fputs("Speed should be between 1 (slow) and 10 (fast).\n", stderr);
                     return INVALID_ARGUMENT;
                 }
+                if (speed == 10) {
+                    options.fast_compression = true;
+                }}
                 break;
 
             case arg_quality:
@@ -495,6 +498,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     }
 
     if (!retval) {
+        output_image.fast_compression = options->fast_compression;
         retval = write_image(&output_image, NULL, outname, options);
     } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
         // when outputting to stdout it'd be nasty to create 0-byte file

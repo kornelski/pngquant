@@ -75,6 +75,7 @@ typedef struct {
     unsigned int num_trans;
     png_color palette[256];
     unsigned char trans[256];
+    char fast_compression;
 } png8_image;
 
 typedef union {

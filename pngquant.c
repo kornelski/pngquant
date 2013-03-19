@@ -13,7 +13,7 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "1.8.3 (February 2013)"
+#define PNGQUANT_VERSION "1.8.4 (March 2013)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -713,10 +713,17 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
                 sb = thiserr.b * dither_level,
                 sa = thiserr.a * dither_level;
 
-    float ratio = min_4((sr < 0) ? px.r/-sr : (sr > 0) ? (1.0-px.r)/sr : 1.0,
-                        (sg < 0) ? px.g/-sg : (sg > 0) ? (1.0-px.g)/sg : 1.0,
-                        (sb < 0) ? px.b/-sb : (sb > 0) ? (1.0-px.b)/sb : 1.0,
-                        (sa < 0) ? px.a/-sa : (sa > 0) ? (1.0-px.a)/sa : 1.0);
+    float ratio = 1.0;
+
+    // allowing some overflow prevents undithered bands caused by clamping of all channels
+         if (px.r + sr > 1.03) ratio = MIN(ratio, (1.03-px.r)/sr);
+    else if (px.r + sr < 0)    ratio = MIN(ratio, px.r/-sr);
+         if (px.g + sg > 1.03) ratio = MIN(ratio, (1.03-px.g)/sg);
+    else if (px.g + sg < 0)    ratio = MIN(ratio, px.g/-sg);
+         if (px.b + sb > 1.03) ratio = MIN(ratio, (1.03-px.b)/sb);
+    else if (px.b + sb < 0)    ratio = MIN(ratio, px.b/-sb);
+         if (px.a + sa > 1.03) ratio = MIN(ratio, (1.03-px.a)/sa);
+    else if (px.a + sa < 0)    ratio = MIN(ratio, px.a/-sa);
 
      // If dithering error is crazy high, don't propagate it that much
      // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
@@ -727,9 +734,6 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
         // don't dither areas that don't have noticeable error — makes file smaller
         return px;
      }
-
-     if (ratio > 1.0) ratio = 1.0;
-     if (ratio < 0) ratio = 0;
 
      return (f_pixel){
          .r=px.r + sr * ratio,

@@ -18,7 +18,7 @@
 #include "pam.h"
 #include "mempool.h"
 
-bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const float *importance_map)
+bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const unsigned char *importance_map)
 {
     const unsigned int maxacolors = acht->maxcolors, ignorebits = acht->ignorebits;
     const unsigned int channel_mask = 255U>>ignorebits<<ignorebits;
@@ -40,7 +40,7 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *cons
         float boost=1.0;
         for(unsigned int col = 0; col < cols; ++col) {
             if (importance_map) {
-                boost = 0.5f+*importance_map++;
+                boost = 0.5f+ (double)*importance_map++/255.f;
             }
 
             // RGBA color is casted to long for easier hasing/comparisons

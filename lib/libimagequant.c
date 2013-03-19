@@ -78,7 +78,7 @@ struct liq_image {
     rgba_pixel **rows;
     double gamma;
     unsigned int width, height;
-    float *noise, *edges, *dither_map;
+    unsigned char *noise, *edges, *dither_map;
     rgba_pixel *pixels, *temp_row;
     f_pixel *temp_f_row;
     liq_image_get_rgba_row_callback *row_callback;
@@ -836,7 +836,7 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
 static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], const colormap *map, bool use_dither_map, bool output_image_is_remapped, const float max_dither_error)
 {
     const unsigned int rows = input_image->height, cols = input_image->width;
-    const float *dither_map = use_dither_map ? (input_image->dither_map ? input_image->dither_map : input_image->edges) : NULL;
+    const unsigned char *dither_map = use_dither_map ? (input_image->dither_map ? input_image->dither_map : input_image->edges) : NULL;
     const float min_opaque_val = input_image->min_opaque_val;
 
     const colormap_item *acolormap = map->palette;
@@ -873,7 +873,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
         const f_pixel *const row_pixels = liq_image_get_row_f(input_image, row);
 
         do {
-            float dither_level = dither_map ? dither_map[row*cols + col] : 15.f/16.f;
+            float dither_level = dither_map ? dither_map[row*cols + col]/255.f : 15.f/16.f;
             const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], row_pixels[col]);
 
             unsigned int ind;
@@ -1062,11 +1062,11 @@ static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels)
 static void contrast_maps(liq_image *image)
 {
     const int cols = image->width, rows = image->height;
-    if (cols < 4 || rows < 4 || (sizeof(float)*3*cols*rows) > LIQ_HIGH_MEMORY_LIMIT) return;
+    if (cols < 4 || rows < 4 || (3*cols*rows) > LIQ_HIGH_MEMORY_LIMIT) return;
 
-    float *restrict noise = image->malloc(sizeof(float)*cols*rows);
-    float *restrict edges = image->malloc(sizeof(float)*cols*rows);
-    float *restrict tmp = image->malloc(sizeof(float)*cols*rows);
+    unsigned char *restrict noise = image->malloc(cols*rows);
+    unsigned char *restrict edges = image->malloc(cols*rows);
+    unsigned char *restrict tmp = image->malloc(cols*rows);
 
     if (!noise || !edges || !tmp) return;
 
@@ -1106,8 +1106,10 @@ static void contrast_maps(liq_image *image)
             z *= z; // noise is amplified
             z *= z;
 
-            noise[j*cols+i] = z;
-            edges[j*cols+i] = 1.f-edge;
+            z *= 256.f;
+            noise[j*cols+i] = z < 256 ? z : 255;
+            z = (1.f-edge)*256.f;
+            edges[j*cols+i] = z < 256 ? z : 255;
         }
     }
 
@@ -1144,7 +1146,7 @@ static void update_dither_map(unsigned char *const *const row_pointers, liq_imag
 {
     const unsigned int width = input_image->width;
     const unsigned int height = input_image->height;
-    float *const edges = input_image->edges;
+    unsigned char *const edges = input_image->edges;
 
     for(unsigned int row=0; row < height; row++) {
         unsigned char lastpixel = row_pointers[row][0];
@@ -1170,7 +1172,9 @@ static void update_dither_map(unsigned char *const *const row_pointers, liq_imag
                 }
 
                 while(lastcol <= col) {
-                    edges[row*width + lastcol++] *= 1.f - 2.5f/neighbor_count;
+                    float e = edges[row*width + lastcol] / 255.f;
+                    e *= 1.f - 2.5f/neighbor_count;
+                    edges[row*width + lastcol++] = e * 255.f;
                 }
                 lastpixel = px;
             }

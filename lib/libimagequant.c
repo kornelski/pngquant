@@ -190,7 +190,9 @@ static double quality_to_mse(long quality)
     if (quality == 0) return MAX_DIFF;
 
     // curve fudged to be roughly similar to quality of libjpeg
-    return 2.5/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
+    // except lowest 10 for really low number of colors
+    const double extra_low_quality_fudge = MAX(0,0.016/(0.001+quality) - 0.001);
+    return extra_low_quality_fudge + 2.5/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
 }
 
 static unsigned int mse_to_quality(double mse)

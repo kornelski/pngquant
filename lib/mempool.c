@@ -1,9 +1,11 @@
 
 #include "mempool.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <assert.h>
 
-#define MEMPOOL_RESERVED ((sizeof(struct mempool)+15UL) & ~0xFUL)
+#define ALIGN_MASK 15UL
+#define MEMPOOL_RESERVED ((sizeof(struct mempool)+ALIGN_MASK) & ~ALIGN_MASK)
 
 struct mempool {
     unsigned int used, size;
@@ -31,9 +33,12 @@ void* mempool_create(mempool *mptr, unsigned int size, unsigned int max_size, vo
         .malloc = malloc,
         .free = free,
         .size = MEMPOOL_RESERVED + max_size,
-        .used = MEMPOOL_RESERVED,
+        .used = sizeof(struct mempool),
         .next = old,
     };
+    uintptr_t mptr_used_start = (uintptr_t)(*mptr + (*mptr)->used);
+    (*mptr)->used += (ALIGN_MASK+1) - (mptr_used_start & ALIGN_MASK); // reserve bytes required to make subsequent allocations aligned
+    assert(!((uintptr_t)(*mptr + (*mptr)->used) & ALIGN_MASK));
 
     return mempool_alloc(mptr, size, max_size);
 }
@@ -42,7 +47,7 @@ void *mempool_alloc(mempool *mptr, unsigned int size, unsigned int max_size)
 {
     if (((*mptr)->used+size) <= (*mptr)->size) {
         unsigned int prevused = (*mptr)->used;
-        (*mptr)->used += (size+15UL) & ~0xFUL;
+        (*mptr)->used += (size + ALIGN_MASK) & ~ALIGN_MASK;
         return ((char*)(*mptr)) + prevused;
     }
 

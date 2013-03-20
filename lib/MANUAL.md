@@ -350,8 +350,9 @@ In the log callback the `message` is a zero-terminated string containing informa
 
     liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), void (*free)(void*));
 
-Same as `liq_attr_create`, but uses given `malloc` and `free` functions to allocate all memory used by the library.
+Same as `liq_attr_create`, but uses given `malloc` and `free` replacements to allocate all memory used by the library.
 
+The `malloc` function must return 16-byte aligned memory on x86 (and on other architectures memory aligned for `double` and pointers). Conversely, if your stdlib's `malloc` doesn't return appropriately aligned memory, you should use this function to provide aligned replacements.
 
 ----
 

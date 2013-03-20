@@ -473,6 +473,7 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
 static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsigned int row)
 {
     assert(row_f_pixels);
+    assert(!USE_SSE || 0 == ((uintptr_t)row_f_pixels & 15));
 
     const rgba_pixel *const row_pixels = liq_image_get_row_rgba(img, row);
 

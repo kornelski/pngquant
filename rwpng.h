@@ -47,7 +47,7 @@
 
 typedef unsigned char   uch;
 typedef unsigned short  ush;
-typedef unsigned long   ulg;
+typedef unsigned int   ulg;
 
 typedef struct _rwpng_color_struct {
    png_byte red;

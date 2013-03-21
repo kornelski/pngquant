@@ -129,7 +129,8 @@ static void hist_item_sort_range(hist_item *base, unsigned int len, int sort_sta
 
         if (sort_start+sort_len > 0 && (signed)l >= sort_start && l > 0) {
             hist_item_sort_range(base, l, sort_start, sort_len);
-}
+        }
+
         if (len > r && r < sort_start+sort_len && (signed)len > sort_start) {
             base += r; len -= r; sort_start -= r; // tail-recursive "call"
         } else return;

@@ -449,7 +449,7 @@ static void pngquant_output_image_free(png8_image *output_image)
     if (output_image->row_pointers) {
         free(output_image->row_pointers);
         output_image->row_pointers = NULL;
-}
+    }
 }
 
 int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
@@ -645,7 +645,7 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     pngquant_error retval;
     #pragma omp critical (libpng)
     {
-            retval = rwpng_read_image24(infile, input_image_p);
+        retval = rwpng_read_image24(infile, input_image_p);
     }
 
     if (!using_stdin)

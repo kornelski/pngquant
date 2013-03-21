@@ -1069,10 +1069,10 @@ static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels)
     for(unsigned int col = 0; col < input_image->width; col++) {
         const rgba_pixel px = row_pixels[col];
 
-            /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
+        /* ie bug: to avoid visible step caused by forced opaqueness, linearily raise opaqueness of almost-opaque colors */
         if (px.a >= almost_opaque_val_int) {
             float al = px.a / 255.f;
-                al = almost_opaque_val + (al-almost_opaque_val) * (1.f-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
+            al = almost_opaque_val + (al-almost_opaque_val) * (1.f-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
             al *= 256.f;
             row_pixels[col].a = al >= 255.f ? 255 : al;
         }
@@ -1111,17 +1111,17 @@ static void contrast_maps(liq_image *image)
 
             // contrast is difference between pixels neighbouring horizontally and vertically
             const float a = fabsf(prev.a+next.a - curr.a*2.f),
-            r = fabsf(prev.r+next.r - curr.r*2.f),
-            g = fabsf(prev.g+next.g - curr.g*2.f),
-            b = fabsf(prev.b+next.b - curr.b*2.f);
+                        r = fabsf(prev.r+next.r - curr.r*2.f),
+                        g = fabsf(prev.g+next.g - curr.g*2.f),
+                        b = fabsf(prev.b+next.b - curr.b*2.f);
 
             const f_pixel prevl = prev_row[i];
             const f_pixel nextl = next_row[i];
 
             const float a1 = fabsf(prevl.a+nextl.a - curr.a*2.f),
-            r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),
-            g1 = fabsf(prevl.g+nextl.g - curr.g*2.f),
-            b1 = fabsf(prevl.b+nextl.b - curr.b*2.f);
+                        r1 = fabsf(prevl.r+nextl.r - curr.r*2.f),
+                        g1 = fabsf(prevl.g+nextl.g - curr.g*2.f),
+                        b1 = fabsf(prevl.b+nextl.b - curr.b*2.f);
 
             const float horiz = MAX(MAX(a,r),MAX(g,b));
             const float vert = MAX(MAX(a1,r1),MAX(g1,b1));
@@ -1298,10 +1298,10 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
     } else {
         acolormap = find_best_palette(hist, options, &palette_error);
 
-    // Voronoi iteration approaches local minimum for the palette
-    const double max_mse = options->max_mse;
-    const double iteration_limit = options->voronoi_iteration_limit;
-    unsigned int iterations = options->voronoi_iterations;
+        // Voronoi iteration approaches local minimum for the palette
+        const double max_mse = options->max_mse;
+        const double iteration_limit = options->voronoi_iteration_limit;
+        unsigned int iterations = options->voronoi_iterations;
 
         if (!iterations && palette_error < 0 && max_mse < MAX_DIFF) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
 
@@ -1328,8 +1328,8 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
 
         if (palette_error > max_mse) {
             liq_verbose_printf(options, "  image degradation MSE=%.3f (Q=%d) exceeded limit of %.3f (%d)",
-                palette_error*65536.0/6.0, mse_to_quality(palette_error),
-                max_mse*65536.0/6.0, mse_to_quality(max_mse));
+                               palette_error*65536.0/6.0, mse_to_quality(palette_error),
+                               max_mse*65536.0/6.0, mse_to_quality(max_mse));
             pam_freecolormap(acolormap);
             return NULL;
         }

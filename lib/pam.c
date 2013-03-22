@@ -15,10 +15,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+
+#include "libimagequant.h"
 #include "pam.h"
 #include "mempool.h"
 
-bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const unsigned char *importance_map)
+LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const unsigned char *importance_map)
 {
     const unsigned int maxacolors = acht->maxcolors, ignorebits = acht->ignorebits;
     const unsigned int channel_mask = 255U>>ignorebits<<ignorebits;
@@ -152,7 +154,7 @@ bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *cons
     return true;
 }
 
-struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits, void* (*malloc)(size_t), void (*free)(void*))
+LIQ_PRIVATE struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits, void* (*malloc)(size_t), void (*free)(void*))
 {
     const unsigned int estimated_colors = MIN(maxcolors, surface/(4+ignorebits));
     const unsigned int hash_size = estimated_colors < 66000 ? 6673 : (estimated_colors < 200000 ? 12011 : 24019);
@@ -180,7 +182,7 @@ struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned in
     total_weight += entry.perceptual_weight; \
 }
 
-histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma, void* (*malloc)(size_t), void (*free)(void*))
+LIQ_PRIVATE histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma, void* (*malloc)(size_t), void (*free)(void*))
 {
     histogram *hist = malloc(sizeof(hist[0]));
     if (!hist || !acht) return NULL;
@@ -213,18 +215,18 @@ histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const
 }
 
 
-void pam_freeacolorhash(struct acolorhash_table *acht)
+LIQ_PRIVATE void pam_freeacolorhash(struct acolorhash_table *acht)
 {
     mempool_destroy(acht->mempool);
 }
 
-void pam_freeacolorhist(histogram *hist)
+LIQ_PRIVATE void pam_freeacolorhist(histogram *hist)
 {
     hist->free(hist->achv);
     hist->free(hist);
 }
 
-colormap *pam_colormap(unsigned int colors)
+LIQ_PRIVATE colormap *pam_colormap(unsigned int colors)
 {
     colormap *map = malloc(sizeof(colormap));
     if (!map) return NULL;
@@ -237,7 +239,7 @@ colormap *pam_colormap(unsigned int colors)
     return map;
 }
 
-colormap *pam_duplicate_colormap(colormap *map)
+LIQ_PRIVATE colormap *pam_duplicate_colormap(colormap *map)
 {
     colormap *dupe = pam_colormap(map->colors);
     for(int i=0; i < map->colors; i++) {
@@ -249,7 +251,7 @@ colormap *pam_duplicate_colormap(colormap *map)
     return dupe;
 }
 
-void pam_freecolormap(colormap *c)
+LIQ_PRIVATE void pam_freecolormap(colormap *c)
 {
     if (c->subset_palette) pam_freecolormap(c->subset_palette);
     free(c->palette); free(c);

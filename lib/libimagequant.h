@@ -8,6 +8,13 @@
 #ifndef LIQ_EXPORT
 #define LIQ_EXPORT extern
 #endif
+#ifndef LIQ_PRIVATE
+#if defined(__GNUC__) || defined (__llvm__)
+#define LIQ_PRIVATE __attribute__((visibility("hidden")))
+#else
+#define LIQ_PRIVATE
+#endif
+#endif
 
 #ifdef __cplusplus
 extern "C" {

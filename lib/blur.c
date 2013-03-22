@@ -1,4 +1,5 @@
 
+#include "libimagequant.h"
 #include "pam.h"
 #include "blur.h"
 
@@ -45,7 +46,7 @@ static void transposing_1d_blur(unsigned char *restrict src, unsigned char *rest
 /**
  * Picks maximum of neighboring pixels (blur + lighten)
  */
-void max3(unsigned char *src, unsigned char *dst, unsigned int width, unsigned int height)
+LIQ_PRIVATE void max3(unsigned char *src, unsigned char *dst, unsigned int width, unsigned int height)
 {
     for(unsigned int j=0; j < height; j++) {
         const unsigned char *row = src + j*width,
@@ -72,7 +73,7 @@ void max3(unsigned char *src, unsigned char *dst, unsigned int width, unsigned i
 /**
  * Picks minimum of neighboring pixels (blur + darken)
  */
-void min3(unsigned char *src, unsigned char *dst, unsigned int width, unsigned int height)
+LIQ_PRIVATE void min3(unsigned char *src, unsigned char *dst, unsigned int width, unsigned int height)
 {
     for(unsigned int j=0; j < height; j++) {
         const unsigned char *row = src + j*width,
@@ -100,7 +101,7 @@ void min3(unsigned char *src, unsigned char *dst, unsigned int width, unsigned i
  Filters src image and saves it to dst, overwriting tmp in the process.
  Image must be width*height pixels high. Size controls radius of box blur.
  */
-void blur(unsigned char *src, unsigned char *tmp, unsigned char *dst, unsigned int width, unsigned int height, unsigned int size)
+LIQ_PRIVATE void blur(unsigned char *src, unsigned char *tmp, unsigned char *dst, unsigned int width, unsigned int height, unsigned int size)
 {
     if (width < 2*size+1 || height < 2*size+1) return;
     transposing_1d_blur(src, tmp, width, height, size);

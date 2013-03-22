@@ -237,15 +237,15 @@ struct acolorhash_table {
     unsigned int hash_size;
 };
 
-void pam_freeacolorhash(struct acolorhash_table *acht);
-struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits, void* (*malloc)(size_t), void (*free)(void*));
-histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma, void* (*malloc)(size_t), void (*free)(void*));
-bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const unsigned char *importance_map);
+LIQ_PRIVATE void pam_freeacolorhash(struct acolorhash_table *acht);
+LIQ_PRIVATE struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits, void* (*malloc)(size_t), void (*free)(void*));
+LIQ_PRIVATE histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma, void* (*malloc)(size_t), void (*free)(void*));
+LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const unsigned char *importance_map);
 
-void pam_freeacolorhist(histogram *h);
+LIQ_PRIVATE void pam_freeacolorhist(histogram *h);
 
-colormap *pam_colormap(unsigned int colors);
-colormap *pam_duplicate_colormap(colormap *map);
-void pam_freecolormap(colormap *c);
+LIQ_PRIVATE colormap *pam_colormap(unsigned int colors);
+LIQ_PRIVATE colormap *pam_duplicate_colormap(colormap *map);
+LIQ_PRIVATE void pam_freecolormap(colormap *c);
 
 #endif

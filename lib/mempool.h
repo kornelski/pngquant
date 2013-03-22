@@ -6,8 +6,8 @@
 struct mempool;
 typedef struct mempool *mempool;
 
-void* mempool_create(mempool *mptr, unsigned int size, unsigned int capacity, void* (*malloc)(size_t), void (*free)(void*));
-void* mempool_alloc(mempool *mptr, unsigned int size, unsigned int capacity);
-void mempool_destroy(mempool m);
+LIQ_PRIVATE void* mempool_create(mempool *mptr, unsigned int size, unsigned int capacity, void* (*malloc)(size_t), void (*free)(void*));
+LIQ_PRIVATE void* mempool_alloc(mempool *mptr, unsigned int size, unsigned int capacity);
+LIQ_PRIVATE void mempool_destroy(mempool m);
 
 #endif

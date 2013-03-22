@@ -1,4 +1,5 @@
 
+#include "libimagequant.h"
 #include "pam.h"
 #include "viter.h"
 #include "nearest.h"
@@ -15,12 +16,12 @@
 /*
  * Voronoi iteration: new palette color is computed from weighted average of colors that map to that palette entry.
  */
-void viter_init(const colormap *map, const unsigned int max_threads, viter_state average_color[])
+LIQ_PRIVATE void viter_init(const colormap *map, const unsigned int max_threads, viter_state average_color[])
 {
     memset(average_color, 0, sizeof(average_color[0])*(VITER_CACHE_LINE_GAP+map->colors)*max_threads);
 }
 
-void viter_update_color(const f_pixel acolor, const float value, const colormap *map, unsigned int match, const unsigned int thread, viter_state average_color[])
+LIQ_PRIVATE void viter_update_color(const f_pixel acolor, const float value, const colormap *map, unsigned int match, const unsigned int thread, viter_state average_color[])
 {
     match += thread * (VITER_CACHE_LINE_GAP+map->colors);
     average_color[match].a += acolor.a * value;
@@ -30,7 +31,7 @@ void viter_update_color(const f_pixel acolor, const float value, const colormap 
     average_color[match].total += value;
 }
 
-void viter_finalize(colormap *map, const unsigned int max_threads, const viter_state average_color[])
+LIQ_PRIVATE void viter_finalize(colormap *map, const unsigned int max_threads, const viter_state average_color[])
 {
     for (unsigned int i=0; i < map->colors; i++) {
         double a=0, r=0, g=0, b=0, total=0;
@@ -58,7 +59,7 @@ void viter_finalize(colormap *map, const unsigned int max_threads, const viter_s
     }
 }
 
-double viter_do_iteration(histogram *hist, colormap *const map, const float min_opaque_val, viter_callback callback)
+LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, const float min_opaque_val, viter_callback callback)
 {
     const unsigned int max_threads = omp_get_max_threads();
     viter_state average_color[(VITER_CACHE_LINE_GAP+map->colors) * max_threads];

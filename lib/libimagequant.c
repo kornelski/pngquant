@@ -32,13 +32,13 @@
 #define omp_get_thread_num() 0
 #endif
 
+#include "libimagequant.h"
+
 #include "pam.h"
 #include "mediancut.h"
 #include "nearest.h"
 #include "blur.h"
 #include "viter.h"
-
-#include "libimagequant.h"
 
 #define LIQ_HIGH_MEMORY_LIMIT (1<<26)  /* avoid allocating buffers larger than 64MB */
 

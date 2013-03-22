@@ -1,4 +1,5 @@
 
+#include "libimagequant.h"
 #include "pam.h"
 #include "nearest.h"
 #include "mempool.h"
@@ -111,7 +112,7 @@ static colormap *get_subset_palette(const colormap *map)
     return subset_palette;
 }
 
-struct nearest_map *nearest_init(const colormap *map)
+LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map)
 {
     colormap *subset_palette = get_subset_palette(map);
 
@@ -174,7 +175,7 @@ struct nearest_map *nearest_init(const colormap *map)
     return centroids;
 }
 
-unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, const float min_opaque_val, float *diff)
+LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, const float min_opaque_val, float *diff)
 {
     const bool iebug = px.a > min_opaque_val;
 
@@ -211,7 +212,7 @@ unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel p
     }
 }
 
-void nearest_free(struct nearest_map *centroids)
+LIQ_PRIVATE void nearest_free(struct nearest_map *centroids)
 {
     mempool_destroy(centroids->mempool);
 }

@@ -1,4 +1,5 @@
 
+#include "libimagequant.h"
 #include "mempool.h"
 #include <stdlib.h>
 #include <stdint.h>
@@ -14,7 +15,7 @@ struct mempool {
     struct mempool *next;
 };
 
-void* mempool_create(mempool *mptr, unsigned int size, unsigned int max_size, void* (*malloc)(size_t), void (*free)(void*))
+LIQ_PRIVATE void* mempool_create(mempool *mptr, unsigned int size, unsigned int max_size, void* (*malloc)(size_t), void (*free)(void*))
 {
     assert(size <= max_size || max_size==0);
 
@@ -43,7 +44,7 @@ void* mempool_create(mempool *mptr, unsigned int size, unsigned int max_size, vo
     return mempool_alloc(mptr, size, max_size);
 }
 
-void *mempool_alloc(mempool *mptr, unsigned int size, unsigned int max_size)
+LIQ_PRIVATE void* mempool_alloc(mempool *mptr, unsigned int size, unsigned int max_size)
 {
     if (((*mptr)->used+size) <= (*mptr)->size) {
         unsigned int prevused = (*mptr)->used;
@@ -54,7 +55,7 @@ void *mempool_alloc(mempool *mptr, unsigned int size, unsigned int max_size)
     return mempool_create(mptr, size, max_size, (*mptr)->malloc, (*mptr)->free);
 }
 
-void mempool_destroy(mempool m)
+LIQ_PRIVATE void mempool_destroy(mempool m)
 {
     while (m) {
         mempool next = m->next;

@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+#include "libimagequant.h"
 #include "pam.h"
 #include "mediancut.h"
 
@@ -304,7 +305,7 @@ static bool total_box_error_below_target(double target_mse, struct box bv[], uns
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
-colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int newcolors, const double target_mse, const double max_mse)
+LIQ_PRIVATE colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int newcolors, const double target_mse, const double max_mse)
 {
     hist_item *achv = hist->achv;
     struct box bv[newcolors];

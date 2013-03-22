@@ -203,7 +203,7 @@ static unsigned int mse_to_quality(double mse)
     return 0;
 }
 
-LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int target, int minimum)
+LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int minimum, int target)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
     if (target < 0 || target > 100 || target < minimum || minimum < 0) return LIQ_VALUE_OUT_OF_RANGE;

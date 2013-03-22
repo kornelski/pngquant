@@ -182,7 +182,7 @@ static bool parse_quality(const char *quality, liq_attr *options, bool *min_qual
     }
 
     *min_quality_limit = (limit > 0);
-    return LIQ_OK == liq_set_quality(options, target, limit);
+    return LIQ_OK == liq_set_quality(options, limit, target);
 }
 
 static const struct {const char *old; char *new;} obsolete_options[] = {

@@ -83,11 +83,11 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if number of colors is outside the 2-256 range.
 
 ----
 
-    liq_error liq_set_quality(liq_attr* attr, int target, int minimum);
+    liq_error liq_set_quality(liq_attr* attr, int minimum, int maximum);
 
 Quality is in range `0` (worst) to `100` (best) and values are analoguous to JPEG quality (i.e. `80` is usually good enough).
 
-Quantization will attempt use lowest number of colors needed to achieve `target` quality. `target` value of `100` is the default and means conversion as good as possible.
+Quantization will attempt use lowest number of colors needed to achieve `maximum` quality. `maximum` value of `100` is the default and means conversion as good as possible.
 
 If it's not possible to convert image with at least `minimum` quality, then `liq_quantize_image()` will fail. The default minumum is `0` (proceeds regardless of quality).
 

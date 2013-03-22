@@ -472,7 +472,7 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
     return img->temp_row;
 }
 
-static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsigned int row)
+static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsigned int row, const float gamma_lut[])
 {
     assert(row_f_pixels);
     assert(!USE_SSE || 0 == ((uintptr_t)row_f_pixels & 15));
@@ -480,7 +480,7 @@ static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsign
     const rgba_pixel *const row_pixels = liq_image_get_row_rgba(img, row);
 
     for(unsigned int col=0; col < img->width; col++) {
-        row_f_pixels[col] = to_f(row_pixels[col]);
+        row_f_pixels[col] = to_f(gamma_lut, row_pixels[col]);
     }
 }
 
@@ -488,8 +488,10 @@ static const f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
 {
     if (!img->f_pixels) {
         if (img->temp_f_row) {
+            float gamma_lut[256];
+            to_f_set_gamma(gamma_lut, img->gamma);
             f_pixel *row_for_thread = img->temp_f_row + img->width * omp_get_thread_num();
-            convert_row_to_f(img, row_for_thread, row);
+            convert_row_to_f(img, row_for_thread, row, gamma_lut);
             return row_for_thread;
         }
         if (!liq_image_should_use_low_memory(img)) {
@@ -500,9 +502,10 @@ static const f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
             return liq_image_get_row_f(img, row);
         }
 
-        to_f_set_gamma(img->gamma);
+        float gamma_lut[256];
+        to_f_set_gamma(gamma_lut, img->gamma);
         for(unsigned int row=0; row < img->height; row++) {
-            convert_row_to_f(img, &img->f_pixels[row*img->width], row);
+            convert_row_to_f(img, &img->f_pixels[row*img->width], row, gamma_lut);
         }
     }
     return img->f_pixels + img->width * row;
@@ -735,12 +738,13 @@ static void sort_palette(colormap *map, const liq_attr *options)
 
 static void set_rounded_palette(liq_palette *const dest, colormap *const map, const double gamma)
 {
-    to_f_set_gamma(gamma);
+    float gamma_lut[256];
+    to_f_set_gamma(gamma_lut, gamma);
 
     dest->count = map->colors;
     for(unsigned int x = 0; x < map->colors; ++x) {
         rgba_pixel px = to_rgb(gamma, map->palette[x].acolor);
-        map->palette[x].acolor = to_f(px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
+        map->palette[x].acolor = to_f(gamma_lut, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
         dest->entries[x] = (liq_color){.r=px.r,.g=px.g,.b=px.b,.a=px.a};
     }

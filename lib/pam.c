@@ -174,7 +174,7 @@ struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned in
 }
 
 #define PAM_ADD_TO_HIST(entry) { \
-    hist->achv[j].acolor = to_f(entry.color.rgba); \
+    hist->achv[j].acolor = to_f(gamma_lut, entry.color.rgba); \
     hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = entry.perceptual_weight; \
     ++j; \
     total_weight += entry.perceptual_weight; \
@@ -189,7 +189,8 @@ histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const
     hist->size = acht->colors;
     hist->free = free;
 
-    to_f_set_gamma(gamma);
+    float gamma_lut[256];
+    to_f_set_gamma(gamma_lut, gamma);
 
     double total_weight=0;
     for(unsigned int j=0, i=0; i < acht->hash_size; ++i) {
@@ -254,11 +255,10 @@ void pam_freecolormap(colormap *c)
     free(c->palette); free(c);
 }
 
-void to_f_set_gamma(double gamma)
+LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[], double gamma)
 {
     for(int i=0; i < 256; i++) {
         gamma_lut[i] = pow((double)i/255.0, internal_gamma/gamma);
     }
 }
 
-float gamma_lut[256];

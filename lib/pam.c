@@ -257,7 +257,7 @@ LIQ_PRIVATE void pam_freecolormap(colormap *c)
     free(c->palette); free(c);
 }
 
-LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[], double gamma)
+LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[static 256], const double gamma)
 {
     for(int i=0; i < 256; i++) {
         gamma_lut[i] = pow((double)i/255.0, internal_gamma/gamma);

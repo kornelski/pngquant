@@ -67,14 +67,14 @@ typedef struct {
 
 static const double internal_gamma = 0.5499;
 
-LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[], double gamma);
+LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[static 256], const double gamma);
 
 /**
  Converts 8-bit color to internal gamma and premultiplied alpha.
  (premultiplied color space is much better for blending of semitransparent colors)
  */
-inline static f_pixel to_f(const float gamma_lut[], const rgba_pixel px) ALWAYS_INLINE;
-inline static f_pixel to_f(const float gamma_lut[], const rgba_pixel px)
+inline static f_pixel to_f(const float gamma_lut[static 256], const rgba_pixel px) ALWAYS_INLINE;
+inline static f_pixel to_f(const float gamma_lut[static 256], const rgba_pixel px)
 {
     float a = px.a/255.f;
 

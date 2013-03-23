@@ -194,6 +194,7 @@ typedef struct {
 
     float color_weight;      // these two change every time histogram subset is sorted
     unsigned int sort_value;
+    unsigned char likely_colormap_index;
 } hist_item;
 
 typedef struct {

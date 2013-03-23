@@ -25,6 +25,8 @@ struct head {
 
 struct nearest_map {
     struct head *heads;
+    const colormap *map;
+    float nearest_other_color_dist[256];
     mempool mempool;
 };
 
@@ -43,6 +45,19 @@ static int find_slow(const f_pixel px, const colormap *map)
     return best;
 }
 
+static float distance_from_nearest_other_color(const colormap *map, const unsigned int i)
+{
+    float second_best=MAX_DIFF;
+    for(unsigned int j=0; j < map->colors; j++) {
+        if (i == j) continue;
+        float diff = colordifference(map->palette[i].acolor, map->palette[j].acolor);
+        if (diff <= second_best) {
+            second_best = diff;
+        }
+    }
+    return second_best;
+}
+
 static int compareradius(const void *ap, const void *bp)
 {
     float a = ((const struct sorttmp*)ap)->radius;
@@ -51,7 +66,7 @@ static int compareradius(const void *ap, const void *bp)
 }
 
 // floats and colordifference calculations are not perfect
-const float error_margin = 2.f/256.f;
+const float error_margin = 8.f/256.f/256.f;
 
 static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, bool skip_index[], unsigned int *skipped)
 {
@@ -121,6 +136,13 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map)
     struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids), mempool_size, malloc, free);
     centroids->mempool = m;
 
+
+    for(unsigned int i=0; i < map->colors; i++) {
+        centroids->nearest_other_color_dist[i] = distance_from_nearest_other_color(map,i) / 4.f; // half of squared distance
+    }
+
+    centroids->map = map;
+
     unsigned int skipped=0;
     bool skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=false;
 
@@ -175,17 +197,23 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map)
     return centroids;
 }
 
-LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, const float min_opaque_val, float *diff)
+LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, int palette_index_guess, const float min_opaque_val, float *diff)
 {
     const bool iebug = px.a > min_opaque_val;
 
     const struct head *const heads = centroids->heads;
+    const float guess_diff = colordifference(centroids->map->palette[palette_index_guess].acolor, px);
+    if (guess_diff < centroids->nearest_other_color_dist[palette_index_guess]) {
+        if (diff) *diff = guess_diff;
+        return palette_index_guess;
+    }
+
     for(unsigned int i=0; /* last head will always be selected */ ; i++) {
         float vantage_point_dist = colordifference(px, heads[i].vantage_point);
 
         if (vantage_point_dist <= heads[i].radius) {
             assert(heads[i].num_candidates);
-            unsigned int ind=heads[i].candidates[0].index;
+            unsigned int ind=0;
             float dist = colordifference(px, heads[i].candidates[0].color);
 
             /* penalty for making holes in IE */
@@ -203,11 +231,11 @@ LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, con
 
                 if (newdist < dist) {
                     dist = newdist;
-                    ind = heads[i].candidates[j].index;
+                    ind = j;
                 }
             }
             if (diff) *diff = dist;
-            return ind;
+            return heads[i].candidates[ind].index;
         }
     }
 }

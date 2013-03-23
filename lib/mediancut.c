@@ -433,6 +433,7 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
     for(unsigned int bi = 0; bi < boxes; ++bi) {
         for(unsigned int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
             achv[i].adjusted_weight *= sqrt(1.0 +colordifference(map->palette[bi].acolor, achv[i].acolor)/4.0);
+            achv[i].likely_colormap_index = bi;
         }
     }
 }

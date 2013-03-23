@@ -774,7 +774,6 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     float remapping_error=0;
 
     struct nearest_map *const n = nearest_init(map);
-    const unsigned int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
 
     const unsigned int max_threads = omp_get_max_threads();
     viter_state average_color[(VITER_CACHE_LINE_GAP+map->colors) * max_threads];
@@ -784,23 +783,15 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
         default(none) shared(average_color) reduction(+:remapping_error)
     for(int row = 0; row < rows; ++row) {
         const f_pixel *const row_pixels = liq_image_get_row_f(input_image, row);
+        unsigned int last_match=0;
         for(unsigned int col = 0; col < cols; ++col) {
-
             f_pixel px = row_pixels[col];
-            unsigned int match;
+            float diff;
 
-            if (px.a < 1.0/256.0) {
-                match = transparent_ind;
-            } else {
-                float diff;
-                match = nearest_search(n, px, min_opaque_val, &diff);
+            output_pixels[row][col] = last_match = nearest_search(n, px, last_match, min_opaque_val, &diff);
 
-                remapping_error += diff;
-            }
-
-            output_pixels[row][col] = match;
-
-            viter_update_color(px, 1.0, map, match, omp_get_thread_num(), average_color);
+            remapping_error += diff;
+            viter_update_color(px, 1.0, map, last_match, omp_get_thread_num(), average_color);
         }
     }
 
@@ -811,18 +802,6 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     return remapping_error / (input_image->width * input_image->height);
 }
 
-static float distance_from_closest_other_color(const colormap *map, const unsigned int i)
-{
-    float second_best=MAX_DIFF;
-    for(unsigned int j=0; j < map->colors; j++) {
-        if (i == j) continue;
-        float diff = colordifference(map->palette[i].acolor, map->palette[j].acolor);
-        if (diff <= second_best) {
-            second_best = diff;
-        }
-    }
-    return second_best;
-}
 
 inline static float min_4(float a, float b, float c, float d)
 {
@@ -882,13 +861,6 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
     const colormap_item *acolormap = map->palette;
 
     struct nearest_map *const n = nearest_init(map);
-    const unsigned int transparent_ind = nearest_search(n, (f_pixel){0,0,0,0}, min_opaque_val, NULL);
-
-    float difference_tolerance[map->colors];
-
-    if (output_image_is_remapped) for(unsigned int i=0; i < map->colors; i++) {
-            difference_tolerance[i] = distance_from_closest_other_color(map,i) / 4.f; // half of squared distance
-    }
 
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;
@@ -906,6 +878,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
     }
 
     bool fs_direction = true;
+    unsigned int last_match=0;
     for (unsigned int row = 0; row < rows; ++row) {
         memset(nexterr, 0, (cols + 2) * sizeof(*nexterr));
 
@@ -916,21 +889,10 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
             float dither_level = dither_map ? dither_map[row*cols + col]/255.f : 15.f/16.f;
             const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], row_pixels[col]);
 
-            unsigned int ind;
-            if (spx.a < 1.0/256.0) {
-                ind = transparent_ind;
-            } else {
-                unsigned int curr_ind = output_pixels[row][col];
-                if (output_image_is_remapped && colordifference(map->palette[curr_ind].acolor, spx) < difference_tolerance[curr_ind]) {
-                    ind = curr_ind;
-                } else {
-                    ind = nearest_search(n, spx, min_opaque_val, NULL);
-                }
-            }
+            const unsigned int guessed_match = output_image_is_remapped ? output_pixels[row][col] : last_match;
+            output_pixels[row][col] = last_match = nearest_search(n, spx, guessed_match, min_opaque_val, NULL);
 
-            output_pixels[row][col] = ind;
-
-            const f_pixel xp = acolormap[ind].acolor;
+            const f_pixel xp = acolormap[last_match].acolor;
             f_pixel err = {
                 .r = (spx.r - xp.r),
                 .g = (spx.g - xp.g),
@@ -944,7 +906,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
                 dither_level *= 0.75;
             }
 
-            const float colorimp = (3.0f + acolormap[ind].acolor.a)/4.0f * dither_level;
+            const float colorimp = (3.0f + acolormap[last_match].acolor.a)/4.0f * dither_level;
             err.r *= colorimp;
             err.g *= colorimp;
             err.b *= colorimp;

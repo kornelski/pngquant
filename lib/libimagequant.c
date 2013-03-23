@@ -771,7 +771,6 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     const unsigned int cols = input_image->width;
     const float min_opaque_val = input_image->min_opaque_val;
 
-    int remapped_pixels=0;
     float remapping_error=0;
 
     struct nearest_map *const n = nearest_init(map);
@@ -782,7 +781,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     viter_init(map, max_threads, average_color);
 
     #pragma omp parallel for if (rows*cols > 3000) \
-        default(none) shared(average_color) reduction(+:remapping_error) reduction(+:remapped_pixels)
+        default(none) shared(average_color) reduction(+:remapping_error)
     for(int row = 0; row < rows; ++row) {
         const f_pixel *const row_pixels = liq_image_get_row_f(input_image, row);
         for(unsigned int col = 0; col < cols; ++col) {
@@ -796,7 +795,6 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
                 float diff;
                 match = nearest_search(n, px, min_opaque_val, &diff);
 
-                remapped_pixels++;
                 remapping_error += diff;
             }
 
@@ -810,7 +808,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
 
     nearest_free(n);
 
-    return remapping_error / MAX(1,remapped_pixels);
+    return remapping_error / (input_image->width * input_image->height);
 }
 
 static float distance_from_closest_other_color(const colormap *map, const unsigned int i)

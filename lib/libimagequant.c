@@ -457,7 +457,8 @@ LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *cal
 
 static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
 {
-    if (img->rows && img->min_opaque_val >= 1.f) {
+    const bool iebug = img->min_opaque_val < 1.f;
+    if (img->rows && !iebug) {
         return img->rows[row];
     }
 
@@ -468,7 +469,7 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
         liq_executing_user_callback(img->row_callback, (liq_color*)img->temp_row, row, img->width, img->row_callback_user_info);
     }
 
-    modify_alpha(img, img->temp_row);
+    if (iebug) modify_alpha(img, img->temp_row);
     return img->temp_row;
 }
 
@@ -1090,7 +1091,7 @@ static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels)
             float al = px.a / 255.f;
                 al = almost_opaque_val + (al-almost_opaque_val) * (1.f-almost_opaque_val) / (min_opaque_val-almost_opaque_val);
             al *= 256.f;
-            row_pixels[col].a = al > 256.f ? 255 : al;
+            row_pixels[col].a = al >= 255.f ? 255 : al;
         }
     }
 }

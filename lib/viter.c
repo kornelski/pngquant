@@ -59,12 +59,12 @@ LIQ_PRIVATE void viter_finalize(colormap *map, const unsigned int max_threads, c
     }
 }
 
-LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, const float min_opaque_val, viter_callback callback)
+LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, const float min_opaque_val, viter_callback callback, const bool fast_palette)
 {
     const unsigned int max_threads = omp_get_max_threads();
     viter_state average_color[(VITER_CACHE_LINE_GAP+map->colors) * max_threads];
     viter_init(map, max_threads, average_color);
-    struct nearest_map *const n = nearest_init(map);
+    struct nearest_map *const n = nearest_init(map, fast_palette);
     hist_item *const achv = hist->achv;
     const int hist_size = hist->size;
 

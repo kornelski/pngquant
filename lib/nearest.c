@@ -65,10 +65,7 @@ static int compareradius(const void *ap, const void *bp)
     return a > b ? 1 : (a < b ? -1 : 0);
 }
 
-// floats and colordifference calculations are not perfect
-const float error_margin = 8.f/256.f/256.f;
-
-static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, bool skip_index[], unsigned int *skipped)
+static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, float error_margin, bool skip_index[], unsigned int *skipped)
 {
     struct sorttmp colors[map->colors];
     unsigned int colorsused=0;
@@ -127,7 +124,7 @@ static colormap *get_subset_palette(const colormap *map)
     return subset_palette;
 }
 
-LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map)
+LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 {
     colormap *subset_palette = get_subset_palette(map);
 
@@ -136,9 +133,9 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map)
     struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids), mempool_size, malloc, free);
     centroids->mempool = m;
 
-
     for(unsigned int i=0; i < map->colors; i++) {
-        centroids->nearest_other_color_dist[i] = distance_from_nearest_other_color(map,i) / 4.f; // half of squared distance
+        const float dist = distance_from_nearest_other_color(map,i);
+        centroids->nearest_other_color_dist[i] = fast ? dist / 3.f + 2.f/256.f/256.f : dist / 4.f; // half of squared distance
     }
 
     centroids->map = map;
@@ -150,11 +147,13 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map)
     const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
     centroids->heads = mempool_alloc(&centroids->mempool, sizeof(centroids->heads[0])*(num_vantage_points+1), mempool_size); // +1 is fallback head
 
+    // floats and colordifference calculations are not perfect
+    const float error_margin = fast ? 0 : 8.f/256.f/256.f;
     unsigned int h=0;
     for(; h < num_vantage_points; h++) {
         unsigned int num_candiadtes = 1+(map->colors - skipped)/((1+num_vantage_points-h)/2);
 
-        centroids->heads[h] = build_head(subset_palette->palette[h].acolor, map, num_candiadtes, &centroids->mempool, skip_index, &skipped);
+        centroids->heads[h] = build_head(subset_palette->palette[h].acolor, map, num_candiadtes, &centroids->mempool, error_margin, skip_index, &skipped);
         if (centroids->heads[h].num_candidates == 0) {
             break;
         }
@@ -186,7 +185,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map)
         skip_index[find_slow(extrema[i], map)]=0;
     }
 
-    centroids->heads[h] = build_head((f_pixel){0,0,0,0}, map, map->colors, &centroids->mempool, skip_index, &skipped);
+    centroids->heads[h] = build_head((f_pixel){0,0,0,0}, map, map->colors, &centroids->mempool, error_margin, skip_index, &skipped);
     centroids->heads[h].radius = MAX_DIFF;
 
     // get_subset_palette could have created a copy

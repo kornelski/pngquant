@@ -2,6 +2,7 @@ version 2.0
 -----------
  - refactored codebase into pngquant and standalone libimagequant
  - reduced memory usage by further 30% (and more for very large images)
+ - less precise remapping improving speed by 25% in higher speed settings
 
 version 1.8
 -----------

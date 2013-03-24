@@ -105,7 +105,7 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
                         capacity = 8;
                         if (freestackp <= 0) {
                             // estimate how many colors are going to be + headroom
-                            const int mempool_size = ((rows-row) * 2 * colors / (1+row) + 1024) * sizeof(struct acolorhist_arr_item);
+                            const int mempool_size = ((acht->rows + rows-row) * 2 * colors / (acht->rows + row + 1) + 1024) * sizeof(struct acolorhist_arr_item);
                             new_items = mempool_alloc(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity, mempool_size);
                         } else {
                             // freestack stores previously freed (reallocated) arrays that can be reused
@@ -118,7 +118,7 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
                         if (freestackp < stacksize-1) {
                             freestack[freestackp++] = other_items;
                         }
-                        const int mempool_size = ((rows-row) * 2 * colors / (1+row) + 32*capacity) * sizeof(struct acolorhist_arr_item);
+                        const int mempool_size = ((acht->rows + rows-row) * 2 * colors / (acht->rows + row + 1) + 32*capacity) * sizeof(struct acolorhist_arr_item);
                         new_items = mempool_alloc(&acht->mempool, sizeof(struct acolorhist_arr_item)*capacity, mempool_size);
                         if (!new_items) return false;
                         memcpy(new_items, other_items, sizeof(other_items[0])*achl->capacity);
@@ -150,13 +150,14 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
 
     }
     acht->colors = colors;
+    acht->rows += rows;
     acht->freestackp = freestackp;
     return true;
 }
 
 LIQ_PRIVATE struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits, void* (*malloc)(size_t), void (*free)(void*))
 {
-    const unsigned int estimated_colors = MIN(maxcolors, surface/(4+ignorebits));
+    const unsigned int estimated_colors = MIN(maxcolors, surface/(ignorebits + (surface > 512*512 ? 5 : 4)));
     const unsigned int hash_size = estimated_colors < 66000 ? 6673 : (estimated_colors < 200000 ? 12011 : 24019);
 
     mempool m = NULL;

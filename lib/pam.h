@@ -137,7 +137,7 @@ inline static double min_colordifference_ch(const double x, const double y, cons
 inline static double min_colordifference_ch(const double x, const double y, const double alphas)
 {
     const double black = x-y, white = black+alphas;
-    return MIN(black*black , white*white);
+    return MIN(black*black , white*white) * 2.f;
 }
 
 /* least possible difference between colors (difference varies depending on background they're blended on) */

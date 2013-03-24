@@ -14,11 +14,8 @@ struct mempool {
     void (*free)(void*);
     struct mempool *next;
 };
-
-LIQ_PRIVATE void* mempool_create(mempool *mptr, unsigned int size, unsigned int max_size, void* (*malloc)(size_t), void (*free)(void*))
+LIQ_PRIVATE void* mempool_create(mempool *mptr, const unsigned int size, unsigned int max_size, void* (*malloc)(size_t), void (*free)(void*))
 {
-    assert(size <= max_size || max_size==0);
-
     if (*mptr && ((*mptr)->used+size) <= (*mptr)->size) {
         unsigned int prevused = (*mptr)->used;
         (*mptr)->used += (size+15UL) & ~0xFUL;
@@ -26,7 +23,8 @@ LIQ_PRIVATE void* mempool_create(mempool *mptr, unsigned int size, unsigned int 
     }
 
     mempool old = *mptr;
-    if (!max_size) max_size = size > (1<<17) ? size : 1<<17;
+    if (!max_size) max_size = (1<<17);
+    max_size = size+ALIGN_MASK > max_size ? size+ALIGN_MASK : max_size;
 
     *mptr = malloc(MEMPOOL_RESERVED + max_size);
     if (!*mptr) return NULL;
@@ -38,10 +36,10 @@ LIQ_PRIVATE void* mempool_create(mempool *mptr, unsigned int size, unsigned int 
         .next = old,
     };
     uintptr_t mptr_used_start = (uintptr_t)(*mptr + (*mptr)->used);
-    (*mptr)->used += (ALIGN_MASK+1) - (mptr_used_start & ALIGN_MASK); // reserve bytes required to make subsequent allocations aligned
+    (*mptr)->used += (ALIGN_MASK + 1 - (mptr_used_start & ALIGN_MASK)) & ALIGN_MASK; // reserve bytes required to make subsequent allocations aligned
     assert(!((uintptr_t)(*mptr + (*mptr)->used) & ALIGN_MASK));
 
-    return mempool_alloc(mptr, size, max_size);
+    return mempool_alloc(mptr, size, size);
 }
 
 LIQ_PRIVATE void* mempool_alloc(mempool *mptr, unsigned int size, unsigned int max_size)

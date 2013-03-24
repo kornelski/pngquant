@@ -20,7 +20,7 @@
 #include "pam.h"
 #include "mempool.h"
 
-LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const *pixels, unsigned int cols, unsigned int rows, const unsigned char *importance_map)
+LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba_pixel *const pixels[], unsigned int cols, unsigned int rows, const unsigned char *importance_map)
 {
     const unsigned int maxacolors = acht->maxcolors, ignorebits = acht->ignorebits;
     const unsigned int channel_mask = 255U>>ignorebits<<ignorebits;

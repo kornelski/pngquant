@@ -455,11 +455,15 @@ LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *cal
     callback(temp_row, row, width, user_info);
 }
 
+inline static bool liq_image_can_use_rows(liq_image *img)
+{
+    const bool iebug = img->min_opaque_val < 1.f;
+    return (img->rows && !iebug);
+}
 
 static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
 {
-    const bool iebug = img->min_opaque_val < 1.f;
-    if (img->rows && !iebug) {
+    if (liq_image_can_use_rows(img)) {
         return img->rows[row];
     }
 
@@ -470,7 +474,7 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
         liq_executing_user_callback(img->row_callback, (liq_color*)img->temp_row, row, img->width, img->row_callback_user_info);
     }
 
-    if (iebug) modify_alpha(img, img->temp_row);
+    if (img->min_opaque_val < 1.f) modify_alpha(img, img->temp_row);
     return img->temp_row;
 }
 
@@ -997,6 +1001,7 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
     unsigned int maxcolors = options->max_histogram_entries;
 
     struct acolorhash_table *acht;
+    const bool all_rows_at_once = liq_image_can_use_rows(input_image);
     do {
         acht = pam_allocacolorhash(maxcolors, rows*cols, ignorebits, options->malloc, options->free);
         if (!acht) return NULL;
@@ -1004,9 +1009,15 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
         // histogram uses noise contrast map for importance. Color accuracy in noisy areas is not very important.
         // noise map does not include edges to avoid ruining anti-aliasing
         for(unsigned int row=0; row < rows; row++) {
-            const rgba_pixel* rows_p[1] = { liq_image_get_row_rgba(input_image, row) };
-            if (!pam_computeacolorhash(acht, rows_p, cols, 1, input_image->noise ? &input_image->noise[row * cols] : NULL)) {
-
+            bool added_ok;
+            if (all_rows_at_once) {
+                added_ok = pam_computeacolorhash(acht, (const rgba_pixel *const *)input_image->rows, cols, rows, input_image->noise);
+                if (added_ok) break;
+            } else {
+                const rgba_pixel* rows_p[1] = { liq_image_get_row_rgba(input_image, row) };
+                added_ok = pam_computeacolorhash(acht, rows_p, cols, 1, input_image->noise ? &input_image->noise[row * cols] : NULL);
+            }
+            if (!added_ok) {
                 ignorebits++;
                 liq_verbose_printf(options, "  too many colors! Scaling colors to improve clustering... %d", ignorebits);
                 pam_freeacolorhash(acht);

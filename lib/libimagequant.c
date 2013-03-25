@@ -501,6 +501,8 @@ static const f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
             convert_row_to_f(img, row_for_thread, row, gamma_lut);
             return row_for_thread;
         }
+
+        assert(omp_get_thread_num() == 0);
         if (!liq_image_should_use_low_memory(img)) {
             img->f_pixels = img->malloc(sizeof(img->f_pixels[0]) * img->width * img->height);
         }
@@ -776,8 +778,11 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     const int rows = input_image->height;
     const unsigned int cols = input_image->width;
     const float min_opaque_val = input_image->min_opaque_val;
-
     float remapping_error=0;
+
+    if (!liq_image_get_row_f(input_image, 0)) { // trigger lazy conversion
+        return -1;
+    }
 
     struct nearest_map *const n = nearest_init(map, fast);
 

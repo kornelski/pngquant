@@ -1,3 +1,5 @@
+VERSION=2.0.0
+
 # This changes default "cc" to "gcc", but still allows customization of the CC variable
 # if this line causes problems with non-GNU make, just remove it:
 CC := $(patsubst cc,gcc,$(CC))
@@ -13,6 +15,10 @@ OBJS = pam.o mediancut.o blur.o mempool.o viter.o nearest.o libimagequant.o
 
 BUILD_CONFIGURATION="$(CC) $(CFLAGS) $(LDFLAGS)"
 
+DISTFILES = $(OBJS:.o=.c) *.h MANUAL.md COPYRIGHT Makefile
+TARNAME = libimagequant-$(VERSION)
+TARFILE = $(TARNAME)-src.tar.bz2
+
 all: static
 
 static: $(STATICLIB)
@@ -25,10 +31,21 @@ $(STATICLIB): $(OBJS)
 
 $(OBJS): pam.h build_configuration
 
+dist: $(TARFILE)
+
+$(TARFILE): $(DISTFILES)
+	rm -rf $(TARFILE) $(TARNAME)
+	mkdir $(TARNAME)
+	cp $(DISTFILES) $(TARNAME)
+	tar -cjf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
+	rm -rf $(TARNAME)
+	-shasum $(TARFILE)
+
 clean:
-	rm -f $(OBJS) $(STATICLIB) build_configuration
+	rm -f $(OBJS) $(STATICLIB) $(TARFILE) build_configuration
 
 build_configuration::
 	@test -f build_configuration && test $(BUILD_CONFIGURATION) = "`cat build_configuration`" || echo > build_configuration $(BUILD_CONFIGURATION)
 
-.PHONY: all openmp static clean
+.PHONY: all openmp static clean dist
+.DELETE_ON_ERROR:

@@ -369,7 +369,7 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
     };
 
     if (!rows || attr->min_opaque_val < 1.f) {
-        img->temp_row = attr->malloc(sizeof(img->temp_row[0]) * width);
+        img->temp_row = attr->malloc(sizeof(img->temp_row[0]) * width * omp_get_max_threads());
         if (!img->temp_row) return NULL;
     }
 
@@ -468,14 +468,15 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
     }
 
     assert(img->temp_row);
+    rgba_pixel *temp_row = img->temp_row + img->width * omp_get_thread_num();
     if (img->rows) {
-        memcpy(img->temp_row, img->rows[row], img->width * sizeof(img->temp_row[0]));
+        memcpy(temp_row, img->rows[row], img->width * sizeof(temp_row[0]));
     } else {
-        liq_executing_user_callback(img->row_callback, (liq_color*)img->temp_row, row, img->width, img->row_callback_user_info);
+        liq_executing_user_callback(img->row_callback, (liq_color*)temp_row, row, img->width, img->row_callback_user_info);
     }
 
-    if (img->min_opaque_val < 1.f) modify_alpha(img, img->temp_row);
-    return img->temp_row;
+    if (img->min_opaque_val < 1.f) modify_alpha(img, temp_row);
+    return temp_row;
 }
 
 static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsigned int row, const float gamma_lut[])

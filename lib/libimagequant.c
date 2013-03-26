@@ -344,9 +344,9 @@ static bool liq_image_use_low_memory(liq_image *img)
     return img->temp_f_row != NULL;
 }
 
-static bool liq_image_should_use_low_memory(liq_image *img)
+static bool liq_image_should_use_low_memory(liq_image *img, const bool low_memory_hint)
 {
-    return img->width * img->height * sizeof(f_pixel) > LIQ_HIGH_MEMORY_LIMIT;
+    return img->width * img->height * sizeof(f_pixel) > (low_memory_hint ? LIQ_HIGH_MEMORY_LIMIT/8 : LIQ_HIGH_MEMORY_LIMIT);
 }
 
 static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], liq_image_get_rgba_row_callback *row_callback, void *row_callback_user_info, int width, int height, double gamma)
@@ -373,8 +373,9 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
         if (!img->temp_row) return NULL;
     }
 
-    if (liq_image_should_use_low_memory(img)) {
-        verbose_print(attr, "  Conserving memory");
+    // if image is huge or converted pixels are not likely to be reused then don't cache converted pixels
+    if (liq_image_should_use_low_memory(img, !img->temp_row && !attr->use_contrast_maps && !attr->use_dither_map)) {
+        verbose_print(attr, "  conserving memory");
         if (!liq_image_use_low_memory(img)) return NULL;
     }
 
@@ -503,7 +504,7 @@ static const f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
         }
 
         assert(omp_get_thread_num() == 0);
-        if (!liq_image_should_use_low_memory(img)) {
+        if (!liq_image_should_use_low_memory(img, false)) {
             img->f_pixels = img->malloc(sizeof(img->f_pixels[0]) * img->width * img->height);
         }
         if (!img->f_pixels) {

@@ -57,6 +57,7 @@ use --force to overwrite.\n"
 
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "lib/libimagequant.h"
+#include "lib/pam.h"
 
 struct pngquant_options {
     liq_attr *liq;

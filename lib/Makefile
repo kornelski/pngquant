@@ -5,6 +5,9 @@ VERSION=2.0.0
 CC := $(patsubst cc,gcc,$(CC))
 
 STATICLIB=libimagequant.a
+DLL=libimagequant.dll
+DLLIMP=libimagequant_dll.a
+DLLDEF=libimagequant_dll.def
 
 CFLAGSOPT ?= -DNDEBUG -O3 -fstrict-aliasing -ffast-math -funroll-loops -fomit-frame-pointer -ffinite-math-only
 
@@ -23,8 +26,14 @@ all: static
 
 static: $(STATICLIB)
 
+dll:
+	$(MAKE) CFLAGSADD="-DLIQ_EXPORT='__declspec(dllexport)'" $(DLL)
+
 openmp::
 	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8 -$(MAKEFLAGS)
+
+$(DLL) $(DLLIMP): $(OBJS)
+	$(CC) -shared -o $(DLL) $(OBJS) $(LDFLAGS) -Wl,--out-implib,$(DLLIMP),--output-def,$(DLLDEF)
 
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
@@ -47,5 +56,5 @@ clean:
 build_configuration::
 	@test -f build_configuration && test $(BUILD_CONFIGURATION) = "`cat build_configuration`" || echo > build_configuration $(BUILD_CONFIGURATION)
 
-.PHONY: all openmp static clean dist
+.PHONY: all openmp static clean dist dll
 .DELETE_ON_ERROR:

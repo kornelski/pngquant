@@ -10,6 +10,7 @@
 #import <Cocoa/Cocoa.h>
 #import <CoreGraphics/CoreGraphics.h>
 #include <stdio.h>
+#include "lib/libimagequant.h"
 #include "lib/pam.h"
 
 int rwpng_read_image24_cocoa(FILE *fp, png24_image *out)

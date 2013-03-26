@@ -1034,6 +1034,10 @@ static histogram *get_histogram(liq_image *input_image, liq_attr *options)
         }
     } while(!acht);
 
+    if (ignorebits > 0) {
+        options->fast_palette = true; // no point having perfect match with imperfect colors. Also mismatch slows down search.
+    }
+
     if (input_image->noise) {
         input_image->free(input_image->noise);
         input_image->noise = NULL;

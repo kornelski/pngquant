@@ -39,10 +39,10 @@ BUILD_CONFIGURATION="$(CC) $(CFLAGS) $(LDFLAGS)"
 all: $(BIN)
 
 lib/libimagequant.a::
-	$(MAKE) -C lib $(MAKEFLAGS) static
+	$(MAKE) -C lib -$(MAKEFLAGS) static
 
 openmp::
-	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8 $(MAKEFLAGS)
+	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8 -$(MAKEFLAGS)
 
 $(BIN): $(OBJS) lib/libimagequant.a
 	$(CC) $(OBJS) $(LDFLAGS) $(OPENMPFLAGS) $(FRAMEWORKS) -o $@
@@ -71,7 +71,7 @@ $(TARFILE): $(DISTFILES)
 
 clean:
 	rm -f $(BIN) $(OBJS) $(COCOA_OBJS) $(TARFILE) build_configuration
-	$(MAKE) -C lib $(MAKEFLAGS) clean
+	$(MAKE) -C lib -$(MAKEFLAGS) clean
 
 build_configuration::
 	@test -f build_configuration && test $(BUILD_CONFIGURATION) = "`cat build_configuration`" || echo > build_configuration $(BUILD_CONFIGURATION)

@@ -24,7 +24,7 @@ all: static
 static: $(STATICLIB)
 
 openmp::
-	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8 $(MAKEFLAGS)
+	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8 -$(MAKEFLAGS)
 
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^

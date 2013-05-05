@@ -290,7 +290,7 @@ LIQ_EXPORT void liq_set_log_flush_callback(liq_attr *attr, liq_log_flush_callbac
 
 LIQ_EXPORT liq_attr* liq_attr_create()
 {
-    return liq_attr_create_with_allocator(malloc, free);
+    return liq_attr_create_with_allocator(NULL, NULL);
 }
 
 LIQ_EXPORT void liq_attr_destroy(liq_attr *attr)
@@ -313,21 +313,26 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
     return attr;
 }
 
-LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), void (*free)(void*))
+LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_t), void (*custom_free)(void*))
 {
 #if USE_SSE
     if (!is_sse2_available()) {
         return NULL;
     }
 #endif
-    if ((malloc != NULL) != (free != NULL)) return NULL; // either specify both or none
+    if (!custom_malloc && !custom_free) {
+        custom_malloc = malloc;
+        custom_free = free;
+    } else if (!custom_malloc != !custom_free) {
+        return NULL; // either specify both or none
+    }
 
-    liq_attr *attr = malloc(sizeof(liq_attr));
+    liq_attr *attr = custom_malloc(sizeof(liq_attr));
     if (!attr) return NULL;
     *attr = (liq_attr) {
         .magic_header = liq_attr_magic,
-        .malloc = malloc,
-        .free = free,
+        .malloc = custom_malloc,
+        .free = custom_free,
         .max_colors = 256,
         .min_opaque_val = 1, // whether preserve opaque colors for IE (1.0=no, does not affect alpha)
         .last_index_transparent = false, // puts transparent color at last index. This is workaround for blu-ray subtitles.

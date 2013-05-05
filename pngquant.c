@@ -525,6 +525,7 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     if (input_image_rwpng.rgba_data) {
         free(input_image_rwpng.rgba_data);
     }
+    if (outname) free(outname);
 
     return retval;
 }

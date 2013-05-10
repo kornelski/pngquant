@@ -82,7 +82,7 @@ typedef union {
     jmp_buf jmpbuf;
     png24_image png24;
     png8_image png8;
-} png_image;
+} rwpng_png_image;
 
 /* prototypes for public functions in rwpng.c */
 

@@ -217,7 +217,7 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p)
 }
 
 
-static pngquant_error rwpng_write_image_init(png_image *mainprog_ptr, png_structpp png_ptr_p, png_infopp info_ptr_p, FILE *outfile, int fast_compression)
+static pngquant_error rwpng_write_image_init(rwpng_png_image *mainprog_ptr, png_structpp png_ptr_p, png_infopp info_ptr_p, FILE *outfile, int fast_compression)
 {
     /* could also replace libpng warning-handler (final NULL), but no need: */
 
@@ -281,7 +281,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     png_structp png_ptr;
     png_infop info_ptr;
 
-    pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile, mainprog_ptr->fast_compression);
+    pngquant_error retval = rwpng_write_image_init((rwpng_png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile, mainprog_ptr->fast_compression);
     if (retval) return retval;
 
     // Palette images generally don't gain anything from filtering
@@ -343,7 +343,7 @@ pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg)
 {
-    png_image  *mainprog_ptr;
+    rwpng_png_image  *mainprog_ptr;
 
     /* This function, aside from the extra step of retrieving the "error
      * pointer" (below) and the fact that it exists within the application

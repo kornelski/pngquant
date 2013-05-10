@@ -6,8 +6,10 @@ License:        BSD
 URL:            http://pngquant.org
 Source0:        https://github.com/pornel/improved-pngquant/tarball/%{version}
 BuildRequires:  libpng-devel%{?_isa} >= 1.2.46-1
+BuildRequires:  zlib-devel%{?_isa} >= 1.2.3-1
 BuildRequires:  gcc%{?_isa} >= 4.2-1
 Requires:       libpng%{?_isa} >= 1.2.46-1
+Requires:       zlib%{?isa} >= 1.2.3-1
 
 %description
 pngquant converts 24/32-bit RGBA PNG images to 8-bit palette with

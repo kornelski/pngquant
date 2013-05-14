@@ -320,7 +320,7 @@ pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
     png_structp png_ptr;
     png_infop info_ptr;
 
-    pngquant_error retval = rwpng_write_image_init((png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile, 0);
+    pngquant_error retval = rwpng_write_image_init((rwpng_png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile, 0);
     if (retval) return retval;
 
     rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma);

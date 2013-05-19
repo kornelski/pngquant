@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <limits.h>
 
 #if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199900L

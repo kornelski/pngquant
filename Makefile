@@ -19,7 +19,7 @@ CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I/us
 CFLAGS += -std=c99 $(CFLAGSADD)
 
 LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L/usr/local/lib/ -L/usr/lib/ -L/usr/X11/lib/
-LDFLAGS += -lpng -lz -lm lib/libimagequant.a $(LDFLAGSADD)
+LDFLAGS += -lpng -lz lib/libimagequant.a -lm $(LDFLAGSADD)
 
 OBJS = pngquant.o rwpng.o
 COCOA_OBJS = rwpng_cocoa.o

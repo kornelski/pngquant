@@ -201,6 +201,8 @@ LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, con
     const bool iebug = px.a > min_opaque_val;
 
     const struct head *const heads = centroids->heads;
+
+    assert(palette_index_guess < centroids->map->colors);
     const float guess_diff = colordifference(centroids->map->palette[palette_index_guess].acolor, px);
     if (guess_diff < centroids->nearest_other_color_dist[palette_index_guess]) {
         if (diff) *diff = guess_diff;

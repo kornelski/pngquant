@@ -127,6 +127,19 @@ inline static double colordifference_ch(const double x, const double y, const do
 inline static float colordifference_stdc(const f_pixel px, const f_pixel py) ALWAYS_INLINE;
 inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
 {
+    // px_b.rgb = px.rgb + 0*(1-px.a) // blend px on black
+    // px_b.a   = px.a   + 1*(1-px.a)
+    // px_w.rgb = px.rgb + 1*(1-px.a) // blend px on white
+    // px_w.a   = px.a   + 1*(1-px.a)
+
+    // px_b.rgb = px.rgb              // difference same as in opaque RGB
+    // px_b.a   = 1
+    // px_w.rgb = px.rgb - px.a       // difference simplifies to formula below
+    // px_w.a   = 1
+
+    // (px.rgb - px.a) - (py.rgb - py.a)
+    // (px.rgb - py.rgb) + (py.a - px.a)
+
     const double alphas = py.a-px.a;
     return colordifference_ch(px.r, py.r, alphas) +
            colordifference_ch(px.g, py.g, alphas) +

@@ -651,7 +651,10 @@ LIQ_EXPORT void liq_result_destroy(liq_result *res)
 {
     if (!CHECK_STRUCT_TYPE(res, liq_result)) return;
 
+    memset(&res->int_palette, 0, sizeof(liq_palette));
+
     if (res->remapping) {
+        memset(&res->remapping->int_palette, 0, sizeof(liq_palette));
         liq_remapping_result_destroy(res->remapping);
     }
 

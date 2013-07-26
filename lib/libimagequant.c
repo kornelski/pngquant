@@ -1230,7 +1230,7 @@ static void adjust_histogram_callback(hist_item *item, float diff)
  */
 static colormap *find_best_palette(histogram *hist, const liq_attr *options, double *palette_error_p)
 {
-    unsigned int max_colors = options->max_colors, previous_colormap_colors=0;
+    unsigned int max_colors = options->max_colors;
     const double target_mse = options->target_mse;
     int feedback_loop_trials = options->feedback_loop_trials;
     colormap *acolormap = NULL;
@@ -1244,17 +1244,6 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
         if (feedback_loop_trials <= 0) {
             return newmap;
         }
-
-        // likely_colormap_index (used and set in viter_do_iteration) can't point to index outside colormap
-        // if number of colors in current palette is smaller, all guesses have to be fixed
-        if (previous_colormap_colors > newmap->colors) {
-            for(unsigned int j=0; j < hist->size; j++) {
-                if (hist->achv[j].likely_colormap_index >= newmap->colors) {
-                    hist->achv[j].likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
-                }
-            }
-        }
-        previous_colormap_colors = newmap->colors;
 
         // after palette has been created, total error (MSE) is calculated to keep the best palette
         // at the same time Voronoi iteration is done to improve the palette
@@ -1296,6 +1285,13 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
         liq_verbose_printf(options, "  selecting colors...%d%%",100-MAX(0,(int)(feedback_loop_trials/percent)));
     }
     while(feedback_loop_trials > 0);
+
+    // likely_colormap_index (used and set in viter_do_iteration) can't point to index outside colormap
+    for(unsigned int j=0; j < hist->size; j++) {
+        if (hist->achv[j].likely_colormap_index >= acolormap->colors) {
+            hist->achv[j].likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
+        }
+    }
 
     *palette_error_p = least_error;
     return acolormap;

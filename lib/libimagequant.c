@@ -847,8 +847,10 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
     else if (px.g + sg < 0)    ratio = MIN(ratio, px.g/-sg);
          if (px.b + sb > 1.03) ratio = MIN(ratio, (1.03-px.b)/sb);
     else if (px.b + sb < 0)    ratio = MIN(ratio, px.b/-sb);
-         if (px.a + sa > 1.03) ratio = MIN(ratio, (1.03-px.a)/sa);
-    else if (px.a + sa < 0)    ratio = MIN(ratio, px.a/-sa);
+
+    float a = px.a + sa;
+         if (a > 1.0) a = 1.0;
+    else if (a < 0)   a = 0;
 
      // If dithering error is crazy high, don't propagate it that much
      // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
@@ -864,7 +866,7 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
          .r=px.r + sr * ratio,
          .g=px.g + sg * ratio,
          .b=px.b + sb * ratio,
-         .a=px.a + sa * ratio,
+         .a=a,
      };
 }
 

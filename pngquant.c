@@ -568,7 +568,7 @@ static char *add_filename_extension(const char *filename, const char *newext)
     char* outname = malloc(x+4+strlen(newext)+1);
 
     strncpy(outname, filename, x);
-    if (strncmp(outname+x-4, ".png", 4) == 0)
+    if (strncmp(outname+x-4, ".png", 4) == 0 || strncmp(outname+x-4, ".PNG", 4) == 0)
         strcpy(outname+x-4, newext);
     else
         strcpy(outname+x, newext);

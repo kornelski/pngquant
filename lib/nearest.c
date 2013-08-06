@@ -135,7 +135,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 
     for(unsigned int i=0; i < map->colors; i++) {
         const float dist = distance_from_nearest_other_color(map,i);
-        centroids->nearest_other_color_dist[i] = fast ? dist / 3.5f + 6.f/256.f/256.f : dist / 4.f; // half of squared distance
+        centroids->nearest_other_color_dist[i] = dist / 4.f; // half of squared distance
     }
 
     centroids->map = map;

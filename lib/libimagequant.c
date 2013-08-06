@@ -909,7 +909,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
         const f_pixel *const row_pixels = liq_image_get_row_f(input_image, row);
 
         do {
-            float dither_level = dither_map ? dither_map[row*cols + col]/255.f : 15.f/16.f;
+            float dither_level = dither_map ? dither_map[row*cols + col]/260.f : 15.f/16.f;
             const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], row_pixels[col]);
 
             const unsigned int guessed_match = output_image_is_remapped ? output_pixels[row][col] : last_match;

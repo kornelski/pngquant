@@ -461,7 +461,8 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const fl
     if (new_a >= min_opaque_val && maxa >= (255.0/256.0)) new_a = 1;
 
     sum=0;
-    for(unsigned int i = 0; i < clrs; ++i) {
+    // reverse iteration for cache locality with previous loop
+    for(int i = clrs-1; i >= 0; i--) {
         double tmp, weight = 1.0f;
         f_pixel px = achv[i].acolor;
 

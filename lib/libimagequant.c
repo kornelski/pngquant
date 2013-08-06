@@ -937,45 +937,46 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 
             /* Propagate Floyd-Steinberg error terms. */
             if (fs_direction) {
-                thiserr[col + 2].a += (err.a * 7.0f) / 16.0f;
-                thiserr[col + 2].r += (err.r * 7.0f) / 16.0f;
-                thiserr[col + 2].g += (err.g * 7.0f) / 16.0f;
-                thiserr[col + 2].b += (err.b * 7.0f) / 16.0f;
+                thiserr[col + 2].a += err.a * (7.f/16.f);
+                thiserr[col + 2].r += err.r * (7.f/16.f);
+                thiserr[col + 2].g += err.g * (7.f/16.f);
+                thiserr[col + 2].b += err.b * (7.f/16.f);
 
-                nexterr[col    ].a += (err.a * 3.0f) / 16.0f;
-                nexterr[col    ].r += (err.r * 3.0f) / 16.0f;
-                nexterr[col    ].g += (err.g * 3.0f) / 16.0f;
-                nexterr[col    ].b += (err.b * 3.0f) / 16.0f;
+                nexterr[col + 2].a  = err.a * (1.f/16.f);
+                nexterr[col + 2].r  = err.r * (1.f/16.f);
+                nexterr[col + 2].g  = err.g * (1.f/16.f);
+                nexterr[col + 2].b  = err.b * (1.f/16.f);
 
-                nexterr[col + 1].a += (err.a * 5.0f) / 16.0f;
-                nexterr[col + 1].r += (err.r * 5.0f) / 16.0f;
-                nexterr[col + 1].g += (err.g * 5.0f) / 16.0f;
-                nexterr[col + 1].b += (err.b * 5.0f) / 16.0f;
+                nexterr[col + 1].a += err.a * (5.f/16.f);
+                nexterr[col + 1].r += err.r * (5.f/16.f);
+                nexterr[col + 1].g += err.g * (5.f/16.f);
+                nexterr[col + 1].b += err.b * (5.f/16.f);
 
-                nexterr[col + 2].a += (err.a       ) / 16.0f;
-                nexterr[col + 2].r += (err.r       ) / 16.0f;
-                nexterr[col + 2].g += (err.g       ) / 16.0f;
-                nexterr[col + 2].b += (err.b       ) / 16.0f;
+                nexterr[col    ].a += err.a * (3.f/16.f);
+                nexterr[col    ].r += err.r * (3.f/16.f);
+                nexterr[col    ].g += err.g * (3.f/16.f);
+                nexterr[col    ].b += err.b * (3.f/16.f);
+
             } else {
-                thiserr[col    ].a += (err.a * 7.0f) / 16.0f;
-                thiserr[col    ].r += (err.r * 7.0f) / 16.0f;
-                thiserr[col    ].g += (err.g * 7.0f) / 16.0f;
-                thiserr[col    ].b += (err.b * 7.0f) / 16.0f;
+                thiserr[col    ].a += err.a * (7.f/16.f);
+                thiserr[col    ].r += err.r * (7.f/16.f);
+                thiserr[col    ].g += err.g * (7.f/16.f);
+                thiserr[col    ].b += err.b * (7.f/16.f);
 
-                nexterr[col    ].a += (err.a       ) / 16.0f;
-                nexterr[col    ].r += (err.r       ) / 16.0f;
-                nexterr[col    ].g += (err.g       ) / 16.0f;
-                nexterr[col    ].b += (err.b       ) / 16.0f;
+                nexterr[col    ].a  = err.a * (1.f/16.f);
+                nexterr[col    ].r  = err.r * (1.f/16.f);
+                nexterr[col    ].g  = err.g * (1.f/16.f);
+                nexterr[col    ].b  = err.b * (1.f/16.f);
 
-                nexterr[col + 1].a += (err.a * 5.0f) / 16.0f;
-                nexterr[col + 1].r += (err.r * 5.0f) / 16.0f;
-                nexterr[col + 1].g += (err.g * 5.0f) / 16.0f;
-                nexterr[col + 1].b += (err.b * 5.0f) / 16.0f;
+                nexterr[col + 1].a += err.a * (5.f/16.f);
+                nexterr[col + 1].r += err.r * (5.f/16.f);
+                nexterr[col + 1].g += err.g * (5.f/16.f);
+                nexterr[col + 1].b += err.b * (5.f/16.f);
 
-                nexterr[col + 2].a += (err.a * 3.0f) / 16.0f;
-                nexterr[col + 2].r += (err.r * 3.0f) / 16.0f;
-                nexterr[col + 2].g += (err.g * 3.0f) / 16.0f;
-                nexterr[col + 2].b += (err.b * 3.0f) / 16.0f;
+                nexterr[col + 2].a += err.a * (3.f/16.f);
+                nexterr[col + 2].r += err.r * (3.f/16.f);
+                nexterr[col + 2].g += err.g * (3.f/16.f);
+                nexterr[col + 2].b += err.b * (3.f/16.f);
             }
 
             // remapping is done in zig-zag

@@ -233,6 +233,7 @@ static const struct option long_options[] = {
     {"iebug", no_argument, NULL, arg_iebug},
     {"transbug", no_argument, NULL, arg_transbug},
     {"ext", required_argument, NULL, arg_ext},
+    {"output", required_argument, NULL, 'o'},
     {"speed", required_argument, NULL, 's'},
     {"quality", required_argument, NULL, 'Q'},
     {"map", required_argument, NULL, arg_map},
@@ -241,7 +242,7 @@ static const struct option long_options[] = {
     {NULL, 0, NULL, 0},
 };
 
-int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options);
+pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options);
 
 
 int main(int argc, char *argv[])
@@ -261,13 +262,13 @@ int main(int argc, char *argv[])
 
     unsigned int error_count=0, skipped_count=0, file_count=0;
     pngquant_error latest_error=SUCCESS;
-    const char *newext = NULL;
+    const char *newext = NULL, *output_file_path = NULL;
 
     fix_obsolete_options(argc, argv);
 
     int opt;
     do {
-        opt = getopt_long(argc, argv, "Vvqfhs:Q:", long_options, NULL);
+        opt = getopt_long(argc, argv, "Vvqfhs:Q:o:", long_options, NULL);
         switch (opt) {
             case 'v':
                 liq_set_log_callback(options.liq, log_callback, NULL);
@@ -277,11 +278,19 @@ int main(int argc, char *argv[])
                 liq_set_log_callback(options.liq, NULL, NULL);
                 options.log_callback = NULL;
                 break;
+
             case arg_floyd: options.floyd = true; break;
             case arg_ordered: options.floyd = false; break;
             case 'f': options.force = true; break;
             case arg_no_force: options.force = false; break;
+
             case arg_ext: newext = optarg; break;
+            case 'o':
+                if (output_file_path) {
+                    fputs("--output option can be used only once\n", stderr);
+                    return INVALID_ARGUMENT;
+                }
+                output_file_path = optarg; break;
 
             case arg_iebug:
                 // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
@@ -362,6 +371,11 @@ int main(int argc, char *argv[])
         argn++;
     }
 
+    if (newext && output_file_path) {
+        fputs("--ext and --output options can't be used at the same time\n", stderr);
+        return INVALID_ARGUMENT;
+    }
+
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
         newext = options.floyd ? "-ie-fs8.png" : "-ie-or8.png";
@@ -373,7 +387,17 @@ int main(int argc, char *argv[])
         argn = argc-1;
     }
 
+    if (options.using_stdin && output_file_path) {
+        fputs("--output can't be mixed with stdin\n", stderr);
+        return INVALID_ARGUMENT;
+    }
+
     const int num_files = argc-argn;
+
+    if (output_file_path && num_files != 1) {
+        fputs("Only one input file is allowed when --output is used\n", stderr);
+        return INVALID_ARGUMENT;
+    }
 
 #ifdef _OPENMP
     // if there's a lot of files, coarse parallelism can be used
@@ -403,7 +427,25 @@ int main(int argc, char *argv[])
         }
         #endif
 
-        pngquant_error retval = pngquant_file(filename, newext, &opts);
+
+        pngquant_error retval = 0;
+
+        char *outname = output_file_path;
+        if (!options.using_stdin) {
+            if (!outname) {
+                outname = add_filename_extension(filename, newext);
+            }
+            if (!options.force && file_exists(outname)) {
+                fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
+                retval = NOT_OVERWRITING_ERROR;
+            }
+        }
+
+        if (!retval) {
+            retval = pngquant_file(filename, outname, &opts);
+        }
+
+        if (outname != output_file_path) free(outname);
 
         liq_attr_destroy(opts.liq);
 
@@ -454,20 +496,11 @@ static void pngquant_output_image_free(png8_image *output_image)
     }
 }
 
-int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options)
+pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options)
 {
     int retval = 0;
 
     verbose_printf(options, "%s:", filename);
-
-    char *outname = NULL;
-    if (!options->using_stdin) {
-        outname = add_filename_extension(filename,newext);
-        if (!options->force && file_exists(outname)) {
-            fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
-            retval = NOT_OVERWRITING_ERROR;
-        }
-    }
 
     liq_image *input_image = NULL;
     png24_image input_image_rwpng = {};
@@ -526,7 +559,6 @@ int pngquant_file(const char *filename, const char *newext, struct pngquant_opti
     if (input_image_rwpng.rgba_data) {
         free(input_image_rwpng.rgba_data);
     }
-    if (outname) free(outname);
 
     return retval;
 }
@@ -567,6 +599,7 @@ static char *add_filename_extension(const char *filename, const char *newext)
     size_t x = strlen(filename);
 
     char* outname = malloc(x+4+strlen(newext)+1);
+    if (!outname) return NULL;
 
     strncpy(outname, filename, x);
     if (strncmp(outname+x-4, ".png", 4) == 0 || strncmp(outname+x-4, ".PNG", 4) == 0)

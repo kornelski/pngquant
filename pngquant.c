@@ -238,6 +238,7 @@ static const struct option long_options[] = {
     {"map", required_argument, NULL, arg_map},
     {"version", no_argument, NULL, 'V'},
     {"help", no_argument, NULL, 'h'},
+    {NULL, 0, NULL, 0},
 };
 
 int pngquant_file(const char *filename, const char *newext, struct pngquant_options *options);

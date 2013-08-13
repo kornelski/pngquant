@@ -875,7 +875,7 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
 
   If output_image_is_remapped is true, only pixels noticeably changed by error diffusion will be written to output image.
  */
-static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], const colormap *map, const float max_dither_error, const bool use_dither_map, const bool output_image_is_remapped, const bool fast)
+static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], const colormap *map, const float max_dither_error, const bool use_dither_map, const bool output_image_is_remapped)
 {
     const unsigned int rows = input_image->height, cols = input_image->width;
     const unsigned char *dither_map = use_dither_map ? (input_image->dither_map ? input_image->dither_map : input_image->edges) : NULL;
@@ -883,7 +883,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 
     const colormap_item *acolormap = map->palette;
 
-    struct nearest_map *const n = nearest_init(map, fast);
+    struct nearest_map *const n = nearest_init(map, false);
 
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;
@@ -1428,7 +1428,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
         // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
         set_rounded_palette(&result->int_palette, result->palette, result->gamma);
 
-        remap_to_palette_floyd(input_image, row_pointers, result->palette, MAX(remapping_error*2.4, 16.f/256.f), result->use_dither_map, generate_dither_map, quant->fast_palette);
+        remap_to_palette_floyd(input_image, row_pointers, result->palette, MAX(remapping_error*2.4, 16.f/256.f), result->use_dither_map, generate_dither_map);
     }
 
     // remapping error from dithered image is absurd, so always non-dithered value is used

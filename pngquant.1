@@ -44,8 +44,13 @@ Overwrite existing output files.
 .Dc
 can be used to convert files in place (which is unsafe).
 .It Fl Fl nofs , Fl Fl ordered
-Disable Floyd-Steinberg dithering. It's enabled by default
-.Pq Fl Fl floyd .
+Disable Floyd-Steinberg dithering.
+.It Fl Fl floyd Op Ar =N
+Set dithering level using fractional number between
+.Cm 0
+(none) and
+.Cm 1
+(full, the default).
 .It Fl s Ar N , Fl Fl speed Ar N
 .Cm 1
 (brute-force) to

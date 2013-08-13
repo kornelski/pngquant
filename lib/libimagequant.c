@@ -875,7 +875,7 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
 
   If output_image_is_remapped is true, only pixels noticeably changed by error diffusion will be written to output image.
  */
-static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], const colormap *map, const float max_dither_error, const bool use_dither_map, const bool output_image_is_remapped)
+static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], const colormap *map, const float max_dither_error, const bool use_dither_map, const bool output_image_is_remapped, float base_dithering_level)
 {
     const unsigned int rows = input_image->height, cols = input_image->width;
     const unsigned char *dither_map = use_dither_map ? (input_image->dither_map ? input_image->dither_map : input_image->edges) : NULL;
@@ -900,6 +900,14 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
         thiserr[col].a = ((double)rand() - rand_max/2.0)/rand_max/255.0;
     }
 
+    // response to this value is non-linear and without it any value < 0.8 would give almost no dithering
+    base_dithering_level = 1.0 - (1.0-base_dithering_level)*(1.0-base_dithering_level)*(1.0-base_dithering_level);
+
+    if (dither_map) {
+        base_dithering_level *= 1.0/255.0; // convert byte to float
+    }
+    base_dithering_level *= 15.0/16.0; // prevent small errors from accumulating
+
     bool fs_direction = true;
     unsigned int last_match=0;
     for (unsigned int row = 0; row < rows; ++row) {
@@ -909,7 +917,9 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
         const f_pixel *const row_pixels = liq_image_get_row_f(input_image, row);
 
         do {
-            float dither_level = dither_map ? dither_map[row*cols + col]/260.f : 15.f/16.f;
+            float dither_level = base_dithering_level;
+            if (dither_map) dither_level *= dither_map[row*cols + col];
+
             const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], row_pixels[col]);
 
             const unsigned int guessed_match = output_image_is_remapped ? output_pixels[row][col] : last_match;
@@ -1428,7 +1438,8 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
         // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
         set_rounded_palette(&result->int_palette, result->palette, result->gamma);
 
-        remap_to_palette_floyd(input_image, row_pointers, result->palette, MAX(remapping_error*2.4, 16.f/256.f), result->use_dither_map, generate_dither_map);
+        remap_to_palette_floyd(input_image, row_pointers, result->palette,
+            MAX(remapping_error*2.4, 16.f/256.f), result->use_dither_map, generate_dither_map, result->dither_level);
     }
 
     // remapping error from dithered image is absurd, so always non-dithered value is used

@@ -64,7 +64,8 @@ struct pngquant_options {
     liq_image *fixed_palette_image;
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
-    bool floyd, using_stdin, force, ie_mode, min_quality_limit, fast_compression;
+    float floyd;
+    bool using_stdin, force, ie_mode, min_quality_limit, fast_compression;
 };
 
 static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
@@ -187,9 +188,9 @@ static bool parse_quality(const char *quality, liq_attr *options, bool *min_qual
 }
 
 static const struct {const char *old; char *new;} obsolete_options[] = {
-    {"-fs","--floyd"},
+    {"-fs","--floyd=1"},
     {"-nofs", "--ordered"},
-    {"-floyd", "--floyd"},
+    {"-floyd", "--floyd=1"},
     {"-nofloyd", "--ordered"},
     {"-ordered", "--ordered"},
     {"-force", "--force"},
@@ -227,7 +228,7 @@ static const struct option long_options[] = {
     {"quiet", no_argument, NULL, 'q'},
     {"force", no_argument, NULL, 'f'},
     {"no-force", no_argument, NULL, arg_no_force},
-    {"floyd", no_argument, NULL, arg_floyd},
+    {"floyd", optional_argument, NULL, arg_floyd},
     {"ordered", no_argument, NULL, arg_ordered},
     {"nofs", no_argument, NULL, arg_ordered},
     {"iebug", no_argument, NULL, arg_iebug},
@@ -248,7 +249,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
 int main(int argc, char *argv[])
 {
     struct pngquant_options options = {
-        .floyd = true, // floyd-steinberg dithering
+        .floyd = 1.f, // floyd-steinberg dithering
     };
     options.liq = liq_attr_create();
 
@@ -279,8 +280,14 @@ int main(int argc, char *argv[])
                 options.log_callback = NULL;
                 break;
 
-            case arg_floyd: options.floyd = true; break;
-            case arg_ordered: options.floyd = false; break;
+            case arg_floyd:
+                options.floyd = optarg ? atof(optarg) : 1.0;
+                if (options.floyd < 0 || options.floyd > 1.0) {
+                    fputs("--floyd argument must be in 0..1 range\n", stderr);
+                    return INVALID_ARGUMENT;
+                }
+                break;
+            case arg_ordered: options.floyd = 0; break;
             case 'f': options.force = true; break;
             case arg_no_force: options.force = false; break;
 
@@ -309,7 +316,7 @@ int main(int argc, char *argv[])
                         options.fast_compression = true;
                     }
                     if (speed == 11) {
-                        options.floyd = false;
+                        options.floyd = 0;
                         speed = 10;
                     }
                     if (LIQ_OK != liq_set_speed(options.liq, speed)) {
@@ -378,7 +385,7 @@ int main(int argc, char *argv[])
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
-        newext = options.floyd ? "-ie-fs8.png" : "-ie-or8.png";
+        newext = options.floyd > 0 ? "-ie-fs8.png" : "-ie-or8.png";
         if (!options.ie_mode) newext += 3; /* skip "-ie" */
     }
 
@@ -519,7 +526,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
 
         if (remap) {
             liq_set_output_gamma(remap, 0.45455); // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
-            liq_set_dithering_level(remap, options->floyd ? 1.0 : 0);
+            liq_set_dithering_level(remap, options->floyd);
 
             retval = prepare_output_image(remap, input_image, &output_image);
             if (!retval) {

@@ -493,15 +493,11 @@ int main(int argc, char *argv[])
 
 static void pngquant_output_image_free(png8_image *output_image)
 {
-    if (output_image->indexed_data) {
-        free(output_image->indexed_data);
-        output_image->indexed_data = NULL;
-    }
+    free(output_image->indexed_data);
+    output_image->indexed_data = NULL;
 
-    if (output_image->row_pointers) {
-        free(output_image->row_pointers);
-        output_image->row_pointers = NULL;
-    }
+    free(output_image->row_pointers);
+    output_image->row_pointers = NULL;
 }
 
 pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options)
@@ -561,12 +557,8 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     liq_image_destroy(input_image);
     pngquant_output_image_free(&output_image);
 
-    if (input_image_rwpng.row_pointers) {
-        free(input_image_rwpng.row_pointers);
-    }
-    if (input_image_rwpng.rgba_data) {
-        free(input_image_rwpng.rgba_data);
-    }
+    free(input_image_rwpng.row_pointers);
+    free(input_image_rwpng.rgba_data);
 
     return retval;
 }

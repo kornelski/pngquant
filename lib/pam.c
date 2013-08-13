@@ -237,7 +237,9 @@ LIQ_PRIVATE colormap *pam_colormap(unsigned int colors)
         .subset_palette = NULL,
         .colors = colors,
     };
-    if (!map->palette) return NULL;
+    if (!map->palette) {
+        free(map);return NULL;
+    }
     return map;
 }
 

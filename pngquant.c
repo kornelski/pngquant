@@ -57,7 +57,7 @@ use --force to overwrite.\n"
 
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "lib/libimagequant.h"
-#include "lib/pam.h"
+
 
 struct pngquant_options {
     liq_attr *liq;
@@ -437,10 +437,11 @@ int main(int argc, char *argv[])
 
         pngquant_error retval = 0;
 
-        char *outname = output_file_path;
+        const char *outname = output_file_path;
+        char *outname_free = NULL;
         if (!options.using_stdin) {
             if (!outname) {
-                outname = add_filename_extension(filename, newext);
+                outname = outname_free = add_filename_extension(filename, newext);
             }
             if (!options.force && file_exists(outname)) {
                 fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
@@ -452,7 +453,7 @@ int main(int argc, char *argv[])
             retval = pngquant_file(filename, outname, &opts);
         }
 
-        if (outname != output_file_path) free(outname);
+        free(outname_free);
 
         liq_attr_destroy(opts.liq);
 

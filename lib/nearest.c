@@ -141,6 +141,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
     centroids->map = map;
 
     unsigned int skipped=0;
+    assert(map->colors > 0);
     bool skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=false;
 
 

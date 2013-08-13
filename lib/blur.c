@@ -103,6 +103,7 @@ LIQ_PRIVATE void min3(unsigned char *src, unsigned char *dst, unsigned int width
  */
 LIQ_PRIVATE void blur(unsigned char *src, unsigned char *tmp, unsigned char *dst, unsigned int width, unsigned int height, unsigned int size)
 {
+    assert(size > 0);
     if (width < 2*size+1 || height < 2*size+1) return;
     transposing_1d_blur(src, tmp, width, height, size);
     transposing_1d_blur(tmp, dst, height, width, size);

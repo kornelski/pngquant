@@ -39,11 +39,12 @@ int rwpng_read_image24_cocoa(FILE *fp, png24_image *out)
                                                      colorspace,
                                                      kCGImageAlphaPremultipliedLast);
 
+        CGColorSpaceRelease(colorspace);
+
         if (!context) return READ_ERROR;
 
         CGContextDrawImage(context, CGRectMake(0.0, 0.0, width, height), image);
         CGContextRelease(context);
-        CGColorSpaceRelease(colorspace);
     }
     // reverse premultiplication
 

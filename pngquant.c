@@ -187,7 +187,7 @@ static bool parse_quality(const char *quality, liq_attr *options, bool *min_qual
     return LIQ_OK == liq_set_quality(options, limit, target);
 }
 
-static const struct {const char *old; char *new;} obsolete_options[] = {
+static const struct {const char *old; const char *newopt;} obsolete_options[] = {
     {"-fs","--floyd=1"},
     {"-nofs", "--ordered"},
     {"-floyd", "--floyd=1"},
@@ -214,8 +214,8 @@ static void fix_obsolete_options(const unsigned int argc, char *argv[])
 
         for(unsigned int i=0; i < sizeof(obsolete_options)/sizeof(obsolete_options[0]); i++) {
             if (0 == strcmp(obsolete_options[i].old, argv[argn])) {
-                fprintf(stderr, "  warning: option '%s' has been replaced with '%s'.\n", obsolete_options[i].old, obsolete_options[i].new);
-                argv[argn] = obsolete_options[i].new;
+                fprintf(stderr, "  warning: option '%s' has been replaced with '%s'.\n", obsolete_options[i].old, obsolete_options[i].newopt);
+                argv[argn] = (char*)obsolete_options[i].newopt;
             }
         }
     }
@@ -435,7 +435,7 @@ int main(int argc, char *argv[])
         #endif
 
 
-        pngquant_error retval = 0;
+        pngquant_error retval = SUCCESS;
 
         const char *outname = output_file_path;
         char *outname_free = NULL;
@@ -502,7 +502,7 @@ static void pngquant_output_image_free(png8_image *output_image)
 
 pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options)
 {
-    int retval = 0;
+    pngquant_error retval = SUCCESS;
 
     verbose_printf(options, "%s:", filename);
 
@@ -550,7 +550,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
-        int write_retval = write_image(NULL, &input_image_rwpng, outname, options);
+        pngquant_error write_retval = write_image(NULL, &input_image_rwpng, outname, options);
         if (write_retval) retval = write_retval;
     }
 

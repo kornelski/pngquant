@@ -334,9 +334,12 @@ int main(int argc, char *argv[])
                 break;
 
             case arg_map:
-                if (SUCCESS != read_image(options.liq, optarg, false, &(png24_image){}, &options.fixed_palette_image, false)) {
-                    fprintf(stderr, "  error: Unable to load %s", optarg);
-                    return INVALID_ARGUMENT;
+                {
+                    png24_image tmp = {};
+                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, false)) {
+                        fprintf(stderr, "  error: Unable to load %s", optarg);
+                        return INVALID_ARGUMENT;
+                    }
                 }
                 break;
 

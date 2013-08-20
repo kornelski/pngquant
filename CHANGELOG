@@ -3,6 +3,9 @@ version 2.0
  - refactored codebase into pngquant and standalone libimagequant
  - reduced memory usage by further 30% (and more for very large images)
  - less precise remapping improving speed by 25% in higher speed settings
+ - --output option for writing converted file under the given path
+ - light dithering with --floyd=0.5
+ - fixed regression in dithering of alpha channel
 
 version 1.8
 -----------

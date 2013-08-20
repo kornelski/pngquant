@@ -13,7 +13,7 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "2.0.0 (March 2013)"
+#define PNGQUANT_VERSION "2.0.0 (August 2013)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -24,8 +24,6 @@ options:\n\
   --speed N         speed/quality trade-off. 1=slow, 3=default, 11=fast & rough\n\
   --quality min-max don't save below min, use less colors below max (0-100)\n\
   --verbose         print status messages (synonym: -v)\n\
-  --iebug           increase opacity to work around Internet Explorer 6 bug\n\
-  --transbug        transparent color will be placed at the end of the palette\n\
 \n\
 Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
 PNGs using Floyd-Steinberg diffusion dithering (unless disabled).\n\

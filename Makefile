@@ -1,5 +1,5 @@
 # Makefile for pngquant
-VERSION = $(shell grep 'define PNGQUANT_VERSION' pngquant.c | egrep -Eo '1\.[0-9.]*')
+VERSION = $(shell grep 'define PNGQUANT_VERSION' pngquant.c | egrep -Eo '[12]\.[0-9.]*')
 
 # This changes default "cc" to "gcc", but still allows customization of the CC variable
 # if this line causes problems with non-GNU make, just remove it:
@@ -30,7 +30,8 @@ TARNAME = pngquant-$(VERSION)
 TARFILE = $(TARNAME)-src.tar.bz2
 
 ifdef USE_COCOA
-CFLAGS += -DUSE_COCOA=1
+CFLAGS += -mmacosx-version-min=10.6 -DUSE_COCOA=1
+LDLAGS += -mmacosx-version-min=10.6
 OBJS += $(COCOA_OBJS)
 FRAMEWORKS += -framework Cocoa
 endif
@@ -43,7 +44,7 @@ lib/libimagequant.a::
 	$(MAKE) -C lib -$(MAKEFLAGS) static
 
 openmp::
-	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8 -$(MAKEFLAGS)
+	$(MAKE) CFLAGSADD="$(CFLAGSADD) -fopenmp" OPENMPFLAGS="-Bstatic -lgomp" -j8 $(MKFLAGS)
 
 $(BIN): $(OBJS) lib/libimagequant.a
 	$(CC) $(OBJS) $(LDFLAGS) $(OPENMPFLAGS) $(FRAMEWORKS) -o $@

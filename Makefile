@@ -54,7 +54,7 @@ rwpng_cocoa.o: rwpng_cocoa.m
 $(OBJS): rwpng.h build_configuration
 
 install: $(BIN)
-	install -m 0755 -p -D $(BIN) $(DESTDIR)$(BINPREFIX)/$(BIN)
+	install -m 0755 -p $(BIN) $(DESTDIR)$(BINPREFIX)/$(BIN)
 
 uninstall:
 	rm -f $(DESTDIR)$(BINPREFIX)/$(BIN)

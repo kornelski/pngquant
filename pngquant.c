@@ -41,6 +41,11 @@ use --force to overwrite.\n"
 #include <stdbool.h>
 #include <getopt.h>
 
+#if defined(__sun) || defined(__sun__)
+extern char *optarg;
+extern int optind, opterr;
+#endif
+
 #if defined(WIN32) || defined(__WIN32__)
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */

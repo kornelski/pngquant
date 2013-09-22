@@ -238,6 +238,14 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-255 range.
 
 ----
 
+    liq_set_min_posterization(liq_attr* attr, int bits);
+
+Ignores given number of least significant bits in all channels, posterizing image to `2^bits` levels. `0` gives full quality. Use `2` for VGA or 16-bit RGB565 displays, `4` if image is going to be output on a RGB444/RGBA4444 display (e.g. low-quality textures on Android).
+
+Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-4 range.
+
+----
+
     liq_set_last_index_transparent(liq_attr* attr, int is_last);
 
 `0` (default) makes alpha colors sorted before opaque colors. Non-`0` mixes colors together except completely transparent color, which is moved to the end of the palette. This is a workaround for programs that blindly assume the last palette entry is transparent.

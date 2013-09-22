@@ -13,7 +13,7 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "2.0.0 (August 2013)"
+#define PNGQUANT_VERSION "2.0.1 (September 2013)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -219,7 +219,7 @@ static void fix_obsolete_options(const unsigned int argc, char *argv[])
     }
 }
 
-enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug, arg_map};
+enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug, arg_map, arg_posterize};
 
 static const struct option long_options[] = {
     {"verbose", no_argument, NULL, 'v'},
@@ -235,6 +235,7 @@ static const struct option long_options[] = {
     {"output", required_argument, NULL, 'o'},
     {"speed", required_argument, NULL, 's'},
     {"quality", required_argument, NULL, 'Q'},
+    {"posterize", required_argument, NULL, arg_posterize},
     {"map", required_argument, NULL, arg_map},
     {"version", no_argument, NULL, 'V'},
     {"help", no_argument, NULL, 'h'},
@@ -327,6 +328,13 @@ int main(int argc, char *argv[])
             case 'Q':
                 if (!parse_quality(optarg, options.liq, &options.min_quality_limit)) {
                     fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
+                    return INVALID_ARGUMENT;
+                }
+                break;
+
+            case arg_posterize:
+                if (LIQ_OK != liq_set_min_posterization(options.liq, atoi(optarg))) {
+                    fputs("Posterization should be number of bits in range 0-4.\n", stderr);
                     return INVALID_ARGUMENT;
                 }
                 break;

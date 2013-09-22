@@ -76,6 +76,8 @@ quality. If conversion results in quality below the
 .Va min
 quality the image won't be saved (or if outputting to stdin, 24-bit original will be output) and pngquant will exit with status code
 .Er 99 .
+.It Fl Fl posterize Ar bits
+Truncate number of least significant bits of color (per channel). Use this when image will be output on low-depth displays (e.g. 16-bit RGB).
 .It Fl Fl iebug
 Workaround for Internet Explorer 6, which only displays fully opaque pixels.
 .Nm

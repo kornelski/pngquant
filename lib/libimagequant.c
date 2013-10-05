@@ -883,7 +883,7 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
      const float dither_error = sr*sr + sg*sg + sb*sb + sa*sa;
      if (dither_error > max_dither_error) {
          ratio *= 0.8;
-     } else if (dither_error < 2.f/256.f/256.f) {
+     } else if (dither_error < 4.f/256.f/256.f) {
         // don't dither areas that don't have noticeable error — makes file smaller
         return px;
      }

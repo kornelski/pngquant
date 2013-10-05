@@ -1453,8 +1453,8 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
      */
 
     float remapping_error = result->palette_error;
+    set_rounded_palette(&result->int_palette, result->palette, result->gamma, quant->min_posterization_output);
     if (result->dither_level == 0) {
-        set_rounded_palette(&result->int_palette, result->palette, result->gamma, quant->min_posterization_output);
         remapping_error = remap_to_palette(input_image, row_pointers, result->palette, quant->fast_palette);
     } else {
         const bool generate_dither_map = result->use_dither_map && (input_image->edges && !input_image->dither_map);
@@ -1465,8 +1465,6 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
         }
 
         // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
-        set_rounded_palette(&result->int_palette, result->palette, result->gamma, quant->min_posterization_output);
-
         remap_to_palette_floyd(input_image, row_pointers, result->palette,
             MAX(remapping_error*2.4, 16.f/256.f), result->use_dither_map, generate_dither_map, result->dither_level);
     }

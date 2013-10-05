@@ -68,12 +68,6 @@ struct liq_attr {
     void *log_flush_callback_user_info;
 };
 
-struct pngquant_options {
-    liq_attr *liq;
-    liq_image *fixed_palette_image;
-    bool floyd, using_stdin, force, ie_mode;
-};
-
 struct liq_image {
     const char *magic_header;
     void* (*malloc)(size_t);

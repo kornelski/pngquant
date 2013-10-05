@@ -47,7 +47,7 @@ LIQ_PRIVATE void viter_finalize(colormap *map, const unsigned int max_threads, c
             total += average_color[offset].total;
         }
 
-        if (total) {
+        if (total && !map->palette[i].fixed) {
             map->palette[i].acolor = (f_pixel){
                 .a = a / total,
                 .r = r / total,

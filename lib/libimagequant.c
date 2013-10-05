@@ -83,6 +83,8 @@ struct liq_image {
     liq_image_get_rgba_row_callback *row_callback;
     void *row_callback_user_info;
     float min_opaque_val;
+    f_pixel fixed_colors[256];
+    unsigned short fixed_colors_count;
     bool free_pixels, free_rows, free_rows_internal;
 };
 
@@ -113,7 +115,7 @@ struct liq_result {
     bool use_dither_map, fast_palette;
 };
 
-static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, double gamma);
+static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, const liq_image *img);
 static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels);
 static void contrast_maps(liq_image *image);
 static histogram *get_histogram(liq_image *input_image, const liq_attr *options);
@@ -142,14 +144,14 @@ inline static void verbose_print(const liq_attr *attr, const char *msg)
 {
     if (attr->log_callback) {
         attr->log_callback(attr, msg, attr->log_callback_user_info);
-    }
+}
 }
 
 static void liq_verbose_printf_flush(liq_attr *attr)
 {
     if (attr->log_flush_callback) {
         attr->log_flush_callback(attr, attr->log_flush_callback_user_info);
-    }
+}
 }
 
 #if USE_SSE
@@ -221,7 +223,7 @@ static unsigned int mse_to_quality(double mse)
     for(int i=100; i > 0; i--) {
         if (mse <= quality_to_mse(i) + 0.000001) { // + epsilon for floating point errors
             return i;
-        }
+    }
     }
     return 0;
 }
@@ -442,6 +444,21 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_
     return attr;
 }
 
+LIQ_EXPORT liq_error liq_add_fixed_color(liq_image *img, liq_color color) {
+    if (!CHECK_STRUCT_TYPE(img, liq_image)) return LIQ_INVALID_POINTER;
+    if (img->fixed_colors_count > 255) return LIQ_BUFFER_TOO_SMALL;
+
+    float gamma_lut[256];
+    to_f_set_gamma(gamma_lut, img->gamma);
+    img->fixed_colors[img->fixed_colors_count++] = to_f(gamma_lut, (rgba_pixel){
+        .r = color.r,
+        .g = color.g,
+        .b = color.b,
+        .a = color.a,
+    });
+    return LIQ_OK;
+}
+
 static bool liq_image_use_low_memory(liq_image *img)
 {
     img->temp_f_row = img->malloc(sizeof(img->f_pixels[0]) * img->width * omp_get_max_threads());
@@ -559,7 +576,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
         if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) {
             liq_log_error(attr, "invalid row pointers");
             return NULL;
-        }
+    }
     }
     return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
 }
@@ -744,7 +761,7 @@ LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *attr, liq_image *img)
         return NULL;
     }
 
-    liq_result *result = pngquant_quantize(hist, attr, img->gamma);
+    liq_result *result = pngquant_quantize(hist, attr, img);
 
     pam_freeacolorhist(hist);
     return result;
@@ -876,14 +893,14 @@ static void sort_palette(colormap *map, const liq_attr *options)
     */
     if (options->last_index_transparent) {
     	for(unsigned int i=0; i < map->colors; i++) {
-    	    if (map->palette[i].acolor.a < 1.0/256.0) {
-        		const unsigned int old = i, transparent_dest = map->colors-1;
+        if (map->palette[i].acolor.a < 1.0/256.0) {
+            const unsigned int old = i, transparent_dest = map->colors-1;
 
-        		SWAP_PALETTE(map, transparent_dest, old);
+            SWAP_PALETTE(map, transparent_dest, old);
 
-        		/* colors sorted by popularity make pngs slightly more compressible */
+            /* colors sorted by popularity make pngs slightly more compressible */
         		sort_palette_qsort(map, 0, map->colors-1);
-        		return;
+            return;
             }
         }
     }
@@ -1020,15 +1037,15 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
          if (a > 1.0) { a = 1.0; }
     else if (a < 0)   { a = 0; }
 
-    // If dithering error is crazy high, don't propagate it that much
-    // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
-    const float dither_error = sr*sr + sg*sg + sb*sb + sa*sa;
-    if (dither_error > max_dither_error) {
-        ratio *= 0.8;
-    } else if (dither_error < 2.f/256.f/256.f) {
+     // If dithering error is crazy high, don't propagate it that much
+     // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
+     const float dither_error = sr*sr + sg*sg + sb*sb + sa*sa;
+     if (dither_error > max_dither_error) {
+         ratio *= 0.8;
+     } else if (dither_error < 2.f/256.f/256.f) {
         // don't dither areas that don't have noticeable error — makes file smaller
         return px;
-    }
+     }
 
      return (f_pixel){
          .r=px.r + sr * ratio,
@@ -1179,6 +1196,19 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
     nearest_free(n);
 }
 
+/* fixed colors are always included in the palette, so it would be wasteful to duplicate them in palette from histogram */
+static void remove_fixed_colors_from_histogram(histogram *hist, liq_image *input_image) {
+    if (input_image->fixed_colors_count) {
+        for(int j=0; j < hist->size; j++) {
+            for(unsigned int i=0; i < input_image->fixed_colors_count; i++) {
+                if (colordifference(hist->achv[j].acolor, input_image->fixed_colors[i]) < 2.0/256.0/256.0) {
+                    hist->achv[j] = hist->achv[--hist->size]; // remove color from histogram by overwriting with the last entry
+                    j--; break; // continue searching histogram
+                }
+            }
+        }
+    }
+}
 
 /* histogram contains information how many times each color is present in the image, weighted by importance_map */
 static histogram *get_histogram(liq_image *input_image, const liq_attr *options)
@@ -1236,10 +1266,12 @@ static histogram *get_histogram(liq_image *input_image, const liq_attr *options)
 
     histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->gamma, options->malloc, options->free);
     pam_freeacolorhash(acht);
-
     if (hist) {
         liq_verbose_printf(options, "  made histogram...%d colors found", hist->size);
     }
+
+    remove_fixed_colors_from_histogram(hist, input_image);
+
     return hist;
 }
 
@@ -1400,6 +1432,27 @@ static void update_dither_map(unsigned char *const *const row_pointers, liq_imag
     input_image->edges = NULL;
 }
 
+static colormap *add_fixed_colors_to_palette(colormap *palette, const int max_colors, const f_pixel fixed_colors[], const int fixed_colors_count, void* (*malloc)(size_t), void (*free)(void*)) {
+    if (!fixed_colors_count) return palette;
+
+    colormap *newpal = pam_colormap(MIN(max_colors, (palette ? palette->colors : 0) + fixed_colors_count), malloc, free);
+    unsigned int i=0;
+    if (palette && fixed_colors_count < max_colors) {
+        unsigned int palette_max = MIN(palette->colors, max_colors - fixed_colors_count);
+        for(; i < palette_max; i++) {
+            newpal->palette[i] = palette->palette[i];
+        }
+    }
+    for(int j=0; j < MIN(max_colors, fixed_colors_count); j++) {
+        newpal->palette[i++] = (colormap_item){
+            .acolor = fixed_colors[j],
+            .fixed = true,
+        };
+    }
+    if (palette) pam_freecolormap(palette);
+    return newpal;
+}
+
 static void adjust_histogram_callback(hist_item *item, float diff)
 {
     item->adjusted_weight = (item->perceptual_weight+item->adjusted_weight) * (sqrtf(1.f+diff));
@@ -1410,9 +1463,10 @@ static void adjust_histogram_callback(hist_item *item, float diff)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(histogram *hist, const liq_attr *options, const double max_mse, double *palette_error_p)
+static colormap *find_best_palette(histogram *hist, const liq_attr *options, const double max_mse, const f_pixel fixed_colors[], const unsigned int fixed_colors_count, double *palette_error_p)
 {
     unsigned int max_colors = options->max_colors;
+
     // if output is posterized it doesn't make sense to aim for perfrect colors, so increase target_mse
     // at this point actual gamma is not set, so very conservative posterization estimate is used
     const double target_mse = MIN(max_mse, MAX(options->target_mse, pow((1<<options->min_posterization_output)/1024.0, 2)));
@@ -1423,9 +1477,15 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
     do {
-        colormap *newmap = mediancut(hist, options->min_opaque_val, max_colors,
-            target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
+        colormap *newmap;
+        if (fixed_colors_count < max_colors) {
+            newmap = mediancut(hist, options->min_opaque_val, max_colors-fixed_colors_count, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
             options->malloc, options->free);
+        } else {
+            feedback_loop_trials = 0;
+            newmap = NULL;
+        }
+        newmap = add_fixed_colors_to_palette(newmap, max_colors, fixed_colors, fixed_colors_count, options->malloc, options->free);
         if (!newmap) {
             return NULL;
         }
@@ -1479,14 +1539,14 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
     return acolormap;
 }
 
-static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, const double gamma)
+static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, const liq_image *img)
 {
     colormap *acolormap;
     double palette_error = -1;
 
     // no point having perfect match with imperfect colors (ignorebits > 0)
     const bool fast_palette = options->fast_palette || hist->ignorebits > 0;
-    const bool few_input_colors = hist->size <= options->max_colors;
+    const bool few_input_colors = hist->size+img->fixed_colors_count <= options->max_colors;
 
     // If image has few colors to begin with (and no quality degradation is required)
     // then it's possible to skip quantization entirely
@@ -1496,10 +1556,11 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
             acolormap->palette[i].acolor = hist->achv[i].acolor;
             acolormap->palette[i].popularity = hist->achv[i].perceptual_weight;
         }
+        acolormap = add_fixed_colors_to_palette(acolormap, options->max_colors, img->fixed_colors, img->fixed_colors_count, options->malloc, options->free);
         palette_error = 0;
     } else {
         const double max_mse = options->max_mse * (few_input_colors ? 0.33 : 1.0); // when degrading image that's already paletted, require much higher improvement, since pal2pal often looks bad and there's little gain
-        acolormap = find_best_palette(hist, options, max_mse, &palette_error);
+        acolormap = find_best_palette(hist, options, max_mse, img->fixed_colors, img->fixed_colors_count, &palette_error);
         if (!acolormap) {
             return NULL;
         }
@@ -1559,7 +1620,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
         .palette_error = palette_error,
         .fast_palette = fast_palette,
         .use_dither_map = options->use_dither_map,
-        .gamma = gamma,
+        .gamma = img->gamma,
         .min_posterization_output = options->min_posterization_output,
     };
     return result;

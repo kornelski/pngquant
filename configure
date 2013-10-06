@@ -333,16 +333,16 @@ fi
 
 # libpng
 # try if given flags are enough
-SUCCESS=0
+HAS_LIBPNG=0
 if echo "#include \"png.h\"
     int main(){
     return !png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 }" | "$CC" -xc -std=c99 -o /dev/null $CFLAGS $LDFLAGS - &> /dev/null; then
     status "libpng" "custom flags"
-    SUCCESS=1
+    HAS_LIBPNG=1
 fi
 
-if [ "$SUCCESS" -eq 0 ]; then
+if [ "$HAS_LIBPNG" -eq 0 ]; then
     # try static in the given directory
     PNGH=$(find_h "$LIBPNG_DIR" "png.h")
     if [ -n "$PNGH" ]; then
@@ -354,15 +354,15 @@ if [ "$SUCCESS" -eq 0 ]; then
                 cflags "-I${PNGH%/*}"
                 lflags "${LIBPNGA}"
                 status "libpng" "static (${PNGH_STRING})"
-                SUCCESS=1
+                HAS_LIBPNG=1
             fi
         fi
     fi
 fi
 # try shared
-if [ "$SUCCESS" -eq 0 ]; then
+if [ "$HAS_LIBPNG" -eq 0 ]; then
     if find_pkgconfig libpng; then
-        SUCCESS=1
+        HAS_LIBPNG=1
     else
         for i in "${DIRS[@]}"; do
             DIR=($i)
@@ -376,7 +376,7 @@ if [ "$SUCCESS" -eq 0 ]; then
                         cflags "-I${PNGH%/*}"
                         lflags "-L${LIBPNGSO%/*} -lpng${PNGH_MAJMIN}"
                         status "libpng" "shared (${PNGH_STRING})"
-                        SUCCESS=1
+                        HAS_LIBPNG=1
                         break
                     fi
                 fi
@@ -384,7 +384,7 @@ if [ "$SUCCESS" -eq 0 ]; then
         done
     fi
 fi
-if [ "$SUCCESS" -eq 0 ]; then
+if [ "$HAS_LIBPNG" -eq 0 ]; then
     if [[ "$OSTYPE" =~ "darwin" ]]; then
         LIBPNG_CMD='`brew install libpng`'
     else

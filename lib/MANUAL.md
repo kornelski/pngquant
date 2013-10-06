@@ -252,11 +252,11 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-4 range.
 
 ----
 
-    liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma);
+    liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void *user_info, int width, int height, double gamma);
 
 <p>
 
-    void image_get_rgba_row_callback(liq_color row_out[], int row_index, int width, void* user_info) {
+    void image_get_rgba_row_callback(liq_color row_out[], int row_index, int width, void *user_info) {
         for(int column_index=0; column_index < width; column_index++) {
             row_out[column_index] = /* generate pixel at (row_index, column_index) */;
         }
@@ -272,7 +272,7 @@ The callback will be called multiple times for each row. Quantization and remapp
 
 To use RGB image:
 
-    void rgb_to_rgba_callback(liq_color row_out[], int row_index, int width, void* user_info) {
+    void rgb_to_rgba_callback(liq_color row_out[], int row_index, int width, void *user_info) {
         unsigned char *rgb_row = ((unsigned char *)user_info) + 3*width*row_index;
 
         for(int i=0; i < width; i++) {
@@ -347,18 +347,18 @@ This function can be used to add upper limit to quality options presented to the
 
 ----
 
-    void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void* user_info);
+    void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void *user_info);
 
 <p>
 
-    void log_callback_function(const liq_attr*, const char *message, void* user_info) {}
+    void log_callback_function(const liq_attr*, const char *message, void *user_info) {}
 
 ----
 
-    void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void* user_info);
+    void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void *user_info);
 <p>
 
-    void log_flush_callback_function(const liq_attr*, void* user_info) {}
+    void log_flush_callback_function(const liq_attr*, void *user_info) {}
 
 Sets up callback function to be called when the library reports work progress or errors. The callback must not call any library functions.
 

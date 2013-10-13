@@ -1,6 +1,6 @@
-//
-// http://pngquant.org
-//
+/*
+ * http://pngquant.org
+ */
 
 #ifndef LIBIMAGEQUANT_H
 #define LIBIMAGEQUANT_H

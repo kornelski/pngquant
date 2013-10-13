@@ -1197,11 +1197,12 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 }
 
 /* fixed colors are always included in the palette, so it would be wasteful to duplicate them in palette from histogram */
-static void remove_fixed_colors_from_histogram(histogram *hist, liq_image *input_image) {
+static void remove_fixed_colors_from_histogram(histogram *hist, const liq_image *input_image, const float target_mse) {
+    const float max_difference = MAX(target_mse/2.0, 2.0/256.0/256.0);
     if (input_image->fixed_colors_count) {
         for(int j=0; j < hist->size; j++) {
             for(unsigned int i=0; i < input_image->fixed_colors_count; i++) {
-                if (colordifference(hist->achv[j].acolor, input_image->fixed_colors[i]) < 2.0/256.0/256.0) {
+                if (colordifference(hist->achv[j].acolor, input_image->fixed_colors[i]) < max_difference) {
                     hist->achv[j] = hist->achv[--hist->size]; // remove color from histogram by overwriting with the last entry
                     j--; break; // continue searching histogram
                 }
@@ -1268,9 +1269,8 @@ static histogram *get_histogram(liq_image *input_image, const liq_attr *options)
     pam_freeacolorhash(acht);
     if (hist) {
         liq_verbose_printf(options, "  made histogram...%d colors found", hist->size);
+        remove_fixed_colors_from_histogram(hist, input_image, options->target_mse);
     }
-
-    remove_fixed_colors_from_histogram(hist, input_image);
 
     return hist;
 }
@@ -1478,7 +1478,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
 
     do {
         colormap *newmap;
-        if (fixed_colors_count < max_colors) {
+        if (hist->size && fixed_colors_count < max_colors) {
             newmap = mediancut(hist, options->min_opaque_val, max_colors-fixed_colors_count, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
             options->malloc, options->free);
         } else {

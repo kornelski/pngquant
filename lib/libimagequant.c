@@ -1475,14 +1475,6 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
     }
     while(feedback_loop_trials > 0);
 
-    // likely_colormap_index (used and set in viter_do_iteration) can't point to index outside colormap
-    if (acolormap->colors < 256) {
-	for(unsigned int j=0; j < hist->size; j++) {
-	    if (hist->achv[j].tmp.likely_colormap_index >= acolormap->colors) {
-		hist->achv[j].tmp.likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
-	    }
-	}
-    }
     *palette_error_p = least_error;
     return acolormap;
 }
@@ -1519,6 +1511,13 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
         if (!iterations && palette_error < 0 && max_mse < MAX_DIFF) iterations = 1; // otherwise total error is never calculated and MSE limit won't work
 
         if (iterations) {
+            // likely_colormap_index (used and set in viter_do_iteration) can't point to index outside colormap
+            if (acolormap->colors < 256) for(unsigned int j=0; j < hist->size; j++) {
+                if (hist->achv[j].tmp.likely_colormap_index >= acolormap->colors) {
+                    hist->achv[j].tmp.likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
+                }
+            }
+
             verbose_print(options, "  moving colormap towards local minimum");
 
             double previous_palette_error = MAX_DIFF;

@@ -54,6 +54,8 @@ LIQ_PRIVATE void viter_finalize(colormap *map, const unsigned int max_threads, c
                 .g = g / total,
                 .b = b / total,
             };
+        } else {
+            total = i/1024.0;
         }
         map->palette[i].popularity = total;
     }

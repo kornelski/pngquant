@@ -1,5 +1,5 @@
 # Makefile for pngquant
-VERSION = $(shell grep 'define PNGQUANT_VERSION' pngquant.c | egrep -Eo '[12]\.[0-9.]*')
+VERSION = $(shell grep 'define PNGQUANT_VERSION' pngquant.c | grep -Eo '[12]\.[0-9.]*')
 
 # This changes default "cc" to "gcc", but still allows customization of the CC variable
 # if this line causes problems with non-GNU make, just remove it:
@@ -15,10 +15,10 @@ CUSTOMZLIB ?= ../zlib
 
 CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 
-CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I/usr/local/include/ -I/usr/include/ -I/usr/X11/include/ $(CFLAGSOPT)
+CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I/usr/local/include/ -I/usr/include/ -I/opt/local/include/libpng15 -I/usr/X11/include/ $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)
 
-LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L/usr/local/lib/ -L/usr/lib/ -L/usr/X11/lib/
+LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L/usr/local/lib/ -L/usr/lib/ -L/opt/local/lib -L/usr/X11/lib/
 LDFLAGS += -lpng -lz -lm lib/libimagequant.a -lm $(LDFLAGSADD)
 
 OBJS = pngquant.o rwpng.o

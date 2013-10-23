@@ -15,10 +15,31 @@ CUSTOMZLIB ?= ../zlib
 
 CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 
-CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I$(CUSTOMLIBPNG) -I$(CUSTOMZLIB) -I/usr/local/include/ -I/usr/include/ -I/opt/local/include/libpng15 -I/usr/X11/include/ $(CFLAGSOPT)
+CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I/usr/local/include/ -I/usr/include/ $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)
 
-LDFLAGS ?= -L$(CUSTOMLIBPNG) -L$(CUSTOMZLIB) -L/usr/local/lib/ -L/usr/lib/ -L/opt/local/lib -L/usr/X11/lib/
+LDFLAGS ?= -L/usr/local/lib/ -L/usr/lib/
+
+ifneq "$(wildcard /usr/X11/lib/)" ""
+LDFLAGS += -L/usr/X11/lib/
+CFLAGS += -I/usr/X11/include/
+endif
+
+ifneq "$(wildcard /opt/local/lib)" ""
+LDFLAGS += -L/opt/local/lib
+CFLAGS += -I/opt/local/include/libpng15
+endif
+
+ifneq "$(wildcard $(CUSTOMLIBPNG))" ""
+LDFLAGS += -L$(CUSTOMLIBPNG) -L$(CUSTOMLIBPNG)/lib
+CFLAGS += -I$(CUSTOMLIBPNG) -I$(CUSTOMLIBPNG)/include
+endif
+
+ifneq "$(wildcard $(CUSTOMZLIB))" ""
+LDFLAGS += -L$(CUSTOMZLIB) -L$(CUSTOMZLIB)/lib
+CFLAGS += -I$(CUSTOMZLIB) -I$(CUSTOMZLIB)/include
+endif
+
 LDFLAGS += -lpng -lz -lm lib/libimagequant.a -lm $(LDFLAGSADD)
 
 OBJS = pngquant.o rwpng.o

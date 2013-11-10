@@ -1,24 +1,24 @@
-#libimagequant—Image Quantization Library
+# libimagequant—Image Quantization Library
 
 Small, portable C library for high-quality conversion of RGBA images to 8-bit indexed-color (palette) images.
 It's powering [pngquant2](http://pngquant.org).
 
-##License
+## License
 
 [BSD-like](https://raw.github.com/pornel/improved-pngquant/master/lib/COPYRIGHT).
 It can be linked with both free and closed-source software.
 
-##Download
+## Download
 
 The library is currently a part of the [pngquant2 project](https://github.com/pornel/improved-pngquant/tree/lib/lib).
 
 Files needed for the library are only in the `lib/` directory inside the repository.
 
-##Compiling and Linking
+## Compiling and Linking
 
 The library can be linked with ANSI C and C++ programs. It has no external dependencies.
 
-To build it run:
+To build on Unix-like systems run:
 
     make -C lib
 
@@ -36,7 +36,7 @@ The library can be compiled with any C compiler that has at least basic support 
 
 On Windows you can compile the library with GCC from MinGW or Cygwin. Use GCC to build `libimagequant.a` (using instructions above) and add it along with `libgcc.a` (shipped with the compiler) to your VC project.
 
-##Overview
+## Overview
 
 The basic flow is:
 
@@ -71,7 +71,7 @@ There are 3 ways to create image object for quantization:
   * `liq_image_create_rgba_rows()` for non-contiguous RGBA bitmaps (that have padding between rows or reverse order, e.g. BMP).
   * `liq_image_create_custom()` for RGB, ABGR, YUV and all other formats that can be converted on-the-fly to RGBA (you have to supply the conversion function).
 
-##Functions
+## Functions
 
 ----
 
@@ -209,7 +209,7 @@ Releases memory owned by the given object. Object must not be used any more afte
 
 Freeing `liq_result` also frees any `liq_palette` obtained from it.
 
-##Advanced Functions
+## Advanced Functions
 
 ----
 
@@ -399,7 +399,7 @@ Sets gamma correction for generated palette and remapped image. Must be > 0 and 
 Getters for `width`, `height` and `gamma` of the input image.
 
 
-##Multithreading
+## Multithreading
 
 The library is stateless and doesn't use any global or thread-local storage. It doesn't use any locks.
 
@@ -408,7 +408,7 @@ The library is stateless and doesn't use any global or thread-local storage. It 
 
 The library needs to sort unique colors present in the image. Although the sorting algorithm does few things to make stack usage minimal in typical cases, there is no guarantee against extremely degenerate cases, so threads should have automatically growing stack.
 
-###OpenMP
+### OpenMP
 
 The library will parallelize some operations if compiled with OpenMP.
 
@@ -416,7 +416,7 @@ You must not increase number of maximum threads after `liq_image` has been creat
 
 Callback of `liq_image_create_custom()` may be called from different threads at the same time.
 
-##Acknowledgements
+## Acknowledgements
 
 Thanks to Irfan Skiljan for helping test the first version of the library.
 

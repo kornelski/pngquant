@@ -10,9 +10,9 @@ It can be linked with both free and closed-source software.
 
 ## Download
 
-The library is currently a part of the [pngquant2 project](https://github.com/pornel/improved-pngquant/tree/lib/lib).
+The [library](http://pngquant.org/lib) is currently a part of the [pngquant2 project](https://github.com/pornel/improved-pngquant/tree/lib/lib).
 
-Files needed for the library are only in the `lib/` directory inside the repository.
+Files needed for the library are only in the `lib/` directory inside the repository (and you can ignore the rest).
 
 ## Compiling and Linking
 
@@ -24,17 +24,19 @@ To build on Unix-like systems run:
 
 it will create `lib/libimagequant.a` which you can link with your program.
 
-    gcc yourprogram.c lib/libimagequant.a
+    gcc yourprogram.c /path/to/lib/libimagequant.a
 
 Alternatively you can compile the library with your program simply by including all `.c` files (and define `NDEBUG` to get fast build):
 
     gcc -std=c99 -O3 -DNDEBUG lib/*.c yourprogram.c
 
-###Compiling on Windows
+### Compiling on Windows/Visual Studio
 
-The library can be compiled with any C compiler that has at least basic support for C99 (GCC, clang, ICC, C++ Builder, even Tiny C Compiler). Unfortunately as of 2013 Visual Studio (MSVC) has not yet been updated to support C newer than the 1989 version.
+The library can be compiled with any C compiler that has at least basic support for C99 (GCC, clang, ICC, C++ Builder, even Tiny C Compiler), but Visual Studio 2012 and older are not up to date with the 1999 C standard. There are 3 options for using `libimagequant` with Visual Studio:
 
-On Windows you can compile the library with GCC from MinGW or Cygwin. Use GCC to build `libimagequant.a` (using instructions above) and add it along with `libgcc.a` (shipped with the compiler) to your VC project.
+ * Use Visual Studio **2013** (MSVC12) or newer.
+ * Or use GCC from [MinGW](http://www.mingw.org). Use GCC to build `libimagequant.a` (using above instructions for Unix) and add it along with `libgcc.a` (shipped with the MinGW compiler) to your VC project.
+ * Or use [C++ version of `libimagequant`](https://github.com/pornel/pngquant/tree/cpp). The C++ version is not as up-to-date as C version, but should be compatible with Visual Studio older than 2013 (VC12).
 
 ## Overview
 
@@ -63,7 +65,7 @@ The basic flow is:
     liq_image_destroy(image);
     liq_result_destroy(res);
 
-It's safe to pass `NULL` to any function accepting `liq_attr`, `liq_image`, `liq_result`. These objects can be reused multiple times. Functions returning `liq_error` return `LIQ_OK` on success.
+It's safe to pass `NULL` to any function accepting `liq_attr`, `liq_image`, `liq_result`. These objects can be reused multiple times. Functions returning `liq_error` return `LIQ_OK` (`0`) on success and non-zero on error.
 
 There are 3 ways to create image object for quantization:
 
@@ -79,7 +81,7 @@ There are 3 ways to create image object for quantization:
 
 Returns object that will hold initial settings (atrributes) for the library. The object should be freed using `liq_attr_destroy()` after it's no longer needed.
 
-Returns `NULL` if the library cannot run on the current machine (e.g. the library has been compiled for SSE2-capable x86 CPU and run on VIA C3 CPU).
+Returns `NULL` in the unlikely case that the library cannot run on the current machine (e.g. the library has been compiled for SSE2-capable x86 CPU and run on VIA C3 CPU).
 
 ----
 

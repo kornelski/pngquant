@@ -14,6 +14,7 @@ directory set PREFIX or DESTDIR environmental variables.
 pngquant uses GNU Makefile. To compile on FreeBSD you will need to use gmake,
 and on Windows the MinGW compiler (MSVC does not support C99).
 
+pngquant will compile with libpng 1.2, but you should use 1.5 or later.
 
 ##Compilation with OpenMP
 

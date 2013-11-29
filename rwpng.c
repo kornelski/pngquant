@@ -31,6 +31,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "png.h"
 #include "rwpng.h"
@@ -48,8 +49,18 @@ int rwpng_read_image24_cocoa(FILE *infile, png24_image *mainprog_ptr);
 
 void rwpng_version_info(FILE *fp)
 {
+    const char *pngver = png_get_header_ver(NULL);
+
     fprintf(fp, "   Compiled with libpng %s; using libpng %s.\n",
-      PNG_LIBPNG_VER_STRING, png_get_header_ver(NULL));
+      PNG_LIBPNG_VER_STRING, pngver);
+
+#if PNG_LIBPNG_VER < 10600
+    if (strcmp(pngver, "1.3.") < 0) {
+        fputs("\nWARNING: Your version of libpng is outdated and may produce corrupted files.\n"
+              "Please recompile pngquant with newer version of libpng (1.5 or later.)\n", fp);
+    }
+#endif
+
 #if USE_COCOA
     fputs("   Compiled with Apple Cocoa image reader.\n", fp);
 #endif
@@ -291,6 +302,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 
     /* set the image parameters appropriately */
     int sample_depth;
+#if PNG_LIBPNG_VER > 10400 /* old libpng corrupts files with low depth */
     if (mainprog_ptr->num_palette <= 2)
         sample_depth = 1;
     else if (mainprog_ptr->num_palette <= 4)
@@ -298,6 +310,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     else if (mainprog_ptr->num_palette <= 16)
         sample_depth = 4;
     else
+#endif
         sample_depth = 8;
 
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,

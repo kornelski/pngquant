@@ -35,9 +35,9 @@ LIQ_PRIVATE void* mempool_create(mempool *mptr, const unsigned int size, unsigne
         .used = sizeof(struct mempool),
         .next = old,
     };
-    uintptr_t mptr_used_start = (uintptr_t)(*mptr + (*mptr)->used);
+    uintptr_t mptr_used_start = (uintptr_t)(*mptr) + (*mptr)->used;
     (*mptr)->used += (ALIGN_MASK + 1 - (mptr_used_start & ALIGN_MASK)) & ALIGN_MASK; // reserve bytes required to make subsequent allocations aligned
-    assert(!((uintptr_t)(*mptr + (*mptr)->used) & ALIGN_MASK));
+    assert(!(((uintptr_t)(*mptr) + (*mptr)->used) & ALIGN_MASK));
 
     return mempool_alloc(mptr, size, size);
 }

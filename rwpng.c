@@ -153,9 +153,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 
     if (!(color_type & PNG_COLOR_MASK_ALPHA)) {
 #ifdef PNG_READ_FILLER_SUPPORTED
-        /* GRP:  expand palette to RGB, and grayscale or RGB to GA or RGBA */
-        if (color_type == PNG_COLOR_TYPE_PALETTE)
-            png_set_expand(png_ptr);
+        png_set_expand(png_ptr);
         png_set_filler(png_ptr, 65535L, PNG_FILLER_AFTER);
 #else
         fprintf(stderr, "pngquant readpng:  image is neither RGBA nor GA\n");

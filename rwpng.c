@@ -68,7 +68,7 @@ void rwpng_version_info(FILE *fp)
 
 
 struct rwpng_read_data {
-    FILE *fp;
+    FILE *const fp;
     png_size_t bytes_read;
 };
 
@@ -80,6 +80,32 @@ static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t lengt
     if (!read) png_error(png_ptr, "Read error");
     read_data->bytes_read += read;
 }
+
+struct rwpng_write_data {
+    unsigned char *const buffer;
+    png_size_t bytes_written;
+    png_size_t bytes_left;
+};
+
+static void user_write_data(png_structp png_ptr, png_bytep data, png_size_t length)
+{
+    struct rwpng_write_data *write_data = (struct rwpng_write_data *)png_get_io_ptr(png_ptr);
+
+    if (length <= write_data->bytes_left) {
+        memcpy(write_data->buffer + write_data->bytes_written, data, length);
+        write_data->bytes_left -= length;
+        write_data->bytes_written += length;
+    } else {
+        write_data->bytes_written = 0;
+        write_data->bytes_left = 0;
+    }
+}
+
+static void user_flush_data(png_structp png_ptr)
+{
+    // libpng never calls this :(
+}
+
 
 static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_ptr, unsigned char *base, unsigned int height, unsigned int rowbytes)
 {
@@ -226,7 +252,7 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p)
 }
 
 
-static pngquant_error rwpng_write_image_init(rwpng_png_image *mainprog_ptr, png_structpp png_ptr_p, png_infopp info_ptr_p, FILE *outfile, int fast_compression)
+static pngquant_error rwpng_write_image_init(rwpng_png_image *mainprog_ptr, png_structpp png_ptr_p, png_infopp info_ptr_p, int fast_compression)
 {
     /* could also replace libpng warning-handler (final NULL), but no need: */
 
@@ -242,7 +268,6 @@ static pngquant_error rwpng_write_image_init(rwpng_png_image *mainprog_ptr, png_
         return LIBPNG_INIT_ERROR;   /* out of memory */
     }
 
-
     /* setjmp() must be called in every function that calls a PNG-writing
      * libpng function, unless an alternate error handler was installed--
      * but compatible error handlers must either use longjmp() themselves
@@ -252,8 +277,6 @@ static pngquant_error rwpng_write_image_init(rwpng_png_image *mainprog_ptr, png_
         png_destroy_write_struct(png_ptr_p, info_ptr_p);
         return LIBPNG_INIT_ERROR;   /* libpng error (via longjmp()) */
     }
-
-    png_init_io(*png_ptr_p, outfile);
 
     png_set_compression_level(*png_ptr_p, fast_compression ? Z_BEST_SPEED : Z_BEST_COMPRESSION);
 
@@ -290,8 +313,20 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     png_structp png_ptr;
     png_infop info_ptr;
 
-    pngquant_error retval = rwpng_write_image_init((rwpng_png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile, mainprog_ptr->fast_compression);
+    pngquant_error retval = rwpng_write_image_init((rwpng_png_image*)mainprog_ptr, &png_ptr, &info_ptr, mainprog_ptr->fast_compression);
     if (retval) return retval;
+
+    struct rwpng_write_data write_data;
+    if (mainprog_ptr->maximum_file_size) {
+        write_data = (struct rwpng_write_data){
+            .buffer = malloc(mainprog_ptr->maximum_file_size),
+            .bytes_left = mainprog_ptr->maximum_file_size,
+        };
+        if (!write_data.buffer) return PNG_OUT_OF_MEMORY_ERROR;
+        png_set_write_fn(png_ptr, &write_data, user_write_data, user_flush_data);
+    } else {
+        png_init_io(png_ptr, outfile);
+    }
 
     // Palette images generally don't gain anything from filtering
     png_set_filter(png_ptr, PNG_FILTER_TYPE_BASE, PNG_FILTER_VALUE_NONE);
@@ -323,7 +358,18 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 
     rwpng_write_end(&info_ptr, &png_ptr, mainprog_ptr->row_pointers);
 
-    return SUCCESS;
+    if (mainprog_ptr->maximum_file_size) {
+        if (!write_data.bytes_written) {
+            retval = TOO_LARGE_FILE;
+        } else {
+            if (!fwrite(write_data.buffer, 1, write_data.bytes_written, outfile)) {
+                retval = CANT_WRITE_ERROR;
+            }
+        }
+
+        free(write_data.buffer);
+    }
+    return retval;
 }
 
 pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
@@ -331,8 +377,10 @@ pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
     png_structp png_ptr;
     png_infop info_ptr;
 
-    pngquant_error retval = rwpng_write_image_init((rwpng_png_image*)mainprog_ptr, &png_ptr, &info_ptr, outfile, 0);
+    pngquant_error retval = rwpng_write_image_init((rwpng_png_image*)mainprog_ptr, &png_ptr, &info_ptr, 0);
     if (retval) return retval;
+
+    png_init_io(png_ptr, outfile);
 
     rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma);
 

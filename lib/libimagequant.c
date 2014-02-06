@@ -843,13 +843,6 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     return remapping_error / (input_image->width * input_image->height);
 }
 
-
-inline static float min_4(float a, float b, float c, float d)
-{
-    float x = MIN(a,b), y = MIN(c,d);
-    return MIN(x,y);
-}
-
 inline static f_pixel get_dithered_pixel(const float dither_level, const float max_dither_error, const f_pixel thiserr, const f_pixel px)
 {
     /* Use Floyd-Steinberg errors to adjust actual color. */

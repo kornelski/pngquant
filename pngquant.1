@@ -76,6 +76,10 @@ quality. If conversion results in quality below the
 .Va min
 quality the image won't be saved (or if outputting to stdin, 24-bit original will be output) and pngquant will exit with status code
 .Er 99 .
+.It Fl Fl skip-if-larger
+If conversion results in a file larger than the original the image won't be saved and pngquant will exit with status code
+.Er 98 .
+Additionally, file size gain must be greater than the amount of quality lost.
 .It Fl Fl posterize Ar bits
 Truncate number of least significant bits of color (per channel). Use this when image will be output on low-depth displays (e.g. 16-bit RGB).
 .It Fl Fl iebug

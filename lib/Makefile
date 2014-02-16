@@ -15,7 +15,7 @@ CFLAGS ?= -Wall -Wno-unknown-pragmas -I. $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)
 
 ifdef USE_SSE
-CFLAGS += -DUSE_SSE=$(USE_SSE)
+CFLAGS += -msse2 -DUSE_SSE=$(USE_SSE)
 endif
 
 OBJS = pam.o mediancut.o blur.o mempool.o viter.o nearest.o libimagequant.o

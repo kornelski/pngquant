@@ -82,7 +82,7 @@ static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t lengt
 }
 
 struct rwpng_write_data {
-    unsigned char *const buffer;
+    unsigned char *buffer;
     png_size_t bytes_written;
     png_size_t bytes_left;
 };

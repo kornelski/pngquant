@@ -133,12 +133,20 @@ static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
         int required_space = vsnprintf(NULL, 0, fmt, va)+1; // +\0
         va_end(va);
 
-        char buf[required_space];
+        char *buf = malloc(required_space * sizeof(char));
         va_start(va, fmt);
-        vsnprintf(buf, required_space, fmt, va);
-        va_end(va);
+        if (buf) {
+            vsnprintf(buf, required_space, fmt, va);
+            va_end(va);
+        } else {
+            fprintf(stderr, "Could not allocate memory for printing message:\n");
+            vfprintf(stderr, fmt, va);
+            va_end(va);
+            return;
+        }
 
         context->log_callback(context, buf, context->log_callback_user_info);
+        free(buf);
     }
 }
 
@@ -912,7 +920,10 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     struct nearest_map *const n = nearest_init(map, fast);
 
     const unsigned int max_threads = omp_get_max_threads();
-    viter_state average_color[(VITER_CACHE_LINE_GAP+map->colors) * max_threads];
+    viter_state *average_color = malloc((VITER_CACHE_LINE_GAP+map->colors) * max_threads * sizeof(viter_state));
+    if (!average_color) {
+        return -1;
+    }
     viter_init(map, max_threads, average_color);
 
     #pragma omp parallel for if (rows*cols > 3000) \
@@ -935,6 +946,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
 
     nearest_free(n);
 
+    free(average_color);
     return remapping_error / (input_image->width * input_image->height);
 }
 
@@ -1368,6 +1380,9 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
         colormap *newmap = mediancut(hist, options->min_opaque_val, max_colors,
             target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
             options->malloc, options->free);
+        if (!newmap) {
+            return NULL;
+        }
 
         if (feedback_loop_trials <= 0) {
             return newmap;
@@ -1441,6 +1456,9 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
         palette_error = 0;
     } else {
         acolormap = find_best_palette(hist, options, &palette_error);
+        if (!acolormap) {
+            return NULL;
+        }
 
         // Voronoi iteration approaches local minimum for the palette
         const double max_mse = options->max_mse;
@@ -1508,12 +1526,17 @@ LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *inp
         return LIQ_BUFFER_TOO_SMALL;
     }
 
-    unsigned char *rows[input_image->height];
+    unsigned char **rows = malloc(input_image->height * sizeof(unsigned char *));
+    if (!rows) {
+        return LIQ_OUT_OF_MEMORY;
+    }
     unsigned char *buffer_bytes = (unsigned char *)buffer;
     for(unsigned int i=0; i < input_image->height; i++) {
         rows[i] = &buffer_bytes[input_image->width * i];
     }
-    return liq_write_remapped_image_rows(result, input_image, rows);
+    liq_error error = liq_write_remapped_image_rows(result, input_image, rows);
+    free(rows);
+    return error;
 }
 
 LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image *input_image, unsigned char **row_pointers)

@@ -310,7 +310,10 @@ static bool total_box_error_below_target(double target_mse, struct box bv[], uns
 LIQ_PRIVATE colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int newcolors, const double target_mse, const double max_mse, void* (*malloc)(size_t), void (*free)(void*))
 {
     hist_item *achv = hist->achv;
-    struct box bv[newcolors];
+    struct box *bv = malloc(newcolors * sizeof(struct box));
+    if (!bv) {
+        return NULL;
+    }
 
     /*
      ** Set up the initial box.
@@ -404,6 +407,7 @@ LIQ_PRIVATE colormap *mediancut(histogram *hist, const float min_opaque_val, uns
     map->subset_palette = representative_subset;
     adjust_histogram(achv, map, bv, boxes);
 
+    free(bv);
     return map;
 }
 

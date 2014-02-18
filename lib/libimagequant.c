@@ -83,7 +83,7 @@ struct liq_image {
     liq_image_get_rgba_row_callback *row_callback;
     void *row_callback_user_info;
     float min_opaque_val;
-    bool free_rows, free_pixels;
+    bool free_pixels, free_rows, free_rows_internal;
 };
 
 typedef struct liq_remapping_result {
@@ -359,6 +359,24 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
     return attr;
 }
 
+static void *liq_aligned_malloc(size_t size) {
+    unsigned char *ptr = malloc(size + 16);
+    if (!ptr) return NULL;
+
+    uintptr_t offset = 16 - ((uintptr_t)ptr & 15); // also reserves 1 byte for ptr[-1]
+    ptr += offset;
+    assert(0 == (((uintptr_t)ptr) & 15));
+    ptr[-1] = offset ^ 0x59; // store how much pointer was shifted to get the original for free()
+    return ptr;
+}
+
+static void liq_aligned_free(void *ptr) {
+    uintptr_t offset = ((unsigned char*)ptr)[-1] ^ 0x59;
+    ptr -= offset;
+    assert(offset > 0 && offset <= 16);
+    free(ptr);
+}
+
 LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_t), void (*custom_free)(void*))
 {
 #if USE_SSE
@@ -367,8 +385,8 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_
     }
 #endif
     if (!custom_malloc && !custom_free) {
-        custom_malloc = malloc;
-        custom_free = free;
+        custom_malloc = liq_aligned_malloc;
+        custom_free = liq_aligned_free;
     } else if (!custom_malloc != !custom_free) {
         return NULL; // either specify both or none
     }
@@ -445,6 +463,7 @@ LIQ_EXPORT liq_error liq_image_set_memory_ownership(liq_image *img, int ownershi
     }
 
     if (ownership_flags & LIQ_OWN_ROWS) {
+        if (img->free_rows_internal) return LIQ_VALUE_OUT_OF_RANGE;
         img->free_rows = true;
     }
 
@@ -495,7 +514,8 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     }
 
     liq_image *image = liq_image_create_internal(attr, rows, NULL, NULL, width, height, gamma);
-    liq_image_set_memory_ownership(image, LIQ_OWN_ROWS);
+    image->free_rows = true;
+    image->free_rows_internal = true;
     return image;
 }
 
@@ -584,15 +604,25 @@ LIQ_EXPORT int liq_image_get_height(const liq_image *input_image)
     return input_image->height;
 }
 
+typedef void free_func(void*);
+
+free_func *get_default_free_func(liq_image *img) {
+    // When default allocator is used then user-supplied pointers must be freed with free()
+    if (img->free_rows_internal || img->free != liq_aligned_free) {
+        return img->free;
+    }
+    return free;
+}
+
 static void liq_image_free_rgba_source(liq_image *input_image)
 {
     if (input_image->free_pixels && input_image->pixels) {
-        input_image->free(input_image->pixels);
+        get_default_free_func(input_image)(input_image->pixels);
         input_image->pixels = NULL;
     }
 
     if (input_image->free_rows && input_image->rows) {
-        input_image->free(input_image->rows);
+        get_default_free_func(input_image)(input_image->rows);
         input_image->rows = NULL;
     }
 }

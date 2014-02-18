@@ -58,7 +58,6 @@ extern int optind, opterr;
 
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "lib/libimagequant.h"
-#include "lib/pam.h"
 
 struct pngquant_options {
     liq_attr *liq;
@@ -135,9 +134,6 @@ static void print_full_version(FILE *fd)
     fprintf(fd, "pngquant, %s, by Greg Roelofs, Kornel Lesinski.\n"
         #ifndef NDEBUG
                     "   DEBUG (slow) version.\n"
-        #endif
-        #if USE_SSE
-                    "   Compiled with SSE2 instructions.\n"
         #endif
         #if _OPENMP
                     "   Compiled with OpenMP (multicore support).\n"
@@ -258,13 +254,10 @@ int main(int argc, char *argv[])
     };
     options.liq = liq_attr_create();
 
-#if USE_SSE
     if (!options.liq) {
-        print_full_version(stderr);
         fputs("SSE2-capable CPU is required for this build.\n", stderr);
         return WRONG_ARCHITECTURE;
     }
-#endif
 
     unsigned int error_count=0, skipped_count=0, file_count=0;
     pngquant_error latest_error=SUCCESS;

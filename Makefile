@@ -20,24 +20,28 @@ CFLAGS += -std=c99 $(CFLAGSADD)
 
 LDFLAGS ?= -L/usr/local/lib/ -L/usr/lib/
 
-ifneq "$(wildcard /usr/X11/lib/)" ""
-LDFLAGS += -L/usr/X11/lib/
-CFLAGS += -I/usr/X11/include/
-endif
-
-ifneq "$(wildcard /opt/local/lib)" ""
-LDFLAGS += -L/opt/local/lib
-CFLAGS += -I/opt/local/include/libpng15
+ifneq "$(wildcard $(CUSTOMZLIB))" ""
+LDFLAGS += -L$(CUSTOMZLIB) -L$(CUSTOMZLIB)/lib
+CFLAGS += -I$(CUSTOMZLIB) -I$(CUSTOMZLIB)/include
 endif
 
 ifneq "$(wildcard $(CUSTOMLIBPNG))" ""
 LDFLAGS += -L$(CUSTOMLIBPNG) -L$(CUSTOMLIBPNG)/lib
 CFLAGS += -I$(CUSTOMLIBPNG) -I$(CUSTOMLIBPNG)/include
-endif
 
-ifneq "$(wildcard $(CUSTOMZLIB))" ""
-LDFLAGS += -L$(CUSTOMZLIB) -L$(CUSTOMZLIB)/lib
-CFLAGS += -I$(CUSTOMZLIB) -I$(CUSTOMZLIB)/include
+else ifneq "$(wildcard /usr/local/include/png.h)" ""
+
+else ifneq "$(wildcard /opt/local/include/libpng15)" ""
+LDFLAGS += -L/opt/local/lib
+CFLAGS += -I/opt/local/include/libpng15
+
+else ifneq "$(wildcard /opt/X11/include/libpng15/)" ""
+LDFLAGS += -L/opt/X11/lib
+CFLAGS += -I/opt/X11/include/libpng15/
+
+else ifneq "$(wildcard /usr/X11/lib/)" ""
+LDFLAGS += -L/usr/X11/lib/
+CFLAGS += -I/usr/X11/include/
 endif
 
 LDFLAGS += -lpng -lz -lm lib/libimagequant.a -lm $(LDFLAGSADD)

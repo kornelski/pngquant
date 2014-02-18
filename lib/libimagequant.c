@@ -1415,6 +1415,9 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
         colormap *newmap = mediancut(hist, options->min_opaque_val, max_colors,
             target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
             options->malloc, options->free);
+        if (!newmap) {
+            return NULL;
+        }
 
         if (feedback_loop_trials <= 0) {
             return newmap;
@@ -1489,6 +1492,9 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
         palette_error = 0;
     } else {
         acolormap = find_best_palette(hist, options, &palette_error);
+        if (!acolormap) {
+            return NULL;
+        }
 
         // Voronoi iteration approaches local minimum for the palette
         const double max_mse = options->max_mse;

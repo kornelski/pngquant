@@ -4,7 +4,7 @@ MACHINE=X64
 MACHINE=X86
 !endif
 
-CFLAGS = /Ox /GL /MD /nologo
+CFLAGS = /Ox /GL /MD /nologo /DNDEBUG
 LINKFLAGS = /LTCG /nologo
 OBJECTS = blur.obj libimagequant.obj mediancut.obj mempool.obj nearest.obj pam.obj viter.obj
 

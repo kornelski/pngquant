@@ -30,7 +30,7 @@
 
 // it's safe to assume that 64-bit x86 has SSE2.
 #ifndef USE_SSE
-#  if defined(__SSE2__) && (defined(__x86_64__) || defined(__amd64) || defined(WIN32) || defined(__WIN32__))
+#  if ((defined(__SSE2__) && (defined(__x86_64__) || defined(__amd64) || defined(WIN32) || defined(__WIN32__))) || defined(_WIN64))
 #    define USE_SSE 1
 #  else
 #    define USE_SSE 0
@@ -39,10 +39,15 @@
 
 #if USE_SSE
 #include <emmintrin.h>
+#ifdef _MSC_VER
+#include <intrin.h>
+#define SSE_ALIGN
+#else
 #define SSE_ALIGN __attribute__ ((aligned (16)))
 #define cpuid(func,ax,bx,cx,dx)\
     __asm__ __volatile__ ("cpuid":\
     "=a" (ax), "=b" (bx), "=c" (cx), "=d" (dx) : "a" (func));
+#endif
 #else
 #define SSE_ALIGN
 #endif
@@ -64,6 +69,14 @@ typedef struct {
 typedef struct {
     float a, r, g, b;
 } SSE_ALIGN f_pixel;
+
+#if (defined(_MSC_VER) && USE_SSE)
+/* In MSVC we cannot use the align attribute in parameters.
+ * This is used a lot, so we convert the f_pixel structure
+ * to an aligned structure when we use the SSE2 instructions.
+ */
+typedef __declspec(align(16)) f_pixel fa_pixel;
+#endif
 
 static const double internal_gamma = 0.5499;
 
@@ -167,8 +180,16 @@ inline static float colordifference(f_pixel px, f_pixel py) ALWAYS_INLINE;
 inline static float colordifference(f_pixel px, f_pixel py)
 {
 #if USE_SSE
+#ifdef _MSC_VER
+    const fa_pixel px_a = px;
+    const fa_pixel py_a = py;
+
+    const __m128 vpx = _mm_load_ps((const float*)&px_a);
+    const __m128 vpy = _mm_load_ps((const float*)&py_a);
+#else
     const __m128 vpx = _mm_load_ps((const float*)&px);
     const __m128 vpy = _mm_load_ps((const float*)&py);
+#endif
 
     // y.a - x.a
     __m128 alphas = _mm_sub_ss(vpy, vpx);

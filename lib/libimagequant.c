@@ -167,8 +167,13 @@ static void liq_verbose_printf_flush(liq_attr *attr)
 #if USE_SSE
 inline static bool is_sse2_available()
 {
-#if (defined(__x86_64__) || defined(__amd64))
+#if (defined(__x86_64__) || defined(__amd64) || defined(_WIN64))
     return true;
+#elif _MSC_VER
+    int info[4];
+    __cpuid(info, 1);
+    /* bool is implemented as a built-in type of size 1 in MSVC */
+    return info[3] & (1<<26) ? true : false;
 #else
     int a,b,c,d;
         cpuid(1, a, b, c, d);
@@ -590,7 +595,9 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
 static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsigned int row, const float gamma_lut[])
 {
     assert(row_f_pixels);
+#ifndef _MSC_VER
     assert(!USE_SSE || 0 == ((uintptr_t)row_f_pixels & 15));
+#endif
 
     const rgba_pixel *const row_pixels = liq_image_get_row_rgba(img, row);
 

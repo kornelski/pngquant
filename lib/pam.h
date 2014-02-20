@@ -70,14 +70,6 @@ typedef struct {
     float a, r, g, b;
 } SSE_ALIGN f_pixel;
 
-#if (defined(_MSC_VER) && USE_SSE)
-/* In MSVC we cannot use the align attribute in parameters.
- * This is used a lot, so we convert the f_pixel structure
- * to an aligned structure when we use the SSE2 instructions.
- */
-typedef __declspec(align(16)) f_pixel fa_pixel;
-#endif
-
 static const double internal_gamma = 0.5499;
 
 LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[], const double gamma);
@@ -181,11 +173,12 @@ inline static float colordifference(f_pixel px, f_pixel py)
 {
 #if USE_SSE
 #ifdef _MSC_VER
-    const fa_pixel px_a = px;
-    const fa_pixel py_a = py;
-
-    const __m128 vpx = _mm_load_ps((const float*)&px_a);
-    const __m128 vpy = _mm_load_ps((const float*)&py_a);
+    /* In MSVC we cannot use the align attribute in parameters.
+     * This is used a lot, so we just use an unaligned load.
+     * Also the compiler incorrectly inlines vpx and vpy without
+     * the volatile when optimization is applied for x86_64. */
+    const volatile __m128 vpx = _mm_loadu_ps((const float*)&px);
+    const volatile __m128 vpy = _mm_loadu_ps((const float*)&py);
 #else
     const __m128 vpx = _mm_load_ps((const float*)&px);
     const __m128 vpy = _mm_load_ps((const float*)&py);

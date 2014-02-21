@@ -222,6 +222,7 @@ LIQ_EXPORT liq_error liq_get_quality(liq_attr* attr, int * minimum, int * target
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
     * minimum = mse_to_quality (attr->max_mse);
     * target = mse_to_quality (attr->target_mse);
+    return LIQ_OK;
 }
 
 LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)

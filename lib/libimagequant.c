@@ -61,7 +61,7 @@ struct liq_attr {
     unsigned int min_posterization_output /* user setting */, min_posterization_input /* speed setting */;
     unsigned int voronoi_iterations, feedback_loop_trials;
     bool last_index_transparent, use_contrast_maps, use_dither_map, fast_palette;
-
+    unsigned int speed;
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
     liq_log_flush_callback_function *log_flush_callback;
@@ -217,6 +217,14 @@ LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int minimum, int target)
     return LIQ_OK;
 }
 
+LIQ_EXPORT liq_error liq_get_quality(liq_attr* attr, int * minimum, int * target)
+{
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
+    * minimum = mse_to_quality (attr->max_mse);
+    * target = mse_to_quality (attr->target_mse);
+    return LIQ_OK;
+}
+
 LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
@@ -226,11 +234,24 @@ LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)
     return LIQ_OK;
 }
 
+LIQ_EXPORT liq_error liq_get_max_colors(liq_attr* attr, int * colors)
+{
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
+    * colors = attr->max_colors;
+    return LIQ_OK;
+}
+
 LIQ_EXPORT liq_error liq_set_min_posterization(liq_attr* attr, int bits) {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
     if (bits < 0 || bits > 4) return LIQ_VALUE_OUT_OF_RANGE;
 
     attr->min_posterization_output = bits;
+    return LIQ_OK;
+}
+
+LIQ_EXPORT liq_error liq_get_min_posterization(liq_attr* attr, int * bits) {
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
+    * bits = attr->min_posterization_output;
     return LIQ_OK;
 }
 
@@ -249,10 +270,16 @@ LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed)
     attr->fast_palette = (speed >= 7);
     attr->use_dither_map = (speed <= (omp_get_max_threads() > 1 ? 7 : 5)); // parallelized dither map might speed up floyd remapping
     attr->use_contrast_maps = (speed <= 7) || attr->use_dither_map;
-
+    attr->speed = speed;
     return LIQ_OK;
 }
 
+LIQ_EXPORT liq_error liq_get_speed(liq_attr* attr, int * speed)
+{
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
+    * speed = attr->speed;
+    return LIQ_OK;
+}
 LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma)
 {
     if (!CHECK_STRUCT_TYPE(res, liq_result)) return LIQ_INVALID_POINTER;
@@ -273,6 +300,13 @@ LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min)
     if (min < 0 || min > 255) return LIQ_VALUE_OUT_OF_RANGE;
 
     attr->min_opaque_val = (double)min/255.0;
+    return LIQ_OK;
+}
+
+LIQ_EXPORT liq_error liq_get_min_opacity(liq_attr* attr, int * min)
+{
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
+    * min = (int) (255.0 * attr->min_opaque_val + 0.5);
     return LIQ_OK;
 }
 

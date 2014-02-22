@@ -26,6 +26,8 @@ it will create `lib/libimagequant.a` which you can link with your program.
 
     gcc yourprogram.c /path/to/lib/libimagequant.a
 
+On BSD, use `gmake` (Gnu make) rather than the native `make`.
+
 Alternatively you can compile the library with your program simply by including all `.c` files (and define `NDEBUG` to get fast build):
 
     gcc -std=c99 -O3 -DNDEBUG lib/*.c yourprogram.c
@@ -65,7 +67,7 @@ The basic flow is:
     liq_image_destroy(image);
     liq_result_destroy(res);
 
-It's safe to pass `NULL` to any function accepting `liq_attr`, `liq_image`, `liq_result`. These objects can be reused multiple times. Functions returning `liq_error` return `LIQ_OK` (`0`) on success and non-zero on error.
+It's safe to pass `NULL` to any function accepting `liq_attr`, `liq_image`, `liq_result`. These objects can be reused multiple times. Functions returning `liq_error` return `LIQ_OK` (`0`) on success and non-zero on error. If the pointer to a `liq_attr`, `liq_result`, or `liq_image` supplied as arguments appears to be invalid, they return the error code `LIQ_INVALID_POINTER`.
 
 There are 3 ways to create image object for quantization:
 
@@ -79,7 +81,7 @@ There are 3 ways to create image object for quantization:
 
     liq_attr* liq_attr_create(void);
 
-Returns object that will hold initial settings (atrributes) for the library. The object should be freed using `liq_attr_destroy()` after it's no longer needed.
+Returns object that will hold initial settings (attributes) for the library. The object should be freed using `liq_attr_destroy()` after it's no longer needed.
 
 Returns `NULL` in the unlikely case that the library cannot run on the current machine (e.g. the library has been compiled for SSE2-capable x86 CPU and run on VIA C3 CPU).
 
@@ -87,9 +89,15 @@ Returns `NULL` in the unlikely case that the library cannot run on the current m
 
     liq_error liq_set_max_colors(liq_attr* attr, int colors);
 
-Specifies maximum number of colors to use. The default is 256. Instead of setting fixed limit it's better to use `liq_set_quality()` instead.
+Specifies maximum number of colors to use. The default is 256. Instead of setting a fixed limit it's better to use `liq_set_quality()`.
 
-Returns `LIQ_VALUE_OUT_OF_RANGE` if number of colors is outside the 2-256 range.
+Returns `LIQ_VALUE_OUT_OF_RANGE` if number of colors is outside the range 2-256.
+
+----
+
+    liq_error liq_get_max_colors(liq_attr* attr, int* max_colors);
+
+This returns the value set by `liq_set_max_colors` in `* max_colors`.
 
 ----
 
@@ -97,7 +105,7 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if number of colors is outside the 2-256 range.
 
 Quality is in range `0` (worst) to `100` (best) and values are analoguous to JPEG quality (i.e. `80` is usually good enough).
 
-Quantization will attempt use lowest number of colors needed to achieve `maximum` quality. `maximum` value of `100` is the default and means conversion as good as possible.
+Quantization will attempt to use the lowest number of colors needed to achieve `maximum` quality. `maximum` value of `100` is the default and means conversion as good as possible.
 
 If it's not possible to convert the image with at least `minimum` quality (i.e. 256 colors is not enough to meet the minimum quality), then `liq_quantize_image()` will fail. The default minumum is `0` (proceeds regardless of quality).
 
@@ -106,9 +114,17 @@ Quality measures how well generated palette fits image given to `liq_quantize_im
 Regardless of the quality settings the number of colors won't exceed the maximum (see `liq_set_max_colors()`).
 
 Returns `LIQ_VALUE_OUT_OF_RANGE` if target is lower than minimum or any of them is outside the 0-100 range.
+Returns `LIQ_INVALID_POINTER` if `attr` appears to be invalid.
 
     liq_attr *attr = liq_attr_create();
     liq_set_quality(attr, 50, 80); // use quality 80 if possible. Give up if quality drops below 50.
+
+----
+
+    liq_error liq_set_quality(liq_attr* attr, int* minimum, int* maximum);
+
+This returns the quality set by `liq_set_quality()` in `* minimum` and
+`* maximum`.
 
 ----
 
@@ -232,6 +248,12 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the speed is outside the 1-10 range.
 
 ----
 
+    liq_error liq_get_speed(liq_attr* attr, int* speed);
+
+This returns the value set by `liq_set_speed` in `* speed`.
+
+----
+
     liq_error liq_set_min_opacity(liq_attr* attr, int min);
 
 Alpha values higher than this will be rounded to opaque. This is a workaround for Internet Explorer 6 that truncates semitransparent values to completely transparent. The default is `255` (no change). 238 is a suggested value.
@@ -240,11 +262,23 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-255 range.
 
 ----
 
+    liq_error liq_get_min_opacity(liq_attr* attr, int* min);
+
+This returns the value set by `liq_set_min_opacity` in `* min`.
+
+----
+
     liq_set_min_posterization(liq_attr* attr, int bits);
 
 Ignores given number of least significant bits in all channels, posterizing image to `2^bits` levels. `0` gives full quality. Use `2` for VGA or 16-bit RGB565 displays, `4` if image is going to be output on a RGB444/RGBA4444 display (e.g. low-quality textures on Android).
 
 Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-4 range.
+
+----
+
+    liq_error liq_get_min_posterization(liq_attr* attr, int* bits);
+
+This returns the value set by `liq_set_min_posterization` in `* bits`.
 
 ----
 
@@ -400,6 +434,7 @@ Sets gamma correction for generated palette and remapped image. Must be > 0 and 
 
 Getters for `width`, `height` and `gamma` of the input image.
 
+If the input is invalid, these all return -1.
 
 ## Multithreading
 

@@ -182,8 +182,8 @@ LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer) NEVER_INLINE;
 LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer)
 {
     if (!pointer) return false;
-    // force read from given memory location (to crash early if it's invalid)
-    // and silence compiler warning about it
+    // Force a read from the given (potentially invalid) memory location in order to check early whether this crashes the program or not.
+    // It doesn't matter what value is read, the code here is just to shut the compiler up about unused read.
     char test_access = *((volatile char *)pointer);
     return test_access || true;
 }

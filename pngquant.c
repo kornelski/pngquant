@@ -729,7 +729,9 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     }
 
     if (!keep_input_pixels) {
-        liq_image_set_memory_ownership(*liq_image_p, LIQ_OWN_ROWS | LIQ_OWN_PIXELS);
+        if (LIQ_OK != liq_image_set_memory_ownership(*liq_image_p, LIQ_OWN_ROWS | LIQ_OWN_PIXELS)) {
+            return OUT_OF_MEMORY_ERROR;
+        }
         input_image_p->row_pointers = NULL;
         input_image_p->rgba_data = NULL;
     }

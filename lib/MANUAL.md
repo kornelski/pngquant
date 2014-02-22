@@ -232,6 +232,12 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the speed is outside the 1-10 range.
 
 ----
 
+    liq_error liq_get_speed(liq_attr* attr, int* speed);
+
+This returns the value set by `liq_set_speed`.
+
+----
+
     liq_error liq_set_min_opacity(liq_attr* attr, int min);
 
 Alpha values higher than this will be rounded to opaque. This is a workaround for Internet Explorer 6 that truncates semitransparent values to completely transparent. The default is `255` (no change). 238 is a suggested value.
@@ -240,11 +246,23 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-255 range.
 
 ----
 
+    liq_error liq_get_min_opacity(liq_attr* attr, int* min);
+
+This returns the value set by `liq_set_min_opacity` in `* min`.
+
+----
+
     liq_set_min_posterization(liq_attr* attr, int bits);
 
 Ignores given number of least significant bits in all channels, posterizing image to `2^bits` levels. `0` gives full quality. Use `2` for VGA or 16-bit RGB565 displays, `4` if image is going to be output on a RGB444/RGBA4444 display (e.g. low-quality textures on Android).
 
 Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-4 range.
+
+----
+
+    liq_error liq_get_min_posterization(liq_attr* attr, int* bits);
+
+This returns the value set by `liq_set_min_posterization` in `* bits`.
 
 ----
 

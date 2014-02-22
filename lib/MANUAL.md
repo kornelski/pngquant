@@ -112,6 +112,12 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if target is lower than minimum or any of them 
 
 ----
 
+    liq_error liq_get_max_colors(liq_attr* attr, int* max_colors);
+
+This returns the value set by `liq_set_max_colors` in `* max_colors`.
+
+----
+
     liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma);
 
 Creates image object that represents a bitmap later used for quantization and remapping. The bitmap must be contiguous run of RGBA pixels (alpha is the last component, 0 = transparent, 255 = opaque).
@@ -234,7 +240,7 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the speed is outside the 1-10 range.
 
     liq_error liq_get_speed(liq_attr* attr, int* speed);
 
-This returns the value set by `liq_set_speed`.
+This returns the value set by `liq_set_speed` in `* speed`.
 
 ----
 

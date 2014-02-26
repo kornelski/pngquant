@@ -262,7 +262,7 @@ inline static double color_weight(f_pixel median, hist_item h)
     return sqrt(diff) * (sqrt(1.0+h.adjusted_weight)-1.0);
 }
 
-static colormap *colormap_from_boxes(struct box* bv, unsigned int boxes, hist_item *achv);
+static void set_colormap_from_boxes(colormap *map, struct box* bv, unsigned int boxes, hist_item *achv);
 static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, unsigned int boxes);
 
 double box_error(const struct box *box, const hist_item achv[])
@@ -307,7 +307,7 @@ static bool total_box_error_below_target(double target_mse, struct box bv[], uns
  ** on Paul Heckbert's paper, "Color Image Quantization for Frame Buffer
  ** Display," SIGGRAPH 1982 Proceedings, page 297.
  */
-LIQ_PRIVATE colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int newcolors, const double target_mse, const double max_mse)
+LIQ_PRIVATE colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int newcolors, const double target_mse, const double max_mse, void* (*malloc)(size_t), void (*free)(void*))
 {
     hist_item *achv = hist->achv;
     struct box bv[newcolors];
@@ -336,7 +336,8 @@ LIQ_PRIVATE colormap *mediancut(histogram *hist, const float min_opaque_val, uns
     while (boxes < newcolors) {
 
         if (boxes == subset_size) {
-            representative_subset = colormap_from_boxes(bv, boxes, achv);
+            representative_subset = pam_colormap(boxes, malloc, free);
+            set_colormap_from_boxes(representative_subset, bv, boxes, achv);
         }
 
         // first splits boxes that exceed quality limit (to have colors for things like odd green pixel),
@@ -397,14 +398,16 @@ LIQ_PRIVATE colormap *mediancut(histogram *hist, const float min_opaque_val, uns
         }
     }
 
-    colormap *map = colormap_from_boxes(bv, boxes, achv);
+    colormap *map = pam_colormap(boxes, malloc, free);
+    set_colormap_from_boxes(map, bv, boxes, achv);
+
     map->subset_palette = representative_subset;
     adjust_histogram(achv, map, bv, boxes);
 
     return map;
 }
 
-static colormap *colormap_from_boxes(struct box* bv, unsigned int boxes, hist_item *achv)
+static void set_colormap_from_boxes(colormap *map, struct box* bv, unsigned int boxes, hist_item *achv)
 {
     /*
      ** Ok, we've got enough boxes.  Now choose a representative color for
@@ -413,8 +416,6 @@ static colormap *colormap_from_boxes(struct box* bv, unsigned int boxes, hist_it
      ** within the boxes.  Another method would be to average all the colors in
      ** the box - this is the method specified in Heckbert's paper.
      */
-
-    colormap *map = pam_colormap(boxes);
 
     for(unsigned int bi = 0; bi < boxes; ++bi) {
         map->palette[bi].acolor = bv[bi].color;
@@ -425,8 +426,6 @@ static colormap *colormap_from_boxes(struct box* bv, unsigned int boxes, hist_it
             map->palette[bi].popularity += achv[i].perceptual_weight;
         }
     }
-
-    return map;
 }
 
 /* increase histogram popularity by difference from the final color (this is used as part of feedback loop) */

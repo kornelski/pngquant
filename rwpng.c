@@ -35,6 +35,9 @@
 
 #include "png.h"
 #include "rwpng.h"
+#if USE_LCMS
+#include "lcms.h"
+#endif
 
 #ifndef Z_BEST_COMPRESSION
 #define Z_BEST_COMPRESSION 9
@@ -77,7 +80,9 @@ static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t lengt
     struct rwpng_read_data *read_data = (struct rwpng_read_data *)png_get_io_ptr(png_ptr);
 
     png_size_t read = fread(data, 1, length, read_data->fp);
-    if (!read) png_error(png_ptr, "Read error");
+    if (!read) {
+        png_error(png_ptr, "Read error");
+    }
     read_data->bytes_read += read;
 }
 
@@ -109,7 +114,9 @@ static void user_flush_data(png_structp png_ptr)
 
 static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_ptr, unsigned char *base, unsigned int height, unsigned int rowbytes)
 {
-    if (!rowbytes) rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+    if (!rowbytes) {
+        rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+    }
 
     png_bytepp row_pointers = (png_bytepp)malloc(height * sizeof(row_pointers[0]));
     if (!row_pointers) return NULL;
@@ -233,6 +240,36 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 
     png_read_end(png_ptr, NULL);
 
+#if USE_LCMS
+    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_iCCP)) {
+        png_uint_32 ProfileLen;
+        png_bytep ProfileData;
+        int  Compression;
+        png_charp ProfileName;
+
+        png_get_iCCP(png_ptr, info_ptr, &ProfileName,
+                                        &Compression,
+                                        &ProfileData,
+                                        &ProfileLen);
+
+        cmsHPROFILE hInProfile = cmsOpenProfileFromMem(ProfileData, ProfileLen);
+        cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
+
+        cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
+                                                    hOutProfile, TYPE_RGBA_8,
+                                                    INTENT_PERCEPTUAL, 0);
+
+        // suprisingly, using the same input and output works
+        cmsDoTransform(hTransform, mainprog_ptr->rgba_data,
+                                   mainprog_ptr->rgba_data,
+                                   mainprog_ptr->height * mainprog_ptr->width);
+
+        cmsDeleteTransform(hTransform);
+        cmsCloseProfile(hOutProfile);
+        cmsCloseProfile(hInProfile);
+    }
+#endif
+
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
     mainprog_ptr->file_size = read_data.bytes_read;
@@ -353,8 +390,9 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 
     png_set_PLTE(png_ptr, info_ptr, &mainprog_ptr->palette[0], mainprog_ptr->num_palette);
 
-    if (mainprog_ptr->num_trans > 0)
+    if (mainprog_ptr->num_trans > 0) {
         png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans, mainprog_ptr->num_trans, NULL);
+    }
 
     rwpng_write_end(&info_ptr, &png_ptr, mainprog_ptr->row_pointers);
 

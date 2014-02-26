@@ -30,10 +30,17 @@ instances at a time.
 
 ##Compilation with Cocoa image reader
 
-     $ USE_COCOA=1 make
+     $ make USE_COCOA=1
 
 On Mac OS X pngquant can use Cocoa framework to load images. This enables
 support for color profiles and other input file formats.
+
+##Compilation with Little CMS 1
+
+     $ make USE_LCMS=1
+
+Enables support for ICC v3 color profiles when reading images.
+Requires Little CMS library available via `pgk-config` (e.g. install `liblcms1-dev`).
 
 
 ##Compilation of `libimagequant.a` only
@@ -41,3 +48,4 @@ support for color profiles and other input file formats.
 If you want to use pngquant's conversion algorithm without loading/saving PNG
 files, then you can run make in the `lib/` directory.
 The library doesn't need libpng or zlib.
+

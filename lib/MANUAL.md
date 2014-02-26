@@ -26,9 +26,9 @@ it will create `lib/libimagequant.a` which you can link with your program.
 
     gcc yourprogram.c /path/to/lib/libimagequant.a
 
-On BSD, use `gmake` (Gnu make) rather than the native `make`.
+On BSD, use `gmake` (GNU make) rather than the native `make`.
 
-Alternatively you can compile the library with your program simply by including all `.c` files (and define `NDEBUG` to get fast build):
+Alternatively you can compile the library with your program simply by including all `.c` files (and define `NDEBUG` to get a fast version):
 
     gcc -std=c99 -O3 -DNDEBUG lib/*.c yourprogram.c
 
@@ -67,7 +67,9 @@ The basic flow is:
     liq_image_destroy(image);
     liq_result_destroy(res);
 
-It's safe to pass `NULL` to any function accepting `liq_attr`, `liq_image`, `liq_result`. These objects can be reused multiple times. Functions returning `liq_error` return `LIQ_OK` (`0`) on success and non-zero on error. If the pointer to a `liq_attr`, `liq_result`, or `liq_image` supplied as arguments appears to be invalid, they return the error code `LIQ_INVALID_POINTER`.
+Functions returning `liq_error` return `LIQ_OK` (`0`) on success and non-zero on error.
+
+It's safe to pass `NULL` to any function accepting `liq_attr`, `liq_image`, `liq_result` (in that case the error code `LIQ_INVALID_POINTER` will be returned). These objects can be reused multiple times.
 
 There are 3 ways to create image object for quantization:
 
@@ -182,7 +184,7 @@ Enables/disables dithering in `liq_write_remapped_image()`. Dithering level must
 
 Precision of the dithering algorithm depends on the speed setting, see `liq_set_speed()`.
 
-Returns `LIQ_VALUE_OUT_OF_RANGE` if dithering level is outside the 0-1 range.
+Returns `LIQ_VALUE_OUT_OF_RANGE` if the dithering level is outside the 0-1 range.
 
 ----
 

@@ -393,12 +393,12 @@ static void *liq_aligned_malloc(size_t size)
     return ptr;
 }
 
-static void liq_aligned_free(void *ptr)
+static void liq_aligned_free(void *inptr)
 {
-    uintptr_t offset = ((unsigned char *)ptr)[-1] ^ 0x59;
-    ptr -= offset;
+    unsigned char *ptr = inptr;
+    size_t offset = ptr[-1] ^ 0x59;
     assert(offset > 0 && offset <= 16);
-    free(ptr);
+    free(ptr - offset);
 }
 
 LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_t), void (*custom_free)(void*))

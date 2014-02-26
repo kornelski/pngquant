@@ -249,7 +249,7 @@ LIQ_PRIVATE colormap *pam_colormap(unsigned int colors, void* (*malloc)(size_t),
 LIQ_PRIVATE colormap *pam_duplicate_colormap(colormap *map)
 {
     colormap *dupe = pam_colormap(map->colors, map->malloc, map->free);
-    for(int i=0; i < map->colors; i++) {
+    for(unsigned int i=0; i < map->colors; i++) {
         dupe->palette[i] = map->palette[i];
     }
     if (map->subset_palette) {

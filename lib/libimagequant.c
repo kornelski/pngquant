@@ -478,7 +478,7 @@ LIQ_EXPORT liq_error liq_image_set_memory_ownership(liq_image *img, int ownershi
             // for simplicity of this API there's no explicit bitmap argument,
             // so the row with the lowest address is assumed to be at the start of the bitmap
             img->pixels = img->rows[0];
-            for(int i=1; i < img->height; i++) {
+            for(unsigned int i=1; i < img->height; i++) {
                 img->pixels = MIN(img->pixels, img->rows[i]);
             }
         }
@@ -1204,13 +1204,13 @@ static void contrast_maps(liq_image *image)
     const f_pixel *curr_row, *prev_row, *next_row;
     curr_row = prev_row = next_row = liq_image_get_row_f(image, 0);
 
-    for (unsigned int j=0; j < rows; j++) {
+    for (int j=0; j < rows; j++) {
         prev_row = curr_row;
         curr_row = next_row;
         next_row = liq_image_get_row_f(image, MIN(rows-1,j+1));
 
         f_pixel prev, curr = curr_row[0], next=curr;
-        for (unsigned int i=0; i < cols; i++) {
+        for (int i=0; i < cols; i++) {
             prev=curr;
             curr=next;
             next = curr_row[MIN(cols-1,i+1)];
@@ -1258,7 +1258,7 @@ static void contrast_maps(liq_image *image)
 
     min3(edges, tmp, cols, rows);
     max3(tmp, edges, cols, rows);
-    for(unsigned int i=0; i < cols*rows; i++) edges[i] = MIN(noise[i], edges[i]);
+    for(int i=0; i < cols*rows; i++) edges[i] = MIN(noise[i], edges[i]);
 
     image->free(tmp);
 
@@ -1493,7 +1493,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
 {
     if (!CHECK_STRUCT_TYPE(quant, liq_result)) return LIQ_INVALID_POINTER;
     if (!CHECK_STRUCT_TYPE(input_image, liq_image)) return LIQ_INVALID_POINTER;
-    for(int i=0; i < input_image->height; i++) {
+    for(unsigned int i=0; i < input_image->height; i++) {
         if (!CHECK_USER_POINTER(row_pointers+i) || !CHECK_USER_POINTER(row_pointers[i])) return LIQ_INVALID_POINTER;
     }
 

@@ -35,7 +35,7 @@ static int find_slow(const f_pixel px, const colormap *map)
     int best=0;
     float bestdiff = colordifference(px, map->palette[0].acolor);
 
-    for(int i=1; i < map->colors; i++) {
+    for(unsigned int i=1; i < map->colors; i++) {
         float diff = colordifference(px, map->palette[i].acolor);
         if (diff < bestdiff) {
             best = i;

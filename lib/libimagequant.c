@@ -140,12 +140,16 @@ static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
 
 inline static void verbose_print(const liq_attr *attr, const char *msg)
 {
-    if (attr->log_callback) attr->log_callback(attr, msg, attr->log_callback_user_info);
+    if (attr->log_callback) {
+        attr->log_callback(attr, msg, attr->log_callback_user_info);
+    }
 }
 
 static void liq_verbose_printf_flush(liq_attr *attr)
 {
-    if (attr->log_flush_callback) attr->log_flush_callback(attr, attr->log_flush_callback_user_info);
+    if (attr->log_flush_callback) {
+        attr->log_flush_callback(attr, attr->log_flush_callback_user_info);
+    }
 }
 
 #if USE_SSE
@@ -165,7 +169,9 @@ inline static bool is_sse2_available()
 LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header) NEVER_INLINE;
 LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header)
 {
-    if (!user_supplied_pointer) return false;
+    if (!user_supplied_pointer) {
+        return false;
+    }
 
     if (user_supplied_pointer->magic_header == liq_freed_magic) {
         fprintf(stderr, "%s used after being freed", expected_magic_header);
@@ -181,7 +187,9 @@ LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_s
 LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer) NEVER_INLINE;
 LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer)
 {
-    if (!pointer) return false;
+    if (!pointer) {
+        return false;
+    }
     // Force a read from the given (potentially invalid) memory location in order to check early whether this crashes the program or not.
     // It doesn't matter what value is read, the code here is just to shut the compiler up about unused read.
     char test_access = *((volatile char *)pointer);
@@ -202,7 +210,9 @@ static double quality_to_mse(long quality)
 static unsigned int mse_to_quality(double mse)
 {
     for(int i=100; i > 0; i--) {
-        if (mse <= quality_to_mse(i)) return i;
+        if (mse <= quality_to_mse(i)) {
+            return i;
+        }
     }
     return 0;
 }
@@ -347,7 +357,9 @@ LIQ_EXPORT liq_attr* liq_attr_create()
 
 LIQ_EXPORT void liq_attr_destroy(liq_attr *attr)
 {
-    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return;
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) {
+        return;
+    }
 
     liq_verbose_printf_flush(attr);
 
@@ -357,7 +369,9 @@ LIQ_EXPORT void liq_attr_destroy(liq_attr *attr)
 
 LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
 {
-    if (!CHECK_STRUCT_TYPE(orig, liq_attr)) return NULL;
+    if (!CHECK_STRUCT_TYPE(orig, liq_attr)) {
+        return NULL;
+    }
 
     liq_attr *attr = orig->malloc(sizeof(liq_attr));
     if (!attr) return NULL;
@@ -368,7 +382,9 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
 static void *liq_aligned_malloc(size_t size)
 {
     unsigned char *ptr = malloc(size + 16);
-    if (!ptr) return NULL;
+    if (!ptr) {
+        return NULL;
+    }
 
     uintptr_t offset = 16 - ((uintptr_t)ptr & 15); // also reserves 1 byte for ptr[-1]
     ptr += offset;
@@ -1196,13 +1212,17 @@ static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels)
 static void contrast_maps(liq_image *image)
 {
     const int cols = image->width, rows = image->height;
-    if (cols < 4 || rows < 4 || (3*cols*rows) > LIQ_HIGH_MEMORY_LIMIT) return;
+    if (cols < 4 || rows < 4 || (3*cols*rows) > LIQ_HIGH_MEMORY_LIMIT) {
+        return;
+    }
 
     unsigned char *restrict noise = image->malloc(cols*rows);
     unsigned char *restrict edges = image->malloc(cols*rows);
     unsigned char *restrict tmp = image->malloc(cols*rows);
 
-    if (!noise || !edges || !tmp) return;
+    if (!noise || !edges || !tmp) {
+        return;
+    }
 
     const f_pixel *curr_row, *prev_row, *next_row;
     curr_row = prev_row = next_row = liq_image_get_row_f(image, 0);

@@ -398,7 +398,9 @@ int main(int argc, char *argv[])
     // new filename extension depends on options used. Typically basename-fs8.png
     if (newext == NULL) {
         newext = options.floyd > 0 ? "-ie-fs8.png" : "-ie-or8.png";
-        if (!options.ie_mode) newext += 3; /* skip "-ie" */
+        if (!options.ie_mode) {
+            newext += 3;    /* skip "-ie" */
+        }
     }
 
     if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
@@ -580,7 +582,9 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         // so if quality is too low, output 24-bit original
         if (keep_input_pixels) {
             pngquant_error write_retval = write_image(NULL, &input_image_rwpng, outname, options);
-            if (write_retval) retval = write_retval;
+            if (write_retval) {
+                retval = write_retval;
+            }
         }
     }
 
@@ -667,7 +671,11 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         }
 
         const char *outfilename = strrchr(outname, '/');
-        if (outfilename) outfilename++; else outfilename = outname;
+        if (outfilename) {
+            outfilename++;
+        } else {
+            outfilename = outname;
+        }
 
         if (output_image) {
             verbose_printf(options, "  writing %d-color image as %s", output_image->num_palette, outfilename);
@@ -690,8 +698,9 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         fprintf(stderr, "  error: failed writing image to %s\n", outname);
     }
 
-    if (!options->using_stdin)
+    if (!options->using_stdin) {
         fclose(outfile);
+    }
 
     return retval;
 }
@@ -714,8 +723,9 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
         retval = rwpng_read_image24(infile, input_image_p);
     }
 
-    if (!using_stdin)
+    if (!using_stdin) {
         fclose(infile);
+    }
 
     if (retval) {
         fprintf(stderr, "  error: rwpng_read_image() error %d\n", retval);

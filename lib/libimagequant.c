@@ -133,7 +133,7 @@ static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
         int required_space = vsnprintf(NULL, 0, fmt, va)+1; // +\0
         va_end(va);
 
-        char *buf = malloc(required_space * sizeof(char));
+        char *buf = (char *)malloc(required_space * sizeof(char));
         va_start(va, fmt);
         if (buf) {
             vsnprintf(buf, required_space, fmt, va);
@@ -398,7 +398,7 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
 
 static void *liq_aligned_malloc(size_t size)
 {
-    unsigned char *ptr = malloc(size + 16);
+    unsigned char *ptr = (unsigned char *)malloc(size + 16);
     if (!ptr) {
         return NULL;
     }
@@ -935,7 +935,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     struct nearest_map *const n = nearest_init(map, fast);
 
     const unsigned int max_threads = omp_get_max_threads();
-    viter_state *average_color = malloc((VITER_CACHE_LINE_GAP+map->colors) * max_threads * sizeof(viter_state));
+    viter_state *average_color = (viter_state *)malloc((VITER_CACHE_LINE_GAP+map->colors) * max_threads * sizeof(viter_state));
     if (!average_color) {
         return -1;
     }
@@ -1545,7 +1545,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *inp
         return LIQ_BUFFER_TOO_SMALL;
     }
 
-    unsigned char **rows = malloc(input_image->height * sizeof(unsigned char *));
+    unsigned char **rows = (unsigned char **)malloc(input_image->height * sizeof(unsigned char *));
     if (!rows) {
         return LIQ_OUT_OF_MEMORY;
     }

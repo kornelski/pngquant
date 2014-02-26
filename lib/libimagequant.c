@@ -220,6 +220,8 @@ LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int minimum, int target)
 LIQ_EXPORT liq_error liq_get_quality(liq_attr *attr, int *minimum, int *target)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
+    if (!CHECK_USER_POINTER(minimum)) return LIQ_INVALID_POINTER;
+    if (!CHECK_USER_POINTER(target)) return LIQ_INVALID_POINTER;
 
     *minimum = mse_to_quality(attr->max_mse);
     *target = mse_to_quality(attr->target_mse);

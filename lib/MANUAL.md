@@ -97,9 +97,9 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if number of colors is outside the range 2-256.
 
 ----
 
-    liq_error liq_get_max_colors(liq_attr* attr, int* max_colors);
+    int liq_get_max_colors(liq_attr* attr);
 
-This returns the value set by `liq_set_max_colors` in `* max_colors`.
+Returns the value set by `liq_set_max_colors()`.
 
 ----
 
@@ -125,8 +125,7 @@ Returns `LIQ_INVALID_POINTER` if `attr` appears to be invalid.
 
     liq_error liq_set_quality(liq_attr* attr, int* minimum, int* maximum);
 
-This returns the quality set by `liq_set_quality()` in `* minimum` and
-`* maximum`.
+Returns the quality set by `liq_set_quality()` in `* minimum` and `* maximum`. Returns `LIQ_INVALID_POINTER` if any of the pointers is `NULL`.
 
 ----
 
@@ -250,9 +249,9 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the speed is outside the 1-10 range.
 
 ----
 
-    liq_error liq_get_speed(liq_attr* attr, int* speed);
+    int liq_get_speed(liq_attr* attr);
 
-This returns the value set by `liq_set_speed` in `* speed`.
+Returns the value set by `liq_set_speed()`.
 
 ----
 
@@ -264,9 +263,9 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-255 range.
 
 ----
 
-    liq_error liq_get_min_opacity(liq_attr* attr, int* min);
+    int liq_get_min_opacity(liq_attr* attr);
 
-This returns the value set by `liq_set_min_opacity` in `* min`.
+Returns the value set by `liq_set_min_opacity()`.
 
 ----
 
@@ -278,9 +277,9 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-4 range.
 
 ----
 
-    liq_error liq_get_min_posterization(liq_attr* attr, int* bits);
+    int liq_get_min_posterization(liq_attr* attr);
 
-This returns the value set by `liq_set_min_posterization` in `* bits`.
+Returns the value set by `liq_set_min_posterization()`.
 
 ----
 

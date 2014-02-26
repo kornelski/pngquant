@@ -237,11 +237,11 @@ LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_max_colors(liq_attr *attr, int *colors)
+LIQ_EXPORT int liq_get_max_colors(liq_attr *attr)
 {
-    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    *colors = attr->max_colors;
-    return LIQ_OK;
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
+
+    return attr->max_colors;
 }
 
 LIQ_EXPORT liq_error liq_set_min_posterization(liq_attr *attr, int bits)
@@ -253,11 +253,11 @@ LIQ_EXPORT liq_error liq_set_min_posterization(liq_attr *attr, int bits)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_min_posterization(liq_attr *attr, int *bits)
+LIQ_EXPORT int liq_get_min_posterization(liq_attr *attr)
 {
-    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    *bits = attr->min_posterization_output;
-    return LIQ_OK;
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
+
+    return attr->min_posterization_output;
 }
 
 LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed)
@@ -279,12 +279,13 @@ LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_speed(liq_attr *attr, int *speed)
+LIQ_EXPORT int liq_get_speed(liq_attr *attr)
 {
-    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    *speed = attr->speed;
-    return LIQ_OK;
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
+
+    return attr->speed;
 }
+
 LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma)
 {
     if (!CHECK_STRUCT_TYPE(res, liq_result)) return LIQ_INVALID_POINTER;
@@ -308,11 +309,11 @@ LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_min_opacity(liq_attr *attr, int *min)
+LIQ_EXPORT int liq_get_min_opacity(liq_attr *attr)
 {
-    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    *min = (int) (255.0 * attr->min_opaque_val + 0.5);
-    return LIQ_OK;
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
+
+    return MIN(255, 256.0 * attr->min_opaque_val);
 }
 
 LIQ_EXPORT void liq_set_last_index_transparent(liq_attr* attr, int is_last)

@@ -35,7 +35,9 @@
 
 #include "png.h"
 #include "rwpng.h"
+#if USE_LCMS
 #include "lcms.h"
+#endif
 
 #ifndef Z_BEST_COMPRESSION
 #define Z_BEST_COMPRESSION 9
@@ -234,41 +236,35 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 
     png_read_end(png_ptr, NULL);
 
+#if USE_LCMS
     if (png_get_valid(png_ptr, info_ptr, PNG_INFO_iCCP)) {
-
-        DWORD ProfileLen;
-        char *ProfileData;
+        png_uint_32 ProfileLen;
+        png_bytep ProfileData;
         int  Compression;
-        char *ProfileName;
+        png_charp ProfileName;
 
         png_get_iCCP(png_ptr, info_ptr, &ProfileName,
                                         &Compression,
                                         &ProfileData,
                                         &ProfileLen);
 
-        cmsHPROFILE hInProfile, hOutProfile;
-        cmsHTRANSFORM hTransform;
+        cmsHPROFILE hInProfile = cmsOpenProfileFromMem(ProfileData, ProfileLen);
+        cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
 
-        hInProfile = cmsOpenProfileFromMem(ProfileData,
-                                           ProfileLen);
-        hOutProfile = cmsCreate_sRGBProfile();
-
-        // needs some code for types other than RGBA_8
-        hTransform = cmsCreateTransform(hInProfile,
-                                        TYPE_RGBA_8,
-                                        hOutProfile,
-                                        TYPE_RGBA_8,
-                                        INTENT_PERCEPTUAL, 0);
+        cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
+                                                    hOutProfile, TYPE_RGBA_8,
+                                                    INTENT_PERCEPTUAL, 0);
 
         // suprisingly, using the same input and output works
         cmsDoTransform(hTransform, mainprog_ptr->rgba_data,
                                    mainprog_ptr->rgba_data,
-                                   mainprog_ptr->height * mainprog_ptr->width / 2);
+                                   mainprog_ptr->height * mainprog_ptr->width);
 
         cmsDeleteTransform(hTransform);
-        cmsCloseProfile(hInProfile);
         cmsCloseProfile(hOutProfile);
+        cmsCloseProfile(hInProfile);
     }
+#endif
 
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 

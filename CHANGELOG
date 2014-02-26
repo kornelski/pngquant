@@ -2,6 +2,7 @@ version 2.1
 -----------
  - option to save files only if they're compressed better than the original
  - option to generate posterized output (for use with 16-bit textures)
+ - support for ICC profiles via Little CMS library
 
 version 2.0
 -----------

@@ -51,6 +51,7 @@ typedef enum {
     PNG_OUT_OF_MEMORY_ERROR = 24,
     LIBPNG_FATAL_ERROR = 25,
     LIBPNG_INIT_ERROR = 35,
+    TOO_LARGE_FILE = 98,
     TOO_LOW_QUALITY = 99,
 } pngquant_error;
 
@@ -75,6 +76,7 @@ typedef struct {
     unsigned int num_trans;
     png_color palette[256];
     unsigned char trans[256];
+    png_size_t maximum_file_size;
     char fast_compression;
 } png8_image;
 

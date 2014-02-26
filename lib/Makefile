@@ -9,10 +9,14 @@ DLL=libimagequant.dll
 DLLIMP=libimagequant_dll.a
 DLLDEF=libimagequant_dll.def
 
-CFLAGSOPT ?= -DNDEBUG -O3 -fstrict-aliasing -ffast-math -funroll-loops -fomit-frame-pointer -ffinite-math-only
+CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 
 CFLAGS ?= -Wall -Wno-unknown-pragmas -I. $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)
+
+ifdef USE_SSE
+CFLAGS += -msse2 -DUSE_SSE=$(USE_SSE)
+endif
 
 OBJS = pam.o mediancut.o blur.o mempool.o viter.o nearest.o libimagequant.o
 
@@ -30,10 +34,10 @@ dll:
 	$(MAKE) CFLAGSADD="-DLIQ_EXPORT='__declspec(dllexport)'" $(DLL)
 
 openmp::
-	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8 -$(MAKEFLAGS)
+	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8
 
 $(DLL) $(DLLIMP): $(OBJS)
-	$(CC) -shared -o $(DLL) $(OBJS) $(LDFLAGS) -Wl,--out-implib,$(DLLIMP),--output-def,$(DLLDEF)
+	$(CC) -fPIC -shared -o $(DLL) $(OBJS) $(LDFLAGS) -Wl,--out-implib,$(DLLIMP),--output-def,$(DLLDEF)
 
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^

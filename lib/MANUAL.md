@@ -1,42 +1,46 @@
-#libimagequant—Image Quantization Library
+# libimagequant—Image Quantization Library
 
 Small, portable C library for high-quality conversion of RGBA images to 8-bit indexed-color (palette) images.
 It's powering [pngquant2](http://pngquant.org).
 
-##License
+## License
 
 [BSD-like](https://raw.github.com/pornel/improved-pngquant/master/lib/COPYRIGHT).
 It can be linked with both free and closed-source software.
 
-##Download
+## Download
 
-The library is currently a part of the [pngquant2 project](https://github.com/pornel/improved-pngquant/tree/lib/lib).
+The [library](http://pngquant.org/lib) is currently a part of the [pngquant2 project](https://github.com/pornel/improved-pngquant/tree/lib/lib).
 
-Files needed for the library are only in the `lib/` directory inside the repository.
+Files needed for the library are only in the `lib/` directory inside the repository (and you can ignore the rest).
 
-##Compiling and Linking
+## Compiling and Linking
 
 The library can be linked with ANSI C and C++ programs. It has no external dependencies.
 
-To build it run:
+To build on Unix-like systems run:
 
     make -C lib
 
 it will create `lib/libimagequant.a` which you can link with your program.
 
-    gcc yourprogram.c lib/libimagequant.a
+    gcc yourprogram.c /path/to/lib/libimagequant.a
+
+On BSD, use `gmake` (Gnu make) rather than the native `make`.
 
 Alternatively you can compile the library with your program simply by including all `.c` files (and define `NDEBUG` to get fast build):
 
     gcc -std=c99 -O3 -DNDEBUG lib/*.c yourprogram.c
 
-###Compiling on Windows
+### Compiling on Windows/Visual Studio
 
-The library can be compiled with any C compiler that has at least basic support for C99 (GCC, clang, ICC, C++ Builder, even Tiny C Compiler). Unfortunately as of 2013 Visual Studio (MSVC) has not yet been updated to support C newer than the 1989 version.
+The library can be compiled with any C compiler that has at least basic support for C99 (GCC, clang, ICC, C++ Builder, even Tiny C Compiler), but Visual Studio 2012 and older are not up to date with the 1999 C standard. There are 3 options for using `libimagequant` with Visual Studio:
 
-On Windows you can compile the library with GCC from MinGW or Cygwin. Use GCC to build `libimagequant.a` (using instructions above) and add it along with `libgcc.a` (shipped with the compiler) to your VC project.
+ * Use Visual Studio **2013** (MSVC12) or newer.
+ * Or use GCC from [MinGW](http://www.mingw.org). Use GCC to build `libimagequant.a` (using above instructions for Unix) and add it along with `libgcc.a` (shipped with the MinGW compiler) to your VC project.
+ * Or use [C++ version of `libimagequant`](https://github.com/pornel/pngquant/tree/cpp). The C++ version is not as up-to-date as C version, but should be compatible with Visual Studio older than 2013 (VC12).
 
-##Overview
+## Overview
 
 The basic flow is:
 
@@ -63,7 +67,7 @@ The basic flow is:
     liq_image_destroy(image);
     liq_result_destroy(res);
 
-It's safe to pass `NULL` to any function accepting `liq_attr`, `liq_image`, `liq_result`. These objects can be reused multiple times. Functions returning `liq_error` return `LIQ_OK` on success.
+It's safe to pass `NULL` to any function accepting `liq_attr`, `liq_image`, `liq_result`. These objects can be reused multiple times. Functions returning `liq_error` return `LIQ_OK` (`0`) on success and non-zero on error. If the pointer to a `liq_attr`, `liq_result`, or `liq_image` supplied as arguments appears to be invalid, they return the error code `LIQ_INVALID_POINTER`.
 
 There are 3 ways to create image object for quantization:
 
@@ -71,23 +75,29 @@ There are 3 ways to create image object for quantization:
   * `liq_image_create_rgba_rows()` for non-contiguous RGBA bitmaps (that have padding between rows or reverse order, e.g. BMP).
   * `liq_image_create_custom()` for RGB, ABGR, YUV and all other formats that can be converted on-the-fly to RGBA (you have to supply the conversion function).
 
-##Functions
+## Functions
 
 ----
 
     liq_attr* liq_attr_create(void);
 
-Returns object that will hold initial settings (atrributes) for the library. The object should be freed using `liq_attr_destroy()` after it's no longer needed.
+Returns object that will hold initial settings (attributes) for the library. The object should be freed using `liq_attr_destroy()` after it's no longer needed.
 
-Returns `NULL` if the library cannot run on the current machine (e.g. the library has been compiled for SSE2-capable x86 CPU and run on VIA C3 CPU).
+Returns `NULL` in the unlikely case that the library cannot run on the current machine (e.g. the library has been compiled for SSE2-capable x86 CPU and run on VIA C3 CPU).
 
 ----
 
     liq_error liq_set_max_colors(liq_attr* attr, int colors);
 
-Specifies maximum number of colors to use. The default is 256. Instead of setting fixed limit it's better to use `liq_set_quality()` instead.
+Specifies maximum number of colors to use. The default is 256. Instead of setting a fixed limit it's better to use `liq_set_quality()`.
 
-Returns `LIQ_VALUE_OUT_OF_RANGE` if number of colors is outside the 2-256 range.
+Returns `LIQ_VALUE_OUT_OF_RANGE` if number of colors is outside the range 2-256.
+
+----
+
+    liq_error liq_get_max_colors(liq_attr* attr, int* max_colors);
+
+This returns the value set by `liq_set_max_colors` in `* max_colors`.
 
 ----
 
@@ -95,7 +105,7 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if number of colors is outside the 2-256 range.
 
 Quality is in range `0` (worst) to `100` (best) and values are analoguous to JPEG quality (i.e. `80` is usually good enough).
 
-Quantization will attempt use lowest number of colors needed to achieve `maximum` quality. `maximum` value of `100` is the default and means conversion as good as possible.
+Quantization will attempt to use the lowest number of colors needed to achieve `maximum` quality. `maximum` value of `100` is the default and means conversion as good as possible.
 
 If it's not possible to convert the image with at least `minimum` quality (i.e. 256 colors is not enough to meet the minimum quality), then `liq_quantize_image()` will fail. The default minumum is `0` (proceeds regardless of quality).
 
@@ -104,9 +114,17 @@ Quality measures how well generated palette fits image given to `liq_quantize_im
 Regardless of the quality settings the number of colors won't exceed the maximum (see `liq_set_max_colors()`).
 
 Returns `LIQ_VALUE_OUT_OF_RANGE` if target is lower than minimum or any of them is outside the 0-100 range.
+Returns `LIQ_INVALID_POINTER` if `attr` appears to be invalid.
 
     liq_attr *attr = liq_attr_create();
     liq_set_quality(attr, 50, 80); // use quality 80 if possible. Give up if quality drops below 50.
+
+----
+
+    liq_error liq_set_quality(liq_attr* attr, int* minimum, int* maximum);
+
+This returns the quality set by `liq_set_quality()` in `* minimum` and
+`* maximum`.
 
 ----
 
@@ -209,7 +227,7 @@ Releases memory owned by the given object. Object must not be used any more afte
 
 Freeing `liq_result` also frees any `liq_palette` obtained from it.
 
-##Advanced Functions
+## Advanced Functions
 
 ----
 
@@ -230,11 +248,37 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the speed is outside the 1-10 range.
 
 ----
 
+    liq_error liq_get_speed(liq_attr* attr, int* speed);
+
+This returns the value set by `liq_set_speed` in `* speed`.
+
+----
+
     liq_error liq_set_min_opacity(liq_attr* attr, int min);
 
 Alpha values higher than this will be rounded to opaque. This is a workaround for Internet Explorer 6 that truncates semitransparent values to completely transparent. The default is `255` (no change). 238 is a suggested value.
 
 Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-255 range.
+
+----
+
+    liq_error liq_get_min_opacity(liq_attr* attr, int* min);
+
+This returns the value set by `liq_set_min_opacity` in `* min`.
+
+----
+
+    liq_set_min_posterization(liq_attr* attr, int bits);
+
+Ignores given number of least significant bits in all channels, posterizing image to `2^bits` levels. `0` gives full quality. Use `2` for VGA or 16-bit RGB565 displays, `4` if image is going to be output on a RGB444/RGBA4444 display (e.g. low-quality textures on Android).
+
+Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-4 range.
+
+----
+
+    liq_error liq_get_min_posterization(liq_attr* attr, int* bits);
+
+This returns the value set by `liq_set_min_posterization` in `* bits`.
 
 ----
 
@@ -244,11 +288,11 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-255 range.
 
 ----
 
-    liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma);
+    liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void *user_info, int width, int height, double gamma);
 
 <p>
 
-    void image_get_rgba_row_callback(liq_color row_out[], int row_index, int width, void* user_info) {
+    void image_get_rgba_row_callback(liq_color row_out[], int row_index, int width, void *user_info) {
         for(int column_index=0; column_index < width; column_index++) {
             row_out[column_index] = /* generate pixel at (row_index, column_index) */;
         }
@@ -264,7 +308,7 @@ The callback will be called multiple times for each row. Quantization and remapp
 
 To use RGB image:
 
-    void rgb_to_rgba_callback(liq_color row_out[], int row_index, int width, void* user_info) {
+    void rgb_to_rgba_callback(liq_color row_out[], int row_index, int width, void *user_info) {
         unsigned char *rgb_row = ((unsigned char *)user_info) + 3*width*row_index;
 
         for(int i=0; i < width; i++) {
@@ -339,18 +383,18 @@ This function can be used to add upper limit to quality options presented to the
 
 ----
 
-    void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void* user_info);
+    void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void *user_info);
 
 <p>
 
-    void log_callback_function(const liq_attr*, const char *message, void* user_info) {}
+    void log_callback_function(const liq_attr*, const char *message, void *user_info) {}
 
 ----
 
-    void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void* user_info);
+    void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void *user_info);
 <p>
 
-    void log_flush_callback_function(const liq_attr*, void* user_info) {}
+    void log_flush_callback_function(const liq_attr*, void *user_info) {}
 
 Sets up callback function to be called when the library reports work progress or errors. The callback must not call any library functions.
 
@@ -390,8 +434,9 @@ Sets gamma correction for generated palette and remapped image. Must be > 0 and 
 
 Getters for `width`, `height` and `gamma` of the input image.
 
+If the input is invalid, these all return -1.
 
-##Multithreading
+## Multithreading
 
 The library is stateless and doesn't use any global or thread-local storage. It doesn't use any locks.
 
@@ -400,7 +445,7 @@ The library is stateless and doesn't use any global or thread-local storage. It 
 
 The library needs to sort unique colors present in the image. Although the sorting algorithm does few things to make stack usage minimal in typical cases, there is no guarantee against extremely degenerate cases, so threads should have automatically growing stack.
 
-###OpenMP
+### OpenMP
 
 The library will parallelize some operations if compiled with OpenMP.
 
@@ -408,7 +453,7 @@ You must not increase number of maximum threads after `liq_image` has been creat
 
 Callback of `liq_image_create_custom()` may be called from different threads at the same time.
 
-##Acknowledgements
+## Acknowledgements
 
 Thanks to Irfan Skiljan for helping test the first version of the library.
 

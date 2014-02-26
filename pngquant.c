@@ -13,7 +13,7 @@
 ** implied warranty.
 */
 
-#define PNGQUANT_VERSION "2.0.0 (March 2013)"
+#define PNGQUANT_VERSION "2.1.0 (February 2014)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -24,8 +24,6 @@ options:\n\
   --speed N         speed/quality trade-off. 1=slow, 3=default, 11=fast & rough\n\
   --quality min-max don't save below min, use less colors below max (0-100)\n\
   --verbose         print status messages (synonym: -v)\n\
-  --iebug           increase opacity to work around Internet Explorer 6 bug\n\
-  --transbug        transparent color will be placed at the end of the palette\n\
 \n\
 Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
 PNGs using Floyd-Steinberg diffusion dithering (unless disabled).\n\
@@ -43,6 +41,9 @@ use --force to overwrite.\n"
 #include <stdbool.h>
 #include <getopt.h>
 
+extern char *optarg;
+extern int optind, opterr;
+
 #if defined(WIN32) || defined(__WIN32__)
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
@@ -58,14 +59,14 @@ use --force to overwrite.\n"
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
 #include "lib/libimagequant.h"
 
-
 struct pngquant_options {
     liq_attr *liq;
     liq_image *fixed_palette_image;
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
     float floyd;
-    bool using_stdin, force, ie_mode, min_quality_limit, fast_compression;
+    bool using_stdin, force, fast_compression, ie_mode,
+        min_quality_limit, skip_if_larger;
 };
 
 static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
@@ -133,9 +134,6 @@ static void print_full_version(FILE *fd)
     fprintf(fd, "pngquant, %s, by Greg Roelofs, Kornel Lesinski.\n"
         #ifndef NDEBUG
                     "   DEBUG (slow) version.\n"
-        #endif
-        #if USE_SSE
-                    "   Compiled with SSE2 instructions.\n"
         #endif
         #if _OPENMP
                     "   Compiled with OpenMP (multicore support).\n"
@@ -221,7 +219,8 @@ static void fix_obsolete_options(const unsigned int argc, char *argv[])
     }
 }
 
-enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug, arg_transbug, arg_map};
+enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug,
+    arg_transbug, arg_map, arg_posterize, arg_skip_larger};
 
 static const struct option long_options[] = {
     {"verbose", no_argument, NULL, 'v'},
@@ -234,9 +233,11 @@ static const struct option long_options[] = {
     {"iebug", no_argument, NULL, arg_iebug},
     {"transbug", no_argument, NULL, arg_transbug},
     {"ext", required_argument, NULL, arg_ext},
+    {"skip-if-larger", no_argument, NULL, arg_skip_larger},
     {"output", required_argument, NULL, 'o'},
     {"speed", required_argument, NULL, 's'},
     {"quality", required_argument, NULL, 'Q'},
+    {"posterize", required_argument, NULL, arg_posterize},
     {"map", required_argument, NULL, arg_map},
     {"version", no_argument, NULL, 'V'},
     {"help", no_argument, NULL, 'h'},
@@ -253,13 +254,10 @@ int main(int argc, char *argv[])
     };
     options.liq = liq_attr_create();
 
-#if USE_SSE
     if (!options.liq) {
-        print_full_version(stderr);
         fputs("SSE2-capable CPU is required for this build.\n", stderr);
         return WRONG_ARCHITECTURE;
     }
-#endif
 
     unsigned int error_count=0, skipped_count=0, file_count=0;
     pngquant_error latest_error=SUCCESS;
@@ -309,6 +307,10 @@ int main(int argc, char *argv[])
                 liq_set_last_index_transparent(options.liq, true);
                 break;
 
+            case arg_skip_larger:
+                options.skip_if_larger = true;
+                break;
+
             case 's':
                 {
                     int speed = atoi(optarg);
@@ -329,6 +331,13 @@ int main(int argc, char *argv[])
             case 'Q':
                 if (!parse_quality(optarg, options.liq, &options.min_quality_limit)) {
                     fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
+                    return INVALID_ARGUMENT;
+                }
+                break;
+
+            case arg_posterize:
+                if (LIQ_OK != liq_set_min_posterization(options.liq, atoi(optarg))) {
+                    fputs("Posterization should be number of bits in range 0-4.\n", stderr);
                     return INVALID_ARGUMENT;
                 }
                 break;
@@ -465,7 +474,7 @@ int main(int argc, char *argv[])
             {
                 latest_error = retval;
             }
-            if (retval == TOO_LOW_QUALITY) {
+            if (retval == TOO_LOW_QUALITY || retval == TOO_LARGE_FILE) {
                 skipped_count++;
             } else {
                 error_count++;
@@ -511,11 +520,12 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
 
     liq_image *input_image = NULL;
     png24_image input_image_rwpng = {};
-    bool keep_input_pixels = options->using_stdin && options->min_quality_limit; // original may need to be output to stdout
+    bool keep_input_pixels = options->skip_if_larger || (options->using_stdin && options->min_quality_limit); // original may need to be output to stdout
     if (!retval) {
         retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels);
     }
 
+    int quality_percent = 90; // quality on 0-100 scale, updated upon successful remap
     png8_image output_image = {};
     if (!retval) {
         verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
@@ -538,7 +548,8 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
 
                 double palette_error = liq_get_quantization_error(remap);
                 if (palette_error >= 0) {
-                    verbose_printf(options, "  mapped image to new colors...MSE=%.3f (Q=%d)", palette_error, liq_get_quantization_quality(remap));
+                    quality_percent = liq_get_quantization_quality(remap);
+                    verbose_printf(options, "  mapped image to new colors...MSE=%.3f (Q=%d)", palette_error, quality_percent);
                 }
             }
             liq_result_destroy(remap);
@@ -548,13 +559,29 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     }
 
     if (!retval) {
+
+        if (options->skip_if_larger) {
+            // this is very rough approximation, but generally avoid losing more quality than is gained in file size.
+            // Quality is squared, because even greater savings are needed to justify big quality loss.
+            double quality = quality_percent/100.0;
+            output_image.maximum_file_size = input_image_rwpng.file_size * quality*quality;
+        }
+
         output_image.fast_compression = options->fast_compression;
         retval = write_image(&output_image, NULL, outname, options);
-    } else if (TOO_LOW_QUALITY == retval && options->using_stdin) {
+
+        if (TOO_LARGE_FILE == retval) {
+            verbose_printf(options, "  file exceeded expected size of %luKB", (unsigned long)output_image.maximum_file_size/1024UL);
+        }
+    }
+
+    if (TOO_LARGE_FILE == retval || (TOO_LOW_QUALITY == retval && options->using_stdin)) {
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
-        pngquant_error write_retval = write_image(NULL, &input_image_rwpng, outname, options);
-        if (write_retval) retval = write_retval;
+        if (keep_input_pixels) {
+            pngquant_error write_retval = write_image(NULL, &input_image_rwpng, outname, options);
+            if (write_retval) retval = write_retval;
+        }
     }
 
     liq_image_destroy(input_image);
@@ -659,7 +686,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         }
     }
 
-    if (retval) {
+    if (retval && retval != TOO_LARGE_FILE) {
         fprintf(stderr, "  error: failed writing image to %s\n", outname);
     }
 
@@ -702,7 +729,9 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     }
 
     if (!keep_input_pixels) {
-        liq_image_set_memory_ownership(*liq_image_p, LIQ_OWN_ROWS | LIQ_OWN_PIXELS);
+        if (LIQ_OK != liq_image_set_memory_ownership(*liq_image_p, LIQ_OWN_ROWS | LIQ_OWN_PIXELS)) {
+            return OUT_OF_MEMORY_ERROR;
+        }
         input_image_p->row_pointers = NULL;
         input_image_p->rgba_data = NULL;
     }

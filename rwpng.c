@@ -35,6 +35,7 @@
 
 #include "png.h"
 #include "rwpng.h"
+#include "lcms.h"
 
 #ifndef Z_BEST_COMPRESSION
 #define Z_BEST_COMPRESSION 9
@@ -232,6 +233,42 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
      * post-IDAT text/time/etc. is desired) */
 
     png_read_end(png_ptr, NULL);
+
+    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_iCCP)) {
+
+        DWORD ProfileLen;
+        char *ProfileData;
+        int  Compression;
+        char *ProfileName;
+
+        png_get_iCCP(png_ptr, info_ptr, &ProfileName,
+                                        &Compression,
+                                        &ProfileData,
+                                        &ProfileLen);
+
+        cmsHPROFILE hInProfile, hOutProfile;
+        cmsHTRANSFORM hTransform;
+
+        hInProfile = cmsOpenProfileFromMem(ProfileData,
+                                           ProfileLen);
+        hOutProfile = cmsCreate_sRGBProfile();
+
+        // needs some code for types other than RGBA_8
+        hTransform = cmsCreateTransform(hInProfile,
+                                        TYPE_RGBA_8,
+                                        hOutProfile,
+                                        TYPE_RGBA_8,
+                                        INTENT_PERCEPTUAL, 0);
+
+        // suprisingly, using the same input and output works
+        cmsDoTransform(hTransform, mainprog_ptr->rgba_data,
+                                   mainprog_ptr->rgba_data,
+                                   mainprog_ptr->height * mainprog_ptr->width / 2);
+
+        cmsDeleteTransform(hTransform);
+        cmsCloseProfile(hInProfile);
+        cmsCloseProfile(hOutProfile);
+    }
 
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 

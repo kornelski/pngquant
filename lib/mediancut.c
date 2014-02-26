@@ -90,7 +90,9 @@ static inline void hist_item_swap(hist_item *l, hist_item *r)
 inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len) ALWAYS_INLINE;
 inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len)
 {
-    if (len < 32) return len/2;
+    if (len < 32) {
+        return len/2;
+    }
 
     const unsigned int aidx=8, bidx=len/2, cidx=len-1;
     const unsigned int a=base[aidx].sort_value, b=base[bidx].sort_value, c=base[cidx].sort_value;

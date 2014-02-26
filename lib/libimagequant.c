@@ -691,7 +691,7 @@ LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_remapping_result *liq_remap(liq_result *result, liq_image *image)
+static liq_remapping_result *liq_remapping_result_create(liq_result *result)
 {
     if (!CHECK_STRUCT_TYPE(result, liq_result)) return NULL;
 
@@ -1500,7 +1500,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
     if (quant->remapping) {
         liq_remapping_result_destroy(quant->remapping);
     }
-    liq_remapping_result *const result = quant->remapping = liq_remap(quant, input_image);
+    liq_remapping_result *const result = quant->remapping = liq_remapping_result_create(quant);
     if (!result) return LIQ_OUT_OF_MEMORY;
 
     if (!input_image->edges && !input_image->dither_map && quant->use_dither_map) {

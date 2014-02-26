@@ -115,7 +115,7 @@ static colormap *get_subset_palette(const colormap *map)
     }
 
     unsigned int subset_size = (map->colors+3)/4;
-    colormap *subset_palette = pam_colormap(subset_size);
+    colormap *subset_palette = pam_colormap(subset_size, map->malloc, map->free);
 
     for(unsigned int i=0; i < subset_size; i++) {
         subset_palette->palette[i] = map->palette[i];
@@ -130,7 +130,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 
     const unsigned long mempool_size = sizeof(struct color_entry) * subset_palette->colors * map->colors/5 + (1<<14);
     mempool m = NULL;
-    struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids), mempool_size, malloc, free);
+    struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids), mempool_size, map->malloc, map->free);
     centroids->mempool = m;
 
     for(unsigned int i=0; i < map->colors; i++) {

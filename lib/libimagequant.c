@@ -1302,7 +1302,9 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
     const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
 
     do {
-        colormap *newmap = mediancut(hist, options->min_opaque_val, max_colors, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2);
+        colormap *newmap = mediancut(hist, options->min_opaque_val, max_colors,
+            target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
+            options->malloc, options->free);
 
         if (feedback_loop_trials <= 0) {
             return newmap;
@@ -1368,7 +1370,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
     // If image has few colors to begin with (and no quality degradation is required)
     // then it's possible to skip quantization entirely
     if (hist->size <= options->max_colors && options->target_mse == 0) {
-        acolormap = pam_colormap(hist->size);
+        acolormap = pam_colormap(hist->size, options->malloc, options->free);
         for(unsigned int i=0; i < hist->size; i++) {
             acolormap->palette[i].acolor = hist->achv[i].acolor;
             acolormap->palette[i].popularity = hist->achv[i].perceptual_weight;

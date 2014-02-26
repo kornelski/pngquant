@@ -228,24 +228,27 @@ LIQ_PRIVATE void pam_freeacolorhist(histogram *hist)
     hist->free(hist);
 }
 
-LIQ_PRIVATE colormap *pam_colormap(unsigned int colors)
+LIQ_PRIVATE colormap *pam_colormap(unsigned int colors, void* (*malloc)(size_t), void (*free)(void*))
 {
     colormap *map = malloc(sizeof(colormap));
     if (!map) return NULL;
     *map = (colormap){
-        .palette = calloc(colors, sizeof(map->palette[0])),
+        .malloc = malloc,
+        .free = free,
+        .palette = malloc(colors * sizeof(map->palette[0])),
         .subset_palette = NULL,
         .colors = colors,
     };
     if (!map->palette) {
-        free(map);return NULL;
+        free(map); return NULL;
     }
+    memset(map->palette, 0, colors * sizeof(map->palette[0]));
     return map;
 }
 
 LIQ_PRIVATE colormap *pam_duplicate_colormap(colormap *map)
 {
-    colormap *dupe = pam_colormap(map->colors);
+    colormap *dupe = pam_colormap(map->colors, map->malloc, map->free);
     for(int i=0; i < map->colors; i++) {
         dupe->palette[i] = map->palette[i];
     }
@@ -258,7 +261,8 @@ LIQ_PRIVATE colormap *pam_duplicate_colormap(colormap *map)
 LIQ_PRIVATE void pam_freecolormap(colormap *c)
 {
     if (c->subset_palette) pam_freecolormap(c->subset_palette);
-    free(c->palette); free(c);
+    c->free(c->palette);
+    c->free(c);
 }
 
 LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[], const double gamma)

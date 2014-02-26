@@ -226,6 +226,8 @@ typedef struct colormap {
     colormap_item *palette;
     struct colormap *subset_palette;
     unsigned int colors;
+    void* (*malloc)(size_t);
+    void (*free)(void*);
 } colormap;
 
 struct acolorhist_arr_item {
@@ -258,7 +260,7 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
 
 LIQ_PRIVATE void pam_freeacolorhist(histogram *h);
 
-LIQ_PRIVATE colormap *pam_colormap(unsigned int colors);
+LIQ_PRIVATE colormap *pam_colormap(unsigned int colors, void* (*malloc)(size_t), void (*free)(void*));
 LIQ_PRIVATE colormap *pam_duplicate_colormap(colormap *map);
 LIQ_PRIVATE void pam_freecolormap(colormap *c);
 

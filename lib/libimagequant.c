@@ -471,7 +471,7 @@ LIQ_EXPORT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba
 LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma)
 {
     if (width <= 0 || height <= 0) return NULL;
-    if (width > INT_MAX/height/16 || height > INT_MAX/width/16) return NULL;
+    if (width > INT_MAX/16/height || height > INT_MAX/16/width) return NULL;
 
     for(int i=0; i < height; i++) {
         if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) return NULL;
@@ -482,7 +482,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
 LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma)
 {
     if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0) return NULL;
-    if (width > INT_MAX/height/16 || height > INT_MAX/width/16) return NULL;
+    if (width > INT_MAX/16/height || height > INT_MAX/16/width) return NULL;
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return NULL;
     if (!CHECK_USER_POINTER(bitmap)) return NULL;
 

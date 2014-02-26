@@ -217,11 +217,12 @@ LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int minimum, int target)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_quality(liq_attr* attr, int * minimum, int * target)
+LIQ_EXPORT liq_error liq_get_quality(liq_attr *attr, int *minimum, int *target)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    * minimum = mse_to_quality (attr->max_mse);
-    * target = mse_to_quality (attr->target_mse);
+
+    *minimum = mse_to_quality(attr->max_mse);
+    *target = mse_to_quality(attr->target_mse);
     return LIQ_OK;
 }
 
@@ -234,14 +235,15 @@ LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_max_colors(liq_attr* attr, int * colors)
+LIQ_EXPORT liq_error liq_get_max_colors(liq_attr *attr, int *colors)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    * colors = attr->max_colors;
+    *colors = attr->max_colors;
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_set_min_posterization(liq_attr* attr, int bits) {
+LIQ_EXPORT liq_error liq_set_min_posterization(liq_attr *attr, int bits)
+{
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
     if (bits < 0 || bits > 4) return LIQ_VALUE_OUT_OF_RANGE;
 
@@ -249,9 +251,10 @@ LIQ_EXPORT liq_error liq_set_min_posterization(liq_attr* attr, int bits) {
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_min_posterization(liq_attr* attr, int * bits) {
+LIQ_EXPORT liq_error liq_get_min_posterization(liq_attr *attr, int *bits)
+{
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    * bits = attr->min_posterization_output;
+    *bits = attr->min_posterization_output;
     return LIQ_OK;
 }
 
@@ -274,10 +277,10 @@ LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_speed(liq_attr* attr, int * speed)
+LIQ_EXPORT liq_error liq_get_speed(liq_attr *attr, int *speed)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    * speed = attr->speed;
+    *speed = attr->speed;
     return LIQ_OK;
 }
 LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma)
@@ -303,10 +306,10 @@ LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_min_opacity(liq_attr* attr, int * min)
+LIQ_EXPORT liq_error liq_get_min_opacity(liq_attr *attr, int *min)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    * min = (int) (255.0 * attr->min_opaque_val + 0.5);
+    *min = (int) (255.0 * attr->min_opaque_val + 0.5);
     return LIQ_OK;
 }
 
@@ -359,7 +362,8 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
     return attr;
 }
 
-static void *liq_aligned_malloc(size_t size) {
+static void *liq_aligned_malloc(size_t size)
+{
     unsigned char *ptr = malloc(size + 16);
     if (!ptr) return NULL;
 
@@ -370,8 +374,9 @@ static void *liq_aligned_malloc(size_t size) {
     return ptr;
 }
 
-static void liq_aligned_free(void *ptr) {
-    uintptr_t offset = ((unsigned char*)ptr)[-1] ^ 0x59;
+static void liq_aligned_free(void *ptr)
+{
+    uintptr_t offset = ((unsigned char *)ptr)[-1] ^ 0x59;
     ptr -= offset;
     assert(offset > 0 && offset <= 16);
     free(ptr);
@@ -606,7 +611,8 @@ LIQ_EXPORT int liq_image_get_height(const liq_image *input_image)
 
 typedef void free_func(void*);
 
-free_func *get_default_free_func(liq_image *img) {
+free_func *get_default_free_func(liq_image *img)
+{
     // When default allocator is used then user-supplied pointers must be freed with free()
     if (img->free_rows_internal || img->free != liq_aligned_free) {
         return img->free;
@@ -830,7 +836,8 @@ static void sort_palette(colormap *map, const liq_attr *options)
     }
 }
 
-inline static unsigned int posterize_channel(unsigned int color, unsigned int bits) {
+inline static unsigned int posterize_channel(unsigned int color, unsigned int bits)
+{
     return (color & ~((1<<bits)-1)) | (color >> (8-bits));
 }
 
@@ -930,15 +937,15 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
          if (a > 1.0) a = 1.0;
     else if (a < 0)   a = 0;
 
-     // If dithering error is crazy high, don't propagate it that much
-     // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
-     const float dither_error = sr*sr + sg*sg + sb*sb + sa*sa;
-     if (dither_error > max_dither_error) {
-         ratio *= 0.8;
-     } else if (dither_error < 2.f/256.f/256.f) {
+    // If dithering error is crazy high, don't propagate it that much
+    // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
+    const float dither_error = sr*sr + sg*sg + sb*sb + sa*sa;
+    if (dither_error > max_dither_error) {
+        ratio *= 0.8;
+    } else if (dither_error < 2.f/256.f/256.f) {
         // don't dither areas that don't have noticeable error — makes file smaller
         return px;
-     }
+    }
 
      return (f_pixel){
          .r=px.r + sr * ratio,
@@ -1075,8 +1082,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
                 if (col <= 0) break;
                 --col;
             }
-        }
-        while(1);
+        } while(1);
 
         f_pixel *const temperr = thiserr;
         thiserr = nexterr;

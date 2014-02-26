@@ -16,7 +16,7 @@ CUSTOMZLIB ?= ../zlib
 CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 
 CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I/usr/local/include/ -I/usr/include/ $(CFLAGSOPT)
-CFLAGS += -std=c99 $(CFLAGSADD)
+CFLAGS += $(CFLAGSADD)
 
 LDFLAGS ?= -L/usr/local/lib/ -L/usr/lib/
 

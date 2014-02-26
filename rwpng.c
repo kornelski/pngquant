@@ -319,7 +319,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     struct rwpng_write_data write_data;
     if (mainprog_ptr->maximum_file_size) {
         write_data = (struct rwpng_write_data){
-            .buffer = malloc(mainprog_ptr->maximum_file_size),
+            .buffer = (unsigned char*)malloc(mainprog_ptr->maximum_file_size),
             .bytes_left = mainprog_ptr->maximum_file_size,
         };
         if (!write_data.buffer) return PNG_OUT_OF_MEMORY_ERROR;

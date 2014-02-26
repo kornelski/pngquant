@@ -61,6 +61,11 @@ OBJS += $(COCOA_OBJS)
 FRAMEWORKS += -framework Cocoa
 endif
 
+ifdef USE_LCMS
+CFLAGS += $(shell pkg-config --cflags lcms) -DUSE_LCMS=1
+LDFLAGS += $(shell pkg-config --libs lcms)
+endif
+
 BUILD_CONFIGURATION="$(CC) $(CFLAGS) $(LDFLAGS)"
 
 all: $(BIN)

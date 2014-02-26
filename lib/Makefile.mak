@@ -4,6 +4,10 @@ MACHINE=X64
 MACHINE=X86
 !endif
 
+!ifndef USE_SSE
+USE_SSE=1
+!endif
+
 CFLAGS = /Ox /GL /MD /nologo /DNDEBUG /DUSE_SSE=$(USE_SSE)
 LINKFLAGS = /LTCG /nologo
 OBJECTS = blur.obj libimagequant.obj mediancut.obj mempool.obj nearest.obj pam.obj viter.obj

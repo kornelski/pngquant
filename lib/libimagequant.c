@@ -813,18 +813,19 @@ static void sort_palette(colormap *map, const liq_attr *options)
     ** the maximal alpha value (i.e., fully opaque) are at the end and can
     ** therefore be omitted from the tRNS chunk.
     */
-    if (options->last_index_transparent) for(unsigned int i=0; i < map->colors; i++) {
-        if (map->palette[i].acolor.a < 1.0/256.0) {
-            const unsigned int old = i, transparent_dest = map->colors-1;
+    if (options->last_index_transparent) {
+	for(unsigned int i=0; i < map->colors; i++) {
+	    if (map->palette[i].acolor.a < 1.0/256.0) {
+		const unsigned int old = i, transparent_dest = map->colors-1;
 
-            SWAP_PALETTE(map, transparent_dest, old);
+		SWAP_PALETTE(map, transparent_dest, old);
 
-            /* colors sorted by popularity make pngs slightly more compressible */
-            qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
-            return;
+		/* colors sorted by popularity make pngs slightly more compressible */
+		qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
+		return;
             }
         }
-
+    }
     /* move transparent colors to the beginning to shrink trns chunk */
     unsigned int num_transparent=0;
     for(unsigned int i=0; i < map->colors; i++) {
@@ -1411,12 +1412,13 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
     while(feedback_loop_trials > 0);
 
     // likely_colormap_index (used and set in viter_do_iteration) can't point to index outside colormap
-    if (acolormap->colors < 256) for(unsigned int j=0; j < hist->size; j++) {
-        if (hist->achv[j].likely_colormap_index >= acolormap->colors) {
-            hist->achv[j].likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
-        }
+    if (acolormap->colors < 256) {
+	for(unsigned int j=0; j < hist->size; j++) {
+	    if (hist->achv[j].likely_colormap_index >= acolormap->colors) {
+		hist->achv[j].likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
+	    }
+	}
     }
-
     *palette_error_p = least_error;
     return acolormap;
 }

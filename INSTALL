@@ -35,12 +35,12 @@ instances at a time.
 On Mac OS X pngquant can use Cocoa framework to load images. This enables
 support for color profiles and other input file formats.
 
-##Compilation with Little CMS 1
+##Compilation with Little CMS 2
 
      $ make USE_LCMS=1
 
-Enables support for ICC v3 color profiles when reading images.
-Requires Little CMS library available via `pgk-config` (e.g. install `liblcms1-dev`).
+Enables support for ICC v2/v4 color profiles when reading images.
+Requires Little CMS library available via `pgk-config` (e.g. install `liblcms2-dev`).
 
 
 ##Compilation of `libimagequant.a` only

@@ -36,7 +36,7 @@
 #include "png.h"
 #include "rwpng.h"
 #if USE_LCMS
-#include "lcms.h"
+#include "lcms2.h"
 #endif
 
 #ifndef Z_BEST_COMPRESSION
@@ -246,7 +246,11 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 #if USE_LCMS
     if (png_get_valid(png_ptr, info_ptr, PNG_INFO_iCCP)) {
         png_uint_32 ProfileLen;
+#if PNG_LIBPNG_VER < 10500
+        png_charp ProfileData;
+#else
         png_bytep ProfileData;
+#endif
         int  Compression;
         png_charp ProfileName;
 
@@ -256,19 +260,25 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
                                         &ProfileLen);
 
         cmsHPROFILE hInProfile = cmsOpenProfileFromMem(ProfileData, ProfileLen);
-        cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
 
-        cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
-                                                    hOutProfile, TYPE_RGBA_8,
-                                                    INTENT_PERCEPTUAL, 0);
+        /* ignore non-RGB color profiles */
+        if (cmsGetColorSpace(hInProfile) == cmsSigRgbData) {
+            cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
 
-        // suprisingly, using the same input and output works
-        cmsDoTransform(hTransform, mainprog_ptr->rgba_data,
-                                   mainprog_ptr->rgba_data,
-                                   mainprog_ptr->height * mainprog_ptr->width);
+            cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
+                                                        hOutProfile, TYPE_RGBA_8,
+                                                        INTENT_PERCEPTUAL, 0);
 
-        cmsDeleteTransform(hTransform);
-        cmsCloseProfile(hOutProfile);
+            /* It is safe to use the same block for input and output,
+               when both are of the same TYPE. */
+            cmsDoTransform(hTransform, mainprog_ptr->rgba_data,
+                                       mainprog_ptr->rgba_data,
+                                       mainprog_ptr->height * mainprog_ptr->width);
+
+            cmsDeleteTransform(hTransform);
+            cmsCloseProfile(hOutProfile);
+        }
+
         cmsCloseProfile(hInProfile);
     }
 #endif

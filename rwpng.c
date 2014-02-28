@@ -67,6 +67,9 @@ void rwpng_version_info(FILE *fp)
 #if USE_COCOA
     fputs("   Compiled with Apple Cocoa image reader.\n", fp);
 #endif
+#if USE_LCMS
+    fputs("   Compiled with Little CMS color profile support.\n", fp);
+#endif
 }
 
 

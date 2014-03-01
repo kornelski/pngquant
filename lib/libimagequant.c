@@ -210,7 +210,7 @@ static double quality_to_mse(long quality)
 static unsigned int mse_to_quality(double mse)
 {
     for(int i=100; i > 0; i--) {
-        if (mse <= quality_to_mse(i)) {
+        if (mse <= quality_to_mse(i) + 0.000001) { // + epsilon for floating point errors
             return i;
         }
     }

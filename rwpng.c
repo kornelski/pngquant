@@ -277,6 +277,8 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 
             cmsDeleteTransform(hTransform);
             cmsCloseProfile(hOutProfile);
+
+            mainprog_ptr->gamma = 0.45455;
         }
 
         cmsCloseProfile(hInProfile);

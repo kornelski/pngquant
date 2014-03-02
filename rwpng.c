@@ -215,7 +215,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
         png_set_gray_to_rgb(png_ptr);
 
 
-    /* get and save the gamma info (if any) for writing */
+    /* get source gamma for gamma correction, or use sRGB default */
 
     double gamma;
     mainprog_ptr->gamma = png_get_gAMA(png_ptr, info_ptr, &gamma) ? gamma : 0.45455;
@@ -354,13 +354,9 @@ void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_bytepp r
 
 void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma)
 {
-    if (gamma > 0.0) {
+        /* remap sets gamma to 0.45455 */
         png_set_gAMA(png_ptr, info_ptr, gamma);
-
-        if (gamma > 0.45454 && gamma < 0.45456) {
-            png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
-        }
-    }
+        png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
 }
 
 pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)

@@ -218,8 +218,9 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
     /* get source gamma for gamma correction, or use sRGB default */
 
     double gamma = 0.45455;
-    if (!png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB))
+    if (!png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB)) {
         png_get_gAMA(png_ptr, info_ptr, &gamma);
+    }
     mainprog_ptr->gamma = gamma;
 
     png_set_interlace_handling(png_ptr);

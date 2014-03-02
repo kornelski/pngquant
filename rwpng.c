@@ -299,6 +299,23 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
     return SUCCESS;
 }
 
+void rwpng_free_image24(png24_image *image)
+{
+    free(image->row_pointers);
+    image->row_pointers = NULL;
+
+    free(image->rgba_data);
+    image->rgba_data = NULL;
+}
+
+void rwpng_free_image8(png8_image *image)
+{
+    free(image->indexed_data);
+    image->indexed_data = NULL;
+
+    free(image->row_pointers);
+    image->row_pointers = NULL;
+}
 
 pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p)
 {

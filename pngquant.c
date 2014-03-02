@@ -97,7 +97,6 @@ struct pngquant_options {
 
 static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
 static void set_palette(liq_result *result, png8_image *output_image);
-static void pngquant_output_image_free(png8_image *output_image);
 static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
@@ -530,16 +529,6 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-
-static void pngquant_output_image_free(png8_image *output_image)
-{
-    free(output_image->indexed_data);
-    output_image->indexed_data = NULL;
-
-    free(output_image->row_pointers);
-    output_image->row_pointers = NULL;
-}
-
 pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options)
 {
     pngquant_error retval = SUCCESS;
@@ -615,10 +604,8 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     }
 
     liq_image_destroy(input_image);
-    pngquant_output_image_free(&output_image);
-
-    free(input_image_rwpng.row_pointers);
-    free(input_image_rwpng.rgba_data);
+    rwpng_free_image24(&input_image_rwpng);
+    rwpng_free_image8(&output_image);
 
     return retval;
 }

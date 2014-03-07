@@ -456,7 +456,7 @@ int main(int argc, char *argv[])
 #endif
 
     #pragma omp parallel for \
-        schedule(dynamic) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
+        schedule(static, 1) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
     for(int i=0; i < num_files; i++) {
         struct pngquant_options opts = options;
         opts.liq = liq_attr_copy(options.liq);

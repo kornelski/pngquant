@@ -250,36 +250,36 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
     png_read_end(png_ptr, NULL);
 
 #if USE_LCMS
-    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_iCCP)) {
-        png_uint_32 ProfileLen;
 #if PNG_LIBPNG_VER < 10500
-        png_charp ProfileData;
+    png_charp ProfileData;
 #else
-        png_bytep ProfileData;
+    png_bytep ProfileData;
 #endif
-        int  Compression;
-        png_charp ProfileName;
+    png_uint_32 ProfileLen;
 
-        png_get_iCCP(png_ptr, info_ptr, &ProfileName,
-                                        &Compression,
-                                        &ProfileData,
-                                        &ProfileLen);
-
+    if (png_get_iCCP(png_ptr, info_ptr, &(png_charp){0}, &(int){0}, &ProfileData, &ProfileLen)) {
         cmsHPROFILE hInProfile = cmsOpenProfileFromMem(ProfileData, ProfileLen);
 
         /* ignore non-RGB color profiles */
         if (cmsGetColorSpace(hInProfile) == cmsSigRgbData) {
             cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
-
             cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
-                                                        hOutProfile, TYPE_RGBA_8,
-                                                        INTENT_PERCEPTUAL, 0);
+                                                          hOutProfile, TYPE_RGBA_8,
+                                                          INTENT_PERCEPTUAL,
+#ifdef _OPENMP
+                                                          cmsFLAGS_NOCACHE);
+#else
+                                                          0);
+#endif
 
-            /* It is safe to use the same block for input and output,
-               when both are of the same TYPE. */
-            cmsDoTransform(hTransform, mainprog_ptr->rgba_data,
-                                       mainprog_ptr->rgba_data,
-                                       mainprog_ptr->height * mainprog_ptr->width);
+            #pragma omp parallel for
+            for (unsigned int i = 0; i < mainprog_ptr->height; i++) {
+                /* It is safe to use the same block for input and output,
+                   when both are of the same TYPE. */
+                cmsDoTransform(hTransform, row_pointers[i],
+                                           row_pointers[i],
+                                           mainprog_ptr->width);
+            }
 
             cmsDeleteTransform(hTransform);
             cmsCloseProfile(hOutProfile);

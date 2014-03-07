@@ -49,6 +49,12 @@
 #define Z_BEST_SPEED 1
 #endif
 
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#define omp_get_max_threads() 1
+#endif
+
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
 int rwpng_read_image24_cocoa(FILE *infile, png24_image *mainprog_ptr);
 
@@ -266,11 +272,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
             cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
                                                           hOutProfile, TYPE_RGBA_8,
                                                           INTENT_PERCEPTUAL,
-#ifdef _OPENMP
-                                                          cmsFLAGS_NOCACHE);
-#else
-                                                          0);
-#endif
+                                                          omp_get_max_threads() > 1 ? cmsFLAGS_NOCACHE : 0);
 
             #pragma omp parallel for
             for (unsigned int i = 0; i < mainprog_ptr->height; i++) {

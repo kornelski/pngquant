@@ -274,7 +274,9 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
                                                           INTENT_PERCEPTUAL,
                                                           omp_get_max_threads() > 1 ? cmsFLAGS_NOCACHE : 0);
 
-            #pragma omp parallel for
+            #pragma omp parallel for \
+                if (mainprog_ptr->height*mainprog_ptr->width > 8000) \
+                schedule(static)
             for (unsigned int i = 0; i < mainprog_ptr->height; i++) {
                 /* It is safe to use the same block for input and output,
                    when both are of the same TYPE. */

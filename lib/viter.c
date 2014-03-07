@@ -70,7 +70,7 @@ LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, cons
 
     double total_diff=0;
     #pragma omp parallel for if (hist_size > 3000) \
-        default(none) shared(average_color,callback) reduction(+:total_diff)
+        schedule(static) default(none) shared(average_color,callback) reduction(+:total_diff)
     for(int j=0; j < hist_size; j++) {
         float diff;
         unsigned int match = nearest_search(n, achv[j].acolor, achv[j].likely_colormap_index, min_opaque_val, &diff);

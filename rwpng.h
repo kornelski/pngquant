@@ -58,6 +58,14 @@ typedef enum {
     TOO_LOW_QUALITY = 99,
 } pngquant_error;
 
+struct rwpng_chunk {
+    struct rwpng_chunk *next;
+    png_byte name[5];
+    png_byte *data;
+    png_size_t size;
+    int location;
+};
+
 typedef struct {
     jmp_buf jmpbuf;
     png_uint_32 width;
@@ -65,6 +73,7 @@ typedef struct {
     double gamma;
     unsigned char **row_pointers;
     unsigned char *rgba_data;
+    struct rwpng_chunk *chunks;
     png_size_t file_size;
 } png24_image;
 
@@ -79,6 +88,7 @@ typedef struct {
     unsigned int num_trans;
     png_color palette[256];
     unsigned char trans[256];
+    struct rwpng_chunk *chunks;
     png_size_t maximum_file_size;
     char fast_compression;
 } png8_image;

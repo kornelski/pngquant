@@ -138,6 +138,30 @@ static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_
     return row_pointers;
 }
 
+static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
+{
+    if (0 == memcmp("iCCP", in_chunk->name, 5) ||
+        0 == memcmp("cHRM", in_chunk->name, 5) ||
+        0 == memcmp("gAMA", in_chunk->name, 5)) {
+        return 0; // not handled
+    }
+
+    struct rwpng_chunk **head = (struct rwpng_chunk **)png_get_user_chunk_ptr(png_ptr);
+
+    struct rwpng_chunk *chunk = malloc(sizeof(struct rwpng_chunk));
+    memcpy(chunk->name, in_chunk->name, 5);
+    chunk->size = in_chunk->size;
+    chunk->location = in_chunk->location;
+    chunk->data = in_chunk->size ? malloc(in_chunk->size) : NULL;
+    if (in_chunk->size) {
+        memcpy(chunk->data, in_chunk->data, in_chunk->size);
+    }
+
+    chunk->next = *head;
+    *head = chunk;
+
+    return 1; // marks as "handled", libpng won't store it
+}
 
 /*
    retval:
@@ -175,6 +199,8 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         return LIBPNG_FATAL_ERROR;   /* fatal libpng error (via longjmp()) */
     }
+
+    png_set_read_user_chunk_fn(png_ptr, &mainprog_ptr->chunks, read_chunk_callback);
 
     struct rwpng_read_data read_data = {infile, 0};
     png_set_read_fn(png_ptr, &read_data, user_read_data);
@@ -303,6 +329,13 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
     return SUCCESS;
 }
 
+static void rwpng_free_chunks(struct rwpng_chunk *chunk) {
+    if (!chunk) return;
+    rwpng_free_chunks(chunk->next);
+    free(chunk->data);
+    free(chunk);
+}
+
 void rwpng_free_image24(png24_image *image)
 {
     free(image->row_pointers);
@@ -310,6 +343,9 @@ void rwpng_free_image24(png24_image *image)
 
     free(image->rgba_data);
     image->rgba_data = NULL;
+
+    rwpng_free_chunks(image->chunks);
+    image->chunks = NULL;
 }
 
 void rwpng_free_image8(png8_image *image)
@@ -319,6 +355,9 @@ void rwpng_free_image8(png8_image *image)
 
     free(image->row_pointers);
     image->row_pointers = NULL;
+
+    rwpng_free_chunks(image->chunks);
+    image->chunks = NULL;
 }
 
 pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p)
@@ -420,6 +459,18 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     else
 #endif
         sample_depth = 8;
+
+    struct rwpng_chunk *chunk = mainprog_ptr->chunks;
+    while(chunk) {
+        png_unknown_chunk pngchunk = {
+            .size = chunk->size,
+            .data = chunk->data,
+            .location = chunk->location,
+        };
+        memcpy(pngchunk.name, chunk->name, 5);
+        png_set_unknown_chunks(png_ptr, info_ptr, &pngchunk, 1);
+        chunk = chunk->next;
+    }
 
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,
       sample_depth, PNG_COLOR_TYPE_PALETTE,

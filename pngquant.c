@@ -585,6 +585,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         }
 
         output_image.fast_compression = options->fast_compression;
+        output_image.chunks = input_image_rwpng.chunks; input_image_rwpng.chunks = NULL;
         retval = write_image(&output_image, NULL, outname, options);
 
         if (TOO_LARGE_FILE == retval) {

@@ -66,6 +66,15 @@ struct rwpng_chunk {
     int location;
 };
 
+#if USE_LCMS
+typedef enum {
+  NONE = 0,
+  ICCP = 1, // used ICC profile
+  ICCP_WARN_GRAY = 2, // ignore and warn about GRAY ICC profile
+  GAMA_CHRM = 3, // used gAMA and cHARM
+} lcms_transform;
+#endif
+
 typedef struct {
     jmp_buf jmpbuf;
     png_uint_32 width;
@@ -75,6 +84,9 @@ typedef struct {
     unsigned char *rgba_data;
     struct rwpng_chunk *chunks;
     png_size_t file_size;
+#if USE_LCMS
+    lcms_transform lcms_status;
+#endif
 } png24_image;
 
 typedef struct {

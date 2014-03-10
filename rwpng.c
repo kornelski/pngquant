@@ -283,35 +283,82 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 #endif
     png_uint_32 ProfileLen;
 
+    cmsHPROFILE hInProfile = NULL;
+
+    /* color_type is read from the image before conversion to RGBA */
+    int COLOR_PNG = color_type & PNG_COLOR_MASK_COLOR;
+
+    mainprog_ptr->lcms_status = NONE;
+
+    /* embedded ICC profile */
     if (png_get_iCCP(png_ptr, info_ptr, &(png_charp){0}, &(int){0}, &ProfileData, &ProfileLen)) {
-        cmsHPROFILE hInProfile = cmsOpenProfileFromMem(ProfileData, ProfileLen);
 
-        /* ignore non-RGB color profiles */
-        if (cmsGetColorSpace(hInProfile) == cmsSigRgbData) {
-            cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
-            cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
-                                                          hOutProfile, TYPE_RGBA_8,
-                                                          INTENT_PERCEPTUAL,
-                                                          omp_get_max_threads() > 1 ? cmsFLAGS_NOCACHE : 0);
+        hInProfile = cmsOpenProfileFromMem(ProfileData, ProfileLen);
+        cmsColorSpaceSignature colorspace = cmsGetColorSpace(hInProfile);
 
-            #pragma omp parallel for \
-                if (mainprog_ptr->height*mainprog_ptr->width > 8000) \
-                schedule(static)
-            for (unsigned int i = 0; i < mainprog_ptr->height; i++) {
-                /* It is safe to use the same block for input and output,
-                   when both are of the same TYPE. */
-                cmsDoTransform(hTransform, row_pointers[i],
-                                           row_pointers[i],
-                                           mainprog_ptr->width);
+        /* only RGB (and GRAY) valid for PNGs */
+        if (colorspace == cmsSigRgbData && COLOR_PNG) {
+             mainprog_ptr->lcms_status = ICCP;
+        } else {
+            if (colorspace == cmsSigGrayData && !COLOR_PNG) {
+                 mainprog_ptr->lcms_status = ICCP_WARN_GRAY;
             }
+            cmsCloseProfile(hInProfile);
+            hInProfile = NULL;
+        }
+    }
 
-            cmsDeleteTransform(hTransform);
-            cmsCloseProfile(hOutProfile);
+    /* build RGB profile from cHRM and gAMA */
+    if (hInProfile == NULL && COLOR_PNG &&
+        !png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB) && 
+        png_get_valid(png_ptr, info_ptr, PNG_INFO_gAMA) && 
+        png_get_valid(png_ptr, info_ptr, PNG_INFO_cHRM)) {
+        
+        cmsCIExyY WhitePoint;
+        cmsCIExyYTRIPLE Primaries;
 
-            mainprog_ptr->gamma = 0.45455;
+        png_get_cHRM(png_ptr, info_ptr, &WhitePoint.x, &WhitePoint.y,
+                     &Primaries.Red.x, &Primaries.Red.y,
+                     &Primaries.Green.x, &Primaries.Green.y,
+                     &Primaries.Blue.x, &Primaries.Blue.y);
+
+        WhitePoint.Y = Primaries.Red.Y = Primaries.Green.Y = Primaries.Blue.Y = 1.0;
+
+        cmsToneCurve *GammaTable[3];
+        GammaTable[0] = GammaTable[1] = GammaTable[2] = cmsBuildGamma(NULL, 1/gamma);
+
+        hInProfile = cmsCreateRGBProfile(&WhitePoint, &Primaries, GammaTable);
+
+        cmsFreeToneCurve(GammaTable[0]);
+
+        mainprog_ptr->lcms_status = GAMA_CHRM;
+    }
+
+    /* transform image to sRGB colorspace */
+    if (hInProfile != NULL) {
+        
+        cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
+        cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
+                                                      hOutProfile, TYPE_RGBA_8,
+                                                      INTENT_PERCEPTUAL,
+                                                      omp_get_max_threads() > 1 ? cmsFLAGS_NOCACHE : 0);
+
+        #pragma omp parallel for \
+            if (mainprog_ptr->height*mainprog_ptr->width > 8000) \
+            schedule(static)
+        for (unsigned int i = 0; i < mainprog_ptr->height; i++) {
+            /* It is safe to use the same block for input and output,
+               when both are of the same TYPE. */
+            cmsDoTransform(hTransform, row_pointers[i],
+                                       row_pointers[i],
+                                       mainprog_ptr->width);
         }
 
+        cmsDeleteTransform(hTransform);
+        cmsCloseProfile(hOutProfile);
         cmsCloseProfile(hInProfile);
+
+        mainprog_ptr->gamma = 0.45455;
     }
 #endif
 

@@ -545,8 +545,22 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     int quality_percent = 90; // quality on 0-100 scale, updated upon successful remap
     png8_image output_image = {};
     if (!retval) {
-        verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
-                       (input_image_rwpng.file_size+1023UL)/1024UL, 1.0/input_image_rwpng.gamma);
+        verbose_printf(options, "  read %luKB file", (input_image_rwpng.file_size+1023UL)/1024UL);
+
+#if USE_LCMS
+        if (input_image_rwpng.lcms_status == ICCP) {
+            verbose_printf(options, "  used embedded ICC profile to transform image to sRGB colorspace");
+        } else if (input_image_rwpng.lcms_status == GAMA_CHRM) {
+            verbose_printf(options, "  used gAMA and cHRM chunks to transform image to sRGB colorspace");
+        } else if (input_image_rwpng.lcms_status == ICCP_WARN_GRAY) {
+            verbose_printf(options, "  warning: ignored ICC profile in GRAY colorspace");
+        }
+#endif
+
+        if (input_image_rwpng.gamma != 0.45455) {
+            verbose_printf(options, "  corrected image from gamma %2.1f to sRGB gamma",
+                           1.0/input_image_rwpng.gamma);
+        }
 
         // when using image as source of a fixed palette the palette is extracted using regular quantization
         liq_result *remap = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);

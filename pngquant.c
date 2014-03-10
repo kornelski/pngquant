@@ -93,12 +93,13 @@ struct pngquant_options {
     void *log_callback_user_info;
     float floyd;
     bool using_stdin, force, fast_compression, ie_mode,
-        min_quality_limit, skip_if_larger;
+        min_quality_limit, skip_if_larger,
+        verbose;
 };
 
 static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
 static void set_palette(liq_result *result, png8_image *output_image);
-static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels);
+static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels, bool verbose);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
@@ -296,12 +297,10 @@ int main(int argc, char *argv[])
         opt = getopt_long(argc, argv, "Vvqfhs:Q:o:", long_options, NULL);
         switch (opt) {
             case 'v':
-                liq_set_log_callback(options.liq, log_callback, NULL);
-                options.log_callback = log_callback;
+                options.verbose = true;
                 break;
             case 'q':
-                liq_set_log_callback(options.liq, NULL, NULL);
-                options.log_callback = NULL;
+                options.verbose = false;
                 break;
 
             case arg_floyd:
@@ -312,6 +311,7 @@ int main(int argc, char *argv[])
                 }
                 break;
             case arg_ordered: options.floyd = 0; break;
+
             case 'f': options.force = true; break;
             case arg_no_force: options.force = false; break;
 
@@ -371,7 +371,7 @@ int main(int argc, char *argv[])
             case arg_map:
                 {
                     png24_image tmp = {};
-                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, false)) {
+                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, false, false)) {
                         fprintf(stderr, "  error: Unable to load %s", optarg);
                         return INVALID_ARGUMENT;
                     }
@@ -404,6 +404,11 @@ int main(int argc, char *argv[])
             print_usage(stderr);
         }
         return MISSING_ARGUMENT;
+    }
+
+    if (options.verbose) {
+        liq_set_log_callback(options.liq, log_callback, NULL);
+        options.log_callback = log_callback;
     }
 
     char *colors_end;
@@ -540,7 +545,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     png24_image input_image_rwpng = {};
     bool keep_input_pixels = options->skip_if_larger || (options->using_stdin && options->min_quality_limit); // original may need to be output to stdout
     if (!retval) {
-        retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels);
+        retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels, options->verbose);
     }
 
     int quality_percent = 90; // quality on 0-100 scale, updated upon successful remap
@@ -734,7 +739,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     return retval;
 }
 
-static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels)
+static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels, bool verbose)
 {
     FILE *infile;
 
@@ -749,7 +754,7 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     pngquant_error retval;
     #pragma omp critical (libpng)
     {
-        retval = rwpng_read_image24(infile, input_image_p);
+        retval = rwpng_read_image24(infile, input_image_p, verbose);
     }
 
     if (!using_stdin) {

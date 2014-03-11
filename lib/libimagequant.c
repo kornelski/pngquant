@@ -107,8 +107,8 @@ struct liq_result {
     liq_remapping_result *remapping;
     colormap *palette;
     liq_palette int_palette;
-    double gamma, palette_error;
     float dither_level;
+    double gamma, palette_error;
     int min_posterization_output;
     bool use_dither_map, fast_palette;
 };

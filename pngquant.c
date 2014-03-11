@@ -305,7 +305,7 @@ int main(int argc, char *argv[])
 
             case arg_floyd:
                 options.floyd = optarg ? atof(optarg) : 1.0;
-                if (options.floyd < 0 || options.floyd > 1.0) {
+                if (options.floyd < 0 || options.floyd > 1.f) {
                     fputs("--floyd argument must be in 0..1 range\n", stderr);
                     return INVALID_ARGUMENT;
                 }

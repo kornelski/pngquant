@@ -60,10 +60,10 @@ typedef enum {
 
 struct rwpng_chunk {
     struct rwpng_chunk *next;
-    png_byte name[5];
     png_byte *data;
     png_size_t size;
-    int location;
+    png_byte name[5];
+    png_byte location;
 };
 
 #if USE_LCMS
@@ -79,11 +79,11 @@ typedef struct {
     jmp_buf jmpbuf;
     png_uint_32 width;
     png_uint_32 height;
+    png_size_t file_size;
     double gamma;
     unsigned char **row_pointers;
     unsigned char *rgba_data;
     struct rwpng_chunk *chunks;
-    png_size_t file_size;
 #if USE_LCMS
     lcms_transform lcms_status;
 #endif
@@ -93,6 +93,7 @@ typedef struct {
     jmp_buf jmpbuf;
     png_uint_32 width;
     png_uint_32 height;
+    png_size_t maximum_file_size;
     double gamma;
     unsigned char **row_pointers;
     unsigned char *indexed_data;
@@ -101,7 +102,6 @@ typedef struct {
     png_color palette[256];
     unsigned char trans[256];
     struct rwpng_chunk *chunks;
-    png_size_t maximum_file_size;
     char fast_compression;
 } png8_image;
 

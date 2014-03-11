@@ -650,8 +650,8 @@ static const f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
 
         float gamma_lut[256];
         to_f_set_gamma(gamma_lut, img->gamma);
-        for(unsigned int row=0; row < img->height; row++) {
-            convert_row_to_f(img, &img->f_pixels[row*img->width], row, gamma_lut);
+        for(unsigned int i=0; i < img->height; i++) {
+            convert_row_to_f(img, &img->f_pixels[i*img->width], i, gamma_lut);
         }
     }
     return img->f_pixels + img->width * row;

@@ -205,8 +205,8 @@ LIQ_PRIVATE histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table 
             if (achl->used > 1) {
                 PAM_ADD_TO_HIST(achl->inline2);
 
-                for(unsigned int i=0; i < achl->used-2; i++) {
-                    PAM_ADD_TO_HIST(achl->other_items[i]);
+                for(unsigned int k=0; k < achl->used-2; k++) {
+                    PAM_ADD_TO_HIST(achl->other_items[k]);
                 }
             }
         }

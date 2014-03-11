@@ -47,7 +47,7 @@
 static const char *const liq_attr_magic = "liq_attr", *const liq_image_magic = "liq_image",
      *const liq_result_magic = "liq_result", *const liq_remapping_result_magic = "liq_remapping_result",
      *const liq_freed_magic = "free";
-#define CHECK_STRUCT_TYPE(attr, kind) liq_crash_if_invalid_handle_pointer_given((liq_attr*)attr, kind ## _magic)
+#define CHECK_STRUCT_TYPE(attr, kind) liq_crash_if_invalid_handle_pointer_given((const liq_attr*)attr, kind ## _magic)
 #define CHECK_USER_POINTER(ptr) liq_crash_if_invalid_pointer_given(ptr)
 
 struct liq_attr {

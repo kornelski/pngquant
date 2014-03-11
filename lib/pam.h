@@ -216,8 +216,10 @@ typedef struct {
           perceptual_weight; // number of pixels weighted by importance of different areas of the picture
 
     float color_weight;      // these two change every time histogram subset is sorted
-    unsigned int sort_value;
-    unsigned char likely_colormap_index;
+    union {
+        unsigned int sort_value;
+        unsigned char likely_colormap_index;
+    };
 } hist_item;
 
 typedef struct {

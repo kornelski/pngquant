@@ -502,6 +502,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
         sample_depth = 8;
 
     struct rwpng_chunk *chunk = mainprog_ptr->chunks;
+    int chunk_num=0;
     while(chunk) {
         png_unknown_chunk pngchunk = {
             .size = chunk->size,
@@ -510,7 +511,13 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
         };
         memcpy(pngchunk.name, chunk->name, 5);
         png_set_unknown_chunks(png_ptr, info_ptr, &pngchunk, 1);
+
+        #if PNG_LIBPNG_VER < 10600
+        png_set_unknown_chunk_location(png_ptr, info_ptr, chunk_num, pngchunk.location ? pngchunk.location : PNG_HAVE_IHDR);
+        #endif
+
         chunk = chunk->next;
+        chunk_num++;
     }
 
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,

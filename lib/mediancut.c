@@ -31,8 +31,8 @@ struct box {
     unsigned int colors;
 };
 
-inline static double variance_diff(double val, const double good_enough) ALWAYS_INLINE;
-inline static double variance_diff(double val, const double good_enough)
+FORCE_INLINE static double variance_diff(double val, const double good_enough);
+FORCE_INLINE static double variance_diff(double val, const double good_enough)
 {
     val *= val;
     if (val < good_enough*good_enough) return val*0.5;
@@ -76,9 +76,9 @@ static double box_max_error(const hist_item achv[], const struct box *box)
     return max_error;
 }
 
-inline static double color_weight(f_pixel median, hist_item h) ALWAYS_INLINE;
+FORCE_INLINE static double color_weight(f_pixel median, hist_item h);
 
-static inline void hist_item_swap(hist_item *l, hist_item *r)
+INLINE static void hist_item_swap(hist_item *l, hist_item *r)
 {
     if (l != r) {
         hist_item t = *l;
@@ -87,10 +87,12 @@ static inline void hist_item_swap(hist_item *l, hist_item *r)
     }
 }
 
-inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len) ALWAYS_INLINE;
-inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len)
+FORCE_INLINE static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len);
+FORCE_INLINE static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len)
 {
-    if (len < 32) return len/2;
+    if (len < 32) {
+        return len/2;
+    }
 
     const unsigned int aidx=8, bidx=len/2, cidx=len-1;
     const unsigned int a=base[aidx].sort_value, b=base[bidx].sort_value, c=base[cidx].sort_value;
@@ -98,8 +100,8 @@ inline static unsigned int qsort_pivot(const hist_item *const base, const unsign
                    : ((b > c) ? bidx : ((a < c) ? aidx : cidx ));
 }
 
-inline static unsigned int qsort_partition(hist_item *const base, const unsigned int len) ALWAYS_INLINE;
-inline static unsigned int qsort_partition(hist_item *const base, const unsigned int len)
+FORCE_INLINE static unsigned int qsort_partition(hist_item *const base, const unsigned int len);
+FORCE_INLINE static unsigned int qsort_partition(hist_item *const base, const unsigned int len)
 {
     unsigned int l = 1, r = len;
     if (len >= 8) {
@@ -254,7 +256,7 @@ static int best_splittable_box(struct box* bv, unsigned int boxes, const double 
     return bi;
 }
 
-inline static double color_weight(f_pixel median, hist_item h)
+FORCE_INLINE static double color_weight(f_pixel median, hist_item h)
 {
     float diff = colordifference(median, h.acolor);
     // if color is "good enough", don't split further
@@ -310,7 +312,10 @@ static bool total_box_error_below_target(double target_mse, struct box bv[], uns
 LIQ_PRIVATE colormap *mediancut(histogram *hist, const float min_opaque_val, unsigned int newcolors, const double target_mse, const double max_mse, void* (*malloc)(size_t), void (*free)(void*))
 {
     hist_item *achv = hist->achv;
-    struct box bv[newcolors];
+    struct box *bv = malloc(newcolors * sizeof(struct box));
+    if (!bv) {
+        return NULL;
+    }
 
     /*
      ** Set up the initial box.
@@ -404,6 +409,7 @@ LIQ_PRIVATE colormap *mediancut(histogram *hist, const float min_opaque_val, uns
     map->subset_palette = representative_subset;
     adjust_histogram(achv, map, bv, boxes);
 
+    free(bv);
     return map;
 }
 

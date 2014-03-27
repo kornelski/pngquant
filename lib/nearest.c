@@ -67,7 +67,7 @@ static int compareradius(const void *ap, const void *bp)
 
 static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, float error_margin, bool skip_index[], unsigned int *skipped)
 {
-    struct sorttmp colors[map->colors];
+    struct sorttmp *colors = malloc(map->colors * sizeof(struct sorttmp));
     unsigned int colorsused=0;
 
     for(unsigned int i=0; i < map->colors; i++) {
@@ -77,19 +77,20 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
         colorsused++;
     }
 
-    qsort(&colors, colorsused, sizeof(colors[0]), compareradius);
+    qsort(colors, colorsused, sizeof(colors[0]), compareradius);
     assert(colorsused < 2 || colors[0].radius <= colors[1].radius); // closest first
 
     num_candidates = MIN(colorsused, num_candidates);
 
     struct head h = {
         .candidates = mempool_alloc(m, num_candidates * sizeof(h.candidates[0]), 0),
-        .vantage_point = px,
+        .vantage_point = {px.a, px.r, px.g, px.b},
         .num_candidates = num_candidates,
     };
     for(unsigned int i=0; i < num_candidates; i++) {
+        const f_pixel px = map->palette[colors[i].index].acolor;
         h.candidates[i] = (struct color_entry) {
-            .color = map->palette[colors[i].index].acolor,
+            .color = {px.a, px.r, px.g, px.b},
             .index = colors[i].index,
         };
     }
@@ -105,6 +106,7 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
             (*skipped)++;
         }
     }
+    free(colors);
     return h;
 }
 
@@ -142,7 +144,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 
     unsigned int skipped=0;
     assert(map->colors > 0);
-    bool skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=false;
+    bool *skip_index = (bool *)calloc(map->colors, sizeof(bool));
 
 
     const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
@@ -194,6 +196,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
         pam_freecolormap(subset_palette);
     }
 
+    free(skip_index);
     return centroids;
 }
 

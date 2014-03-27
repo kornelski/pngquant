@@ -46,7 +46,8 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
             }
 
             // RGBA color is casted to long for easier hasing/comparisons
-            union rgba_as_int px = {pixels[row][col]};
+            const rgba_pixel tmp = pixels[row][col];
+            union rgba_as_int px = {{tmp.r, tmp.g, tmp.b, tmp.a}};
             unsigned int hash;
             if (!px.rgba.a) {
                 // "dirty alpha" has different RGBA values that end up being the same fully transparent color
@@ -85,7 +86,7 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
                     // the array was allocated with spare items
                     if (i < achl->capacity) {
                         other_items[i] = (struct acolorhist_arr_item){
-                            .color = px,
+                            .color = {{px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a}},
                             .perceptual_weight = boost,
                         };
                         achl->used++;
@@ -127,7 +128,7 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
                     achl->other_items = new_items;
                     achl->capacity = capacity;
                     new_items[i] = (struct acolorhist_arr_item){
-                        .color = px,
+                        .color = {{px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a}},
                         .perceptual_weight = boost,
                     };
                     achl->used++;

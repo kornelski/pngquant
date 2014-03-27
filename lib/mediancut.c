@@ -331,7 +331,7 @@ static bool total_box_error_below_target(double target_mse, struct box bv[], uns
 LIQ_PRIVATE colormap *mediancut(histogram *hist, unsigned int newcolors, const double target_mse, const double max_mse, void* (*malloc)(size_t), void (*free)(void*))
 {
     hist_item *achv = hist->achv;
-    struct box bv[newcolors];
+    struct box bv[256];
 
     /*
      ** Set up the initial box.

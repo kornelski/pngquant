@@ -21,8 +21,8 @@
 #include <stdint.h>
 #include <limits.h>
 
-#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199900L
-#error "This program requires C99, e.g. -std=c99 switch in GCC. MSVC doesn't support C newer than '89, please use MinGW on Windows."
+#if !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199900L) && !(defined(_MSC_VER) && _MSC_VER >= 1800)
+#error "This program requires C99, e.g. -std=c99 switch in GCC or it requires MSVC 18.0 or higher."
 #error "Ignore torrent of syntax errors that may follow. It's only because compiler is set to use too old C version."
 #endif
 
@@ -129,16 +129,24 @@ static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
         int required_space = vsnprintf(NULL, 0, fmt, va)+1; // +\0
         va_end(va);
 
-        char buf[required_space];
+        char *buf = malloc(required_space * sizeof(char));
         va_start(va, fmt);
-        vsnprintf(buf, required_space, fmt, va);
-        va_end(va);
+        if (buf) {
+            vsnprintf(buf, required_space, fmt, va);
+            va_end(va);
+        } else {
+            fprintf(stderr, "Could not allocate memory for printing message:\n");
+            vfprintf(stderr, fmt, va);
+            va_end(va);
+            return;
+        }
 
         context->log_callback(context, buf, context->log_callback_user_info);
+        free(buf);
     }
 }
 
-inline static void verbose_print(const liq_attr *attr, const char *msg)
+INLINE static void verbose_print(const liq_attr *attr, const char *msg)
 {
     if (attr->log_callback) {
         attr->log_callback(attr, msg, attr->log_callback_user_info);
@@ -153,10 +161,15 @@ static void liq_verbose_printf_flush(liq_attr *attr)
 }
 
 #if USE_SSE
-inline static bool is_sse2_available()
+INLINE static bool is_sse2_available()
 {
-#if (defined(__x86_64__) || defined(__amd64))
+#if (defined(__x86_64__) || defined(__amd64) || defined(_WIN64))
     return true;
+#elif defined(_MSC_VER)
+    int info[4];
+    __cpuid(info, 1);
+    /* bool is implemented as a built-in type of size 1 in MSVC */
+    return info[3] & (1<<26) ? true : false;
 #else
     int a,b,c,d;
         cpuid(1, a, b, c, d);
@@ -166,8 +179,8 @@ inline static bool is_sse2_available()
 #endif
 
 /* make it clear in backtrace when user-supplied handle points to invalid memory */
-LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header) NEVER_INLINE;
-LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header)
+LIQ_EXPORT NO_INLINE bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header);
+LIQ_EXPORT NO_INLINE bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header)
 {
     if (!user_supplied_pointer) {
         return false;
@@ -184,8 +197,8 @@ LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_s
     return user_supplied_pointer->magic_header == expected_magic_header;
 }
 
-LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer) NEVER_INLINE;
-LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer)
+LIQ_EXPORT NO_INLINE bool liq_crash_if_invalid_pointer_given(void *pointer);
+LIQ_EXPORT NO_INLINE bool liq_crash_if_invalid_pointer_given(void *pointer)
 {
     if (!pointer) {
         return false;
@@ -198,8 +211,12 @@ LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer)
 
 static double quality_to_mse(long quality)
 {
-    if (quality == 0) return MAX_DIFF;
-    if (quality == 100) return 0;
+    if (quality == 0) {
+        return MAX_DIFF;
+    }
+    if (quality == 100) {
+        return 0;
+    }
 
     // curve fudged to be roughly similar to quality of libjpeg
     // except lowest 10 for really low number of colors
@@ -381,7 +398,7 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
 
 static void *liq_aligned_malloc(size_t size)
 {
-    unsigned char *ptr = malloc(size + 16);
+    unsigned char *ptr = (unsigned char *)malloc(size + 16);
     if (!ptr) {
         return NULL;
     }
@@ -445,7 +462,9 @@ static bool liq_image_should_use_low_memory(liq_image *img, const bool low_memor
 static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], liq_image_get_rgba_row_callback *row_callback, void *row_callback_user_info, int width, int height, double gamma)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr) || width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0) return NULL;
-    if (!rows && !row_callback) return NULL;
+    if (!rows && !row_callback) {
+        return NULL;
+    }
 
     liq_image *img = attr->malloc(sizeof(liq_image));
     if (!img) return NULL;
@@ -527,7 +546,9 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0) return NULL;
     if (width > INT_MAX/16/height || height > INT_MAX/16/width) return NULL;
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return NULL;
-    if (!CHECK_USER_POINTER(bitmap)) return NULL;
+    if (!CHECK_USER_POINTER(bitmap)) {
+        return NULL;
+    }
 
     rgba_pixel *pixels = bitmap;
     rgba_pixel **rows = attr->malloc(sizeof(rows[0])*height);
@@ -543,15 +564,15 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     return image;
 }
 
-LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *callback, liq_color *temp_row, int row, int width, void *user_info) NEVER_INLINE;
-LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *callback, liq_color *temp_row, int row, int width, void *user_info)
+LIQ_EXPORT NO_INLINE void liq_executing_user_callback(liq_image_get_rgba_row_callback *callback, liq_color *temp_row, int row, int width, void *user_info);
+LIQ_EXPORT NO_INLINE void liq_executing_user_callback(liq_image_get_rgba_row_callback *callback, liq_color *temp_row, int row, int width, void *user_info)
 {
     assert(callback);
     assert(temp_row);
     callback(temp_row, row, width, user_info);
 }
 
-inline static bool liq_image_can_use_rows(liq_image *img)
+INLINE static bool liq_image_can_use_rows(liq_image *img)
 {
     const bool iebug = img->min_opaque_val < 1.f;
     return (img->rows && !iebug);
@@ -578,7 +599,9 @@ static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row
 static void convert_row_to_f(liq_image *img, f_pixel *row_f_pixels, const unsigned int row, const float gamma_lut[])
 {
     assert(row_f_pixels);
+#ifndef _MSC_VER
     assert(!USE_SSE || 0 == ((uintptr_t)row_f_pixels & 15));
+#endif
 
     const rgba_pixel *const row_pixels = liq_image_get_row_rgba(img, row);
 
@@ -684,11 +707,13 @@ LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
 
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *attr, liq_image *img)
 {
-    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return NULL;
-    if (!CHECK_STRUCT_TYPE(img, liq_image)) return NULL;
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) { return NULL; }
+    if (!CHECK_STRUCT_TYPE(img, liq_image)) { return NULL; }
 
     histogram *hist = get_histogram(img, attr);
-    if (!hist) return NULL;
+    if (!hist) {
+        return NULL;
+    }
 
     liq_result *result = pngquant_quantize(hist, attr, img->gamma);
 
@@ -712,7 +737,9 @@ LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level
 
 static liq_remapping_result *liq_remapping_result_create(liq_result *result)
 {
-    if (!CHECK_STRUCT_TYPE(result, liq_result)) return NULL;
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) {
+        return NULL;
+    }
 
     liq_remapping_result *res = result->malloc(sizeof(liq_remapping_result));
     if (!res) return NULL;
@@ -856,7 +883,7 @@ static void sort_palette(colormap *map, const liq_attr *options)
     }
 }
 
-inline static unsigned int posterize_channel(unsigned int color, unsigned int bits)
+INLINE static unsigned int posterize_channel(unsigned int color, unsigned int bits)
 {
     return (color & ~((1<<bits)-1)) | (color >> (8-bits));
 }
@@ -909,7 +936,10 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     struct nearest_map *const n = nearest_init(map, fast);
 
     const unsigned int max_threads = omp_get_max_threads();
-    viter_state average_color[(VITER_CACHE_LINE_GAP+map->colors) * max_threads];
+    viter_state *average_color = malloc((VITER_CACHE_LINE_GAP+map->colors) * max_threads * sizeof(viter_state));
+    if (!average_color) {
+        return -1;
+    }
     viter_init(map, max_threads, average_color);
 
     #pragma omp parallel for if (rows*cols > 3000) \
@@ -932,10 +962,11 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
 
     nearest_free(n);
 
+    free(average_color);
     return remapping_error / (input_image->width * input_image->height);
 }
 
-inline static f_pixel get_dithered_pixel(const float dither_level, const float max_dither_error, const f_pixel thiserr, const f_pixel px)
+INLINE static f_pixel get_dithered_pixel(const float dither_level, const float max_dither_error, const f_pixel thiserr, const f_pixel px)
 {
     /* Use Floyd-Steinberg errors to adjust actual color. */
     const float sr = thiserr.r * dither_level,
@@ -954,8 +985,8 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
     else if (px.b + sb < 0)    ratio = MIN(ratio, px.b/-sb);
 
     float a = px.a + sa;
-         if (a > 1.0) a = 1.0;
-    else if (a < 0)   a = 0;
+         if (a > 1.0) { a = 1.0; }
+    else if (a < 0)   { a = 0; }
 
     // If dithering error is crazy high, don't propagate it that much
     // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
@@ -1023,7 +1054,9 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 
         do {
             float dither_level = base_dithering_level;
-            if (dither_map) dither_level *= dither_map[row*cols + col];
+            if (dither_map) {
+                dither_level *= dither_map[row*cols + col];
+            }
 
             const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], row_pixels[col]);
 
@@ -1365,6 +1398,9 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
         colormap *newmap = mediancut(hist, options->min_opaque_val, max_colors,
             target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
             options->malloc, options->free);
+        if (!newmap) {
+            return NULL;
+        }
 
         if (feedback_loop_trials <= 0) {
             return newmap;
@@ -1439,6 +1475,9 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
         palette_error = 0;
     } else {
         acolormap = find_best_palette(hist, options, &palette_error);
+        if (!acolormap) {
+            return NULL;
+        }
 
         // Voronoi iteration approaches local minimum for the palette
         const double max_mse = options->max_mse;
@@ -1499,19 +1538,26 @@ LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *inp
 {
     if (!CHECK_STRUCT_TYPE(result, liq_result)) return LIQ_INVALID_POINTER;
     if (!CHECK_STRUCT_TYPE(input_image, liq_image)) return LIQ_INVALID_POINTER;
-    if (!CHECK_USER_POINTER(buffer)) return LIQ_INVALID_POINTER;
+    if (!CHECK_USER_POINTER(buffer)) {
+        return LIQ_INVALID_POINTER;
+    }
 
     const size_t required_size = input_image->width * input_image->height;
     if (buffer_size < required_size) {
         return LIQ_BUFFER_TOO_SMALL;
     }
 
-    unsigned char *rows[input_image->height];
+    unsigned char **rows = malloc(input_image->height * sizeof(unsigned char *));
+    if (!rows) {
+        return LIQ_OUT_OF_MEMORY;
+    }
     unsigned char *buffer_bytes = buffer;
     for(unsigned int i=0; i < input_image->height; i++) {
         rows[i] = &buffer_bytes[input_image->width * i];
     }
-    return liq_write_remapped_image_rows(result, input_image, rows);
+    liq_error error = liq_write_remapped_image_rows(result, input_image, rows);
+    free(rows);
+    return error;
 }
 
 LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image *input_image, unsigned char **row_pointers)

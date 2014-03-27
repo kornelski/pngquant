@@ -30,7 +30,7 @@
 
 // it's safe to assume that 64-bit x86 has SSE2.
 #ifndef USE_SSE
-#  if defined(__SSE2__) && (defined(__x86_64__) || defined(__amd64) || defined(WIN32) || defined(__WIN32__))
+#  if ((defined(__SSE2__) && (defined(__x86_64__) || defined(__amd64) || defined(WIN32) || defined(__WIN32__))) || defined(_WIN64))
 #    define USE_SSE 1
 #  else
 #    define USE_SSE 0
@@ -39,20 +39,34 @@
 
 #if USE_SSE
 #include <emmintrin.h>
+#ifdef _MSC_VER
+#include <intrin.h>
+#define SSE_ALIGN
+#else
 #define SSE_ALIGN __attribute__ ((aligned (16)))
 #define cpuid(func,ax,bx,cx,dx)\
     __asm__ __volatile__ ("cpuid":\
     "=a" (ax), "=b" (bx), "=c" (cx), "=d" (dx) : "a" (func));
+#endif
 #else
 #define SSE_ALIGN
 #endif
 
-#if defined(__GNUC__) || defined (__llvm__)
-#define ALWAYS_INLINE __attribute__((always_inline))
-#define NEVER_INLINE __attribute__ ((noinline))
+#ifdef _MSC_VER
+#   define INLINE __inline
+#   define FORCE_INLINE __forceinline
+#   define NO_INLINE __declspec(noinline)
+#   define restrict __restrict
+
+#elif defined(__GNUC__) || defined (__llvm__)
+#   define INLINE inline
+#   define FORCE_INLINE inline __attribute__((always_inline))
+#   define NO_INLINE __attribute__ ((noinline))
+
 #else
-#define ALWAYS_INLINE
-#define NEVER_INLINE
+#   define INLINE inline
+#   define FORCE_INLINE inline
+#   define NO_INLINE
 #endif
 
 /* from pam.h */
@@ -73,8 +87,8 @@ LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[], const double gamma);
  Converts 8-bit color to internal gamma and premultiplied alpha.
  (premultiplied color space is much better for blending of semitransparent colors)
  */
-inline static f_pixel to_f(const float gamma_lut[], const rgba_pixel px) ALWAYS_INLINE;
-inline static f_pixel to_f(const float gamma_lut[], const rgba_pixel px)
+FORCE_INLINE static f_pixel to_f(const float gamma_lut[], const rgba_pixel px);
+FORCE_INLINE static f_pixel to_f(const float gamma_lut[], const rgba_pixel px)
 {
     float a = px.a/255.f;
 
@@ -86,7 +100,7 @@ inline static f_pixel to_f(const float gamma_lut[], const rgba_pixel px)
     };
 }
 
-inline static rgba_pixel to_rgb(const float gamma, const f_pixel px)
+INLINE static rgba_pixel to_rgb(const float gamma, const f_pixel px)
 {
     if (px.a < 1.f/256.f) {
         return (rgba_pixel){0,0,0,0};
@@ -115,8 +129,8 @@ inline static rgba_pixel to_rgb(const float gamma, const f_pixel px)
     };
 }
 
-inline static double colordifference_ch(const double x, const double y, const double alphas) ALWAYS_INLINE;
-inline static double colordifference_ch(const double x, const double y, const double alphas)
+FORCE_INLINE static double colordifference_ch(const double x, const double y, const double alphas);
+FORCE_INLINE static double colordifference_ch(const double x, const double y, const double alphas)
 {
     // maximum of channel blended on white, and blended on black
     // premultiplied alpha and backgrounds 0/1 shorten the formula
@@ -124,8 +138,8 @@ inline static double colordifference_ch(const double x, const double y, const do
     return black*black + white*white;
 }
 
-inline static float colordifference_stdc(const f_pixel px, const f_pixel py) ALWAYS_INLINE;
-inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
+FORCE_INLINE static float colordifference_stdc(const f_pixel px, const f_pixel py);
+FORCE_INLINE static float colordifference_stdc(const f_pixel px, const f_pixel py)
 {
     // px_b.rgb = px.rgb + 0*(1-px.a) // blend px on black
     // px_b.a   = px.a   + 1*(1-px.a)
@@ -146,16 +160,16 @@ inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
            colordifference_ch(px.b, py.b, alphas);
 }
 
-inline static double min_colordifference_ch(const double x, const double y, const double alphas) ALWAYS_INLINE;
-inline static double min_colordifference_ch(const double x, const double y, const double alphas)
+FORCE_INLINE static double min_colordifference_ch(const double x, const double y, const double alphas);
+FORCE_INLINE static double min_colordifference_ch(const double x, const double y, const double alphas)
 {
     const double black = x-y, white = black+alphas;
     return MIN(black*black , white*white) * 2.f;
 }
 
 /* least possible difference between colors (difference varies depending on background they're blended on) */
-inline static float min_colordifference(const f_pixel px, const f_pixel py) ALWAYS_INLINE;
-inline static float min_colordifference(const f_pixel px, const f_pixel py)
+FORCE_INLINE static float min_colordifference(const f_pixel px, const f_pixel py);
+FORCE_INLINE static float min_colordifference(const f_pixel px, const f_pixel py)
 {
     const double alphas = py.a-px.a;
     return min_colordifference_ch(px.r, py.r, alphas) +
@@ -163,12 +177,21 @@ inline static float min_colordifference(const f_pixel px, const f_pixel py)
            min_colordifference_ch(px.b, py.b, alphas);
 }
 
-inline static float colordifference(f_pixel px, f_pixel py) ALWAYS_INLINE;
-inline static float colordifference(f_pixel px, f_pixel py)
+FORCE_INLINE static float colordifference(f_pixel px, f_pixel py);
+FORCE_INLINE static float colordifference(f_pixel px, f_pixel py)
 {
 #if USE_SSE
+#ifdef _MSC_VER
+    /* In MSVC we cannot use the align attribute in parameters.
+     * This is used a lot, so we just use an unaligned load.
+     * Also the compiler incorrectly inlines vpx and vpy without
+     * the volatile when optimization is applied for x86_64. */
+    const volatile __m128 vpx = _mm_loadu_ps((const float*)&px);
+    const volatile __m128 vpy = _mm_loadu_ps((const float*)&py);
+#else
     const __m128 vpx = _mm_load_ps((const float*)&px);
     const __m128 vpy = _mm_load_ps((const float*)&py);
+#endif
 
     // y.a - x.a
     __m128 alphas = _mm_sub_ss(vpy, vpx);

@@ -14,6 +14,11 @@ CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 CFLAGS ?= -Wall -Wno-unknown-pragmas -I. $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)
 
+# icc warns about omp pragmas without -openmp
+ifeq ($(CC), icc)
+CFLAGS += -wd3180
+endif
+
 ifdef USE_SSE
 CFLAGS += -msse2 -DUSE_SSE=$(USE_SSE)
 endif
@@ -34,7 +39,11 @@ dll:
 	$(MAKE) CFLAGSADD="-DLIQ_EXPORT='__declspec(dllexport)'" $(DLL)
 
 openmp::
+ifeq ($(CC), icc)
+	$(MAKE) CFLAGSADD=-openmp OPENMPFLAGS="-Bstatic -openmp" -j8
+else
 	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8
+endif
 
 $(DLL) $(DLLIMP): $(OBJS)
 	$(CC) -fPIC -shared -o $(DLL) $(OBJS) $(LDFLAGS) -Wl,--out-implib,$(DLLIMP),--output-def,$(DLLDEF)

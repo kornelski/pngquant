@@ -196,6 +196,11 @@ LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer)
     return test_access || true;
 }
 
+static void liq_log_error(const liq_attr *attr, const char *msg) {
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return;
+    liq_verbose_printf(attr, "  error: %s", msg);
+}
+
 static double quality_to_mse(long quality)
 {
     if (quality == 0) return MAX_DIFF;
@@ -444,8 +449,22 @@ static bool liq_image_should_use_low_memory(liq_image *img, const bool low_memor
 
 static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], liq_image_get_rgba_row_callback *row_callback, void *row_callback_user_info, int width, int height, double gamma)
 {
-    if (!CHECK_STRUCT_TYPE(attr, liq_attr) || width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0) return NULL;
-    if (!rows && !row_callback) return NULL;
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) {
+        return NULL;
+    }
+    if (width <= 0 || height <= 0) {
+        liq_log_error(attr, "width and height must be > 0");
+        return NULL;
+    }
+    if (gamma < 0 || gamma > 1.0) {
+        liq_log_error(attr, "gamma must be >= 0 and <= 1 (try 1/gamma instead)");
+        return NULL;
+    }
+
+    if (!rows && !row_callback) {
+        liq_log_error(attr, "missing row data");
+        return NULL;
+    }
 
     liq_image *img = attr->malloc(sizeof(liq_image));
     if (!img) return NULL;
@@ -513,21 +532,39 @@ LIQ_EXPORT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba
 
 LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma)
 {
-    if (width <= 0 || height <= 0) return NULL;
-    if (width > INT_MAX/16/height || height > INT_MAX/16/width) return NULL;
+    if (width <= 0 || height <= 0) {
+        liq_log_error(attr, "width and height must be > 0");
+        return NULL;
+    }
+    if (width > INT_MAX/16/height || height > INT_MAX/16/width) {
+        liq_log_error(attr, "image too large");
+        return NULL;
+    }
 
     for(int i=0; i < height; i++) {
-        if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) return NULL;
+        if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) {
+            liq_log_error(attr, "invalid row pointers");
+            return NULL;
+        }
     }
     return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
 }
 
 LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma)
 {
-    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0) return NULL;
-    if (width > INT_MAX/16/height || height > INT_MAX/16/width) return NULL;
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return NULL;
-    if (!CHECK_USER_POINTER(bitmap)) return NULL;
+    if (width <= 0 || height <= 0) {
+        liq_log_error(attr, "width and height must be > 0");
+        return NULL;
+    }
+    if (width > INT_MAX/16/height || height > INT_MAX/16/width) {
+        liq_log_error(attr, "image too large");
+        return NULL;
+    }
+    if (!CHECK_USER_POINTER(bitmap)) {
+        liq_log_error(attr, "invalid bitmap pointer");
+        return NULL;
+    }
 
     rgba_pixel *pixels = bitmap;
     rgba_pixel **rows = attr->malloc(sizeof(rows[0])*height);
@@ -685,7 +722,10 @@ LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *attr, liq_image *img)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return NULL;
-    if (!CHECK_STRUCT_TYPE(img, liq_image)) return NULL;
+    if (!CHECK_STRUCT_TYPE(img, liq_image)) {
+        liq_log_error(attr, "invalid image pointer");
+        return NULL;
+    }
 
     histogram *hist = get_histogram(img, attr);
     if (!hist) return NULL;

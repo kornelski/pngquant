@@ -21,8 +21,8 @@
 #include <stdint.h>
 #include <limits.h>
 
-#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199900L
-#error "This program requires C99, e.g. -std=c99 switch in GCC. MSVC doesn't support C newer than '89, please use MinGW on Windows."
+#if !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199900L) && !(defined(_MSC_VER) && _MSC_VER >= 1800)
+#error "This program requires C99, e.g. -std=c99 switch in GCC or it requires MSVC 18.0 or higher."
 #error "Ignore torrent of syntax errors that may follow. It's only because compiler is set to use too old C version."
 #endif
 

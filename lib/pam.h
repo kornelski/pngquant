@@ -38,13 +38,18 @@
 #endif
 
 #if USE_SSE
-#include <emmintrin.h>
-#define SSE_ALIGN __attribute__ ((aligned (16)))
-#define cpuid(func,ax,bx,cx,dx)\
+#  include <emmintrin.h>
+#  ifdef _MSC_VER
+#    include <intrin.h>
+#    define SSE_ALIGN
+#  else
+#    define SSE_ALIGN __attribute__ ((aligned (16)))
+#    define cpuid(func,ax,bx,cx,dx)\
     __asm__ __volatile__ ("cpuid":\
     "=a" (ax), "=b" (bx), "=c" (cx), "=d" (dx) : "a" (func));
+#endif
 #else
-#define SSE_ALIGN
+#  define SSE_ALIGN
 #endif
 
 #if defined(__GNUC__) || defined (__llvm__)

@@ -50,6 +50,11 @@
 #if defined(__GNUC__) || defined (__llvm__)
 #define ALWAYS_INLINE __attribute__((always_inline))
 #define NEVER_INLINE __attribute__ ((noinline))
+#elif defined(_MSC_VER)
+#define inline __inline
+#define restrict __restrict
+#define ALWAYS_INLINE __forceinline
+#define NEVER_INLINE __declspec(noinline)
 #else
 #define ALWAYS_INLINE
 #define NEVER_INLINE
@@ -73,7 +78,7 @@ LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[], const double gamma);
  Converts 8-bit color to internal gamma and premultiplied alpha.
  (premultiplied color space is much better for blending of semitransparent colors)
  */
-inline static f_pixel to_f(const float gamma_lut[], const rgba_pixel px) ALWAYS_INLINE;
+ALWAYS_INLINE inline static f_pixel to_f(const float gamma_lut[], const rgba_pixel px);
 inline static f_pixel to_f(const float gamma_lut[], const rgba_pixel px)
 {
     float a = px.a/255.f;
@@ -115,7 +120,7 @@ inline static rgba_pixel to_rgb(const float gamma, const f_pixel px)
     };
 }
 
-inline static double colordifference_ch(const double x, const double y, const double alphas) ALWAYS_INLINE;
+ALWAYS_INLINE inline static double colordifference_ch(const double x, const double y, const double alphas);
 inline static double colordifference_ch(const double x, const double y, const double alphas)
 {
     // maximum of channel blended on white, and blended on black
@@ -124,7 +129,7 @@ inline static double colordifference_ch(const double x, const double y, const do
     return black*black + white*white;
 }
 
-inline static float colordifference_stdc(const f_pixel px, const f_pixel py) ALWAYS_INLINE;
+ALWAYS_INLINE inline static float colordifference_stdc(const f_pixel px, const f_pixel py);
 inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
 {
     // px_b.rgb = px.rgb + 0*(1-px.a) // blend px on black
@@ -146,7 +151,7 @@ inline static float colordifference_stdc(const f_pixel px, const f_pixel py)
            colordifference_ch(px.b, py.b, alphas);
 }
 
-inline static double min_colordifference_ch(const double x, const double y, const double alphas) ALWAYS_INLINE;
+ALWAYS_INLINE inline static double min_colordifference_ch(const double x, const double y, const double alphas);
 inline static double min_colordifference_ch(const double x, const double y, const double alphas)
 {
     const double black = x-y, white = black+alphas;
@@ -154,7 +159,7 @@ inline static double min_colordifference_ch(const double x, const double y, cons
 }
 
 /* least possible difference between colors (difference varies depending on background they're blended on) */
-inline static float min_colordifference(const f_pixel px, const f_pixel py) ALWAYS_INLINE;
+ALWAYS_INLINE inline static float min_colordifference(const f_pixel px, const f_pixel py);
 inline static float min_colordifference(const f_pixel px, const f_pixel py)
 {
     const double alphas = py.a-px.a;
@@ -163,7 +168,7 @@ inline static float min_colordifference(const f_pixel px, const f_pixel py)
            min_colordifference_ch(px.b, py.b, alphas);
 }
 
-inline static float colordifference(f_pixel px, f_pixel py) ALWAYS_INLINE;
+ALWAYS_INLINE inline static float colordifference(f_pixel px, f_pixel py);
 inline static float colordifference(f_pixel px, f_pixel py)
 {
 #if USE_SSE

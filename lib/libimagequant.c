@@ -732,7 +732,9 @@ LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *attr, liq_image *img)
     }
 
     histogram *hist = get_histogram(img, attr);
-    if (!hist) return NULL;
+    if (!hist) {
+        return NULL;
+    }
 
     liq_result *result = pngquant_quantize(hist, attr, img->gamma);
 
@@ -756,7 +758,9 @@ LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level
 
 static liq_remapping_result *liq_remapping_result_create(liq_result *result)
 {
-    if (!CHECK_STRUCT_TYPE(result, liq_result)) return NULL;
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) {
+        return NULL;
+    }
 
     liq_remapping_result *res = result->malloc(sizeof(liq_remapping_result));
     if (!res) return NULL;
@@ -998,8 +1002,8 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
     else if (px.b + sb < 0)    ratio = MIN(ratio, px.b/-sb);
 
     float a = px.a + sa;
-         if (a > 1.0) a = 1.0;
-    else if (a < 0)   a = 0;
+         if (a > 1.0) { a = 1.0; }
+    else if (a < 0)   { a = 0; }
 
     // If dithering error is crazy high, don't propagate it that much
     // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
@@ -1067,7 +1071,9 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 
         do {
             float dither_level = base_dithering_level;
-            if (dither_map) dither_level *= dither_map[row*cols + col];
+            if (dither_map) {
+                dither_level *= dither_map[row*cols + col];
+            }
 
             const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], row_pixels[col]);
 
@@ -1541,9 +1547,15 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
 
 LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *input_image, void *buffer, size_t buffer_size)
 {
-    if (!CHECK_STRUCT_TYPE(result, liq_result)) return LIQ_INVALID_POINTER;
-    if (!CHECK_STRUCT_TYPE(input_image, liq_image)) return LIQ_INVALID_POINTER;
-    if (!CHECK_USER_POINTER(buffer)) return LIQ_INVALID_POINTER;
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) {
+        return LIQ_INVALID_POINTER;
+    }
+    if (!CHECK_STRUCT_TYPE(input_image, liq_image)) {
+        return LIQ_INVALID_POINTER;
+    }
+    if (!CHECK_USER_POINTER(buffer)) {
+        return LIQ_INVALID_POINTER;
+    }
 
     const size_t required_size = input_image->width * input_image->height;
     if (buffer_size < required_size) {

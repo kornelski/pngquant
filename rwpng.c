@@ -236,11 +236,13 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 #endif
     }
 
-    if (bit_depth == 16)
+    if (bit_depth == 16) {
         png_set_strip_16(png_ptr);
+    }
 
-    if (!(color_type & PNG_COLOR_MASK_COLOR))
+    if (!(color_type & PNG_COLOR_MASK_COLOR)) {
         png_set_gray_to_rgb(png_ptr);
+    }
 
 
     /* get source gamma for gamma correction, or use sRGB default */

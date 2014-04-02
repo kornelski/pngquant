@@ -90,7 +90,9 @@ static inline void hist_item_swap(hist_item *l, hist_item *r)
 ALWAYS_INLINE inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len);
 inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len)
 {
-    if (len < 32) return len/2;
+    if (len < 32) {
+        return len/2;
+    }
 
     const unsigned int aidx=8, bidx=len/2, cidx=len-1;
     const unsigned int a=base[aidx].sort_value, b=base[bidx].sort_value, c=base[cidx].sort_value;
@@ -236,7 +238,9 @@ static int best_splittable_box(struct box* bv, unsigned int boxes, const double 
 {
     int bi=-1; double maxsum=0;
     for(unsigned int i=0; i < boxes; i++) {
-        if (bv[i].colors < 2) continue;
+        if (bv[i].colors < 2) {
+            continue;
+        }
 
         // looks only at max variance, because it's only going to split by it
         const double cv = MAX(bv[i].variance.r, MAX(bv[i].variance.g,bv[i].variance.b));

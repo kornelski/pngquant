@@ -1,9 +1,6 @@
 /* pngquant.c - quantize the colors in an alphamap down to a specified number
 **
 ** Copyright (C) 1989, 1991 by Jef Poskanzer.
-** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
-**                                Stefan Schneider.
-** © 2009-2013 by Kornel Lesinski.
 **
 ** Permission to use, copy, modify, and distribute this software and its
 ** documentation for any purpose and without fee is hereby granted, provided
@@ -11,6 +8,35 @@
 ** copyright notice and this permission notice appear in supporting
 ** documentation.  This software is provided "as is" without express or
 ** implied warranty.
+**
+** - - - -
+**
+** © 1997-2002 by Greg Roelofs; based on an idea by Stefan Schneider.
+** © 2009-2014 by Kornel Lesiński.
+**
+** All rights reserved.
+**
+** Redistribution and use in source and binary forms, with or without modification,
+** are permitted provided that the following conditions are met:
+**
+** 1. Redistributions of source code must retain the above copyright notice,
+**    this list of conditions and the following disclaimer.
+**
+** 2. Redistributions in binary form must reproduce the above copyright notice,
+**    this list of conditions and the following disclaimer in the documentation
+**    and/or other materials provided with the distribution.
+**
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+** AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+** IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+** FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+** DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+** SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+** CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+** OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**
 */
 
 #define PNGQUANT_VERSION "2.1.1 (February 2014)"
@@ -21,6 +47,7 @@ options:\n\
   --force           overwrite existing output files (synonym: -f)\n\
   --nofs            disable Floyd-Steinberg dithering\n\
   --ext new.png     set custom suffix/extension for output filename\n\
+  --output          output path, only if one input file is specified (synonym: -o)\n\
   --speed N         speed/quality trade-off. 1=slow, 3=default, 11=fast & rough\n\
   --quality min-max don't save below min, use less colors below max (0-100)\n\
   --verbose         print status messages (synonym: -v)\n\
@@ -71,7 +98,6 @@ struct pngquant_options {
 
 static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
 static void set_palette(liq_result *result, png8_image *output_image);
-static void pngquant_output_image_free(png8_image *output_image);
 static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
@@ -431,7 +457,7 @@ int main(int argc, char *argv[])
 #endif
 
     #pragma omp parallel for \
-        schedule(dynamic) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
+        schedule(static, 1) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
     for(int i=0; i < num_files; i++) {
         struct pngquant_options opts = options;
         opts.liq = liq_attr_copy(options.liq);
@@ -504,16 +530,6 @@ int main(int argc, char *argv[])
     return latest_error;
 }
 
-
-static void pngquant_output_image_free(png8_image *output_image)
-{
-    free(output_image->indexed_data);
-    output_image->indexed_data = NULL;
-
-    free(output_image->row_pointers);
-    output_image->row_pointers = NULL;
-}
-
 pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options)
 {
     pngquant_error retval = SUCCESS;
@@ -530,8 +546,22 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     int quality_percent = 90; // quality on 0-100 scale, updated upon successful remap
     png8_image output_image = {};
     if (!retval) {
-        verbose_printf(options, "  read %luKB file corrected for gamma %2.1f",
-                       (input_image_rwpng.file_size+1023UL)/1024UL, 1.0/input_image_rwpng.gamma);
+        verbose_printf(options, "  read %luKB file", (input_image_rwpng.file_size+1023UL)/1024UL);
+
+#if USE_LCMS
+        if (input_image_rwpng.lcms_status == ICCP) {
+            verbose_printf(options, "  used embedded ICC profile to transform image to sRGB colorspace");
+        } else if (input_image_rwpng.lcms_status == GAMA_CHRM) {
+            verbose_printf(options, "  used gAMA and cHRM chunks to transform image to sRGB colorspace");
+        } else if (input_image_rwpng.lcms_status == ICCP_WARN_GRAY) {
+            verbose_printf(options, "  warning: ignored ICC profile in GRAY colorspace");
+        }
+#endif
+
+        if (input_image_rwpng.gamma != 0.45455) {
+            verbose_printf(options, "  corrected image from gamma %2.1f to sRGB gamma",
+                           1.0/input_image_rwpng.gamma);
+        }
 
         // when using image as source of a fixed palette the palette is extracted using regular quantization
         liq_result *remap = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
@@ -570,6 +600,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         }
 
         output_image.fast_compression = options->fast_compression;
+        output_image.chunks = input_image_rwpng.chunks; input_image_rwpng.chunks = NULL;
         retval = write_image(&output_image, NULL, outname, options);
 
         if (TOO_LARGE_FILE == retval) {
@@ -589,10 +620,8 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     }
 
     liq_image_destroy(input_image);
-    pngquant_output_image_free(&output_image);
-
-    free(input_image_rwpng.row_pointers);
-    free(input_image_rwpng.rgba_data);
+    rwpng_free_image24(&input_image_rwpng);
+    rwpng_free_image8(&output_image);
 
     return retval;
 }

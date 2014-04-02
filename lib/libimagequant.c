@@ -183,7 +183,7 @@ inline static bool is_sse2_available()
 #endif
 
 /* make it clear in backtrace when user-supplied handle points to invalid memory */
-LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header) NEVER_INLINE;
+NEVER_INLINE LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header);
 LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_supplied_pointer, const char *const expected_magic_header)
 {
     if (!user_supplied_pointer) {
@@ -201,7 +201,7 @@ LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_s
     return user_supplied_pointer->magic_header == expected_magic_header;
 }
 
-LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer) NEVER_INLINE;
+NEVER_INLINE LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer);
 LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer)
 {
     if (!pointer) {
@@ -213,10 +213,19 @@ LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer)
     return test_access || true;
 }
 
+static void liq_log_error(const liq_attr *attr, const char *msg) {
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return;
+    liq_verbose_printf(attr, "  error: %s", msg);
+}
+
 static double quality_to_mse(long quality)
 {
-    if (quality == 0) return MAX_DIFF;
-    if (quality == 100) return 0;
+    if (quality == 0) {
+        return MAX_DIFF;
+    }
+    if (quality == 100) {
+        return 0;
+    }
 
     // curve fudged to be roughly similar to quality of libjpeg
     // except lowest 10 for really low number of colors
@@ -227,7 +236,7 @@ static double quality_to_mse(long quality)
 static unsigned int mse_to_quality(double mse)
 {
     for(int i=100; i > 0; i--) {
-        if (mse <= quality_to_mse(i)) {
+        if (mse <= quality_to_mse(i) + 0.000001) { // + epsilon for floating point errors
             return i;
         }
     }
@@ -461,8 +470,20 @@ static bool liq_image_should_use_low_memory(liq_image *img, const bool low_memor
 
 static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], liq_image_get_rgba_row_callback *row_callback, void *row_callback_user_info, int width, int height, double gamma)
 {
-    if (!CHECK_STRUCT_TYPE(attr, liq_attr) || width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0) return NULL;
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) {
+        return NULL;
+    }
+    if (width <= 0 || height <= 0) {
+        liq_log_error(attr, "width and height must be > 0");
+        return NULL;
+    }
+    if (gamma < 0 || gamma > 1.0) {
+        liq_log_error(attr, "gamma must be >= 0 and <= 1 (try 1/gamma instead)");
+        return NULL;
+    }
+
     if (!rows && !row_callback) {
+        liq_log_error(attr, "missing row data");
         return NULL;
     }
 
@@ -532,21 +553,37 @@ LIQ_EXPORT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba
 
 LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma)
 {
-    if (width <= 0 || height <= 0) return NULL;
-    if (width > INT_MAX/16/height || height > INT_MAX/16/width) return NULL;
+    if (width <= 0 || height <= 0) {
+        liq_log_error(attr, "width and height must be > 0");
+        return NULL;
+    }
+    if (width > INT_MAX/16/height || height > INT_MAX/16/width) {
+        liq_log_error(attr, "image too large");
+        return NULL;
+    }
 
     for(int i=0; i < height; i++) {
-        if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) return NULL;
+        if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) {
+            liq_log_error(attr, "invalid row pointers");
+            return NULL;
+        }
     }
     return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
 }
 
 LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma)
 {
-    if (width <= 0 || height <= 0 || gamma < 0 || gamma > 1.0) return NULL;
-    if (width > INT_MAX/16/height || height > INT_MAX/16/width) return NULL;
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return NULL;
+    if (width <= 0 || height <= 0) {
+        liq_log_error(attr, "width and height must be > 0");
+        return NULL;
+    }
+    if (width > INT_MAX/16/height || height > INT_MAX/16/width) {
+        liq_log_error(attr, "image too large");
+        return NULL;
+    }
     if (!CHECK_USER_POINTER(bitmap)) {
+        liq_log_error(attr, "invalid bitmap pointer");
         return NULL;
     }
 
@@ -564,7 +601,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     return image;
 }
 
-LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *callback, liq_color *temp_row, int row, int width, void *user_info) NEVER_INLINE;
+NEVER_INLINE LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *callback, liq_color *temp_row, int row, int width, void *user_info);
 LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *callback, liq_color *temp_row, int row, int width, void *user_info)
 {
     assert(callback);
@@ -708,7 +745,10 @@ LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
 LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *attr, liq_image *img)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) { return NULL; }
-    if (!CHECK_STRUCT_TYPE(img, liq_image)) { return NULL; }
+    if (!CHECK_STRUCT_TYPE(img, liq_image)) {
+        liq_log_error(attr, "invalid image pointer");
+        return NULL;
+    }
 
     histogram *hist = get_histogram(img, attr);
     if (!hist) {
@@ -840,18 +880,19 @@ static void sort_palette(colormap *map, const liq_attr *options)
     ** the maximal alpha value (i.e., fully opaque) are at the end and can
     ** therefore be omitted from the tRNS chunk.
     */
-    if (options->last_index_transparent) for(unsigned int i=0; i < map->colors; i++) {
-        if (map->palette[i].acolor.a < 1.0/256.0) {
-            const unsigned int old = i, transparent_dest = map->colors-1;
+    if (options->last_index_transparent) {
+	for(unsigned int i=0; i < map->colors; i++) {
+	    if (map->palette[i].acolor.a < 1.0/256.0) {
+		const unsigned int old = i, transparent_dest = map->colors-1;
 
-            SWAP_PALETTE(map, transparent_dest, old);
+		SWAP_PALETTE(map, transparent_dest, old);
 
-            /* colors sorted by popularity make pngs slightly more compressible */
-            qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
-            return;
+		/* colors sorted by popularity make pngs slightly more compressible */
+		qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
+		return;
             }
         }
-
+    }
     /* move transparent colors to the beginning to shrink trns chunk */
     unsigned int num_transparent=0;
     for(unsigned int i=0; i < map->colors; i++) {
@@ -942,7 +983,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     viter_init(map, max_threads, average_color);
 
     #pragma omp parallel for if (rows*cols > 3000) \
-        default(none) shared(average_color) reduction(+:remapping_error)
+        schedule(static) default(none) shared(average_color) reduction(+:remapping_error)
     for(int row = 0; row < rows; ++row) {
         const f_pixel *const row_pixels = liq_image_get_row_f(input_image, row);
         unsigned int last_match=0;
@@ -1447,12 +1488,13 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
     while(feedback_loop_trials > 0);
 
     // likely_colormap_index (used and set in viter_do_iteration) can't point to index outside colormap
-    if (acolormap->colors < 256) for(unsigned int j=0; j < hist->size; j++) {
-        if (hist->achv[j].likely_colormap_index >= acolormap->colors) {
-            hist->achv[j].likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
-        }
+    if (acolormap->colors < 256) {
+	for(unsigned int j=0; j < hist->size; j++) {
+	    if (hist->achv[j].likely_colormap_index >= acolormap->colors) {
+		hist->achv[j].likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
+	    }
+	}
     }
-
     *palette_error_p = least_error;
     return acolormap;
 }

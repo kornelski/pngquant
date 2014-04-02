@@ -4,28 +4,31 @@
 
   ---------------------------------------------------------------------------
 
-      Copyright (c) 1998-2000 Greg Roelofs.  All rights reserved.
+   © 1998-2000 by Greg Roelofs.
+   © 2009-2014 by Kornel Lesiński.
 
-      This software is provided "as is," without warranty of any kind,
-      express or implied.  In no event shall the author or contributors
-      be held liable for any damages arising in any way from the use of
-      this software.
+   All rights reserved.
 
-      Permission is granted to anyone to use this software for any purpose,
-      including commercial applications, and to alter it and redistribute
-      it freely, subject to the following restrictions:
+   Redistribution and use in source and binary forms, with or without modification,
+   are permitted provided that the following conditions are met:
 
-      1. Redistributions of source code must retain the above copyright
-         notice, disclaimer, and this list of conditions.
-      2. Redistributions in binary form must reproduce the above copyright
-         notice, disclaimer, and this list of conditions in the documenta-
-         tion and/or other materials provided with the distribution.
-      3. All advertising materials mentioning features or use of this
-         software must display the following acknowledgment:
+   1. Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
 
-            This product includes software developed by Greg Roelofs
-            and contributors for the book, "PNG: The Definitive Guide,"
-            published by O'Reilly and Associates.
+   2. Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+   DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+   FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+   DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+   SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+   CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+   OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   ---------------------------------------------------------------------------*/
 
@@ -47,13 +50,30 @@ typedef enum {
     NOT_OVERWRITING_ERROR = 15,
     CANT_WRITE_ERROR = 16,
     OUT_OF_MEMORY_ERROR = 17,
-    WRONG_ARCHITECTURE = 18, // Missing SSE3
+    WRONG_ARCHITECTURE = 18, // Missing SSE2
     PNG_OUT_OF_MEMORY_ERROR = 24,
     LIBPNG_FATAL_ERROR = 25,
     LIBPNG_INIT_ERROR = 35,
     TOO_LARGE_FILE = 98,
     TOO_LOW_QUALITY = 99,
 } pngquant_error;
+
+struct rwpng_chunk {
+    struct rwpng_chunk *next;
+    png_byte name[5];
+    png_byte *data;
+    png_size_t size;
+    int location;
+};
+
+#if USE_LCMS
+typedef enum {
+  NONE = 0,
+  ICCP = 1, // used ICC profile
+  ICCP_WARN_GRAY = 2, // ignore and warn about GRAY ICC profile
+  GAMA_CHRM = 3, // used gAMA and cHARM
+} lcms_transform;
+#endif
 
 typedef struct {
     jmp_buf jmpbuf;
@@ -62,7 +82,11 @@ typedef struct {
     double gamma;
     unsigned char **row_pointers;
     unsigned char *rgba_data;
+    struct rwpng_chunk *chunks;
     png_size_t file_size;
+#if USE_LCMS
+    lcms_transform lcms_status;
+#endif
 } png24_image;
 
 typedef struct {
@@ -76,6 +100,7 @@ typedef struct {
     unsigned int num_trans;
     png_color palette[256];
     unsigned char trans[256];
+    struct rwpng_chunk *chunks;
     png_size_t maximum_file_size;
     char fast_compression;
 } png8_image;
@@ -91,8 +116,9 @@ typedef union {
 void rwpng_version_info(FILE *fp);
 
 pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr);
-
 pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr);
 pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr);
+void rwpng_free_image24(png24_image *);
+void rwpng_free_image8(png8_image *);
 
 #endif

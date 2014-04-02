@@ -18,6 +18,11 @@ CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I/usr/local/include/ -I/usr/include/ $(CFLAGSOPT)
 CFLAGS += $(CFLAGSADD)
 
+# icc warns about omp pragmas without -openmp
+ifeq ($(CC), icc)
+CFLAGS += -wd3180
+endif
+
 LDFLAGS ?= -L/usr/local/lib/ -L/usr/lib/
 
 ifneq "$(wildcard $(CUSTOMZLIB))" ""
@@ -62,8 +67,8 @@ FRAMEWORKS += -framework Cocoa
 endif
 
 ifdef USE_LCMS
-CFLAGS += $(shell pkg-config --cflags lcms) -DUSE_LCMS=1
-LDFLAGS += $(shell pkg-config --libs lcms)
+CFLAGS += $(shell pkg-config --cflags lcms2) -DUSE_LCMS=1
+LDFLAGS += $(shell pkg-config --libs lcms2)
 endif
 
 BUILD_CONFIGURATION="$(CC) $(CFLAGS) $(LDFLAGS)"
@@ -74,7 +79,12 @@ lib/libimagequant.a::
 	$(MAKE) -C lib static
 
 openmp::
+ifeq ($(CC), icc)
+	$(MAKE) CFLAGSADD="$(CFLAGSADD) -openmp" OPENMPFLAGS="-Bstatic -openmp" -j8 $(MKFLAGS)
+else
 	$(MAKE) CFLAGSADD="$(CFLAGSADD) -fopenmp" OPENMPFLAGS="-Bstatic -lgomp" -j8 $(MKFLAGS)
+endif
+
 
 $(BIN): $(OBJS) lib/libimagequant.a
 	$(CC) $(OBJS) $(LDFLAGS) $(OPENMPFLAGS) $(FRAMEWORKS) -o $@

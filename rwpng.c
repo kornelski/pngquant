@@ -4,28 +4,31 @@
 
   ---------------------------------------------------------------------------
 
-      Copyright (c) 1998-2000 Greg Roelofs.  All rights reserved.
+   © 1998-2000 by Greg Roelofs.
+   © 2009-2014 by Kornel Lesiński.
 
-      This software is provided "as is," without warranty of any kind,
-      express or implied.  In no event shall the author or contributors
-      be held liable for any damages arising in any way from the use of
-      this software.
+   All rights reserved.
 
-      Permission is granted to anyone to use this software for any purpose,
-      including commercial applications, and to alter it and redistribute
-      it freely, subject to the following restrictions:
+   Redistribution and use in source and binary forms, with or without modification,
+   are permitted provided that the following conditions are met:
 
-      1. Redistributions of source code must retain the above copyright
-         notice, disclaimer, and this list of conditions.
-      2. Redistributions in binary form must reproduce the above copyright
-         notice, disclaimer, and this list of conditions in the documenta-
-         tion and/or other materials provided with the distribution.
-      3. All advertising materials mentioning features or use of this
-         software must display the following acknowledgment:
+   1. Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
 
-            This product includes software developed by Greg Roelofs
-            and contributors for the book, "PNG: The Definitive Guide,"
-            published by O'Reilly and Associates.
+   2. Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+   DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+   FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+   DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+   SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+   CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+   OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   ---------------------------------------------------------------------------*/
 
@@ -36,7 +39,7 @@
 #include "png.h"
 #include "rwpng.h"
 #if USE_LCMS
-#include "lcms.h"
+#include "lcms2.h"
 #endif
 
 #ifndef Z_BEST_COMPRESSION
@@ -44,6 +47,12 @@
 #endif
 #ifndef Z_BEST_SPEED
 #define Z_BEST_SPEED 1
+#endif
+
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#define omp_get_max_threads() 1
 #endif
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
@@ -66,6 +75,9 @@ void rwpng_version_info(FILE *fp)
 
 #if USE_COCOA
     fputs("   Compiled with Apple Cocoa image reader.\n", fp);
+#endif
+#if USE_LCMS
+    fputs("   Compiled with Little CMS color profile support.\n", fp);
 #endif
 }
 
@@ -126,6 +138,30 @@ static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_
     return row_pointers;
 }
 
+static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
+{
+    if (0 == memcmp("iCCP", in_chunk->name, 5) ||
+        0 == memcmp("cHRM", in_chunk->name, 5) ||
+        0 == memcmp("gAMA", in_chunk->name, 5)) {
+        return 0; // not handled
+    }
+
+    struct rwpng_chunk **head = (struct rwpng_chunk **)png_get_user_chunk_ptr(png_ptr);
+
+    struct rwpng_chunk *chunk = malloc(sizeof(struct rwpng_chunk));
+    memcpy(chunk->name, in_chunk->name, 5);
+    chunk->size = in_chunk->size;
+    chunk->location = in_chunk->location;
+    chunk->data = in_chunk->size ? malloc(in_chunk->size) : NULL;
+    if (in_chunk->size) {
+        memcpy(chunk->data, in_chunk->data, in_chunk->size);
+    }
+
+    chunk->next = *head;
+    *head = chunk;
+
+    return 1; // marks as "handled", libpng won't store it
+}
 
 /*
    retval:
@@ -164,6 +200,8 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
         return LIBPNG_FATAL_ERROR;   /* fatal libpng error (via longjmp()) */
     }
 
+    png_set_read_user_chunk_fn(png_ptr, &mainprog_ptr->chunks, read_chunk_callback);
+
     struct rwpng_read_data read_data = {infile, 0};
     png_set_read_fn(png_ptr, &read_data, user_read_data);
 
@@ -195,24 +233,21 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
         return mainprog_ptr->retval;
 #endif
     }
-/*
-    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
-        png_set_expand(png_ptr);
-    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
-        png_set_expand(png_ptr);
- */
+
     if (bit_depth == 16)
         png_set_strip_16(png_ptr);
 
-    if (color_type == PNG_COLOR_TYPE_GRAY ||
-        color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+    if (!(color_type & PNG_COLOR_MASK_COLOR))
         png_set_gray_to_rgb(png_ptr);
 
 
-    /* get and save the gamma info (if any) for writing */
+    /* get source gamma for gamma correction, or use sRGB default */
 
-    double gamma;
-    mainprog_ptr->gamma = png_get_gAMA(png_ptr, info_ptr, &gamma) ? gamma : 0.45455;
+    double gamma = 0.45455;
+    if (!png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB)) {
+        png_get_gAMA(png_ptr, info_ptr, &gamma);
+    }
+    mainprog_ptr->gamma = gamma;
 
     png_set_interlace_handling(png_ptr);
 
@@ -241,32 +276,89 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
     png_read_end(png_ptr, NULL);
 
 #if USE_LCMS
-    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_iCCP)) {
-        png_uint_32 ProfileLen;
-        png_bytep ProfileData;
-        int  Compression;
-        png_charp ProfileName;
+#if PNG_LIBPNG_VER < 10500
+    png_charp ProfileData;
+#else
+    png_bytep ProfileData;
+#endif
+    png_uint_32 ProfileLen;
 
-        png_get_iCCP(png_ptr, info_ptr, &ProfileName,
-                                        &Compression,
-                                        &ProfileData,
-                                        &ProfileLen);
+    cmsHPROFILE hInProfile = NULL;
 
-        cmsHPROFILE hInProfile = cmsOpenProfileFromMem(ProfileData, ProfileLen);
+    /* color_type is read from the image before conversion to RGBA */
+    int COLOR_PNG = color_type & PNG_COLOR_MASK_COLOR;
+
+    mainprog_ptr->lcms_status = NONE;
+
+    /* embedded ICC profile */
+    if (png_get_iCCP(png_ptr, info_ptr, &(png_charp){0}, &(int){0}, &ProfileData, &ProfileLen)) {
+
+        hInProfile = cmsOpenProfileFromMem(ProfileData, ProfileLen);
+        cmsColorSpaceSignature colorspace = cmsGetColorSpace(hInProfile);
+
+        /* only RGB (and GRAY) valid for PNGs */
+        if (colorspace == cmsSigRgbData && COLOR_PNG) {
+             mainprog_ptr->lcms_status = ICCP;
+        } else {
+            if (colorspace == cmsSigGrayData && !COLOR_PNG) {
+                 mainprog_ptr->lcms_status = ICCP_WARN_GRAY;
+            }
+            cmsCloseProfile(hInProfile);
+            hInProfile = NULL;
+        }
+    }
+
+    /* build RGB profile from cHRM and gAMA */
+    if (hInProfile == NULL && COLOR_PNG &&
+        !png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB) && 
+        png_get_valid(png_ptr, info_ptr, PNG_INFO_gAMA) && 
+        png_get_valid(png_ptr, info_ptr, PNG_INFO_cHRM)) {
+        
+        cmsCIExyY WhitePoint;
+        cmsCIExyYTRIPLE Primaries;
+
+        png_get_cHRM(png_ptr, info_ptr, &WhitePoint.x, &WhitePoint.y,
+                     &Primaries.Red.x, &Primaries.Red.y,
+                     &Primaries.Green.x, &Primaries.Green.y,
+                     &Primaries.Blue.x, &Primaries.Blue.y);
+
+        WhitePoint.Y = Primaries.Red.Y = Primaries.Green.Y = Primaries.Blue.Y = 1.0;
+
+        cmsToneCurve *GammaTable[3];
+        GammaTable[0] = GammaTable[1] = GammaTable[2] = cmsBuildGamma(NULL, 1/gamma);
+
+        hInProfile = cmsCreateRGBProfile(&WhitePoint, &Primaries, GammaTable);
+
+        cmsFreeToneCurve(GammaTable[0]);
+
+        mainprog_ptr->lcms_status = GAMA_CHRM;
+    }
+
+    /* transform image to sRGB colorspace */
+    if (hInProfile != NULL) {
+        
         cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
-
         cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
-                                                    hOutProfile, TYPE_RGBA_8,
-                                                    INTENT_PERCEPTUAL, 0);
+                                                      hOutProfile, TYPE_RGBA_8,
+                                                      INTENT_PERCEPTUAL,
+                                                      omp_get_max_threads() > 1 ? cmsFLAGS_NOCACHE : 0);
 
-        // suprisingly, using the same input and output works
-        cmsDoTransform(hTransform, mainprog_ptr->rgba_data,
-                                   mainprog_ptr->rgba_data,
-                                   mainprog_ptr->height * mainprog_ptr->width);
+        #pragma omp parallel for \
+            if (mainprog_ptr->height*mainprog_ptr->width > 8000) \
+            schedule(static)
+        for (unsigned int i = 0; i < mainprog_ptr->height; i++) {
+            /* It is safe to use the same block for input and output,
+               when both are of the same TYPE. */
+            cmsDoTransform(hTransform, row_pointers[i],
+                                       row_pointers[i],
+                                       mainprog_ptr->width);
+        }
 
         cmsDeleteTransform(hTransform);
         cmsCloseProfile(hOutProfile);
         cmsCloseProfile(hInProfile);
+
+        mainprog_ptr->gamma = 0.45455;
     }
 #endif
 
@@ -278,6 +370,36 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
     return SUCCESS;
 }
 
+static void rwpng_free_chunks(struct rwpng_chunk *chunk) {
+    if (!chunk) return;
+    rwpng_free_chunks(chunk->next);
+    free(chunk->data);
+    free(chunk);
+}
+
+void rwpng_free_image24(png24_image *image)
+{
+    free(image->row_pointers);
+    image->row_pointers = NULL;
+
+    free(image->rgba_data);
+    image->rgba_data = NULL;
+
+    rwpng_free_chunks(image->chunks);
+    image->chunks = NULL;
+}
+
+void rwpng_free_image8(png8_image *image)
+{
+    free(image->indexed_data);
+    image->indexed_data = NULL;
+
+    free(image->row_pointers);
+    image->row_pointers = NULL;
+
+    rwpng_free_chunks(image->chunks);
+    image->chunks = NULL;
+}
 
 pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p)
 {
@@ -336,13 +458,9 @@ void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_bytepp r
 
 void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma)
 {
-    if (gamma > 0.0) {
+        /* remap sets gamma to 0.45455 */
         png_set_gAMA(png_ptr, info_ptr, gamma);
-
-        if (gamma > 0.45454 && gamma < 0.45456) {
-            png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
-        }
-    }
+        png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
 }
 
 pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
@@ -382,6 +500,25 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     else
 #endif
         sample_depth = 8;
+
+    struct rwpng_chunk *chunk = mainprog_ptr->chunks;
+    int chunk_num=0;
+    while(chunk) {
+        png_unknown_chunk pngchunk = {
+            .size = chunk->size,
+            .data = chunk->data,
+            .location = chunk->location,
+        };
+        memcpy(pngchunk.name, chunk->name, 5);
+        png_set_unknown_chunks(png_ptr, info_ptr, &pngchunk, 1);
+
+        #if PNG_LIBPNG_VER < 10600
+        png_set_unknown_chunk_location(png_ptr, info_ptr, chunk_num, pngchunk.location ? pngchunk.location : PNG_HAVE_IHDR);
+        #endif
+
+        chunk = chunk->next;
+        chunk_num++;
+    }
 
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,
       sample_depth, PNG_COLOR_TYPE_PALETTE,

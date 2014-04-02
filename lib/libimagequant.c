@@ -203,8 +203,12 @@ static void liq_log_error(const liq_attr *attr, const char *msg) {
 
 static double quality_to_mse(long quality)
 {
-    if (quality == 0) return MAX_DIFF;
-    if (quality == 100) return 0;
+    if (quality == 0) {
+        return MAX_DIFF;
+    }
+    if (quality == 100) {
+        return 0;
+    }
 
     // curve fudged to be roughly similar to quality of libjpeg
     // except lowest 10 for really low number of colors

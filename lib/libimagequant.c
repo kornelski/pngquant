@@ -153,14 +153,14 @@ static void liq_verbose_printf_flush(liq_attr *attr)
 }
 
 #if USE_SSE
-inline static bool is_sse2_available()
+inline static bool is_sse_available()
 {
 #if (defined(__x86_64__) || defined(__amd64))
     return true;
 #else
     int a,b,c,d;
         cpuid(1, a, b, c, d);
-    return d & (1<<26); // edx bit 26 is set when SSE2 is present
+    return d & (1<<25); // edx bit 25 is set when SSE is present
 #endif
 }
 #endif
@@ -413,7 +413,7 @@ static void liq_aligned_free(void *inptr)
 LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_t), void (*custom_free)(void*))
 {
 #if USE_SSE
-    if (!is_sse2_available()) {
+    if (!is_sse_available()) {
         return NULL;
     }
 #endif

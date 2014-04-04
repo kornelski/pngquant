@@ -28,9 +28,9 @@
 
 #define MAX_DIFF 1e20
 
-// it's safe to assume that 64-bit x86 has SSE2.
 #ifndef USE_SSE
-#  if defined(__SSE2__) && (defined(__x86_64__) || defined(__amd64) || defined(WIN32) || defined(__WIN32__))
+   // SSE default on x86_64 and Windows
+#  if defined(__SSE__) && (defined(__x86_64__) || defined(__amd64) || defined(WIN32) || defined(__WIN32__))
 #    define USE_SSE 1
 #  else
 #    define USE_SSE 0
@@ -38,7 +38,7 @@
 #endif
 
 #if USE_SSE
-#  include <emmintrin.h>
+#  include <xmmintrin.h>
 #  ifdef _MSC_VER
 #    include <intrin.h>
 #    define SSE_ALIGN

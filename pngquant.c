@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
     options.liq = liq_attr_create();
 
     if (!options.liq) {
-        fputs("SSE2-capable CPU is required for this build.\n", stderr);
+        fputs("SSE-capable CPU is required for this build.\n", stderr);
         return WRONG_ARCHITECTURE;
     }
 

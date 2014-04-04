@@ -85,7 +85,7 @@ There are 3 ways to create image object for quantization:
 
 Returns object that will hold initial settings (attributes) for the library. The object should be freed using `liq_attr_destroy()` after it's no longer needed.
 
-Returns `NULL` in the unlikely case that the library cannot run on the current machine (e.g. the library has been compiled for SSE2-capable x86 CPU and run on VIA C3 CPU).
+Returns `NULL` in the unlikely case that the library cannot run on the current machine (e.g. the library has been compiled for SSE-capable x86 CPU and run on VIA C3 CPU).
 
 ----
 

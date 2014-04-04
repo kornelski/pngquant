@@ -14,13 +14,15 @@ CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 CFLAGS ?= -Wall -Wno-unknown-pragmas -I. $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)
 
-# icc warns about omp pragmas without -openmp
-ifeq ($(CC), icc)
-CFLAGS += -wd3180
-endif
-
 ifdef USE_SSE
 CFLAGS += -msse -DUSE_SSE=$(USE_SSE)
+endif
+
+ifeq ($(CC), icc)
+# disable omp pragmas warning when -openmp is not set
+CFLAGS += -fast -wd3180
+# required for -ipo (set by -fast)
+AR = xiar
 endif
 
 OBJS = pam.o mediancut.o blur.o mempool.o viter.o nearest.o libimagequant.o
@@ -40,7 +42,7 @@ dll:
 
 openmp::
 ifeq ($(CC), icc)
-	$(MAKE) CFLAGSADD=-openmp OPENMPFLAGS="-Bstatic -openmp" -j8
+	$(MAKE) CFLAGSADD=-openmp OPENMPFLAGS=-openmp -j8
 else
 	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8
 endif

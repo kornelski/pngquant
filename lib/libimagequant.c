@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <limits.h>
 
-#if !defined(__cplusplus) && !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199900L) && !(defined(_MSC_VER) && _MSC_VER >= 1800)
+#if !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199900L) && !(defined(_MSC_VER) && _MSC_VER >= 1800)
 #error "This program requires C99, e.g. -std=c99 switch in GCC or it requires MSVC 18.0 or higher."
 #error "Ignore torrent of syntax errors that may follow. It's only because compiler is set to use too old C version."
 #endif
@@ -40,10 +40,6 @@
 #include "nearest.h"
 #include "blur.h"
 #include "viter.h"
-
-#ifdef __cplusplus
-#define restrict
-#endif
 
 #define LIQ_HIGH_MEMORY_LIMIT (1<<26)  /* avoid allocating buffers larger than 64MB */
 
@@ -399,7 +395,7 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig)
         return NULL;
     }
 
-    liq_attr *attr = (liq_attr *)orig->malloc(sizeof(liq_attr));
+    liq_attr *attr = orig->malloc(sizeof(liq_attr));
     if (!attr) return NULL;
     *attr = *orig;
     return attr;
@@ -441,7 +437,7 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_
         return NULL; // either specify both or none
     }
 
-    liq_attr *attr = (liq_attr *)custom_malloc(sizeof(liq_attr));
+    liq_attr *attr = custom_malloc(sizeof(liq_attr));
     if (!attr) return NULL;
     *attr = (liq_attr) {
         .magic_header = liq_attr_magic,
@@ -459,7 +455,7 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_
 
 static bool liq_image_use_low_memory(liq_image *img)
 {
-    img->temp_f_row = (f_pixel*)img->malloc(sizeof(img->f_pixels[0]) * img->width * omp_get_max_threads());
+    img->temp_f_row = img->malloc(sizeof(img->f_pixels[0]) * img->width * omp_get_max_threads());
     return img->temp_f_row != NULL;
 }
 
@@ -487,7 +483,7 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
         return NULL;
     }
 
-    liq_image *img = (liq_image*)attr->malloc(sizeof(liq_image));
+    liq_image *img = attr->malloc(sizeof(liq_image));
     if (!img) return NULL;
     *img = (liq_image){
         .magic_header = liq_image_magic,
@@ -502,7 +498,7 @@ static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], 
     };
 
     if (!rows || attr->min_opaque_val < 1.f) {
-        img->temp_row = (rgba_pixel *)attr->malloc(sizeof(img->temp_row[0]) * width * omp_get_max_threads());
+        img->temp_row = attr->malloc(sizeof(img->temp_row[0]) * width * omp_get_max_threads());
         if (!img->temp_row) return NULL;
     }
 
@@ -587,8 +583,8 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
         return NULL;
     }
 
-    rgba_pixel *pixels = (rgba_pixel *)bitmap;
-    rgba_pixel **rows = (rgba_pixel **)attr->malloc(sizeof(rows[0])*height);
+    rgba_pixel *pixels = bitmap;
+    rgba_pixel **rows = attr->malloc(sizeof(rows[0])*height);
     if (!rows) return NULL;
 
     for(int i=0; i < height; i++) {
@@ -660,7 +656,7 @@ static const f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
 
         assert(omp_get_thread_num() == 0);
         if (!liq_image_should_use_low_memory(img, false)) {
-            img->f_pixels = (f_pixel*)img->malloc(sizeof(img->f_pixels[0]) * img->width * img->height);
+            img->f_pixels = img->malloc(sizeof(img->f_pixels[0]) * img->width * img->height);
         }
         if (!img->f_pixels) {
             if (!liq_image_use_low_memory(img)) return NULL;
@@ -781,7 +777,7 @@ static liq_remapping_result *liq_remapping_result_create(liq_result *result)
         return NULL;
     }
 
-    liq_remapping_result *res = (liq_remapping_result *)result->malloc(sizeof(liq_remapping_result));
+    liq_remapping_result *res = result->malloc(sizeof(liq_remapping_result));
     if (!res) return NULL;
     *res = (liq_remapping_result) {
         .magic_header = liq_remapping_result_magic,
@@ -1063,7 +1059,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;
-    thiserr = (f_pixel *)input_image->malloc((cols + 2) * sizeof(*thiserr) * 2); // +2 saves from checking out of bounds access
+    thiserr = input_image->malloc((cols + 2) * sizeof(*thiserr) * 2); // +2 saves from checking out of bounds access
     nexterr = thiserr + (cols + 2);
     srand(12345); /* deterministic dithering is better for comparing results */
     if (!thiserr) return;
@@ -1290,9 +1286,9 @@ static void contrast_maps(liq_image *image)
         return;
     }
 
-    unsigned char *restrict noise = (unsigned char *)image->malloc(cols*rows);
-    unsigned char *restrict edges = (unsigned char *)image->malloc(cols*rows);
-    unsigned char *restrict tmp = (unsigned char *)image->malloc(cols*rows);
+    unsigned char *restrict noise = image->malloc(cols*rows);
+    unsigned char *restrict edges = image->malloc(cols*rows);
+    unsigned char *restrict tmp = image->malloc(cols*rows);
 
     if (!noise || !edges || !tmp) {
         return;
@@ -1558,7 +1554,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
 
     sort_palette(acolormap, options);
 
-    liq_result *result = (liq_result*)options->malloc(sizeof(liq_result));
+    liq_result *result = options->malloc(sizeof(liq_result));
     if (!result) return NULL;
     *result = (liq_result){
         .magic_header = liq_result_magic,
@@ -1591,11 +1587,11 @@ LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *inp
         return LIQ_BUFFER_TOO_SMALL;
     }
 
-    unsigned char **rows = (unsigned char **)malloc(input_image->height * sizeof(unsigned char *));
+    unsigned char **rows = malloc(input_image->height * sizeof(unsigned char *));
     if (!rows) {
         return LIQ_OUT_OF_MEMORY;
     }
-    unsigned char *buffer_bytes = (unsigned char *)buffer;
+    unsigned char *buffer_bytes = buffer;
     for(unsigned int i=0; i < input_image->height; i++) {
         rows[i] = &buffer_bytes[input_image->width * i];
     }

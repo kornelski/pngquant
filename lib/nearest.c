@@ -83,7 +83,7 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
     num_candidates = MIN(colorsused, num_candidates);
 
     struct head h = {
-        .candidates = (struct color_entry *)mempool_alloc(m, num_candidates * sizeof(h.candidates[0]), 0),
+        .candidates = mempool_alloc(m, num_candidates * sizeof(h.candidates[0]), 0),
         .vantage_point = {px.a, px.r, px.g, px.b},
         .num_candidates = num_candidates,
     };
@@ -132,7 +132,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 
     const unsigned long mempool_size = sizeof(struct color_entry) * subset_palette->colors * map->colors/5 + (1<<14);
     mempool m = NULL;
-    struct nearest_map *centroids = (struct nearest_map *)mempool_create(&m, sizeof(*centroids), mempool_size, map->malloc, map->free);
+    struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids), mempool_size, map->malloc, map->free);
     centroids->mempool = m;
 
     for(unsigned int i=0; i < map->colors; i++) {
@@ -148,7 +148,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 
 
     const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
-    centroids->heads = (struct head *)mempool_alloc(&centroids->mempool, sizeof(centroids->heads[0])*(num_vantage_points+1), mempool_size); // +1 is fallback head
+    centroids->heads = mempool_alloc(&centroids->mempool, sizeof(centroids->heads[0])*(num_vantage_points+1), mempool_size); // +1 is fallback head
 
     // floats and colordifference calculations are not perfect
     const float error_margin = fast ? 0 : 8.f/256.f/256.f;

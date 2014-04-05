@@ -3,10 +3,6 @@
 #include "pam.h"
 #include "blur.h"
 
-#ifdef __cplusplus
-#define restrict
-#endif
-
 /*
  Blurs image horizontally (width 2*size+1) and writes it transposed to dst (called twice gives 2d blur)
  */

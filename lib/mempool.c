@@ -6,13 +6,13 @@
 #include <assert.h>
 
 #define ALIGN_MASK 15UL
-#define MEMPOOL_RESERVED ((sizeof(struct mempool_)+ALIGN_MASK) & ~ALIGN_MASK)
+#define MEMPOOL_RESERVED ((sizeof(struct mempool)+ALIGN_MASK) & ~ALIGN_MASK)
 
-struct mempool_ {
+struct mempool {
     unsigned int used, size;
     void* (*malloc)(size_t);
     void (*free)(void*);
-    struct mempool_ *next;
+    struct mempool *next;
 };
 LIQ_PRIVATE void* mempool_create(mempool *mptr, const unsigned int size, unsigned int max_size, void* (*malloc)(size_t), void (*free)(void*))
 {
@@ -26,13 +26,13 @@ LIQ_PRIVATE void* mempool_create(mempool *mptr, const unsigned int size, unsigne
     if (!max_size) max_size = (1<<17);
     max_size = size+ALIGN_MASK > max_size ? size+ALIGN_MASK : max_size;
 
-    *mptr = (mempool)malloc(MEMPOOL_RESERVED + max_size);
+    *mptr = malloc(MEMPOOL_RESERVED + max_size);
     if (!*mptr) return NULL;
-    **mptr = (struct mempool_){
+    **mptr = (struct mempool){
         .malloc = malloc,
         .free = free,
         .size = MEMPOOL_RESERVED + max_size,
-        .used = sizeof(struct mempool_),
+        .used = sizeof(struct mempool),
         .next = old,
     };
     uintptr_t mptr_used_start = (uintptr_t)(*mptr) + (*mptr)->used;

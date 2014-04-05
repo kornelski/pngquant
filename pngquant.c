@@ -666,7 +666,7 @@ static char *add_filename_extension(const char *filename, const char *newext)
 {
     size_t x = strlen(filename);
 
-    char* outname = (char*) malloc(x+4+strlen(newext)+1);
+    char* outname = malloc(x+4+strlen(newext)+1);
     if (!outname) return NULL;
 
     strncpy(outname, filename, x);
@@ -793,8 +793,8 @@ static pngquant_error prepare_output_image(liq_result *result, liq_image *input_
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image
     */
 
-    output_image->indexed_data = (unsigned char*)malloc(output_image->height * output_image->width);
-    output_image->row_pointers = (unsigned char**)malloc(output_image->height * sizeof(output_image->row_pointers[0]));
+    output_image->indexed_data = malloc(output_image->height * output_image->width);
+    output_image->row_pointers = malloc(output_image->height * sizeof(output_image->row_pointers[0]));
 
     if (!output_image->indexed_data || !output_image->row_pointers) {
         return OUT_OF_MEMORY_ERROR;

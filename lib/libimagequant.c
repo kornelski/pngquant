@@ -944,7 +944,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     const int rows = input_image->height;
     const unsigned int cols = input_image->width;
     const float min_opaque_val = input_image->min_opaque_val;
-    float remapping_error=0;
+    double remapping_error=0;
 
     if (!liq_image_get_row_f(input_image, 0)) { // trigger lazy conversion
         return -1;

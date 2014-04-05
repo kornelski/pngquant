@@ -16,7 +16,7 @@ CUSTOMZLIB ?= ../zlib
 CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 
 CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I/usr/local/include/ -I/usr/include/ $(CFLAGSOPT)
-CFLAGS += $(CFLAGSADD)
+CFLAGS += -std=c99 $(CFLAGSADD)
 
 ifeq ($(CC), icc)
 # disable omp pragmas warning when -openmp is not set

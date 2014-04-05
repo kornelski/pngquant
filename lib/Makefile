@@ -12,7 +12,7 @@ DLLDEF=libimagequant_dll.def
 CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 
 CFLAGS ?= -Wall -Wno-unknown-pragmas -I. $(CFLAGSOPT)
-CFLAGS += $(CFLAGSADD)
+CFLAGS += -std=c99 $(CFLAGSADD)
 
 ifdef USE_SSE
 CFLAGS += -msse -DUSE_SSE=$(USE_SSE)

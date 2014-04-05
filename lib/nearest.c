@@ -30,9 +30,9 @@ struct nearest_map {
     mempool mempool;
 };
 
-static int find_slow(const f_pixel px, const colormap *map)
+static unsigned int find_slow(const f_pixel px, const colormap *map)
 {
-    int best=0;
+    unsigned int best=0;
     float bestdiff = colordifference(px, map->palette[0].acolor);
 
     for(unsigned int i=1; i < map->colors; i++) {

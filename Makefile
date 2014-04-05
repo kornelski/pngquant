@@ -18,9 +18,9 @@ CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
 CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I/usr/local/include/ -I/usr/include/ $(CFLAGSOPT)
 CFLAGS += $(CFLAGSADD)
 
-# icc warns about omp pragmas without -openmp
 ifeq ($(CC), icc)
-CFLAGS += -wd3180
+# disable omp pragmas warning when -openmp is not set
+CFLAGS += -fast -wd3180
 endif
 
 LDFLAGS ?= -L/usr/local/lib/ -L/usr/lib/
@@ -80,7 +80,7 @@ lib/libimagequant.a::
 
 openmp::
 ifeq ($(CC), icc)
-	$(MAKE) CFLAGSADD="$(CFLAGSADD) -openmp" OPENMPFLAGS="-Bstatic -openmp" -j8 $(MKFLAGS)
+	$(MAKE) CFLAGSADD="$(CFLAGSADD) -openmp" OPENMPFLAGS=-openmp -j8 $(MKFLAGS)
 else
 	$(MAKE) CFLAGSADD="$(CFLAGSADD) -fopenmp" OPENMPFLAGS="-Bstatic -lgomp" -j8 $(MKFLAGS)
 endif

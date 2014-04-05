@@ -21,8 +21,8 @@
 #include <stdint.h>
 #include <limits.h>
 
-#if !defined(__cplusplus) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 199900L)
-#error "This program requires C99, e.g. -std=c99 switch in GCC or C++ compiler. MSVC doesn't support C newer than '89, please use MinGW on Windows."
+#if !defined(__cplusplus) && !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199900L) && !(defined(_MSC_VER) && _MSC_VER >= 1800)
+#error "This program requires C99, e.g. -std=c99 switch in GCC or it requires MSVC 18.0 or higher."
 #error "Ignore torrent of syntax errors that may follow. It's only because compiler is set to use too old C version."
 #endif
 
@@ -51,7 +51,7 @@
 static const char *const liq_attr_magic = "liq_attr", *const liq_image_magic = "liq_image",
      *const liq_result_magic = "liq_result", *const liq_remapping_result_magic = "liq_remapping_result",
      *const liq_freed_magic = "free";
-#define CHECK_STRUCT_TYPE(attr, kind) liq_crash_if_invalid_handle_pointer_given((liq_attr*)attr, kind ## _magic)
+#define CHECK_STRUCT_TYPE(attr, kind) liq_crash_if_invalid_handle_pointer_given((const liq_attr*)attr, kind ## _magic)
 #define CHECK_USER_POINTER(ptr) liq_crash_if_invalid_pointer_given(ptr)
 
 struct liq_attr {
@@ -111,8 +111,8 @@ struct liq_result {
     liq_remapping_result *remapping;
     colormap *palette;
     liq_palette int_palette;
-    double gamma, palette_error;
     float dither_level;
+    double gamma, palette_error;
     int min_posterization_output;
     bool use_dither_map, fast_palette;
 };
@@ -165,7 +165,7 @@ static void liq_verbose_printf_flush(liq_attr *attr)
 }
 
 #if USE_SSE
-inline static bool is_sse2_available()
+inline static bool is_sse_available()
 {
 #if (defined(__x86_64__) || defined(__amd64) || defined(_WIN64))
     return true;
@@ -177,7 +177,7 @@ inline static bool is_sse2_available()
 #else
     int a,b,c,d;
         cpuid(1, a, b, c, d);
-    return d & (1<<26); // edx bit 26 is set when SSE2 is present
+    return d & (1<<25); // edx bit 25 is set when SSE is present
 #endif
 }
 #endif
@@ -430,7 +430,7 @@ static void liq_aligned_free(void *inptr)
 LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_t), void (*custom_free)(void*))
 {
 #if USE_SSE
-    if (!is_sse2_available()) {
+    if (!is_sse_available()) {
         return NULL;
     }
 #endif
@@ -669,8 +669,8 @@ static const f_pixel *liq_image_get_row_f(liq_image *img, unsigned int row)
 
         float gamma_lut[256];
         to_f_set_gamma(gamma_lut, img->gamma);
-        for(unsigned int row=0; row < img->height; row++) {
-            convert_row_to_f(img, &img->f_pixels[row*img->width], row, gamma_lut);
+        for(unsigned int i=0; i < img->height; i++) {
+            convert_row_to_f(img, &img->f_pixels[i*img->width], i, gamma_lut);
         }
     }
     return img->f_pixels + img->width * row;
@@ -967,7 +967,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
     const int rows = input_image->height;
     const unsigned int cols = input_image->width;
     const float min_opaque_val = input_image->min_opaque_val;
-    float remapping_error=0;
+    double remapping_error=0;
 
     if (!liq_image_get_row_f(input_image, 0)) { // trigger lazy conversion
         return -1;
@@ -1576,8 +1576,12 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
 
 LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *input_image, void *buffer, size_t buffer_size)
 {
-    if (!CHECK_STRUCT_TYPE(result, liq_result)) return LIQ_INVALID_POINTER;
-    if (!CHECK_STRUCT_TYPE(input_image, liq_image)) return LIQ_INVALID_POINTER;
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) {
+        return LIQ_INVALID_POINTER;
+    }
+    if (!CHECK_STRUCT_TYPE(input_image, liq_image)) {
+        return LIQ_INVALID_POINTER;
+    }
     if (!CHECK_USER_POINTER(buffer)) {
         return LIQ_INVALID_POINTER;
     }

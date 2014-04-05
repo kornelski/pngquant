@@ -56,6 +56,8 @@
 #endif
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
+static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp msg);
+static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg);
 int rwpng_read_image24_cocoa(FILE *infile, png24_image *mainprog_ptr);
 
 
@@ -173,7 +175,7 @@ static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
     26 = wrong PNG color type (no alpha channel)
  */
 
-pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr)
+pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr, int verbose)
 {
     png_structp  png_ptr = NULL;
     png_infop    info_ptr = NULL;
@@ -181,7 +183,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
     int          color_type, bit_depth;
 
     png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, mainprog_ptr,
-      rwpng_error_handler, NULL);
+      rwpng_error_handler, verbose ? rwpng_warning_stderr_handler : rwpng_warning_silent_handler);
     if (!png_ptr) {
         return PNG_OUT_OF_MEMORY_ERROR;   /* out of memory */
     }
@@ -234,11 +236,13 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 #endif
     }
 
-    if (bit_depth == 16)
+    if (bit_depth == 16) {
         png_set_strip_16(png_ptr);
+    }
 
-    if (!(color_type & PNG_COLOR_MASK_COLOR))
+    if (!(color_type & PNG_COLOR_MASK_COLOR)) {
         png_set_gray_to_rgb(png_ptr);
+    }
 
 
     /* get source gamma for gamma correction, or use sRGB default */
@@ -401,12 +405,12 @@ void rwpng_free_image8(png8_image *image)
     image->chunks = NULL;
 }
 
-pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p)
+pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p, int verbose)
 {
 #if USE_COCOA
     return rwpng_read_image24_cocoa(infile, input_image_p);
 #else
-    return rwpng_read_image24_libpng(infile, input_image_p);
+    return rwpng_read_image24_libpng(infile, input_image_p, verbose);
 #endif
 }
 
@@ -574,6 +578,13 @@ pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
     return SUCCESS;
 }
 
+
+static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp msg) {
+    fprintf(stderr, "  %s\n", msg);
+}
+
+static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg) {
+}
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg)
 {

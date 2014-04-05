@@ -67,7 +67,7 @@ static int compareradius(const void *ap, const void *bp)
 
 static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, float error_margin, bool skip_index[], unsigned int *skipped)
 {
-    struct sorttmp *colors = (struct sorttmp *)malloc(map->colors * sizeof(struct sorttmp));
+    struct sorttmp *colors = malloc(map->colors * sizeof(struct sorttmp));
     unsigned int colorsused=0;
 
     for(unsigned int i=0; i < map->colors; i++) {
@@ -144,7 +144,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 
     unsigned int skipped=0;
     assert(map->colors > 0);
-    bool *skip_index = (bool *)calloc(map->colors, sizeof(bool));
+    bool *skip_index = calloc(map->colors, sizeof(bool));
 
 
     const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;

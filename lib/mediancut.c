@@ -31,7 +31,7 @@ struct box {
     unsigned int colors;
 };
 
-ALWAYS_INLINE inline static double variance_diff(double val, const double good_enough);
+ALWAYS_INLINE static double variance_diff(double val, const double good_enough);
 inline static double variance_diff(double val, const double good_enough)
 {
     val *= val;
@@ -76,7 +76,7 @@ static double box_max_error(const hist_item achv[], const struct box *box)
     return max_error;
 }
 
-ALWAYS_INLINE inline static double color_weight(f_pixel median, hist_item h);
+ALWAYS_INLINE static double color_weight(f_pixel median, hist_item h);
 
 static inline void hist_item_swap(hist_item *l, hist_item *r)
 {
@@ -87,7 +87,7 @@ static inline void hist_item_swap(hist_item *l, hist_item *r)
     }
 }
 
-ALWAYS_INLINE inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len);
+ALWAYS_INLINE static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len);
 inline static unsigned int qsort_pivot(const hist_item *const base, const unsigned int len)
 {
     if (len < 32) {
@@ -100,7 +100,7 @@ inline static unsigned int qsort_pivot(const hist_item *const base, const unsign
                    : ((b > c) ? bidx : ((a < c) ? aidx : cidx ));
 }
 
-ALWAYS_INLINE inline static unsigned int qsort_partition(hist_item *const base, const unsigned int len);
+ALWAYS_INLINE static unsigned int qsort_partition(hist_item *const base, const unsigned int len);
 inline static unsigned int qsort_partition(hist_item *const base, const unsigned int len)
 {
     unsigned int l = 1, r = len;

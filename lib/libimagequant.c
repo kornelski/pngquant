@@ -1319,19 +1319,19 @@ static void contrast_maps(liq_image *image)
     }
 
     // noise areas are shrunk and then expanded to remove thin edges from the map
-    max3(noise, tmp, cols, rows);
-    max3(tmp, noise, cols, rows);
+    liq_max3(noise, tmp, cols, rows);
+    liq_max3(tmp, noise, cols, rows);
 
-    blur(noise, tmp, noise, cols, rows, 3);
+    liq_blur(noise, tmp, noise, cols, rows, 3);
 
-    max3(noise, tmp, cols, rows);
+    liq_max3(noise, tmp, cols, rows);
 
-    min3(tmp, noise, cols, rows);
-    min3(noise, tmp, cols, rows);
-    min3(tmp, noise, cols, rows);
+    liq_min3(tmp, noise, cols, rows);
+    liq_min3(noise, tmp, cols, rows);
+    liq_min3(tmp, noise, cols, rows);
 
-    min3(edges, tmp, cols, rows);
-    max3(tmp, edges, cols, rows);
+    liq_min3(edges, tmp, cols, rows);
+    liq_max3(tmp, edges, cols, rows);
     for(int i=0; i < cols*rows; i++) edges[i] = MIN(noise[i], edges[i]);
 
     image->free(tmp);

@@ -427,7 +427,7 @@ static void set_colormap_from_boxes(colormap *map, struct box* bv, unsigned int 
         /* store total color popularity (perceptual_weight is approximation of it) */
         map->palette[bi].popularity = 0;
         for(unsigned int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
-            map->palette[bi].popularity += achv[i].perceptual_weight;
+            map->palette[bi].popularity = achv[i].perceptual_weight;
         }
     }
 }

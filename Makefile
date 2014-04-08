@@ -79,12 +79,7 @@ lib/libimagequant.a::
 	$(MAKE) -C lib static
 
 openmp::
-ifeq ($(CC), icc)
-	$(MAKE) CFLAGSADD="$(CFLAGSADD) -openmp" OPENMPFLAGS=-openmp -j8 $(MKFLAGS)
-else
-	$(MAKE) CFLAGSADD="$(CFLAGSADD) -fopenmp" OPENMPFLAGS="-Bstatic -lgomp" -j8 $(MKFLAGS)
-endif
-
+	$(MAKE) CFLAGSADD="$(CFLAGSADD) -fopenmp" OPENMPFLAGS="-Bstatic -fopenmp" -j8 $(MKFLAGS)
 
 $(BIN): $(OBJS) lib/libimagequant.a
 	$(CC) $(OBJS) $(LDFLAGS) $(OPENMPFLAGS) $(FRAMEWORKS) -o $@

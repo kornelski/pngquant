@@ -41,11 +41,7 @@ dll:
 	$(MAKE) CFLAGSADD="-DLIQ_EXPORT='__declspec(dllexport)'" $(DLL)
 
 openmp::
-ifeq ($(CC), icc)
-	$(MAKE) CFLAGSADD=-openmp OPENMPFLAGS=-openmp -j8
-else
-	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8
-endif
+	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -fopenmp" -j8
 
 $(DLL) $(DLLIMP): $(OBJS)
 	$(CC) -fPIC -shared -o $(DLL) $(OBJS) $(LDFLAGS) -Wl,--out-implib,$(DLLIMP),--output-def,$(DLLDEF)

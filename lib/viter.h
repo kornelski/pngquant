@@ -6,7 +6,7 @@
 #define VITER_CACHE_LINE_GAP ((64+sizeof(viter_state)-1)/sizeof(viter_state))
 
 typedef struct {
-    float a, r, g, b, total;
+    double a, r, g, b, total;
 } viter_state;
 
 typedef void (*viter_callback)(hist_item *item, float diff);

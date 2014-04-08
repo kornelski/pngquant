@@ -189,7 +189,7 @@ Returns `LIQ_VALUE_OUT_OF_RANGE` if the dithering level is outside the 0-1 range
 
     liq_error liq_write_remapped_image(liq_result *result, liq_image *input_image, void *buffer, size_t buffer_size);
 
-Remaps the image to palette and writes it to the given buffer, 1 pixel per byte. Buffer must be large enough to fit entire image (at least width×height bytes). For safety, pass size of the buffer as `buffer_size`.
+Remaps the image to palette and writes its pixels to the given buffer, 1 pixel per byte. Buffer must be large enough to fit the entire image, i.e. width×height bytes large. For safety, pass size of the buffer as `buffer_size`.
 
 For best performance call `liq_get_palette()` *after* this function, as palette is improved during remapping.
 

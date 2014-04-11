@@ -236,16 +236,18 @@ LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int minimum, int target)
     return LIQ_OK;
 }
 
-LIQ_EXPORT liq_error liq_get_quality(liq_attr *attr, int *minimum, int *target)
+LIQ_EXPORT int liq_get_min_quality(liq_attr *attr)
 {
-    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
-    if (!CHECK_USER_POINTER(minimum)) return LIQ_INVALID_POINTER;
-    if (!CHECK_USER_POINTER(target)) return LIQ_INVALID_POINTER;
-
-    *minimum = mse_to_quality(attr->max_mse);
-    *target = mse_to_quality(attr->target_mse);
-    return LIQ_OK;
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
+    return mse_to_quality(attr->max_mse);
 }
+
+LIQ_EXPORT int liq_get_max_quality(liq_attr *attr)
+{
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
+    return mse_to_quality(attr->target_mse);
+}
+
 
 LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)
 {

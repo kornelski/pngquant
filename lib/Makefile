@@ -15,6 +15,10 @@ CFLAGS ?= -Wall -Wno-unknown-pragmas -I. $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)
 
 ifdef USE_SSE
+ifeq ($(CC), gcc)
+# must be set explicitly on x86_32
+CFLAGS += -mfpmath=sse
+endif
 CFLAGS += -msse -DUSE_SSE=$(USE_SSE)
 endif
 

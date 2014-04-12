@@ -160,7 +160,7 @@ static void print_full_version(FILE *fd)
 {
     fprintf(fd, "pngquant, %s, by Greg Roelofs, Kornel Lesinski.\n"
         #ifndef NDEBUG
-                    "   DEBUG (slow) version.\n"
+                    "   DEBUG (slow) version.\n" /* NDEBUG disables assert() */
         #endif
         #if _OPENMP
                     "   Compiled with OpenMP (multicore support).\n"

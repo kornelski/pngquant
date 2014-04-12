@@ -123,9 +123,15 @@ Returns `LIQ_INVALID_POINTER` if `attr` appears to be invalid.
 
 ----
 
-    liq_error liq_set_quality(liq_attr* attr, int* minimum, int* maximum);
+    int liq_get_min_quality(liq_attr* attr);
 
-Returns the quality set by `liq_set_quality()` in `* minimum` and `* maximum`. Returns `LIQ_INVALID_POINTER` if any of the pointers is `NULL`.
+Returns the lower bound set by `liq_set_quality()`.
+
+----
+
+    int liq_get_max_quality(liq_attr* attr);
+
+Returns the upper bound set by `liq_set_quality()`.
 
 ----
 

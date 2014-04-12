@@ -5,7 +5,7 @@ It's powering [pngquant2](http://pngquant.org).
 
 ## License
 
-[BSD-like](https://raw.github.com/pornel/improved-pngquant/master/lib/COPYRIGHT).
+[BSD](https://raw.github.com/pornel/improved-pngquant/master/lib/COPYRIGHT).
 It can be linked with both free and closed-source software.
 
 ## Download
@@ -34,11 +34,10 @@ Alternatively you can compile the library with your program simply by including 
 
 ### Compiling on Windows/Visual Studio
 
-The library can be compiled with any C compiler that has at least basic support for C99 (GCC, clang, ICC, C++ Builder, even Tiny C Compiler), but Visual Studio 2012 and older are not up to date with the 1999 C standard. There are 3 options for using `libimagequant` with Visual Studio:
+The library can be compiled with any C compiler that has at least basic support for C99 (GCC, clang, ICC, C++ Builder, even Tiny C Compiler), but Visual Studio 2012 and older are not up to date with the 1999 C standard. There are 2 options for using `libimagequant` on Windows:
 
- * Use Visual Studio **2013** (MSVC 18) or newer.
- * Or use GCC from [MinGW](http://www.mingw.org). Use GCC to build `libimagequant.a` (using above instructions for Unix) and add it along with `libgcc.a` (shipped with the MinGW compiler) to your VC project.
- * Or use [C++ version of `libimagequant`](https://github.com/pornel/pngquant/tree/cpp). The C++ version is not as up-to-date as C version, but should be compatible with Visual Studio older than 2013 (VC12).
+ * Use Visual Studio **2013** (MSVC 18) and an [MSVC-compatible branch of the library](https://github.com/pornel/pngquant/tree/msvc/lib)
+ * Or use GCC from [MinGW](http://www.mingw.org). Use GCC to build `libimagequant.a` (using the instructions above for Unix) and add it along with `libgcc.a` (shipped with the MinGW compiler) to your VC project.
 
 ## Overview
 
@@ -111,7 +110,7 @@ Quantization will attempt to use the lowest number of colors needed to achieve `
 
 If it's not possible to convert the image with at least `minimum` quality (i.e. 256 colors is not enough to meet the minimum quality), then `liq_quantize_image()` will fail. The default minumum is `0` (proceeds regardless of quality).
 
-Quality measures how well generated palette fits image given to `liq_quantize_image()`. If a different image is remapped with `liq_write_remapped_image()` then actual quality may be different.
+Quality measures how well the generated palette fits image given to `liq_quantize_image()`. If a different image is remapped with `liq_write_remapped_image()` then actual quality may be different.
 
 Regardless of the quality settings the number of colors won't exceed the maximum (see `liq_set_max_colors()`).
 

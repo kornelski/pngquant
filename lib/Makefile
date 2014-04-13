@@ -23,7 +23,7 @@ CFLAGS += -msse -DUSE_SSE=$(USE_SSE)
 endif
 
 ifeq ($(CC), icc)
-# disable omp pragmas warning when -openmp is not set
+# disable omp pragmas warning when -fopenmp is not set
 CFLAGS += -fast -wd3180
 # required for -ipo (set by -fast)
 AR = xiar

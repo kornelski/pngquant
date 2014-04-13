@@ -19,7 +19,7 @@ CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I/usr/local/include/ -I/usr/include/ $
 CFLAGS += -std=c99 $(CFLAGSADD)
 
 ifeq ($(CC), icc)
-# disable omp pragmas warning when -fopenmp is not set
+# disable omp pragmas warning when -openmp is not set
 CFLAGS += -fast -wd3180
 endif
 

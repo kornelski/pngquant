@@ -1,4 +1,4 @@
-VERSION=2.0.0
+VERSION=2.2.0
 
 # This changes default "cc" to "gcc", but still allows customization of the CC variable
 # if this line causes problems with non-GNU make, just remove it:

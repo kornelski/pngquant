@@ -35,7 +35,7 @@ ALWAYS_INLINE static double variance_diff(double val, const double good_enough);
 inline static double variance_diff(double val, const double good_enough)
 {
     val *= val;
-    if (val < good_enough*good_enough) return val*0.5;
+    if (val < good_enough*good_enough) return val*0.25;
     return val;
 }
 

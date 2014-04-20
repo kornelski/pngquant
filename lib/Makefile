@@ -53,7 +53,7 @@ $(DLL) $(DLLIMP): $(OBJS)
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
-$(OBJS): pam.h build_configuration
+$(OBJS): $(wildcard *.h) build_configuration
 
 dist: $(TARFILE)
 

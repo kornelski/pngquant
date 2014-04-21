@@ -227,6 +227,7 @@ typedef struct {
     void (*free)(void*);
     double total_perceptual_weight;
     unsigned int size;
+    unsigned int ignorebits;
 } histogram;
 
 typedef struct {

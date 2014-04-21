@@ -188,10 +188,13 @@ LIQ_PRIVATE histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table 
 {
     histogram *hist = malloc(sizeof(hist[0]));
     if (!hist || !acht) return NULL;
-    hist->achv = malloc(acht->colors * sizeof(hist->achv[0]));
+    *hist = (histogram){
+        .achv = malloc(acht->colors * sizeof(hist->achv[0])),
+        .size = acht->colors,
+        .free = free,
+        .ignorebits = acht->ignorebits,
+    };
     if (!hist->achv) return NULL;
-    hist->size = acht->colors;
-    hist->free = free;
 
     float gamma_lut[256];
     to_f_set_gamma(gamma_lut, gamma);

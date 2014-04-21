@@ -236,13 +236,13 @@ LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int minimum, int target)
     return LIQ_OK;
 }
 
-LIQ_EXPORT int liq_get_min_quality(liq_attr *attr)
+LIQ_EXPORT int liq_get_min_quality(const liq_attr *attr)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
     return mse_to_quality(attr->max_mse);
 }
 
-LIQ_EXPORT int liq_get_max_quality(liq_attr *attr)
+LIQ_EXPORT int liq_get_max_quality(const liq_attr *attr)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
     return mse_to_quality(attr->target_mse);
@@ -258,7 +258,7 @@ LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors)
     return LIQ_OK;
 }
 
-LIQ_EXPORT int liq_get_max_colors(liq_attr *attr)
+LIQ_EXPORT int liq_get_max_colors(const liq_attr *attr)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
 
@@ -274,7 +274,7 @@ LIQ_EXPORT liq_error liq_set_min_posterization(liq_attr *attr, int bits)
     return LIQ_OK;
 }
 
-LIQ_EXPORT int liq_get_min_posterization(liq_attr *attr)
+LIQ_EXPORT int liq_get_min_posterization(const liq_attr *attr)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
 
@@ -300,7 +300,7 @@ LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed)
     return LIQ_OK;
 }
 
-LIQ_EXPORT int liq_get_speed(liq_attr *attr)
+LIQ_EXPORT int liq_get_speed(const liq_attr *attr)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
 
@@ -330,7 +330,7 @@ LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min)
     return LIQ_OK;
 }
 
-LIQ_EXPORT int liq_get_min_opacity(liq_attr *attr)
+LIQ_EXPORT int liq_get_min_opacity(const liq_attr *attr)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return -1;
 

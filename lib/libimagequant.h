@@ -53,16 +53,16 @@ LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr* orig);
 LIQ_EXPORT void liq_attr_destroy(liq_attr* attr);
 
 LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors);
-LIQ_EXPORT int liq_get_max_colors(liq_attr* attr);
+LIQ_EXPORT int liq_get_max_colors(const liq_attr* attr);
 LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed);
-LIQ_EXPORT int liq_get_speed(liq_attr* attr);
+LIQ_EXPORT int liq_get_speed(const liq_attr* attr);
 LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min);
-LIQ_EXPORT int liq_get_min_opacity(liq_attr* attr);
+LIQ_EXPORT int liq_get_min_opacity(const liq_attr* attr);
 LIQ_EXPORT liq_error liq_set_min_posterization(liq_attr* attr, int bits);
-LIQ_EXPORT int liq_get_min_posterization(liq_attr* attr);
+LIQ_EXPORT int liq_get_min_posterization(const liq_attr* attr);
 LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int minimum, int maximum);
-LIQ_EXPORT int liq_get_min_quality(liq_attr* attr);
-LIQ_EXPORT int liq_get_max_quality(liq_attr* attr);
+LIQ_EXPORT int liq_get_min_quality(const liq_attr* attr);
+LIQ_EXPORT int liq_get_max_quality(const liq_attr* attr);
 LIQ_EXPORT void liq_set_last_index_transparent(liq_attr* attr, int is_last);
 
 typedef void liq_log_callback_function(const liq_attr*, const char* message, void* user_info);

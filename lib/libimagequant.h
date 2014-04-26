@@ -37,6 +37,7 @@ typedef struct liq_palette {
 
 typedef enum liq_error {
     LIQ_OK = 0,
+    LIQ_QUALITY_TOO_LOW = 99,
     LIQ_VALUE_OUT_OF_RANGE = 100,
     LIQ_OUT_OF_MEMORY,
     LIQ_NOT_READY,

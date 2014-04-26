@@ -1,4 +1,4 @@
-VERSION=2.0.0
+VERSION=2.2.0
 
 # This changes default "cc" to "gcc", but still allows customization of the CC variable
 # if this line causes problems with non-GNU make, just remove it:
@@ -15,11 +15,15 @@ CFLAGS ?= -Wall -Wno-unknown-pragmas -I. $(CFLAGSOPT)
 CFLAGS += -std=c99 $(CFLAGSADD)
 
 ifdef USE_SSE
+ifeq ($(CC), gcc)
+# must be set explicitly on x86_32
+CFLAGS += -mfpmath=sse
+endif
 CFLAGS += -msse -DUSE_SSE=$(USE_SSE)
 endif
 
 ifeq ($(CC), icc)
-# disable omp pragmas warning when -openmp is not set
+# disable omp pragmas warning when -fopenmp is not set
 CFLAGS += -fast -wd3180
 # required for -ipo (set by -fast)
 AR = xiar
@@ -41,11 +45,7 @@ dll:
 	$(MAKE) CFLAGSADD="-DLIQ_EXPORT='__declspec(dllexport)'" $(DLL)
 
 openmp::
-ifeq ($(CC), icc)
-	$(MAKE) CFLAGSADD=-openmp OPENMPFLAGS=-openmp -j8
-else
-	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -lgomp" -j8
-endif
+	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -fopenmp" -j8
 
 $(DLL) $(DLLIMP): $(OBJS)
 	$(CC) -fPIC -shared -o $(DLL) $(OBJS) $(LDFLAGS) -Wl,--out-implib,$(DLLIMP),--output-def,$(DLLDEF)
@@ -53,7 +53,7 @@ $(DLL) $(DLLIMP): $(OBJS)
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
-$(OBJS): pam.h build_configuration
+$(OBJS): $(wildcard *.h) build_configuration
 
 dist: $(TARFILE)
 

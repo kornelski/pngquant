@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION "2.1.1 (February 2014)"
+#define PNGQUANT_VERSION "2.2.0 (April 2014)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
@@ -160,7 +160,7 @@ static void print_full_version(FILE *fd)
 {
     fprintf(fd, "pngquant, %s, by Greg Roelofs, Kornel Lesinski.\n"
         #ifndef NDEBUG
-                    "   DEBUG (slow) version.\n"
+                    "   DEBUG (slow) version.\n" /* NDEBUG disables assert() */
         #endif
         #if _OPENMP
                     "   Compiled with OpenMP (multicore support).\n"

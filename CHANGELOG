@@ -1,3 +1,9 @@
+version 2.2
+-----------
+ - preserving of unknown PNG chunks (enables optimized Android 9-patch images)
+ - improved color profile support: cHRM & gAMA as alternative to ICC profiles, OpenMP acceleration
+ - improved support for Intel C Compiler, speedup in 32-bit GCC, and some workarounds for Visual Studio's incomplete C support
+
 version 2.1
 -----------
  - option to save files only if they're compressed better than the original

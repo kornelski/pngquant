@@ -19,7 +19,7 @@ CFLAGS ?= -Wall -Wno-unknown-pragmas -I. -I/usr/local/include/ -I/usr/include/ $
 CFLAGS += -std=c99 $(CFLAGSADD)
 
 ifeq ($(CC), icc)
-# disable omp pragmas warning when -openmp is not set
+# disable omp pragmas warning when -fopenmp is not set
 CFLAGS += -fast -wd3180
 endif
 
@@ -79,12 +79,7 @@ lib/libimagequant.a::
 	$(MAKE) -C lib static
 
 openmp::
-ifeq ($(CC), icc)
-	$(MAKE) CFLAGSADD="$(CFLAGSADD) -openmp" OPENMPFLAGS=-openmp -j8 $(MKFLAGS)
-else
-	$(MAKE) CFLAGSADD="$(CFLAGSADD) -fopenmp" OPENMPFLAGS="-Bstatic -lgomp" -j8 $(MKFLAGS)
-endif
-
+	$(MAKE) CFLAGSADD="$(CFLAGSADD) -fopenmp" OPENMPFLAGS="-Bstatic -fopenmp" -j8 $(MKFLAGS)
 
 $(BIN): $(OBJS) lib/libimagequant.a
 	$(CC) $(OBJS) $(LDFLAGS) $(OPENMPFLAGS) $(FRAMEWORKS) -o $@

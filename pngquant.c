@@ -47,7 +47,7 @@ options:\n\
   --force           overwrite existing output files (synonym: -f)\n\
   --nofs            disable Floyd-Steinberg dithering\n\
   --ext new.png     set custom suffix/extension for output filename\n\
-  --output          output path, only if one input file is specified (synonym: -o)\n\
+  --output file     output path, only if one input file is specified (synonym: -o)\n\
   --speed N         speed/quality trade-off. 1=slow, 3=default, 11=fast & rough\n\
   --quality min-max don't save below min, use less colors below max (0-100)\n\
   --verbose         print status messages (synonym: -v)\n\

@@ -851,6 +851,11 @@ static int compare_popularity(const void *ch1, const void *ch2)
     return v1 > v2 ? -1 : 1;
 }
 
+static void sort_palette_qsort(colormap *map, int start, int nelem)
+{
+    qsort(map->palette + start, nelem, sizeof(map->palette[0]), compare_popularity);
+}
+
 #define SWAP_PALETTE(map, a,b) { \
     const colormap_item tmp = (map)->palette[(a)]; \
     (map)->palette[(a)] = (map)->palette[(b)]; \
@@ -871,7 +876,7 @@ static void sort_palette(colormap *map, const liq_attr *options)
         		SWAP_PALETTE(map, transparent_dest, old);
 
         		/* colors sorted by popularity make pngs slightly more compressible */
-        		qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
+        		sort_palette_qsort(map, 0, map->colors-1);
         		return;
             }
         }
@@ -894,8 +899,8 @@ static void sort_palette(colormap *map, const liq_attr *options)
     /* colors sorted by popularity make pngs slightly more compressible
      * opaque and transparent are sorted separately
      */
-    qsort(map->palette, num_transparent, sizeof(map->palette[0]), compare_popularity);
-    qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
+    sort_palette_qsort(map, 0, num_transparent);
+    sort_palette_qsort(map, num_transparent, map->colors-num_transparent);
 
     if (map->colors > 16) {
         SWAP_PALETTE(map, 7, 1); // slightly improves compression

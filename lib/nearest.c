@@ -5,11 +5,6 @@
 #include "mempool.h"
 #include <stdlib.h>
 
-struct color_entry {
-    f_pixel color;
-    unsigned int index;
-};
-
 struct sorttmp {
     float radius;
     unsigned int index;
@@ -20,7 +15,8 @@ struct head {
     f_pixel vantage_point;
     float radius;
     unsigned int num_candidates;
-    struct color_entry *candidates;
+    f_pixel *candidates_color;
+    unsigned int *candidates_index;
 };
 
 struct nearest_map {
@@ -83,19 +79,18 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
     num_candidates = MIN(colorsused, num_candidates);
 
     struct head h = {
-        .candidates = mempool_alloc(m, num_candidates * sizeof(h.candidates[0]), 0),
+        .candidates_color = mempool_alloc(m, num_candidates * sizeof(h.candidates_color[0]), 0),
+        .candidates_index = mempool_alloc(m, num_candidates * sizeof(h.candidates_index[0]), 0),
         .vantage_point = px,
         .num_candidates = num_candidates,
     };
     for(unsigned int i=0; i < num_candidates; i++) {
-        h.candidates[i] = (struct color_entry) {
-            .color = map->palette[colors[i].index].acolor,
-            .index = colors[i].index,
-        };
+        h.candidates_color[i] = map->palette[colors[i].index].acolor;
+        h.candidates_index[i] = colors[i].index;
     }
     // if all colors within this radius are included in candidates, then there cannot be any other better match
     // farther away from the vantage point than half of the radius. Due to alpha channel must assume pessimistic radius.
-    h.radius = min_colordifference(px, h.candidates[num_candidates-1].color)/4.0f; // /4 = half of radius, but radius is squared
+    h.radius = min_colordifference(px, h.candidates_color[num_candidates-1])/4.0f; // /4 = half of radius, but radius is squared
 
     for(unsigned int i=0; i < num_candidates; i++) {
         // divide again as that's matching certain subset within radius-limited subset
@@ -128,7 +123,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 {
     colormap *subset_palette = get_subset_palette(map);
 
-    const unsigned long mempool_size = sizeof(struct color_entry) * subset_palette->colors * map->colors/5 + (1<<14);
+    const unsigned long mempool_size = (sizeof(f_pixel) + sizeof(unsigned int)) * subset_palette->colors * map->colors/5 + (1<<14);
     mempool m = NULL;
     struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids), mempool_size, map->malloc, map->free);
     centroids->mempool = m;
@@ -216,18 +211,18 @@ LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, con
         if (vantage_point_dist <= heads[i].radius) {
             assert(heads[i].num_candidates);
             unsigned int ind=0;
-            float dist = colordifference(px, heads[i].candidates[0].color);
+            float dist = colordifference(px, heads[i].candidates_color[0]);
 
             /* penalty for making holes in IE */
-            if (iebug && heads[i].candidates[0].color.a < 1) {
+            if (iebug && heads[i].candidates_color[0].a < 1) {
                 dist += 1.f/1024.f;
             }
 
             for(unsigned int j=1; j < heads[i].num_candidates; j++) {
-                float newdist = colordifference(px, heads[i].candidates[j].color);
+                float newdist = colordifference(px, heads[i].candidates_color[j]);
 
                 /* penalty for making holes in IE */
-                if (iebug && heads[i].candidates[j].color.a < 1) {
+                if (iebug && heads[i].candidates_color[j].a < 1) {
                     newdist += 1.f/1024.f;
                 }
 
@@ -237,7 +232,7 @@ LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, con
                 }
             }
             if (diff) *diff = dist;
-            return heads[i].candidates[ind].index;
+            return heads[i].candidates_index[ind];
         }
     }
 }

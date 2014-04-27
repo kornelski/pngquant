@@ -20,10 +20,10 @@ struct head {
 };
 
 struct nearest_map {
-    struct head *heads;
     const colormap *map;
     float nearest_other_color_dist[256];
     mempool mempool;
+    struct head heads[];
 };
 
 static unsigned int find_slow(const f_pixel px, const colormap *map)
@@ -122,10 +122,12 @@ static colormap *get_subset_palette(const colormap *map)
 LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 {
     colormap *subset_palette = get_subset_palette(map);
+    const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
+    const unsigned long heads_size = sizeof(struct head) * (num_vantage_points+1); // +1 is fallback head
 
     const unsigned long mempool_size = (sizeof(f_pixel) + sizeof(unsigned int)) * subset_palette->colors * map->colors/5 + (1<<14);
     mempool m = NULL;
-    struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids), mempool_size, map->malloc, map->free);
+    struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids) + heads_size /* heads array is appended to it */, mempool_size, map->malloc, map->free);
     centroids->mempool = m;
 
     for(unsigned int i=0; i < map->colors; i++) {
@@ -138,10 +140,6 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
     unsigned int skipped=0;
     assert(map->colors > 0);
     bool skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=false;
-
-
-    const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
-    centroids->heads = mempool_alloc(&centroids->mempool, sizeof(centroids->heads[0])*(num_vantage_points+1), mempool_size); // +1 is fallback head
 
     // floats and colordifference calculations are not perfect
     const float error_margin = fast ? 0 : 8.f/256.f/256.f;

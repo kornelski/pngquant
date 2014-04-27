@@ -161,18 +161,16 @@ LIQ_PRIVATE struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors,
     const unsigned int hash_size = estimated_colors < 66000 ? 6673 : (estimated_colors < 200000 ? 12011 : 24019);
 
     mempool m = NULL;
-    const unsigned int mempool_size = sizeof(struct acolorhash_table) + hash_size * sizeof(struct acolorhist_arr_head) + estimated_colors * sizeof(struct acolorhist_arr_item);
-    struct acolorhash_table *t = mempool_create(&m, sizeof(*t), mempool_size, malloc, free);
+    const unsigned int buckets_size = hash_size * sizeof(struct acolorhist_arr_head);
+    const unsigned int mempool_size = sizeof(struct acolorhash_table) + buckets_size + estimated_colors * sizeof(struct acolorhist_arr_item);
+    struct acolorhash_table *t = mempool_create(&m, sizeof(*t) + buckets_size, mempool_size, malloc, free);
     if (!t) return NULL;
-    void* buckets = mempool_alloc(&m, hash_size * sizeof(struct acolorhist_arr_head), 0);
     *t = (struct acolorhash_table){
-        .buckets = buckets,
         .mempool = m,
         .hash_size = hash_size,
         .maxcolors = maxcolors,
         .ignorebits = ignorebits,
     };
-    if (!t->buckets) return NULL;
     memset(t->buckets, 0, hash_size * sizeof(struct acolorhist_arr_head));
     return t;
 }

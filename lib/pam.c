@@ -233,19 +233,17 @@ LIQ_PRIVATE colormap *pam_colormap(unsigned int colors, void* (*malloc)(size_t),
 {
     assert(colors > 0 && colors < 65536);
 
-    colormap *map = malloc(sizeof(colormap));
+    colormap *map;
+    const size_t colors_size = colors * sizeof(map->palette[0]);
+    map = malloc(sizeof(colormap) + colors_size);
     if (!map) return NULL;
     *map = (colormap){
         .malloc = malloc,
         .free = free,
-        .palette = malloc(colors * sizeof(map->palette[0])),
         .subset_palette = NULL,
         .colors = colors,
     };
-    if (!map->palette) {
-        free(map); return NULL;
-    }
-    memset(map->palette, 0, colors * sizeof(map->palette[0]));
+    memset(map->palette, 0, colors_size);
     return map;
 }
 
@@ -264,7 +262,6 @@ LIQ_PRIVATE colormap *pam_duplicate_colormap(colormap *map)
 LIQ_PRIVATE void pam_freecolormap(colormap *c)
 {
     if (c->subset_palette) pam_freecolormap(c->subset_palette);
-    c->free(c->palette);
     c->free(c);
 }
 

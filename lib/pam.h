@@ -219,7 +219,7 @@ typedef struct {
     union {
         unsigned int sort_value;
         unsigned char likely_colormap_index;
-    };
+    } tmp;
 } hist_item;
 
 typedef struct {

@@ -95,7 +95,7 @@ inline static unsigned int qsort_pivot(const hist_item *const base, const unsign
     }
 
     const unsigned int aidx=8, bidx=len/2, cidx=len-1;
-    const unsigned int a=base[aidx].sort_value, b=base[bidx].sort_value, c=base[cidx].sort_value;
+    const unsigned int a=base[aidx].tmp.sort_value, b=base[bidx].tmp.sort_value, c=base[cidx].tmp.sort_value;
     return (a < b) ? ((b < c) ? bidx : ((a < c) ? cidx : aidx ))
                    : ((b > c) ? bidx : ((a < c) ? aidx : cidx ));
 }
@@ -108,12 +108,12 @@ inline static unsigned int qsort_partition(hist_item *const base, const unsigned
         hist_item_swap(&base[0], &base[qsort_pivot(base,len)]);
     }
 
-    const unsigned int pivot_value = base[0].sort_value;
+    const unsigned int pivot_value = base[0].tmp.sort_value;
     while (l < r) {
-        if (base[l].sort_value >= pivot_value) {
+        if (base[l].tmp.sort_value >= pivot_value) {
             l++;
         } else {
-            while(l < --r && base[r].sort_value <= pivot_value) {}
+            while(l < --r && base[r].tmp.sort_value <= pivot_value) {}
             hist_item_swap(&base[l], &base[r]);
         }
     }
@@ -203,7 +203,7 @@ static double prepare_sort(struct box *b, hist_item achv[])
         const float *chans = (const float *)&achv[b->ind + i].acolor;
         // Only the first channel really matters. When trying median cut many times
         // with different histogram weights, I don't want sort randomness to influence outcome.
-        achv[b->ind + i].sort_value = ((unsigned int)(chans[channels[0].chan]*65535.0)<<16) |
+        achv[b->ind + i].tmp.sort_value = ((unsigned int)(chans[channels[0].chan]*65535.0)<<16) |
                                        (unsigned int)((chans[channels[2].chan] + chans[channels[1].chan]/2.0 + chans[channels[3].chan]/4.0)*65535.0);
     }
 
@@ -438,7 +438,7 @@ static void adjust_histogram(hist_item *achv, const colormap *map, const struct 
     for(unsigned int bi = 0; bi < boxes; ++bi) {
         for(unsigned int i=bv[bi].ind; i < bv[bi].ind+bv[bi].colors; i++) {
             achv[i].adjusted_weight *= sqrt(1.0 +colordifference(map->palette[bi].acolor, achv[i].acolor)/4.0);
-            achv[i].likely_colormap_index = bi;
+            achv[i].tmp.likely_colormap_index = bi;
         }
     }
 }

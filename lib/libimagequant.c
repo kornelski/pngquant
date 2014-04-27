@@ -1465,8 +1465,8 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
     // likely_colormap_index (used and set in viter_do_iteration) can't point to index outside colormap
     if (acolormap->colors < 256) {
 	for(unsigned int j=0; j < hist->size; j++) {
-	    if (hist->achv[j].likely_colormap_index >= acolormap->colors) {
-		hist->achv[j].likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
+	    if (hist->achv[j].tmp.likely_colormap_index >= acolormap->colors) {
+		hist->achv[j].tmp.likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
 	    }
 	}
     }

@@ -231,6 +231,8 @@ LIQ_PRIVATE void pam_freeacolorhist(histogram *hist)
 
 LIQ_PRIVATE colormap *pam_colormap(unsigned int colors, void* (*malloc)(size_t), void (*free)(void*))
 {
+    assert(colors > 0 && colors < 65536);
+
     colormap *map = malloc(sizeof(colormap));
     if (!map) return NULL;
     *map = (colormap){

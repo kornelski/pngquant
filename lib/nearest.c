@@ -16,7 +16,7 @@ struct head {
     float radius;
     unsigned int num_candidates;
     f_pixel *candidates_color;
-    unsigned int *candidates_index;
+    unsigned short *candidates_index;
 };
 
 struct nearest_map {

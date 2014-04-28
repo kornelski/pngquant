@@ -80,7 +80,7 @@ fi
         EXTRA_CFLAGS="$EXTRA_CFLAGS ${i#*=}"
         ;;
     --extra-ldflags=*)
-        EXTRA_LDFLAGS="$EXTRA_LDFLAG ${i#*=}"
+        EXTRA_LDFLAGS="$EXTRA_LDFLAGS ${i#*=}"
         ;;
     *)
         echo "error: unknown switch ${i%%=*}"
@@ -90,7 +90,7 @@ fi
 done
 
 # If someone runs sudo make install as very first command, and configure later,
-# $CONFIG cannot be overwritten, and must to be deleted before continuing.
+# $CONFIG cannot be overwritten, and must be deleted before continuing.
 if [[ -f "$CONFIG" && ! -w "$CONFIG" ]]; then
     echo "Cannot overwrite file $CONFIG! Please delete it."
     exit 1
@@ -375,7 +375,7 @@ conditional_cflags "-fexcess-precision=fast"
 # (Intel) CPU, and generic code can be quite slow, so this flag is essential.
 conditional_cflags "-xHOST"
 
-# Disables some fp optimizations and enforces fp precision as set in the code.
+# Disables unsafe fp optimizations and enforces fp precision as set in the code.
 conditional_cflags "-fp-model source"
 
 # Silence a gold linker warning about string misalignment.

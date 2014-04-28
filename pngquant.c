@@ -162,6 +162,9 @@ static void print_full_version(FILE *fd)
         #ifndef NDEBUG
                     "   DEBUG (slow) version.\n" /* NDEBUG disables assert() */
         #endif
+        #if USE_SSE
+                    "   Compiled with SSE instructions.\n"
+        #endif
         #if _OPENMP
                     "   Compiled with OpenMP (multicore support).\n"
         #endif

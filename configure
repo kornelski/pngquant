@@ -1,0 +1,393 @@
+#!/usr/bin/env bash
+
+CONFIG="config.mk"
+PREFIX="/usr/local"
+VERSION=$(grep "define PNGQUANT_VERSION" pngquant.c | grep -Eo "[12]\.[0-9.]+")
+
+DEBUG=
+SSE=
+OPENMP=
+LCMS2=
+COCOA_READER=
+LIBQ_ONLY=
+EXTRA_CFLAGS=
+EXTRA_LDFLAGS=
+
+# make gcc default compiler unless CC is already set
+CC=${CC:-gcc}
+
+help() {
+    printf "%4s %s\n" "" "$1"
+}
+
+for i in "$@"; do
+    case $i in
+    --help)
+        echo
+        help "--prefix=                     installation directory [$PREFIX]"
+        help "--extra-cflags=               append to CFLAGS"
+        help "--extra-ldflags=              append to LDFLAGS"
+        echo
+        help "--enable-debug"
+        help "--enable-sse/--disable-sse    enable/disable SSE instructions"
+        echo
+        help "--with-openmp                 compile with multicore support"
+        help "--with-lcms2                  compile with color profile support"
+if [[ "$OSTYPE" =~ "darwin" ]]; then
+        help "--with-cocoa                  use Cocoa framework to read files"
+fi
+        echo
+        help "--libquant-only               build libquant library only"
+        echo
+        exit 0
+        ;;
+    # Can be set before or after configure. Latter overrides former.
+    CC=*)
+        CC=${i#*=}
+        ;;
+    CFLAGS=*)
+        CFLAGS=${i#*=}
+        ;;
+    LDFLAGS=*)
+        LDFLAGS=${i#*=}
+        ;;
+    --enable-debug)
+        DEBUG=1
+        ;;
+    --enable-sse)
+        SSE=1
+        ;;
+    --disable-sse)
+        SSE=0
+        ;;
+    --with-openmp)
+        OPENMP=1
+        ;;
+    --with-lcms2)
+        LCMS2=1
+        ;;
+    --with-cocoa)
+        COCOA_READER=1
+        ;;
+    --libquant-only)
+        LIBQ_ONLY=1
+        ;;
+    --prefix=*)
+        PREFIX=${i#*=}
+        ;;
+    # can be used multiple times or in quotes to set multiple flags
+    --extra-cflags=*)
+        EXTRA_CFLAGS="$EXTRA_CFLAGS ${i#*=}"
+        ;;
+    --extra-ldflags=*)
+        EXTRA_LDFLAGS="$EXTRA_LDFLAG ${i#*=}"
+        ;;
+    *)
+        echo "error: unknown switch ${i%%=*}"
+        exit 1
+        ;;
+    esac
+done
+
+# If someone runs sudo make install as very first command, and configure later,
+# $CONFIG cannot be overwritten, and must to be deleted before continuing.
+if [[ -f "$CONFIG" && ! -w "$CONFIG" ]]; then
+    echo "Cannot overwrite file $CONFIG! Please delete it."
+    exit 1
+fi
+
+cflags() {
+    CFLAGS="$CFLAGS $1"
+}
+
+lflags() {
+    LDFLAGS="$LDFLAGS $1"
+}
+
+status() {
+    printf "%10s: %s\n" "$1" "$2"
+}
+
+# Append to CFLAGS if compiler supports flag, with optional prerequisite.
+# Fails on errors and warnings.
+conditional_cflags() {
+    if [ -z "$("$CC" -xc -S -o /dev/null $2 $1 <(echo) 2>&1)" ]; then
+        cflags "$1"
+    fi
+}
+
+# returns first matching file in directory
+find_f() {
+    echo $(find "$1" -not -type d -name "$2" -print -quit 2> /dev/null)
+}
+
+# returns first matching file in directory (no symlinks)
+find_h() {
+    echo $(find "$1" -type f -name "$2" -print -quit 2> /dev/null)
+}
+
+find_pkgconfig() {
+    LIBNAME=$1
+    if pkg-config --exists "$LIBNAME" &> /dev/null; then
+        cflags "$(pkg-config --cflags "$LIBNAME")"
+        lflags "$(pkg-config --libs "$LIBNAME")"
+        status "$LIBNAME" "shared ($(pkg-config --modversion "$LIBNAME"))"
+        return 0
+    fi
+    return 1
+}
+
+find_static() {
+    LIBNAME=$1
+    HEADERPATTERN=$2
+    STATICPATTERN=$3
+
+    HPATH=$(find_h . "$HEADERPATTERN")
+    if [ -n "$HPATH" ]; then
+        APATH=$(find_f . "$STATICPATTERN")
+        if [ -n "$APATH" ]; then
+            cflags "-I${HPATH%/*}"
+            lflags "${APATH}"
+            status "$LIBNAME" "static"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+find_library() {
+    LIBNAME=$1
+    DYNAMICLIBNAME=$2
+    HEADERPATTERN=$3
+    STATICPATTERN=$4
+    DYNAMICPATTERN=$5
+
+    # try static in current directory first
+    if find_static "$LIBNAME" "$HEADERPATTERN" "$STATICPATTERN"; then
+        return 0;
+    fi
+
+    # try shared
+    if find_pkgconfig "$LIBNAME"; then
+        return 0
+    fi
+
+    for i in "${DIRS[@]}"; do
+        DIR=($i)
+        HPATH=$(find_h "${DIR[0]}" "$HEADERPATTERN")
+        if [ -n "$HPATH" ]; then
+            SOPATH=$(find_f "${DIR[1]}" "$DYNAMICPATTERN")
+            if [ -n "$SOPATH" ]; then
+                cflags "-I${HPATH%/*}"
+                lflags "-L${SOPATH%/*} -l$DYNAMICLIBNAME"
+                status "$LIBNAME" "shared ... $SOPATH"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+# returns full png.h version string
+pngh_string() {
+    echo "$(grep -m1 "define PNG_LIBPNG_VER_STRING" "$1" | \
+            grep -Eo '"[^"]+"' | grep -Eo '[^"]+')"
+}
+
+# returns major minor version numbers from png.h
+pngh_majmin() {
+    local MAJ=$(grep -m1 "define PNG_LIBPNG_VER_MAJOR" "$1" | grep -Eo "[0-9]+")
+    local MIN=$(grep -m1 "define PNG_LIBPNG_VER_MINOR" "$1" | grep -Eo "[0-9]+")
+    echo "${MAJ}${MIN}"
+}
+
+error() {
+    status "$1" "error ... $2"
+    echo
+    exit 1
+}
+
+echo
+
+# basic check
+if ! "$CC" -xc -std=c99 <(echo "int main(){}") -o /dev/null &> /dev/null; then
+    error "Compiler" "$CC is no C compiler"
+fi
+
+status "Compiler" "$CC"
+
+# init flags
+CFLAGS=${CFLAGS:--O3 -ffast-math -funroll-loops -fomit-frame-pointer -Wall}
+cflags "-std=c99 -I."
+lflags "-lm lib/libimagequant.a"
+
+# DEBUG
+if [ -z "$DEBUG" ]; then
+    cflags "-DNDEBUG"
+    status "Debug" "no"
+else
+    cflags "-g"
+    status "Debug" "yes"
+fi
+
+# SSE
+if [ -n "$SSE" ]; then
+    if [ "$SSE" -eq 1 ]; then
+        status "SSE" "yes"
+    else
+        status "SSE" "no"
+    fi
+else
+    if [[ "$(uname -m)" =~ (amd|x86_)64 ||
+          "$(grep -E -m1 "^flags" /proc/cpuinfo)" =~ "sse" ]]; then
+        SSE=1
+        status "SSE" "auto (yes)"
+    else
+        SSE=0
+        status "SSE" "auto (no)"
+    fi
+fi
+if [ "$SSE" -eq 1 ]; then
+    cflags "-DUSE_SSE=1"
+    cflags "-msse"
+    # Silence a later ICC warning due to -msse working slightly different.
+    conditional_cflags "-wd10121"
+    # Must be set explicitly for GCC on x86_32. Other compilers imply it.
+    conditional_cflags "-mfpmath=sse" "-msse"
+else
+    cflags "-DUSE_SSE=0"
+fi
+
+# OpenMP
+if [ -n "$OPENMP" ]; then
+    if [[ "$("$CC" -xc -E -fopenmp <(echo -e \
+          "#ifdef _OPENMP
+           #include <omp.h>
+           #endif") 2>&1)" =~ "omp_get_thread_num" ]]; then
+        cflags "-fopenmp"
+        lflags "-fopenmp"
+        status "OpenMP" "yes"
+    else
+        error "OpenMP" "not supported by compiler"
+    fi
+else
+    # Silence ICC warnings about omp pragmas when -fopenmp is not set.
+    conditional_cflags "-wd3180"
+    conditional_cflags "-Wno-unknown-pragmas"
+    status "OpenMP" "no"
+fi
+
+if [ -z "$LIBQ_ONLY" ]; then
+
+# Cocoa
+if [[ "$OSTYPE" =~ "darwin" ]]; then
+    if [ -n "$COCOA_READER" ]; then
+        cflags "-mmacosx-version-min=10.6 -framework Cocoa -DUSE_COCOA=1"
+        lflags "-mmacosx-version-min=10.6"
+        status "Cocoa" "yes"
+    else
+        status "Cocoa" "no"
+    fi
+fi
+
+if [[ "$OSTYPE" =~ "darwin" ]]; then
+    SOLIBSUFFIX=dylib
+else
+    SOLIBSUFFIX=so
+fi
+
+# pairs of possible *.h and lib*.so locations
+DIRS=("/usr/local/include /usr/local/lib"
+      "/usr/include /usr/lib")
+
+# libpng
+SUCCESS=0
+# try static in current directory first
+PNGH=$(find_h . "png.h")
+if [ -n "$PNGH" ]; then
+    PNGH_STRING=$(pngh_string "$PNGH")
+    PNGH_MAJMIN=$(pngh_majmin "$PNGH")
+    if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
+        LIBPNGA=$(find_f . "libpng${PNGH_MAJMIN}.a")
+        if [ -n "$LIBPNGA" ]; then
+            cflags "-I${PNGH%/*}"
+            lflags "${LIBPNGA}"
+            status "libpng" "static (${PNGH_STRING})"
+            SUCCESS=1
+        fi
+    fi
+fi
+# try shared
+if [ "$SUCCESS" -eq 0 ]; then
+    if find_pkgconfig libpng; then
+        SUCCESS=1
+    else
+        for i in "${DIRS[@]}"; do
+            DIR=($i)
+            PNGH=$(find_h "${DIR[0]}" "png.h")
+            if [ -n "$PNGH" ]; then
+                PNGH_STRING=$(pngh_string "$PNGH")
+                PNGH_MAJMIN=$(pngh_majmin "$PNGH")
+                if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
+                    LIBPNGSO=$(find_f "${DIR[1]}" "libpng${PNGH_MAJMIN}.$SOLIBSUFFIX*")
+                    if [ -n "$LIBPNGSO" ]; then
+                        cflags "-I${PNGH%/*}"
+                        lflags "-L${LIBPNGSO%/*} -lpng${PNGH_MAJMIN}"
+                        status "libpng" "shared (${PNGH_STRING})"
+                        SUCCESS=1
+                        break
+                    fi
+                fi
+            fi
+        done
+    fi
+fi
+if [ "$SUCCESS" -eq 0 ]; then
+    error "libpng" "not found"
+fi
+
+# zlib
+if ! find_library "zlib" "z" "zlib.h" "libz.a" "libz.$SOLIBSUFFIX*"; then
+    error "zlib" "not found"
+fi
+
+# lcms2
+if [ -n "$LCMS2" ]; then
+    if find_library "lcms2" "lcms2" "lcms2.h" "liblcms2.a" "liblcms2.$SOLIBSUFFIX*"; then
+        cflags "-DUSE_LCMS=1"
+    else
+        error "lcms2" "not found"
+    fi
+else
+    status "lcms2" "no"
+fi
+
+fi # LIBQ_ONLY
+
+echo
+
+# Intel C++ Compiler
+# This flag is technically equivalent to -march=native for GCC, but has a more
+# profound effect. With ICC, code is highly optimized for a specific target
+# (Intel) CPU, and generic code can be quite slow, so this flag is essential.
+conditional_cflags "-xHOST"
+
+if [ -n "$EXTRA_CFLAGS" ]; then
+    cflags "$EXTRA_CFLAGS"
+fi
+
+if [ -n "$EXTRA_LDFLAGS" ]; then
+    lflags "$EXTRA_LDFLAGS"
+fi
+
+# Overwrite previous configuration.
+echo "
+# auto-generated by configure
+PREFIX = $PREFIX
+VERSION = $VERSION
+CC = $CC
+CFLAGS = $CFLAGS
+LDFLAGS = $LDFLAGS
+LIBQ_ONLY = $LIBQ_ONLY
+COCOA_READER = $COCOA_READER
+" > $CONFIG

@@ -29,8 +29,7 @@
 #define MAX_DIFF 1e20
 
 #ifndef USE_SSE
-   // SSE default on x86_64 and Windows
-#  if defined(__SSE__) && (defined(__x86_64__) || defined(__amd64) || defined(WIN32) || defined(__WIN32__))
+#  if defined(__SSE__) && (defined(WIN32) || defined(__WIN32__))
 #    define USE_SSE 1
 #  else
 #    define USE_SSE 0

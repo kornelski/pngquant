@@ -217,7 +217,7 @@ fi
 status "Compiler" "$CC"
 
 # init flags
-CFLAGS=${CFLAGS:--O3 -ffast-math -funroll-loops -fomit-frame-pointer -Wall}
+CFLAGS=${CFLAGS:--O3 -fno-math-errno -funroll-loops -fomit-frame-pointer -Wall}
 cflags "-std=c99 -I."
 lflags "-lm lib/libimagequant.a"
 
@@ -366,11 +366,17 @@ fi # LIBQ_ONLY
 
 echo
 
+# As of GCC 4.5, 387 fp math is significantly slower in C99 mode without this.
+conditional_cflags "-fexcess-precision=fast"
+
 # Intel C++ Compiler
 # This flag is technically equivalent to -march=native for GCC, but has a more
 # profound effect. With ICC, code is highly optimized for a specific target
 # (Intel) CPU, and generic code can be quite slow, so this flag is essential.
 conditional_cflags "-xHOST"
+
+# Disables some fp optimizations and enforces fp precision as set in the code.
+conditional_cflags "-fp-model source"
 
 if [ -n "$EXTRA_CFLAGS" ]; then
     cflags "$EXTRA_CFLAGS"

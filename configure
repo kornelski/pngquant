@@ -378,6 +378,9 @@ conditional_cflags "-xHOST"
 # Disables some fp optimizations and enforces fp precision as set in the code.
 conditional_cflags "-fp-model source"
 
+# Silence a gold linker warning about string misalignment.
+conditional_cflags "-falign-stack=maintain-16-byte"
+
 if [ -n "$EXTRA_CFLAGS" ]; then
     cflags "$EXTRA_CFLAGS"
 fi

@@ -282,8 +282,8 @@ if [ -z "$LIBQ_ONLY" ]; then
 # Cocoa
 if [[ "$OSTYPE" =~ "darwin" ]]; then
     if [ -n "$COCOA_READER" ]; then
-        cflags "-mmacosx-version-min=10.6 -framework Cocoa -DUSE_COCOA=1"
-        lflags "-mmacosx-version-min=10.6"
+        cflags "-mmacosx-version-min=10.6 -DUSE_COCOA=1"
+        lflags "-mmacosx-version-min=10.6 -framework Cocoa"
         status "Cocoa" "yes"
     else
         status "Cocoa" "no"

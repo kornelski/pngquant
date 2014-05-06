@@ -271,9 +271,9 @@ if [ -n "$OPENMP" ]; then
         error "OpenMP" "not supported by compiler"
     fi
 else
-    # Silence ICC warnings about omp pragmas when -fopenmp is not set.
-    conditional_cflags "-wd3180"
-    conditional_cflags "-Wno-unknown-pragmas"
+    # silence warnings about omp pragmas
+    cflags "-Wno-unknown-pragmas"
+    conditional_cflags "-wd3180" # ICC
     status "OpenMP" "no"
 fi
 
@@ -367,19 +367,21 @@ fi # LIBQ_ONLY
 echo
 
 # As of GCC 4.5, 387 fp math is significantly slower in C99 mode without this.
+# Note: CPUs without SSE2 use 387 for doubles, even when SSE fp math is set.
 conditional_cflags "-fexcess-precision=fast"
 
 # Intel C++ Compiler
-# This flag is technically equivalent to -march=native for GCC, but has a more
-# profound effect. With ICC, code is highly optimized for a specific target
-# (Intel) CPU, and generic code can be quite slow, so this flag is essential.
+
+# ICC does usually only produce fast(er) code when it can optimize to the full
+# capabilites of the (Intel) CPU. This is equivalent to -march=native for GCC.
 conditional_cflags "-xHOST"
 
-# Disables unsafe fp optimizations and enforces fp precision as set in the code.
+# Disable unsafe fp optimizations and enforce fp precision as set in the source.
 conditional_cflags "-fp-model source"
 
 # Silence a gold linker warning about string misalignment.
 conditional_cflags "-falign-stack=maintain-16-byte"
+
 
 if [ -n "$EXTRA_CFLAGS" ]; then
     cflags "$EXTRA_CFLAGS"

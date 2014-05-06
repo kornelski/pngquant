@@ -35,7 +35,7 @@
 #ifndef RWPNG_H
 #define RWPNG_H
 
-#include "png.h"    /* libpng header; includes zlib.h */
+#include "png.h"  /* if this include fails, you need to install libpng (e.g. libpng-devel package) */
 #include <setjmp.h>
 
 #ifndef USE_COCOA

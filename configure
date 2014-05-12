@@ -352,7 +352,12 @@ if [ "$SUCCESS" -eq 0 ]; then
     fi
 fi
 if [ "$SUCCESS" -eq 0 ]; then
-    error "libpng" "not found"
+    if [[ "$OSTYPE" =~ "darwin" ]]; then
+        LIBPNGCOMMAND='`brew install libpng`'
+    else
+        LIBPNGCOMMAND='`apt-get install libpng-dev` or `yum install libpng-devel`'
+    fi
+    error "libpng" "not found (try: $LIBPNGCOMMAND)"
 fi
 
 # zlib

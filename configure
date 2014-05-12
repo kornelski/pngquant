@@ -7,8 +7,13 @@ VERSION=$(grep "define PNGQUANT_VERSION" pngquant.c | grep -Eo "[12]\.[0-9.]+")
 DEBUG=
 SSE=
 OPENMP=
-LCMS2=
-COCOA_READER=
+if [[ "$OSTYPE" =~ "darwin" ]]; then
+    COCOA_READER=auto
+    LCMS2=0
+else
+    COCOA_READER=0
+    LCMS2=auto
+fi
 LIBQ_ONLY=
 EXTRA_CFLAGS=
 EXTRA_LDFLAGS=
@@ -32,9 +37,9 @@ for i in "$@"; do
         help "--enable-sse/--disable-sse    enable/disable SSE instructions"
         echo
         help "--with-openmp                 compile with multicore support"
-        help "--with-lcms2                  compile with color profile support"
+        help "--with-lcms2/--without-lcms2  compile with color profile support"
 if [[ "$OSTYPE" =~ "darwin" ]]; then
-        help "--with-cocoa                  use Cocoa framework to read files"
+        help "--with-cocoa/--without-cocoa  use Cocoa framework to read files"
 fi
         echo
         help "--libquant-only               build libquant library only"
@@ -65,9 +70,17 @@ fi
         ;;
     --with-lcms2)
         LCMS2=1
+        COCOA_READER=0
+        ;;
+    --without-lcms2)
+        LCMS2=0
         ;;
     --with-cocoa)
         COCOA_READER=1
+        LCMS2=0
+        ;;
+    --without-cocoa)
+        COCOA_READER=0
         ;;
     --libquant-only)
         LIBQ_ONLY=1
@@ -281,9 +294,12 @@ if [ -z "$LIBQ_ONLY" ]; then
 
 # Cocoa
 if [[ "$OSTYPE" =~ "darwin" ]]; then
-    if [ -n "$COCOA_READER" ]; then
-        cflags "-mmacosx-version-min=10.6 -DUSE_COCOA=1"
-        lflags "-mmacosx-version-min=10.6 -framework Cocoa"
+    cflags "-mmacosx-version-min=10.6"
+    lflags "-mmacosx-version-min=10.6"
+
+    if [ "$COCOA_READER" != 0 ]; then
+        cflags "-DUSE_COCOA=1"
+        lflags "-framework Cocoa"
         status "Cocoa" "yes"
     else
         status "Cocoa" "no"
@@ -352,11 +368,15 @@ if ! find_library "zlib" "z" "zlib.h" "libz.a" "libz.$SOLIBSUFFIX*"; then
 fi
 
 # lcms2
-if [ -n "$LCMS2" ]; then
+if [ "$LCMS2" != 0 ]; then
     if find_library "lcms2" "lcms2" "lcms2.h" "liblcms2.a" "liblcms2.$SOLIBSUFFIX*"; then
         cflags "-DUSE_LCMS=1"
     else
-        error "lcms2" "not found"
+        if [ "$LCMS2" = 'auto' ]; then
+            status "lcms2" "no"
+        else
+            error "lcms2" "not found"
+        fi
     fi
 else
     status "lcms2" "no"

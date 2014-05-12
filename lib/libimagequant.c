@@ -930,6 +930,10 @@ static void set_rounded_palette(liq_palette *const dest, colormap *const map, co
 
         map->palette[x].acolor = to_f(gamma_lut, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
+        if (!px.a) {
+            px.r = 'L'; px.g = 'i'; px.b = 'q';
+        }
+
         dest->entries[x] = (liq_color){.r=px.r,.g=px.g,.b=px.b,.a=px.a};
     }
 }

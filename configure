@@ -5,7 +5,7 @@ PREFIX="/usr/local"
 VERSION=$(grep "define PNGQUANT_VERSION" pngquant.c | grep -Eo "[12]\.[0-9.]+")
 
 DEBUG=
-SSE=
+SSE=auto
 OPENMP=
 if [[ "$OSTYPE" =~ "darwin" ]]; then
     COCOA_READER=auto
@@ -244,30 +244,23 @@ else
 fi
 
 # SSE
-if [ -n "$SSE" ]; then
-    if [ "$SSE" -eq 1 ]; then
-        status "SSE" "yes"
-    else
-        status "SSE" "no"
-    fi
-else
+if [ "$SSE" = 'auto' ]; then
     if [[ "$(uname -m)" =~ (amd|x86_)64 ||
           "$(grep -E -m1 "^flags" /proc/cpuinfo)" =~ "sse" ]]; then
         SSE=1
-        status "SSE" "auto (yes)"
-    else
-        SSE=0
-        status "SSE" "auto (no)"
     fi
 fi
+
 if [ "$SSE" -eq 1 ]; then
+    status "SSE" "yes"
     cflags "-DUSE_SSE=1"
     cflags "-msse"
     # Silence a later ICC warning due to -msse working slightly different.
     conditional_cflags "-wd10121"
     # Must be set explicitly for GCC on x86_32. Other compilers imply it.
     conditional_cflags "-mfpmath=sse" "-msse"
-else
+elif [ "$SSE" -eq 0 ]; then
+    status "SSE" "no"
     cflags "-DUSE_SSE=0"
 fi
 

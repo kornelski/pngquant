@@ -150,6 +150,7 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
 
     }
     acht->colors = colors;
+    acht->cols = cols;
     acht->rows += rows;
     acht->freestackp = freestackp;
     return true;
@@ -177,9 +178,8 @@ LIQ_PRIVATE struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors,
 
 #define PAM_ADD_TO_HIST(entry) { \
     hist->achv[j].acolor = to_f(gamma_lut, entry.color.rgba); \
-    hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = entry.perceptual_weight; \
+    total_weight += hist->achv[j].adjusted_weight = hist->achv[j].perceptual_weight = MIN(entry.perceptual_weight, max_perceptual_weight); \
     ++j; \
-    total_weight += entry.perceptual_weight; \
 }
 
 LIQ_PRIVATE histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table *acht, const double gamma, void* (*malloc)(size_t), void (*free)(void*))
@@ -197,7 +197,11 @@ LIQ_PRIVATE histogram *pam_acolorhashtoacolorhist(const struct acolorhash_table 
     float gamma_lut[256];
     to_f_set_gamma(gamma_lut, gamma);
 
-    double total_weight=0;
+    /* Limit perceptual weight to 1/10th of the image surface area to prevent
+       a single color from dominating all others. */
+    float max_perceptual_weight = 0.1f * acht->cols * acht->rows;
+    double total_weight = 0;
+
     for(unsigned int j=0, i=0; i < acht->hash_size; ++i) {
         const struct acolorhist_arr_head *const achl = &acht->buckets[i];
         if (achl->used) {

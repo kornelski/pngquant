@@ -258,7 +258,7 @@ struct acolorhist_arr_head {
 
 struct acolorhash_table {
     struct mempool *mempool;
-    unsigned int ignorebits, maxcolors, colors, rows;
+    unsigned int ignorebits, maxcolors, colors, cols, rows;
     unsigned int hash_size;
     unsigned int freestackp;
     struct acolorhist_arr_item *freestack[512];

@@ -400,6 +400,7 @@ conditional_cflags "-fp-model source"
 # Silence a gold linker warning about string misalignment.
 conditional_cflags "-falign-stack=maintain-16-byte"
 
+lflags "-lm" # Ubuntu requires this library last, issue #38
 
 if [ -n "$EXTRA_CFLAGS" ]; then
     cflags "$EXTRA_CFLAGS"

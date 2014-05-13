@@ -291,6 +291,7 @@ if [[ "$OSTYPE" =~ "darwin" ]]; then
     lflags "-mmacosx-version-min=10.6"
 
     if [ "$COCOA_READER" != 0 ]; then
+        COCOA_READER=1
         cflags "-DUSE_COCOA=1"
         lflags "-framework Cocoa"
         status "Cocoa" "yes"

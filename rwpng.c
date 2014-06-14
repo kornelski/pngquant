@@ -314,10 +314,10 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 
     /* build RGB profile from cHRM and gAMA */
     if (hInProfile == NULL && COLOR_PNG &&
-        !png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB) && 
-        png_get_valid(png_ptr, info_ptr, PNG_INFO_gAMA) && 
+        !png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB) &&
+        png_get_valid(png_ptr, info_ptr, PNG_INFO_gAMA) &&
         png_get_valid(png_ptr, info_ptr, PNG_INFO_cHRM)) {
-        
+
         cmsCIExyY WhitePoint;
         cmsCIExyYTRIPLE Primaries;
 
@@ -340,7 +340,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 
     /* transform image to sRGB colorspace */
     if (hInProfile != NULL) {
-        
+
         cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
         cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
                                                       hOutProfile, TYPE_RGBA_8,

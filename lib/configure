@@ -2,19 +2,11 @@
 
 CONFIG="config.mk"
 PREFIX="/usr/local"
-VERSION=$(grep "define PNGQUANT_VERSION" pngquant.c | grep -Eo "[12]\.[0-9.]+")
+VERSION=$(grep "define PNGQUANT_VERSION" ../pngquant.c | grep -Eo "[12]\.[0-9.]+")
 
 DEBUG=
 SSE=auto
 OPENMP=
-if [[ "$OSTYPE" =~ "darwin" ]]; then
-    COCOA_READER=auto
-    LCMS2=0
-else
-    COCOA_READER=0
-    LCMS2=auto
-fi
-LIBQ_ONLY=
 EXTRA_CFLAGS=
 EXTRA_LDFLAGS=
 
@@ -37,12 +29,6 @@ for i in "$@"; do
         help "--enable-sse/--disable-sse    enable/disable SSE instructions"
         echo
         help "--with-openmp                 compile with multicore support"
-        help "--with-lcms2/--without-lcms2  compile with color profile support"
-if [[ "$OSTYPE" =~ "darwin" ]]; then
-        help "--with-cocoa/--without-cocoa  use Cocoa framework to read files"
-fi
-        echo
-        help "--libquant-only               build libquant library only"
         echo
         exit 0
         ;;
@@ -67,23 +53,6 @@ fi
         ;;
     --with-openmp)
         OPENMP=1
-        ;;
-    --with-lcms2)
-        LCMS2=1
-        COCOA_READER=0
-        ;;
-    --without-lcms2)
-        LCMS2=0
-        ;;
-    --with-cocoa)
-        COCOA_READER=1
-        LCMS2=0
-        ;;
-    --without-cocoa)
-        COCOA_READER=0
-        ;;
-    --libquant-only)
-        LIBQ_ONLY=1
         ;;
     --prefix=*)
         PREFIX=${i#*=}
@@ -127,91 +96,6 @@ conditional_cflags() {
     if [ -z "$("$CC" -xc -S -o /dev/null $2 $1 <(echo) 2>&1)" ]; then
         cflags "$1"
     fi
-}
-
-# returns first matching file in directory
-find_f() {
-    echo $(find "$1" -not -type d -name "$2" -print -quit 2> /dev/null)
-}
-
-# returns first matching file in directory (no symlinks)
-find_h() {
-    echo $(find "$1" -type f -name "$2" -print -quit 2> /dev/null)
-}
-
-find_pkgconfig() {
-    LIBNAME=$1
-    if pkg-config --exists "$LIBNAME" &> /dev/null; then
-        cflags "$(pkg-config --cflags "$LIBNAME")"
-        lflags "$(pkg-config --libs "$LIBNAME")"
-        status "$LIBNAME" "shared ($(pkg-config --modversion "$LIBNAME"))"
-        return 0
-    fi
-    return 1
-}
-
-find_static() {
-    LIBNAME=$1
-    HEADERPATTERN=$2
-    STATICPATTERN=$3
-
-    HPATH=$(find_h . "$HEADERPATTERN")
-    if [ -n "$HPATH" ]; then
-        APATH=$(find_f . "$STATICPATTERN")
-        if [ -n "$APATH" ]; then
-            cflags "-I${HPATH%/*}"
-            lflags "${APATH}"
-            status "$LIBNAME" "static"
-            return 0
-        fi
-    fi
-    return 1
-}
-
-find_library() {
-    LIBNAME=$1
-    DYNAMICLIBNAME=$2
-    HEADERPATTERN=$3
-    STATICPATTERN=$4
-    DYNAMICPATTERN=$5
-
-    # try static in current directory first
-    if find_static "$LIBNAME" "$HEADERPATTERN" "$STATICPATTERN"; then
-        return 0;
-    fi
-
-    # try shared
-    if find_pkgconfig "$LIBNAME"; then
-        return 0
-    fi
-
-    for i in "${DIRS[@]}"; do
-        DIR=($i)
-        HPATH=$(find_h "${DIR[0]}" "$HEADERPATTERN")
-        if [ -n "$HPATH" ]; then
-            SOPATH=$(find_f "${DIR[1]}" "$DYNAMICPATTERN")
-            if [ -n "$SOPATH" ]; then
-                cflags "-I${HPATH%/*}"
-                lflags "-L${SOPATH%/*} -l$DYNAMICLIBNAME"
-                status "$LIBNAME" "shared ... $SOPATH"
-                return 0
-            fi
-        fi
-    done
-    return 1
-}
-
-# returns full png.h version string
-pngh_string() {
-    echo "$(grep -m1 "define PNG_LIBPNG_VER_STRING" "$1" | \
-            grep -Eo '"[^"]+"' | grep -Eo '[^"]+')"
-}
-
-# returns major minor version numbers from png.h
-pngh_majmin() {
-    local MAJ=$(grep -m1 "define PNG_LIBPNG_VER_MAJOR" "$1" | grep -Eo "[0-9]+")
-    local MIN=$(grep -m1 "define PNG_LIBPNG_VER_MINOR" "$1" | grep -Eo "[0-9]+")
-    echo "${MAJ}${MIN}"
 }
 
 error() {
@@ -283,106 +167,6 @@ else
     status "OpenMP" "no"
 fi
 
-if [ -z "$LIBQ_ONLY" ]; then
-
-# Cocoa
-if [[ "$OSTYPE" =~ "darwin" ]]; then
-    cflags "-mmacosx-version-min=10.6"
-    lflags "-mmacosx-version-min=10.6"
-
-    if [ "$COCOA_READER" != 0 ]; then
-        COCOA_READER=1
-        cflags "-DUSE_COCOA=1"
-        lflags "-framework Cocoa"
-        status "Cocoa" "yes"
-    else
-        status "Cocoa" "no"
-    fi
-fi
-
-if [[ "$OSTYPE" =~ "darwin" ]]; then
-    SOLIBSUFFIX=dylib
-else
-    SOLIBSUFFIX=so
-fi
-
-# pairs of possible *.h and lib*.so locations
-DIRS=("/usr/local/include /usr/local/lib"
-      "/usr/include /usr/lib")
-
-# libpng
-SUCCESS=0
-# try static in current directory first
-PNGH=$(find_h . "png.h")
-if [ -n "$PNGH" ]; then
-    PNGH_STRING=$(pngh_string "$PNGH")
-    PNGH_MAJMIN=$(pngh_majmin "$PNGH")
-    if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
-        LIBPNGA=$(find_f . "libpng${PNGH_MAJMIN}.a")
-        if [ -n "$LIBPNGA" ]; then
-            cflags "-I${PNGH%/*}"
-            lflags "${LIBPNGA}"
-            status "libpng" "static (${PNGH_STRING})"
-            SUCCESS=1
-        fi
-    fi
-fi
-# try shared
-if [ "$SUCCESS" -eq 0 ]; then
-    if find_pkgconfig libpng; then
-        SUCCESS=1
-    else
-        for i in "${DIRS[@]}"; do
-            DIR=($i)
-            PNGH=$(find_h "${DIR[0]}" "png.h")
-            if [ -n "$PNGH" ]; then
-                PNGH_STRING=$(pngh_string "$PNGH")
-                PNGH_MAJMIN=$(pngh_majmin "$PNGH")
-                if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
-                    LIBPNGSO=$(find_f "${DIR[1]}" "libpng${PNGH_MAJMIN}.$SOLIBSUFFIX*")
-                    if [ -n "$LIBPNGSO" ]; then
-                        cflags "-I${PNGH%/*}"
-                        lflags "-L${LIBPNGSO%/*} -lpng${PNGH_MAJMIN}"
-                        status "libpng" "shared (${PNGH_STRING})"
-                        SUCCESS=1
-                        break
-                    fi
-                fi
-            fi
-        done
-    fi
-fi
-if [ "$SUCCESS" -eq 0 ]; then
-    if [[ "$OSTYPE" =~ "darwin" ]]; then
-        LIBPNGCOMMAND='`brew install libpng`'
-    else
-        LIBPNGCOMMAND='`apt-get install libpng-dev` or `yum install libpng-devel`'
-    fi
-    error "libpng" "not found (try: $LIBPNGCOMMAND)"
-fi
-
-# zlib
-if ! find_library "zlib" "z" "zlib.h" "libz.a" "libz.$SOLIBSUFFIX*"; then
-    error "zlib" "not found"
-fi
-
-# lcms2
-if [ "$LCMS2" != 0 ]; then
-    if find_library "lcms2" "lcms2" "lcms2.h" "liblcms2.a" "liblcms2.$SOLIBSUFFIX*"; then
-        cflags "-DUSE_LCMS=1"
-    else
-        if [ "$LCMS2" = 'auto' ]; then
-            status "lcms2" "no"
-        else
-            error "lcms2" "not found"
-        fi
-    fi
-else
-    status "lcms2" "no"
-fi
-
-fi # LIBQ_ONLY
-
 echo
 
 # As of GCC 4.5, 387 fp math is significantly slower in C99 mode without this.
@@ -419,6 +203,4 @@ VERSION = $VERSION
 CC = $CC
 CFLAGS = $CFLAGS
 LDFLAGS = $LDFLAGS
-LIBQ_ONLY = $LIBQ_ONLY
-COCOA_READER = $COCOA_READER
 " > $CONFIG

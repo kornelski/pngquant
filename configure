@@ -410,4 +410,7 @@ CC = $CC
 CFLAGS = $CFLAGS
 LDFLAGS = $LDFLAGS
 COCOA_READER = $COCOA_READER
-" > $CONFIG
+" > "$CONFIG"
+
+# Configure static library the same way
+cp "$CONFIG" lib/

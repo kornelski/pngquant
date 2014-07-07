@@ -65,10 +65,6 @@ Speed/quality trade-off from 1 (brute-force) to 11 (fastest). The default is 3. 
 
 Disables Floyd-Steinberg dithering.
 
-###`--iebug`
-
-Workaround for IE6, which only displays fully opaque pixels. pngquant will make almost-opaque pixels fully opaque and will avoid creating new transparent colors.
-
 ###`--version`
 
 Print version information to stdout.

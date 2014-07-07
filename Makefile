@@ -82,7 +82,7 @@ clean:
 distclean: clean
 	rm -f config.mk
 
-ifeq ($(filter %clean %dist, $(MAKECMDGOALS)), )
+ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 config.mk:
 	./configure
 endif

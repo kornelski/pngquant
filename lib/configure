@@ -14,6 +14,7 @@ else
     COCOA_READER=0
     LCMS2=auto
 fi
+LIBQ_ONLY=
 EXTRA_CFLAGS=
 EXTRA_LDFLAGS=
 
@@ -40,6 +41,8 @@ for i in "$@"; do
 if [[ "$OSTYPE" =~ "darwin" ]]; then
         help "--with-cocoa/--without-cocoa  use Cocoa framework to read files"
 fi
+        echo
+        help "--libquant-only               build libquant library only"
         echo
         exit 0
         ;;
@@ -78,6 +81,9 @@ fi
         ;;
     --without-cocoa)
         COCOA_READER=0
+        ;;
+    --libquant-only)
+        LIBQ_ONLY=1
         ;;
     --prefix=*)
         PREFIX=${i#*=}
@@ -277,6 +283,8 @@ else
     status "OpenMP" "no"
 fi
 
+if [ -z "$LIBQ_ONLY" ]; then
+
 # Cocoa
 if [[ "$OSTYPE" =~ "darwin" ]]; then
     cflags "-mmacosx-version-min=10.6"
@@ -373,6 +381,8 @@ else
     status "lcms2" "no"
 fi
 
+fi # LIBQ_ONLY
+
 echo
 
 # As of GCC 4.5, 387 fp math is significantly slower in C99 mode without this.
@@ -409,5 +419,6 @@ VERSION = $VERSION
 CC = $CC
 CFLAGS = $CFLAGS
 LDFLAGS = $LDFLAGS
+LIBQ_ONLY = $LIBQ_ONLY
 COCOA_READER = $COCOA_READER
 " > $CONFIG

@@ -1,33 +1,10 @@
-VERSION=2.2.0
-
-# This changes default "cc" to "gcc", but still allows customization of the CC variable
-# if this line causes problems with non-GNU make, just remove it:
-CC := $(patsubst cc,gcc,$(CC))
+-include config.mk
 
 STATICLIB=libimagequant.a
+
 DLL=libimagequant.dll
 DLLIMP=libimagequant_dll.a
 DLLDEF=libimagequant_dll.def
-
-CFLAGSOPT ?= -DNDEBUG -O3 -ffast-math -funroll-loops -fomit-frame-pointer
-
-CFLAGS ?= -Wall -Wno-unknown-pragmas -I. $(CFLAGSOPT)
-CFLAGS += -std=c99 $(CFLAGSADD)
-
-ifdef USE_SSE
-ifeq ($(CC), gcc)
-# must be set explicitly on x86_32
-CFLAGS += -mfpmath=sse
-endif
-CFLAGS += -msse -DUSE_SSE=$(USE_SSE)
-endif
-
-ifeq ($(CC), icc)
-# disable omp pragmas warning when -fopenmp is not set
-CFLAGS += -fast -wd3180
-# required for -ipo (set by -fast)
-AR = xiar
-endif
 
 OBJS = pam.o mediancut.o blur.o mempool.o viter.o nearest.o libimagequant.o
 
@@ -44,8 +21,6 @@ static: $(STATICLIB)
 dll:
 	$(MAKE) CFLAGSADD="-DLIQ_EXPORT='__declspec(dllexport)'" $(DLL)
 
-openmp::
-	$(MAKE) CFLAGSADD=-fopenmp OPENMPFLAGS="-Bstatic -fopenmp" -j8
 
 $(DLL) $(DLLIMP): $(OBJS)
 	$(CC) -fPIC -shared -o $(DLL) $(OBJS) $(LDFLAGS) -Wl,--out-implib,$(DLLIMP),--output-def,$(DLLDEF)
@@ -53,7 +28,7 @@ $(DLL) $(DLLIMP): $(OBJS)
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
-$(OBJS): $(wildcard *.h) build_configuration
+$(OBJS): $(wildcard *.h) config.mk
 
 dist: $(TARFILE)
 
@@ -66,10 +41,15 @@ $(TARFILE): $(DISTFILES)
 	-shasum $(TARFILE)
 
 clean:
-	rm -f $(OBJS) $(STATICLIB) $(TARFILE) build_configuration
+	rm -f $(OBJS) $(STATICLIB) $(TARFILE) $(DLL) $(DLLIMP) $(DLLDEF)
 
-build_configuration::
-	@test -f build_configuration && test $(BUILD_CONFIGURATION) = "`cat build_configuration`" || echo > build_configuration $(BUILD_CONFIGURATION)
+distclean: clean
+	rm -f config.mk
 
-.PHONY: all openmp static clean dist dll
+ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
+config.mk:
+	./configure
+endif
+
+.PHONY: all static clean dist distclean dll
 .DELETE_ON_ERROR:

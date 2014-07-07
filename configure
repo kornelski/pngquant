@@ -38,8 +38,12 @@ for i in "$@"; do
         help "--with-openmp                 compile with multicore support"
         help "--with-lcms2/--without-lcms2  compile with color profile support"
 if [[ "$OSTYPE" =~ "darwin" ]]; then
-        help "--with-cocoa/--without-cocoa  use Cocoa framework to read files"
+        help "--with-cocoa/--without-cocoa  use Cocoa framework to read images"
 fi
+        echo
+        help "CC=<compiler>                 use given compiler command"
+        help "CFLAGS=<flags>                pass options to the compiler"
+        help "LDFLAGS=<flags>               pass options to the linker"
         echo
         exit 0
         ;;
@@ -90,7 +94,7 @@ fi
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS ${i#*=}"
         ;;
     *)
-        echo "error: unknown switch ${i%%=*}"
+        echo "error: unknown switch ${i%%=*} (see $0 --help for the list)"
         exit 1
         ;;
     esac
@@ -268,7 +272,7 @@ if [ -n "$OPENMP" ]; then
         lflags "-fopenmp"
         status "OpenMP" "yes"
     else
-        error "OpenMP" "not supported by compiler"
+        error "OpenMP" "not supported by compiler (please install a compiler that supports OpenMP (e.g. gcc) and specify it with the CC= argument)"
     fi
 else
     # silence warnings about omp pragmas
@@ -355,7 +359,7 @@ fi
 
 # zlib
 if ! find_library "zlib" "z" "zlib.h" "libz.a" "libz.$SOLIBSUFFIX*"; then
-    error "zlib" "not found"
+    error "zlib" "not found (please install zlib-devel package)"
 fi
 
 # lcms2
@@ -366,7 +370,7 @@ if [ "$LCMS2" != 0 ]; then
         if [ "$LCMS2" = 'auto' ]; then
             status "lcms2" "no"
         else
-            error "lcms2" "not found"
+            error "lcms2" "not found (please install libcms2-devel package)"
         fi
     fi
 else

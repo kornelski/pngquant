@@ -39,7 +39,7 @@ $(STATICLIB): $(LIBOBJS)
 $(OBJS): $(wildcard *.h) config.mk
 
 rwpng_cocoa.o: rwpng_cocoa.m
-	$(CC) -c $(CFLAGS) -o $@ $<
+	$(CC) -Wno-enum-conversion -c $(CFLAGS) -o $@ $< || clang -Wno-enum-conversion -c -O3 -o $@ $<
 
 $(BIN): $(STATICLIB) $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@

@@ -138,7 +138,7 @@ static void log_callback_buferred_flush(const liq_attr *attr, void *context)
     struct buffered_log *log = context;
     if (log->buf_used) {
         fwrite(log->buf, 1, log->buf_used, stderr);
-        fflush(log->buf);
+        fflush(stderr);
         log->buf_used = 0;
     }
 }

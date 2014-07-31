@@ -517,7 +517,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
         memcpy(pngchunk.name, chunk->name, 5);
         png_set_unknown_chunks(png_ptr, info_ptr, &pngchunk, 1);
 
-        #if PNG_LIBPNG_VER < 10600
+        #if defined(PNG_HAVE_IHDR) && PNG_LIBPNG_VER < 10600
         png_set_unknown_chunk_location(png_ptr, info_ptr, chunk_num, pngchunk.location ? pngchunk.location : PNG_HAVE_IHDR);
         #endif
 

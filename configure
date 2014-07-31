@@ -296,15 +296,22 @@ if [[ "$OSTYPE" =~ "darwin" ]]; then
     fi
 fi
 
+# pairs of possible *.h and lib*.so locations
+DIRS=("/usr/local/include /usr/local/lib"
+      "/usr/include /usr/lib")
+
 if [[ "$OSTYPE" =~ "darwin" ]]; then
     SOLIBSUFFIX=dylib
+
+    # Search Developer SDK paths, since Apple seems to have dropped the standard Unixy ones
+    XCODE_CMD="xcode-select"
+    XCODE_PATH=$($XCODE_CMD -p)
+    DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/lib")
+    DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/usr/lib")
 else
     SOLIBSUFFIX=so
 fi
 
-# pairs of possible *.h and lib*.so locations
-DIRS=("/usr/local/include /usr/local/lib"
-      "/usr/include /usr/lib")
 
 # libpng
 SUCCESS=0
@@ -350,11 +357,11 @@ if [ "$SUCCESS" -eq 0 ]; then
 fi
 if [ "$SUCCESS" -eq 0 ]; then
     if [[ "$OSTYPE" =~ "darwin" ]]; then
-        LIBPNGCOMMAND='`brew install libpng`'
+        LIBPNG_CMD='`brew install libpng`'
     else
-        LIBPNGCOMMAND='`apt-get install libpng-dev` or `yum install libpng-devel`'
+        LIBPNG_CMD='`apt-get install libpng-dev` or `yum install libpng-devel`'
     fi
-    error "libpng" "not found (try: $LIBPNGCOMMAND)"
+    error "libpng" "not found (try: $LIBPNG_CMD)"
 fi
 
 # zlib

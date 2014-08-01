@@ -53,9 +53,11 @@ uninstall:
 	rm -f $(BINPREFIX)/$(BIN)
 
 clean:
+	$(MAKE) -C lib clean
 	rm -f $(BIN) $(OBJS) $(COCOA_OBJS) $(STATICLIB) $(TARFILE)
 
 distclean: clean
+	$(MAKE) -C lib distclean
 	rm -f config.mk pngquant-*-src.tar.bz2
 
 config.mk:

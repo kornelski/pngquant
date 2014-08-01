@@ -56,7 +56,7 @@ clean:
 	rm -f $(BIN) $(OBJS) $(COCOA_OBJS) $(STATICLIB) $(TARFILE)
 
 distclean: clean
-	rm -f config.mk
+	rm -f config.mk pngquant-*-src.tar.bz2
 
 config.mk:
 ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )

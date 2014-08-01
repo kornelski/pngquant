@@ -46,8 +46,8 @@ clean:
 distclean: clean
 	rm -f config.mk
 
-ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 config.mk:
+ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 	./configure
 endif
 

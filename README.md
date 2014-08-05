@@ -57,6 +57,10 @@ See `pngquant -h` for full list.
 
 Set custom extension (suffix) for output filename. By default `-or8.png` or `-fs8.png` is used. If you use `--ext=.png --force` options pngquant will overwrite input files in place (use with caution).
 
+###`-o out.png` or `--output out.png`
+
+Writes converted file to the given path. When this option is used only single input file is allowed.
+
 ###`--skip-if-larger`
 
 Don't write converted files if the conversion isn't worth it.

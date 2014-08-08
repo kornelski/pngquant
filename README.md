@@ -79,7 +79,7 @@ Controls level of dithering (0 = none, 1 = full).
 
 ###`--posterize bits`
 
-Reduce precision of the palette by number of bits. Use when the image will be displayed on low-depth screens (e.g. 16-bit displays or compressed textures).
+Reduce precision of the palette by number of bits. Use when the image will be displayed on low-depth screens (e.g. 16-bit displays or compressed textures in ARGB444 format).
 
 ###`--version`
 

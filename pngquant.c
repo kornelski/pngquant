@@ -45,11 +45,13 @@
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
 options:\n\
   --force           overwrite existing output files (synonym: -f)\n\
-  --nofs            disable Floyd-Steinberg dithering\n\
-  --ext new.png     set custom suffix/extension for output filename\n\
+  --skip-if-larger  only save converted files if they're smaller than original\n\
   --output file     output path, only if one input file is specified (synonym: -o)\n\
+  --ext new.png     set custom suffix/extension for output filenames\n\
+  --quality min-max don't save below min, use fewer colors below max (0-100)\n\
   --speed N         speed/quality trade-off. 1=slow, 3=default, 11=fast & rough\n\
-  --quality min-max don't save below min, use less colors below max (0-100)\n\
+  --nofs            disable Floyd-Steinberg dithering\n\
+  --posterize N     output lower resolution color (e.g. for ARGB4444 output)\n\
   --verbose         print status messages (synonym: -v)\n\
 \n\
 Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
@@ -58,7 +60,7 @@ The output filename is the same as the input name except that\n\
 it ends in \"-fs8.png\", \"-or8.png\" or your custom extension (unless the\n\
 input is stdin, in which case the quantized image will go to stdout).\n\
 The default behavior if the output file exists is to skip the conversion;\n\
-use --force to overwrite.\n"
+use --force to overwrite. See man page for full list of options.\n"
 
 
 #include <stdio.h>

@@ -66,19 +66,17 @@ void rwpng_version_info(FILE *fp)
     const char *pngver = png_get_header_ver(NULL);
 
 #if USE_COCOA
-    fputs("   Compiled with Apple Cocoa image reader.\n", fp);
+    fprintf(fp, "   Using libpng %s and Apple Cocoa image reader.\n", pngver);
+#elif USE_LCMS
+    fprintf(fp, "   Using libpng %s with Little CMS color profile support.\n", pngver);
+#else
+    fprintf(fp, "   Using libpng %s and Apple Cocoa image reader.\n", pngver);
 #endif
-#if USE_LCMS
-    fputs("   Compiled with Little CMS color profile support.\n", fp);
-#endif
-
-    fprintf(fp, "   Compiled with libpng %s; using libpng %s.\n",
-      PNG_LIBPNG_VER_STRING, pngver);
 
 #if PNG_LIBPNG_VER < 10600
     if (strcmp(pngver, "1.3.") < 0) {
         fputs("\nWARNING: Your version of libpng is outdated and may produce corrupted files.\n"
-              "Please recompile pngquant with newer version of libpng (1.5 or later).\n", fp);
+              "Please recompile pngquant with a newer version of libpng (1.5 or later).\n", fp);
     }
 #endif
 }

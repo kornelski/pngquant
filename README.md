@@ -57,6 +57,10 @@ See `pngquant -h` for full list.
 
 Set custom extension (suffix) for output filename. By default `-or8.png` or `-fs8.png` is used. If you use `--ext=.png --force` options pngquant will overwrite input files in place (use with caution).
 
+###`--skip-if-larger`
+
+Don't write converted files if the conversion isn't worth it.
+
 ###`--speed N`
 
 Speed/quality trade-off from 1 (brute-force) to 11 (fastest). The default is 3. Speed 10 has 5% lower quality, but is 8 times faster than the default. Speed 11 disables dithering and lowers compression level.
@@ -65,9 +69,13 @@ Speed/quality trade-off from 1 (brute-force) to 11 (fastest). The default is 3. 
 
 Disables Floyd-Steinberg dithering.
 
-###`--iebug`
+###`--floyd=0.5`
 
-Workaround for IE6, which only displays fully opaque pixels. pngquant will make almost-opaque pixels fully opaque and will avoid creating new transparent colors.
+Controls level of dithering (0 = none, 1 = full).
+
+###`--posterize bits`
+
+Reduce precision of the palette by number of bits. Use when the image will be displayed on low-depth screens (e.g. 16-bit displays or compressed textures).
 
 ###`--version`
 

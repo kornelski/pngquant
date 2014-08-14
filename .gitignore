@@ -8,5 +8,6 @@ DerivedData
 pngquant
 build_configuration
 lib/libimagequant.a
+config.mk
 *.obj
 *.lib

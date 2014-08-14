@@ -73,8 +73,8 @@ LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, cons
         schedule(static) default(none) shared(average_color,callback) reduction(+:total_diff)
     for(int j=0; j < hist_size; j++) {
         float diff;
-        unsigned int match = nearest_search(n, achv[j].acolor, achv[j].likely_colormap_index, min_opaque_val, &diff);
-        achv[j].likely_colormap_index = match;
+        unsigned int match = nearest_search(n, achv[j].acolor, achv[j].tmp.likely_colormap_index, min_opaque_val, &diff);
+        achv[j].tmp.likely_colormap_index = match;
         total_diff += diff * achv[j].perceptual_weight;
 
         viter_update_color(achv[j].acolor, achv[j].perceptual_weight, map, match, omp_get_thread_num(), average_color);

@@ -29,8 +29,7 @@
 #define MAX_DIFF 1e20
 
 #ifndef USE_SSE
-   // SSE default on x86_64 and Windows
-#  if defined(__SSE__) && (defined(__x86_64__) || defined(__amd64) || defined(WIN32) || defined(__WIN32__) || defined(_WIN64))
+#  if defined(__SSE__) && (defined(WIN32) || defined(__WIN32__))
 #    define USE_SSE 1
 #  else
 #    define USE_SSE 0
@@ -228,7 +227,7 @@ typedef struct {
     union {
         unsigned int sort_value;
         unsigned char likely_colormap_index;
-    };
+    } tmp;
 } hist_item;
 
 typedef struct {
@@ -245,11 +244,11 @@ typedef struct {
 } colormap_item;
 
 typedef struct colormap {
-    colormap_item *palette;
-    struct colormap *subset_palette;
     unsigned int colors;
     void* (*malloc)(size_t);
     void (*free)(void*);
+    struct colormap *subset_palette;
+    colormap_item palette[];
 } colormap;
 
 struct acolorhist_arr_item {
@@ -259,20 +258,20 @@ struct acolorhist_arr_item {
 
 struct acolorhist_arr_head {
     unsigned int used, capacity;
-    struct acolorhist_arr_item *other_items;
     struct {
         union rgba_as_int color;
         float perceptual_weight;
     } inline1, inline2;
+    struct acolorhist_arr_item *other_items;
 };
 
 struct acolorhash_table {
     struct mempool *mempool;
-    struct acolorhist_arr_head *buckets;
-    unsigned int ignorebits, maxcolors, colors, rows;
-    struct acolorhist_arr_item *freestack[512];
-    unsigned int freestackp;
+    unsigned int ignorebits, maxcolors, colors, cols, rows;
     unsigned int hash_size;
+    unsigned int freestackp;
+    struct acolorhist_arr_item *freestack[512];
+    struct acolorhist_arr_head buckets[];
 };
 
 LIQ_PRIVATE void pam_freeacolorhash(struct acolorhash_table *acht);

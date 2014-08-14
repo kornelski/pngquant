@@ -866,6 +866,11 @@ static int compare_popularity(const void *ch1, const void *ch2)
     return v1 > v2 ? -1 : 1;
 }
 
+static void sort_palette_qsort(colormap *map, int start, int nelem)
+{
+    qsort(map->palette + start, nelem, sizeof(map->palette[0]), compare_popularity);
+}
+
 #define SWAP_PALETTE(map, a,b) { \
     const colormap_item tmp = (map)->palette[(a)]; \
     (map)->palette[(a)] = (map)->palette[(b)]; \
@@ -879,15 +884,15 @@ static void sort_palette(colormap *map, const liq_attr *options)
     ** therefore be omitted from the tRNS chunk.
     */
     if (options->last_index_transparent) {
-	for(unsigned int i=0; i < map->colors; i++) {
-	    if (map->palette[i].acolor.a < 1.0/256.0) {
-		const unsigned int old = i, transparent_dest = map->colors-1;
+    	for(unsigned int i=0; i < map->colors; i++) {
+    	    if (map->palette[i].acolor.a < 1.0/256.0) {
+        		const unsigned int old = i, transparent_dest = map->colors-1;
 
-		SWAP_PALETTE(map, transparent_dest, old);
+        		SWAP_PALETTE(map, transparent_dest, old);
 
-		/* colors sorted by popularity make pngs slightly more compressible */
-		qsort(map->palette, map->colors-1, sizeof(map->palette[0]), compare_popularity);
-		return;
+        		/* colors sorted by popularity make pngs slightly more compressible */
+        		sort_palette_qsort(map, 0, map->colors-1);
+        		return;
             }
         }
     }
@@ -897,9 +902,7 @@ static void sort_palette(colormap *map, const liq_attr *options)
         if (map->palette[i].acolor.a < 255.0/256.0) {
             // current transparent color is swapped with earlier opaque one
             if (i != num_transparent) {
-                const colormap_item tmp = map->palette[num_transparent];
-                map->palette[num_transparent] = map->palette[i];
-                map->palette[i] = tmp;
+                SWAP_PALETTE(map, num_transparent, i);
                 i--;
             }
             num_transparent++;
@@ -911,8 +914,8 @@ static void sort_palette(colormap *map, const liq_attr *options)
     /* colors sorted by popularity make pngs slightly more compressible
      * opaque and transparent are sorted separately
      */
-    qsort(map->palette, num_transparent, sizeof(map->palette[0]), compare_popularity);
-    qsort(map->palette+num_transparent, map->colors-num_transparent, sizeof(map->palette[0]), compare_popularity);
+    sort_palette_qsort(map, 0, num_transparent);
+    sort_palette_qsort(map, num_transparent, map->colors-num_transparent);
 
     if (map->colors > 16) {
         SWAP_PALETTE(map, 7, 1); // slightly improves compression
@@ -941,6 +944,10 @@ static void set_rounded_palette(liq_palette *const dest, colormap *const map, co
         px.a = posterize_channel(px.a, posterize);
 
         map->palette[x].acolor = to_f(gamma_lut, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
+
+        if (!px.a) {
+            px.r = 'L'; px.g = 'i'; px.b = 'q';
+        }
 
         dest->entries[x] = (liq_color){.r=px.r,.g=px.g,.b=px.b,.a=px.a};
     }
@@ -1484,8 +1491,8 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, dou
     // likely_colormap_index (used and set in viter_do_iteration) can't point to index outside colormap
     if (acolormap->colors < 256) {
 	for(unsigned int j=0; j < hist->size; j++) {
-	    if (hist->achv[j].likely_colormap_index >= acolormap->colors) {
-		hist->achv[j].likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
+	    if (hist->achv[j].tmp.likely_colormap_index >= acolormap->colors) {
+		hist->achv[j].tmp.likely_colormap_index = 0; // actual value doesn't matter, as the guess is out of date anyway
 	    }
 	}
     }

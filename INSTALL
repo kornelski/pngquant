@@ -9,35 +9,39 @@ to install it system-wide:
       $ sudo make install
 
 By default it will be installed in /usr/local/bin. To install it in another
-directory set PREFIX or DESTDIR environmental variables.
+directory run `./configure --prefix=dir && make`.
 
 pngquant uses GNU Makefile. To compile on FreeBSD you will need to use gmake,
 and on Windows the MinGW compiler (MSVC does not support C99).
 
 pngquant will compile with libpng 1.2, but you should use 1.5 or later.
 
+
 ##Compilation with OpenMP
 
-     $ make openmp
+     $ ./configure --with-openmp && make
 
 This makes pngquant faster in wall-clock time on multicore machines when one
 image at a time is processed.
 
-However, it significantly increases total CPU time used, and thus it's not
-recommended for server-side and parallelized batch jobs which run many pngquant
+However, it increases total CPU time used, and thus it's not most optimal
+for server-side and parallelized batch jobs which run many pngquant
 instances at a time.
 
+On OS X you may need to install gcc and add `CC=gcc-4.9` to `./configure`,
+because clang doesn't support OpenMP (yet).
 
-##Compilation with Cocoa image reader
 
-     $ make USE_COCOA=1
+##Compilation without Cocoa image reader
 
-On Mac OS X pngquant can use Cocoa framework to load images. This enables
-support for color profiles and other input file formats.
+Mac OS X version uses Cocoa to read images. This adds support for color profiles
+and other image formats as input. `./configure --without-cocoa` switches back
+to libpng.
+
 
 ##Compilation with Little CMS 2
 
-     $ make USE_LCMS=1
+     $ ./configure --with-lcms2 && make
 
 Enables support for ICC v2/v4 color profiles when reading images.
 Requires Little CMS library available via `pgk-config` (e.g. install `liblcms2-dev`).
@@ -46,6 +50,6 @@ Requires Little CMS library available via `pgk-config` (e.g. install `liblcms2-d
 ##Compilation of `libimagequant.a` only
 
 If you want to use pngquant's conversion algorithm without loading/saving PNG
-files, then you can run make in the `lib/` directory.
+files, then you can run `make` in the `lib/` directory.
 The library doesn't need libpng or zlib.
 

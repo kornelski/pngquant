@@ -619,14 +619,12 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         }
     }
 
-    if (TOO_LARGE_FILE == retval || (TOO_LOW_QUALITY == retval && options->using_stdin)) {
+    if (options->using_stdin && keep_input_pixels && (TOO_LARGE_FILE == retval || TOO_LOW_QUALITY == retval)) {
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
-        if (keep_input_pixels) {
-            pngquant_error write_retval = write_image(NULL, &input_image_rwpng, outname, options);
-            if (write_retval) {
-                retval = write_retval;
-            }
+        pngquant_error write_retval = write_image(NULL, &input_image_rwpng, outname, options);
+        if (write_retval) {
+            retval = write_retval;
         }
     }
 

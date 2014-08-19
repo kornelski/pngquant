@@ -607,7 +607,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
             // this is very rough approximation, but generally avoid losing more quality than is gained in file size.
             // Quality is squared, because even greater savings are needed to justify big quality loss.
             double quality = quality_percent/100.0;
-            output_image.maximum_file_size = input_image_rwpng.file_size * quality*quality;
+            output_image.maximum_file_size = (input_image_rwpng.file_size-1) * quality*quality;
         }
 
         output_image.fast_compression = options->fast_compression;

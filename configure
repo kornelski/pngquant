@@ -298,7 +298,9 @@ fi
 
 # pairs of possible *.h and lib*.so locations
 DIRS=("/usr/local/include /usr/local/lib"
-      "/usr/include /usr/lib")
+      "/usr/include /usr/lib"
+      "/opt/local/include /opt/local/lib" # macports
+      )
 
 if [[ "$OSTYPE" =~ "darwin" ]]; then
     SOLIBSUFFIX=dylib

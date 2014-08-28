@@ -122,7 +122,7 @@ status() {
 # Append to CFLAGS if compiler supports flag, with optional prerequisite.
 # Fails on errors and warnings.
 conditional_cflags() {
-    if [ -z "$("$CC" -xc -S -o /dev/null $2 $1 <(echo) 2>&1)" ]; then
+    if [ -z "echo | $("$CC" -xc -S -o /dev/null $2 $1 2>&1)" ]; then
         cflags "$1"
     fi
 }
@@ -221,8 +221,8 @@ error() {
 echo
 
 # basic check
-if ! "$CC" -xc -std=c99 <(echo "int main(){}") -o /dev/null &> /dev/null; then
-    error "Compiler" "$CC is no C compiler"
+if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /dev/null - &> /dev/null; then
+    error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
 fi
 
 status "Compiler" "$CC"

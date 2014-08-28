@@ -264,8 +264,7 @@ fi
 
 # OpenMP
 if [ -n "$OPENMP" ]; then
-    if [[ "$("$CC" -xc -E -fopenmp <(echo -e \
-          "#ifdef _OPENMP
+    if [[ "$("$CC" -xc -E -fopenmp <(echo "#ifdef _OPENMP
            #include <omp.h>
            #endif") 2>&1)" =~ "omp_get_thread_num" ]]; then
         cflags "-fopenmp"

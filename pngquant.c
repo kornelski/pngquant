@@ -689,6 +689,16 @@ static void set_binary_mode(FILE *fp)
 #endif
 }
 
+static const char *filename_part(const char *path)
+{
+    const char *outfilename = strrchr(path, '/');
+    if (outfilename) {
+        return outfilename+1;
+    } else {
+        return path;
+    }
+}
+
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options)
 {
     FILE *outfile;
@@ -708,17 +718,10 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
             return CANT_WRITE_ERROR;
         }
 
-        const char *outfilename = strrchr(outname, '/');
-        if (outfilename) {
-            outfilename++;
-        } else {
-            outfilename = outname;
-        }
-
         if (output_image) {
-            verbose_printf(options, "  writing %d-color image as %s", output_image->num_palette, outfilename);
+            verbose_printf(options, "  writing %d-color image as %s", output_image->num_palette, filename_part(outname));
         } else {
-            verbose_printf(options, "  writing truecolor image as %s", outfilename);
+            verbose_printf(options, "  writing truecolor image as %s", filename_part(outname));
         }
     }
 

@@ -500,7 +500,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (!retval) {
+        if (SUCCESS == retval) {
             retval = pngquant_file(filename, outname, &opts);
         }
 
@@ -550,13 +550,13 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     liq_image *input_image = NULL;
     png24_image input_image_rwpng = {};
     bool keep_input_pixels = options->skip_if_larger || (options->using_stdin && options->min_quality_limit); // original may need to be output to stdout
-    if (!retval) {
+    if (SUCCESS == retval) {
         retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels, options->verbose);
     }
 
     int quality_percent = 90; // quality on 0-100 scale, updated upon successful remap
     png8_image output_image = {};
-    if (!retval) {
+    if (SUCCESS == retval) {
         verbose_printf(options, "  read %luKB file", (input_image_rwpng.file_size+1023UL)/1024UL);
 
 #if USE_LCMS
@@ -582,7 +582,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
             liq_set_dithering_level(remap, options->floyd);
 
             retval = prepare_output_image(remap, input_image, &output_image);
-            if (!retval) {
+            if (SUCCESS == retval) {
                 if (LIQ_OK != liq_write_remapped_image_rows(remap, input_image, output_image.row_pointers)) {
                     retval = OUT_OF_MEMORY_ERROR;
                 }
@@ -601,7 +601,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         }
     }
 
-    if (!retval) {
+    if (SUCCESS == retval) {
 
         if (options->skip_if_larger) {
             // this is very rough approximation, but generally avoid losing more quality than is gained in file size.

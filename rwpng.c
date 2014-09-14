@@ -219,7 +219,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
      * compression_type and filter_type => NULLs] */
 
     png_get_IHDR(png_ptr, info_ptr, &mainprog_ptr->width, &mainprog_ptr->height,
-      &bit_depth, &color_type, NULL, NULL, NULL);
+                 &bit_depth, &color_type, NULL, NULL, NULL);
 
 
     /* expand palette images to RGB, low-bit-depth grayscale images to 8 bits,
@@ -306,10 +306,10 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 
         /* only RGB (and GRAY) valid for PNGs */
         if (colorspace == cmsSigRgbData && COLOR_PNG) {
-             mainprog_ptr->lcms_status = ICCP;
+            mainprog_ptr->lcms_status = ICCP;
         } else {
             if (colorspace == cmsSigGrayData && !COLOR_PNG) {
-                 mainprog_ptr->lcms_status = ICCP_WARN_GRAY;
+                mainprog_ptr->lcms_status = ICCP_WARN_GRAY;
             }
             cmsCloseProfile(hInProfile);
             hInProfile = NULL;
@@ -467,9 +467,9 @@ void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_bytepp r
 
 void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma)
 {
-        /* remap sets gamma to 0.45455 */
-        png_set_gAMA(png_ptr, info_ptr, gamma);
-        png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
+    /* remap sets gamma to 0.45455 */
+    png_set_gAMA(png_ptr, info_ptr, gamma);
+    png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
 }
 
 pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)

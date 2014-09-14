@@ -495,7 +495,7 @@ int main(int argc, char *argv[])
                 outname = outname_free = add_filename_extension(filename, newext);
             }
             if (!options.force && file_exists(outname)) {
-                fprintf(stderr, "  error:  %s exists; not overwriting\n", outname);
+                fprintf(stderr, "  error: '%s' exists; not overwriting\n", outname);
                 retval = NOT_OVERWRITING_ERROR;
             }
         }
@@ -674,10 +674,11 @@ static char *add_filename_extension(const char *filename, const char *newext)
     if (!outname) return NULL;
 
     strncpy(outname, filename, x);
-    if (strncmp(outname+x-4, ".png", 4) == 0 || strncmp(outname+x-4, ".PNG", 4) == 0)
+    if (strncmp(outname+x-4, ".png", 4) == 0 || strncmp(outname+x-4, ".PNG", 4) == 0) {
         strcpy(outname+x-4, newext);
-    else
+    } else {
         strcpy(outname+x, newext);
+    }
 
     return outname;
 }

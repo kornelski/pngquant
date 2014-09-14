@@ -98,24 +98,30 @@ static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t lengt
     read_data->bytes_read += read;
 }
 
-struct rwpng_write_data {
-    unsigned char *buffer;
+struct rwpng_write_state {
+    FILE *outfile;
+    png_size_t maximum_file_size;
     png_size_t bytes_written;
-    png_size_t bytes_left;
+    pngquant_error retval;
 };
 
 static void user_write_data(png_structp png_ptr, png_bytep data, png_size_t length)
 {
-    struct rwpng_write_data *write_data = (struct rwpng_write_data *)png_get_io_ptr(png_ptr);
+    struct rwpng_write_state *write_state = (struct rwpng_write_state *)png_get_io_ptr(png_ptr);
 
-    if (length <= write_data->bytes_left) {
-        memcpy(write_data->buffer + write_data->bytes_written, data, length);
-        write_data->bytes_left -= length;
-        write_data->bytes_written += length;
-    } else {
-        write_data->bytes_written = 0;
-        write_data->bytes_left = 0;
+    if (SUCCESS != write_state->retval) {
+        return;
     }
+
+    if (write_state->maximum_file_size && write_state->bytes_written + length > write_state->maximum_file_size) {
+        write_state->retval = TOO_LARGE_FILE;
+    }
+
+    if (!fwrite(data, 1, length, write_state->outfile)) {
+        write_state->retval = CANT_WRITE_ERROR;
+    }
+
+    write_state->bytes_written += length;
 }
 
 static void user_flush_data(png_structp png_ptr)
@@ -474,17 +480,13 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
     pngquant_error retval = rwpng_write_image_init((rwpng_png_image*)mainprog_ptr, &png_ptr, &info_ptr, mainprog_ptr->fast_compression);
     if (retval) return retval;
 
-    struct rwpng_write_data write_data;
-    if (mainprog_ptr->maximum_file_size) {
-        write_data = (struct rwpng_write_data){
-            .buffer = malloc(mainprog_ptr->maximum_file_size),
-            .bytes_left = mainprog_ptr->maximum_file_size,
-        };
-        if (!write_data.buffer) return PNG_OUT_OF_MEMORY_ERROR;
-        png_set_write_fn(png_ptr, &write_data, user_write_data, user_flush_data);
-    } else {
-        png_init_io(png_ptr, outfile);
-    }
+    struct rwpng_write_state write_state;
+    write_state = (struct rwpng_write_state){
+        .outfile = outfile,
+        .maximum_file_size = mainprog_ptr->maximum_file_size,
+        .retval = SUCCESS,
+    };
+    png_set_write_fn(png_ptr, &write_state, user_write_data, user_flush_data);
 
     // Palette images generally don't gain anything from filtering
     png_set_filter(png_ptr, PNG_FILTER_TYPE_BASE, PNG_FILTER_VALUE_NONE);
@@ -536,18 +538,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
 
     rwpng_write_end(&info_ptr, &png_ptr, mainprog_ptr->row_pointers);
 
-    if (mainprog_ptr->maximum_file_size) {
-        if (!write_data.bytes_written) {
-            retval = TOO_LARGE_FILE;
-        } else {
-            if (!fwrite(write_data.buffer, 1, write_data.bytes_written, outfile)) {
-                retval = CANT_WRITE_ERROR;
-            }
-        }
-
-        free(write_data.buffer);
-    }
-    return retval;
+    return write_state.retval;
 }
 
 pngquant_error rwpng_write_image24(FILE *outfile, const png24_image *mainprog_ptr)

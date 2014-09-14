@@ -682,6 +682,18 @@ static char *add_filename_extension(const char *filename, const char *newext)
     return outname;
 }
 
+static char *temp_filename(const char *basename) {
+    size_t x = strlen(basename);
+
+    char *outname = malloc(x+1+4);
+    if (!outname) return NULL;
+
+    strcpy(outname, basename);
+    strcpy(outname+x, ".tmp");
+
+    return outname;
+}
+
 static void set_binary_mode(FILE *fp)
 {
 #if defined(WIN32) || defined(__WIN32__)
@@ -702,6 +714,8 @@ static const char *filename_part(const char *path)
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options)
 {
     FILE *outfile;
+    char *tempname = NULL;
+
     if (options->using_stdin) {
         set_binary_mode(stdout);
         outfile = stdout;
@@ -712,9 +726,12 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
             verbose_printf(options, "  writing truecolor image to stdout");
         }
     } else {
+        tempname = temp_filename(outname);
+        if (!tempname) return OUT_OF_MEMORY_ERROR;
 
-        if ((outfile = fopen(outname, "wb")) == NULL) {
-            fprintf(stderr, "  error:  cannot open %s for writing\n", outname);
+        if ((outfile = fopen(tempname, "wb")) == NULL) {
+            fprintf(stderr, "  error: cannot open '%s' for writing\n", tempname);
+            free(tempname);
             return CANT_WRITE_ERROR;
         }
 
@@ -735,12 +752,25 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         }
     }
 
-    if (retval && retval != TOO_LARGE_FILE) {
-        fprintf(stderr, "  error: failed writing image to %s\n", outname);
-    }
-
     if (!options->using_stdin) {
         fclose(outfile);
+
+        if (SUCCESS == retval) {
+            // Image has been written to a temporary file and then moved over destination.
+            // This makes replacement atomic and avoids damaging destination file on write error.
+            if (0 != rename(tempname, outname)) {
+                retval = CANT_WRITE_ERROR;
+            }
+        }
+
+        if (retval) {
+            unlink(tempname);
+        }
+        free(tempname);
+    }
+
+    if (retval && retval != TOO_LARGE_FILE) {
+        fprintf(stderr, "  error: failed writing image to %s\n", outname);
     }
 
     return retval;

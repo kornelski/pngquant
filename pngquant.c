@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION "2.3.0 (July 2014)"
+#define PNGQUANT_VERSION "2.3.1 (September 2014)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\

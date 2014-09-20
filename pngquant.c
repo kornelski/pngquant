@@ -69,6 +69,7 @@ use --force to overwrite. See man page for full list of options.\n"
 #include <stdarg.h>
 #include <stdbool.h>
 #include <getopt.h>
+#include <unistd.h>
 
 extern char *optarg;
 extern int optind, opterr;

@@ -2,7 +2,7 @@
 
 CONFIG="config.mk"
 PREFIX="/usr/local"
-VERSION=$(grep "define PNGQUANT_VERSION" ../pngquant.c | grep -Eo "[12]\.[0-9.]+")
+VERSION=$(grep LIQ_VERSION_STRING libimagequant.h | grep -Eo "2\.[0-9.]+")
 
 DEBUG=
 SSE=auto

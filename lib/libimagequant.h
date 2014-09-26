@@ -8,6 +8,10 @@
 #ifndef LIQ_EXPORT
 #define LIQ_EXPORT extern
 #endif
+
+#define LIQ_VERSION 20301
+#define LIQ_VERSION_STRING "2.3.1"
+
 #ifndef LIQ_PRIVATE
 #if defined(__GNUC__) || defined (__llvm__)
 #define LIQ_PRIVATE __attribute__((visibility("hidden")))

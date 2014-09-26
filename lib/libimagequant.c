@@ -1635,3 +1635,7 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *quant, liq_image 
 
     return LIQ_OK;
 }
+
+LIQ_EXPORT int liq_version() {
+    return LIQ_VERSION;
+}

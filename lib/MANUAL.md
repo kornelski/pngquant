@@ -442,6 +442,12 @@ Getters for `width`, `height` and `gamma` of the input image.
 
 If the input is invalid, these all return -1.
 
+---
+
+    int liq_version();
+
+Returns version of the library as an integer. Same as `LIQ_VERSION`. Human-readable version is defined as `LIQ_VERSION_STRING`.
+
 ## Multithreading
 
 The library is stateless and doesn't use any global or thread-local storage. It doesn't use any locks.

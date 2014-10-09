@@ -2,6 +2,8 @@ version 2.3
 -----------
  - added ./configure script for better support of Intel C compiler and dependencies [thanks to pdknsk]
  - tweaked quality metric to better estimate quality of images with large solid backgrounds [thanks to Rolf Timmermans]
+ - atomic file saves and fixed --skip-if-larger
+ - avoid applying quality setting to images that use palette already
 
 version 2.2
 -----------

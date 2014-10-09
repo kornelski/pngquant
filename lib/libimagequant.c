@@ -1525,7 +1525,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
 
                 if (palette_error > max_mse*1.5) { // probably hopeless
                     if (palette_error > max_mse*3.0) break; // definitely hopeless
-                    iterations++;
+                    i++;
                 }
 
                 previous_palette_error = palette_error;

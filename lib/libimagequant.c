@@ -1488,10 +1488,11 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
 
     // no point having perfect match with imperfect colors (ignorebits > 0)
     const bool fast_palette = options->fast_palette || hist->ignorebits > 0;
+    const bool few_input_colors = hist->size <= options->max_colors;
 
     // If image has few colors to begin with (and no quality degradation is required)
     // then it's possible to skip quantization entirely
-    if (hist->size <= options->max_colors && options->target_mse == 0) {
+    if (few_input_colors && options->target_mse == 0) {
         acolormap = pam_colormap(hist->size, options->malloc, options->free);
         for(unsigned int i=0; i < hist->size; i++) {
             acolormap->palette[i].acolor = hist->achv[i].acolor;
@@ -1505,7 +1506,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
         }
 
         // Voronoi iteration approaches local minimum for the palette
-        const double max_mse = options->max_mse;
+        const double max_mse = options->max_mse * (few_input_colors ? 0.33 : 1.0); // when degrading image that's already paletted, require much higher improvement, since pal2pal often looks bad and there's little gain
         const double iteration_limit = options->voronoi_iteration_limit;
         unsigned int iterations = options->voronoi_iterations;
 

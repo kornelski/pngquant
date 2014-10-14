@@ -206,6 +206,8 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
         return LIBPNG_FATAL_ERROR;   /* fatal libpng error (via longjmp()) */
     }
 
+    /* copy standard chunks too */
+    png_set_keep_unknown_chunks(png_ptr, PNG_HANDLE_CHUNK_IF_SAFE, (png_const_bytep)"pHYs\0iTXt\0tEXt\0zTXt", 4);
     png_set_read_user_chunk_fn(png_ptr, &mainprog_ptr->chunks, read_chunk_callback);
 
     struct rwpng_read_data read_data = {infile, 0};

@@ -252,10 +252,13 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 
 
     /* get source gamma for gamma correction, or use sRGB default */
-
     double gamma = 0.45455;
     if (!png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB)) {
         png_get_gAMA(png_ptr, info_ptr, &gamma);
+        if (gamma < 0 && gamma > 1.0) {
+            fprintf(stderr, "pngquant readpng:  ignored out-of-range gamma %f\n", gamma);
+            gamma = 0.45455;
+        }
     }
     mainprog_ptr->gamma = gamma;
 

@@ -35,7 +35,7 @@
 #ifndef RWPNG_H
 #define RWPNG_H
 
-#include "png.h"  /* if this include fails, you need to install libpng (e.g. libpng-devel package) */
+#include "png.h"  /* if this include fails, you need to install libpng (e.g. libpng-devel package) and run ./configure */
 #include <setjmp.h>
 
 #ifndef USE_COCOA

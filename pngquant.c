@@ -42,7 +42,8 @@
 #define PNGQUANT_VERSION LIQ_VERSION_STRING " (September 2014)"
 
 #define PNGQUANT_USAGE "\
-usage:  pngquant [options] [ncolors] [pngfile [pngfile ...]]\n\n\
+usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\
+        pngquant [options] [ncolors] - >stdout <stdin\n\n\
 options:\n\
   --force           overwrite existing output files (synonym: -f)\n\
   --skip-if-larger  only save converted files if they're smaller than original\n\
@@ -405,11 +406,11 @@ int main(int argc, char *argv[])
 
     if (argn >= argc) {
         if (argn > 1) {
-            fputs("No input files specified. See -h for help.\n", stderr);
+            fputs("No input files specified.\n", stderr);
         } else {
             print_full_version(stderr);
-            print_usage(stderr);
         }
+        print_usage(stderr);
         return MISSING_ARGUMENT;
     }
 

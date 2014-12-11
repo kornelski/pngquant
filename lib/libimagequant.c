@@ -1404,12 +1404,12 @@ static void adjust_histogram_callback(hist_item *item, float diff)
 
  feedback_loop_trials controls how long the search will take. < 0 skips the iteration.
  */
-static colormap *find_best_palette(histogram *hist, const liq_attr *options, double *palette_error_p)
+static colormap *find_best_palette(histogram *hist, const liq_attr *options, const double max_mse, double *palette_error_p)
 {
     unsigned int max_colors = options->max_colors;
     // if output is posterized it doesn't make sense to aim for perfrect colors, so increase target_mse
     // at this point actual gamma is not set, so very conservative posterization estimate is used
-    const double target_mse = MAX(options->target_mse, pow((1<<options->min_posterization_output)/1024.0, 2));
+    const double target_mse = MIN(max_mse, MAX(options->target_mse, pow((1<<options->min_posterization_output)/1024.0, 2)));
     int feedback_loop_trials = options->feedback_loop_trials;
     colormap *acolormap = NULL;
     double least_error = MAX_DIFF;
@@ -1500,13 +1500,13 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
         }
         palette_error = 0;
     } else {
-        acolormap = find_best_palette(hist, options, &palette_error);
+        const double max_mse = options->max_mse * (few_input_colors ? 0.33 : 1.0); // when degrading image that's already paletted, require much higher improvement, since pal2pal often looks bad and there's little gain
+        acolormap = find_best_palette(hist, options, max_mse, &palette_error);
         if (!acolormap) {
             return NULL;
         }
 
         // Voronoi iteration approaches local minimum for the palette
-        const double max_mse = options->max_mse * (few_input_colors ? 0.33 : 1.0); // when degrading image that's already paletted, require much higher improvement, since pal2pal often looks bad and there's little gain
         const double iteration_limit = options->voronoi_iteration_limit;
         unsigned int iterations = options->voronoi_iterations;
 

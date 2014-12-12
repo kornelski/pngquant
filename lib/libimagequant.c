@@ -450,7 +450,7 @@ static bool liq_image_use_low_memory(liq_image *img)
 
 static bool liq_image_should_use_low_memory(liq_image *img, const bool low_memory_hint)
 {
-    return img->width * img->height * sizeof(f_pixel) > (low_memory_hint ? LIQ_HIGH_MEMORY_LIMIT/8 : LIQ_HIGH_MEMORY_LIMIT);
+    return img->width * img->height > (low_memory_hint ? LIQ_HIGH_MEMORY_LIMIT/8 : LIQ_HIGH_MEMORY_LIMIT) / sizeof(f_pixel); // Watch out for integer overflow
 }
 
 static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], liq_image_get_rgba_row_callback *row_callback, void *row_callback_user_info, int width, int height, double gamma)
@@ -534,7 +534,7 @@ static bool check_image_size(const liq_attr *attr, const int width, const int he
         liq_log_error(attr, "width and height must be > 0");
         return false;
     }
-    if (width > INT_MAX/sizeof(f_pixel)/height || height > INT_MAX/sizeof(f_pixel)/width) {
+    if (width > INT_MAX/height) {
         liq_log_error(attr, "image too large");
         return false;
     }

@@ -1,10 +1,10 @@
 Name:           pngquant
-Version:        1.8.3
+Version:        2.3.2
 Release:        1%{?dist}
 Summary:        PNG quantization tool for reducing image file size
 License:        BSD
 URL:            http://pngquant.org
-Source0:        https://github.com/pornel/pngquant/tarball/%{version}
+Source0:        https://github.com/pornel/pngquant/archive/%{version}.tar.gz
 BuildRequires:  libpng-devel%{?_isa} >= 1.2.46-1
 BuildRequires:  zlib-devel%{?_isa} >= 1.2.3-1
 BuildRequires:  gcc%{?_isa} >= 4.2-1
@@ -20,17 +20,16 @@ percent smaller than their 24/32-bit version. pngquant uses the
 median cut algorithm.
 
 %prep
-# I'll just leave this here for until rpmbuild starts supporting variables
-#GIT_VERSION=`tar -taf ../SOURCES/%{version} | head -n1 | sed 's/.*-//' | sed 's/\///'`
-#%setup -q -n pornel-pngquant-$GIT_VERSION
-%setup -q -n pornel-pngquant-e26fcfb
+%setup -q -n pngquant-%{version}
 
 %build
+./configure --prefix=%{_prefix}
 make %{?_smp_mflags}
 
 
 %install
 rm -rf %{buildroot}
+mkdir -p %{buildroot}/%{_bindir}
 make install PREFIX=%{_prefix} DESTDIR=%{buildroot}
 install -Dpm0755 pngquant %{buildroot}/%{_bindir}/pngquant
 install -Dpm0644 pngquant.1 %{buildroot}/%{_mandir}/man1/pngquant.1

@@ -66,11 +66,11 @@ void rwpng_version_info(FILE *fp)
     const char *pngver = png_get_header_ver(NULL);
 
 #if USE_COCOA
-    fprintf(fp, "   Using libpng %s and Apple Cocoa image reader.\n", pngver);
+    fprintf(fp, "   Using Apple Cocoa image reader and libpng %s.\n", pngver);
 #elif USE_LCMS
     fprintf(fp, "   Using libpng %s with Little CMS color profile support.\n", pngver);
 #else
-    fprintf(fp, "   Using libpng %s and Apple Cocoa image reader.\n", pngver);
+    fprintf(fp, "   Using libpng %s.\n", pngver);
 #endif
 
 #if PNG_LIBPNG_VER < 10600

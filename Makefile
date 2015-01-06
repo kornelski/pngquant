@@ -1,7 +1,7 @@
 -include config.mk
 
 BIN ?= pngquant
-BINPREFIX = $(PREFIX)/bin
+BINPREFIX = $(DESTDIR)$(PREFIX)/bin
 
 OBJS = pngquant.o rwpng.o
 COCOA_OBJS = rwpng_cocoa.o

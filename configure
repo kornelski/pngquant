@@ -285,7 +285,7 @@ if [[ "$OSTYPE" =~ "darwin" ]]; then
     cflags "-mmacosx-version-min=10.6"
     lflags "-mmacosx-version-min=10.6"
 
-    if [ "$COCOA_READER" != 0 ]; then
+    if [ "$COCOA_READER" != 0 ] && "$CC" 2>/dev/null 1>/dev/null -xc -E <(echo "#import <Cocoa/Cocoa.h>"); then
         COCOA_READER=1
         cflags "-DUSE_COCOA=1"
         lflags "-framework Cocoa"

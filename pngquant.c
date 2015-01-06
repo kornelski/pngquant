@@ -96,7 +96,7 @@ struct pngquant_options {
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
     float floyd;
-    bool using_stdin, force, fast_compression, ie_mode,
+    bool using_stdin, using_stdout, force, fast_compression, ie_mode,
         min_quality_limit, skip_if_larger,
         verbose;
 };
@@ -444,12 +444,8 @@ int main(int argc, char *argv[])
 
     if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
         options.using_stdin = true;
+        options.using_stdout = !output_file_path;
         argn = argc-1;
-    }
-
-    if (options.using_stdin && output_file_path) {
-        fputs("--output can't be mixed with stdin\n", stderr);
-        return INVALID_ARGUMENT;
     }
 
     const int num_files = argc-argn;
@@ -492,7 +488,7 @@ int main(int argc, char *argv[])
 
         const char *outname = output_file_path;
         char *outname_free = NULL;
-        if (!options.using_stdin) {
+        if (!options.using_stdout) {
             if (!outname) {
                 outname = outname_free = add_filename_extension(filename, newext);
             }
@@ -551,7 +547,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
 
     liq_image *input_image = NULL;
     png24_image input_image_rwpng = {};
-    bool keep_input_pixels = options->skip_if_larger || (options->using_stdin && options->min_quality_limit); // original may need to be output to stdout
+    bool keep_input_pixels = options->skip_if_larger || (options->using_stdout && options->min_quality_limit); // original may need to be output to stdout
     if (SUCCESS == retval) {
         retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels, options->verbose);
     }
@@ -621,7 +617,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         }
     }
 
-    if (options->using_stdin && keep_input_pixels && (TOO_LARGE_FILE == retval || TOO_LOW_QUALITY == retval)) {
+    if (options->using_stdout && keep_input_pixels && (TOO_LARGE_FILE == retval || TOO_LOW_QUALITY == retval)) {
         // when outputting to stdout it'd be nasty to create 0-byte file
         // so if quality is too low, output 24-bit original
         pngquant_error write_retval = write_image(NULL, &input_image_rwpng, outname, options);
@@ -719,7 +715,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     FILE *outfile;
     char *tempname = NULL;
 
-    if (options->using_stdin) {
+    if (options->using_stdout) {
         set_binary_mode(stdout);
         outfile = stdout;
 
@@ -755,7 +751,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         }
     }
 
-    if (!options->using_stdin) {
+    if (!options->using_stdout) {
         fclose(outfile);
 
         if (SUCCESS == retval) {

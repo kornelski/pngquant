@@ -5,12 +5,12 @@ It's powering [pngquant2](http://pngquant.org).
 
 ## License
 
-[BSD](https://raw.github.com/pornel/improved-pngquant/master/lib/COPYRIGHT).
+[BSD](https://raw.github.com/pornel/pngquant/master/lib/COPYRIGHT).
 It can be linked with both free and closed-source software.
 
 ## Download
 
-The [library](http://pngquant.org/lib) is currently a part of the [pngquant2 project](https://github.com/pornel/improved-pngquant/tree/lib/lib).
+The [library](http://pngquant.org/lib) is currently a part of the [pngquant2 project](https://github.com/pornel/pngquant/tree/master/lib).
 
 Files needed for the library are only in the `lib/` directory inside the repository (and you can ignore the rest).
 

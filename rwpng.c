@@ -76,7 +76,12 @@ void rwpng_version_info(FILE *fp)
 #if PNG_LIBPNG_VER < 10600
     if (strcmp(pngver, "1.3.") < 0) {
         fputs("\nWARNING: Your version of libpng is outdated and may produce corrupted files.\n"
-              "Please recompile pngquant with a newer version of libpng (1.5 or later).\n", fp);
+              "Please recompile pngquant with the current version of libpng (1.6 or later).\n", fp);
+    } else if (strcmp(pngver, "1.6.") < 0) {
+        #if defined(PNG_UNKNOWN_CHUNKS_SUPPORTED)
+        fputs("\nWARNING: Your version of libpng is old and has buggy support for custom chunks.\n"
+              "Please recompile pngquant with the current version of libpng (1.6 or later).\n", fp);
+        #endif
     }
 #endif
 }
@@ -206,7 +211,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
         return LIBPNG_FATAL_ERROR;   /* fatal libpng error (via longjmp()) */
     }
 
-#if PNG_LIBPNG_VER > 10400
+#if PNG_LIBPNG_VER >= 10500 && defined(PNG_UNKNOWN_CHUNKS_SUPPORTED)
     /* copy standard chunks too */
     png_set_keep_unknown_chunks(png_ptr, PNG_HANDLE_CHUNK_IF_SAFE, (png_const_bytep)"pHYs\0iTXt\0tEXt\0zTXt", 4);
 #endif

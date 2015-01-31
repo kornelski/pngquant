@@ -55,6 +55,10 @@
 #define omp_get_max_threads() 1
 #endif
 
+#if PNG_LIBPNG_VER < 10600
+typedef png_const_charp png_const_bytep;
+#endif
+
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
 static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp msg);
 static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg);

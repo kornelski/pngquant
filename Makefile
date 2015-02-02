@@ -47,6 +47,7 @@ $(TARFILE): $(DISTFILES)
 	-shasum $(TARFILE)
 
 install: $(BIN)
+	-mkdir -p '$(BINPREFIX)'
 	install -m 0755 -p '$(BIN)' '$(BINPREFIX)/$(BIN)'
 
 uninstall:

@@ -47,14 +47,14 @@ $(TARFILE): $(DISTFILES)
 	-shasum $(TARFILE)
 
 install: $(BIN)
-	install -m 0755 -p $(BIN) $(BINPREFIX)/$(BIN)
+	install -m 0755 -p '$(BIN)' '$(BINPREFIX)/$(BIN)'
 
 uninstall:
-	rm -f $(BINPREFIX)/$(BIN)
+	rm -f '$(BINPREFIX)/$(BIN)'
 
 clean:
 	$(MAKE) -C lib clean
-	rm -f $(BIN) $(OBJS) $(COCOA_OBJS) $(STATICLIB) $(TARFILE)
+	rm -f '$(BIN)' $(OBJS) $(COCOA_OBJS) $(STATICLIB) $(TARFILE)
 
 distclean: clean
 	$(MAKE) -C lib distclean

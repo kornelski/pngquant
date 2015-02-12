@@ -1,12 +1,14 @@
 -include config.mk
 
 STATICLIB=libimagequant.a
+SHAREDLIB=libimagequant.so.0
 
 DLL=libimagequant.dll
 DLLIMP=libimagequant_dll.a
 DLLDEF=libimagequant_dll.def
 
 OBJS = pam.o mediancut.o blur.o mempool.o viter.o nearest.o libimagequant.o
+SHAREDOBJS = $(subst .o,.lo,$(OBJS))
 
 BUILD_CONFIGURATION="$(CC) $(CFLAGS) $(LDFLAGS)"
 
@@ -14,9 +16,11 @@ DISTFILES = $(OBJS:.o=.c) *.h MANUAL.md COPYRIGHT Makefile configure
 TARNAME = libimagequant-$(VERSION)
 TARFILE = $(TARNAME)-src.tar.bz2
 
-all: static
+all: static shared
 
 static: $(STATICLIB)
+
+shared: $(SHAREDLIB)
 
 dll:
 	$(MAKE) CFLAGSADD="-DLIQ_EXPORT='__declspec(dllexport)'" $(DLL)
@@ -27,6 +31,12 @@ $(DLL) $(DLLIMP): $(OBJS)
 
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
+
+$(SHAREDOBJS):
+	$(CC) -fPIC $(CFLAGS) -c $(@:.lo=.c) -o $@
+
+$(SHAREDLIB): $(SHAREDOBJS)
+	$(CC) -shared -o $(SHAREDLIB) $(SHAREDOBJS) $(LDFLAGS)
 
 $(OBJS): $(wildcard *.h) config.mk
 
@@ -41,7 +51,7 @@ $(TARFILE): $(DISTFILES)
 	-shasum $(TARFILE)
 
 clean:
-	rm -f $(OBJS) $(STATICLIB) $(TARFILE) $(DLL) $(DLLIMP) $(DLLDEF)
+	rm -f $(OBJS) $(SHAREDOBJS) $(SHAREDLIB) $(STATICLIB) $(TARFILE) $(DLL) $(DLLIMP) $(DLLDEF)
 
 distclean: clean
 	rm -f config.mk
@@ -51,5 +61,5 @@ ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 	./configure
 endif
 
-.PHONY: all static clean dist distclean dll
+.PHONY: all static shared clean dist distclean dll
 .DELETE_ON_ERROR:

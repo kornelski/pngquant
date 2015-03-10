@@ -723,6 +723,10 @@ LIQ_EXPORT void liq_image_destroy(liq_image *input_image)
         input_image->free(input_image->temp_row);
     }
 
+    if (input_image->temp_f_row) {
+        input_image->free(input_image->temp_f_row);
+    }
+
     input_image->magic_header = liq_freed_magic;
     input_image->free(input_image);
 }

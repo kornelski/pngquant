@@ -49,6 +49,8 @@ The basic flow is:
 4. Store remapped image and final palette.
 5. Free memory.
 
+Please note that libimagequant only handles raw uncompressed bitmaps in memory and is completely independent of any file format.
+
 <p>
 
     #include "lib/libimagequant.h"
@@ -75,6 +77,8 @@ There are 3 ways to create image object for quantization:
   * `liq_image_create_rgba()` for simple, contiguous RGBA bitmaps (width×height×4 bytes large array).
   * `liq_image_create_rgba_rows()` for non-contiguous RGBA bitmaps (that have padding between rows or reverse order, e.g. BMP).
   * `liq_image_create_custom()` for RGB, ABGR, YUV and all other formats that can be converted on-the-fly to RGBA (you have to supply the conversion function).
+
+Note that "image" here means raw uncompressed pixels. If you have a compressed image file, such as PNG, you must use another library (e.g. libpng or lodepng) to decode it first.
 
 ## Functions
 
@@ -208,6 +212,8 @@ Returns `LIQ_BUFFER_TOO_SMALL` if given size of the buffer is not enough to fit 
     }
 
 See `liq_get_palette()` and `liq_write_remapped_image_rows()`.
+
+Please note that it only writes raw uncompressed pixels to memory. It does not perform any compression. If you'd like to create a PNG file then you need to pass the raw pixel data to another library, e.g. libpng or lodepng. See `rwpng.c` in `pngquant` project for an example how to do that.
 
 ----
 

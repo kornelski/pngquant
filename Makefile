@@ -32,8 +32,8 @@ $(OBJS): $(wildcard *.h) config.mk
 rwpng_cocoa.o: rwpng_cocoa.m
 	$(CC) -Wno-enum-conversion -c $(CFLAGS) -o $@ $< || clang -Wno-enum-conversion -c -O3 $(CFLAGS) -o $@ $<
 
-$(BIN): $(STATICLIB) $(OBJS)
-	$(CC) $(OBJS) $(LDFLAGS) -o $@
+$(BIN): $(OBJS) $(STATICLIB)
+	$(CC) $^ $(LDFLAGS) -o $@
 
 dist: $(TARFILE)
 

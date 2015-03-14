@@ -27,7 +27,7 @@ dll:
 
 
 $(DLL) $(DLLIMP): $(OBJS)
-	$(CC) -fPIC -shared -o $(DLL) $(OBJS) $(LDFLAGS) -Wl,--out-implib,$(DLLIMP),--output-def,$(DLLDEF)
+	$(CC) -fPIC -shared -o $(DLL) $^ $(LDFLAGS) -Wl,--out-implib,$(DLLIMP),--output-def,$(DLLDEF)
 
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
@@ -36,7 +36,7 @@ $(SHAREDOBJS):
 	$(CC) -fPIC $(CFLAGS) -c $(@:.lo=.c) -o $@
 
 $(SHAREDLIB): $(SHAREDOBJS)
-	$(CC) -shared -o $(SHAREDLIB) $(SHAREDOBJS) $(LDFLAGS)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 $(OBJS): $(wildcard *.h) config.mk
 

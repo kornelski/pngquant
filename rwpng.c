@@ -248,7 +248,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 #else
         fprintf(stderr, "pngquant readpng:  image is neither RGBA nor GA\n");
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        mainprog_ptr->retval = 26;
+        mainprog_ptr->retval = WRONG_INPUT_COLOR_TYPE;
         return mainprog_ptr->retval;
 #endif
     }

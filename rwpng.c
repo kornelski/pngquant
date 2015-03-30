@@ -122,11 +122,7 @@ static void user_write_data(png_structp png_ptr, png_bytep data, png_size_t leng
         return;
     }
 
-    if (write_state->maximum_file_size && write_state->bytes_written + length > write_state->maximum_file_size) {
-        write_state->retval = TOO_LARGE_FILE;
-    }
-
-    if (!fwrite(data, 1, length, write_state->outfile)) {
+    if (!fwrite(data, length, 1, write_state->outfile)) {
         write_state->retval = CANT_WRITE_ERROR;
     }
 
@@ -553,6 +549,10 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
     }
 
     rwpng_write_end(&info_ptr, &png_ptr, mainprog_ptr->row_pointers);
+
+    if (SUCCESS == write_state.retval && write_state.maximum_file_size && write_state.bytes_written > write_state.maximum_file_size) {
+        return TOO_LARGE_FILE;
+    }
 
     return write_state.retval;
 }

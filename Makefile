@@ -35,6 +35,9 @@ rwpng_cocoa.o: rwpng_cocoa.m
 $(BIN): $(OBJS) $(STATICLIB)
 	$(CC) $^ $(LDFLAGS) -o $@
 
+test: $(BIN)
+	./test/test.sh ./test $(BIN)
+
 dist: $(TARFILE)
 
 $(TARFILE): $(DISTFILES)
@@ -66,5 +69,5 @@ ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 	./configure
 endif
 
-.PHONY: all clean dist distclean dll install uninstall
+.PHONY: all clean dist distclean dll install uninstall test
 .DELETE_ON_ERROR:

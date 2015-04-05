@@ -710,6 +710,16 @@ static const char *filename_part(const char *path)
     }
 }
 
+static bool replace_file(const char *from, const char *to, const bool force) {
+#if defined(WIN32) || defined(__WIN32__)
+    if (force) {
+        // On Windows rename doesn't replace
+        unlink(to);
+    }
+#endif
+    return (0 == rename(from, to));
+}
+
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options)
 {
     FILE *outfile;
@@ -757,7 +767,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         if (SUCCESS == retval) {
             // Image has been written to a temporary file and then moved over destination.
             // This makes replacement atomic and avoids damaging destination file on write error.
-            if (0 != rename(tempname, outname)) {
+            if (!replace_file(tempname, outname, options->force)) {
                 retval = CANT_WRITE_ERROR;
             }
         }

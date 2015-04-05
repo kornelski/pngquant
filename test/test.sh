@@ -14,31 +14,31 @@ $BIN --help | fgrep -q "usage:"
 $BIN 2>/dev/null && { echo "should fail without args"; exit 1; } || true
 
 function test_overwrite() {
-    cp "$IMGSRC/test.png" "$TMPDIR/test.png"
-    rm -rf "$TMPDIR/test-fs8.png" "$TMPDIR/test-or8.png"
+    cp "$IMGSRC/test.png" "$TMPDIR/overwritetest.png"
+    rm -rf "$TMPDIR/overwritetest-fs8.png" "$TMPDIR/overwritetest-or8.png"
 
-    $BIN "$TMPDIR/test.png"
-    test -f "$TMPDIR/test-fs8.png"
+    $BIN "$TMPDIR/overwritetest.png"
+    test -f "$TMPDIR/overwritetest-fs8.png"
 
-    $BIN --floyd=0.5 --force "$TMPDIR/test.png"
-    test -f "$TMPDIR/test-fs8.png"
-    test '!' -e "$TMPDIR/test-or8.png"
+    $BIN --floyd=0.5 --force "$TMPDIR/overwritetest.png"
+    test -f "$TMPDIR/overwritetest-fs8.png"
+    test '!' -e "$TMPDIR/overwritetest-or8.png"
 
-    $BIN --nofs "$TMPDIR/test.png"
-    test -f "$TMPDIR/test-or8.png"
+    $BIN --nofs "$TMPDIR/overwritetest.png"
+    test -f "$TMPDIR/overwritetest-or8.png"
 
-    rm "$TMPDIR/test-or8.png"
-    $BIN 2>&1 -nofs "$TMPDIR/test.png" | fgrep -q warning:
-    test -f "$TMPDIR/test-or8.png"
+    rm "$TMPDIR/overwritetest-or8.png"
+    $BIN 2>&1 -nofs "$TMPDIR/overwritetest.png" | fgrep -q warning:
+    test -f "$TMPDIR/overwritetest-or8.png"
 
-    $BIN 2>/dev/null --ordered "$TMPDIR/test.png" && { echo "should refuse to overwrite"; exit 1; } || true
+    $BIN 2>/dev/null --ordered "$TMPDIR/overwritetest.png" && { echo "should refuse to overwrite"; exit 1; } || true
 
-    { $BIN 2>&1 --ordered "$TMPDIR/test.png" && { echo "should refuse to overwrite"; exit 1; } || true; } | fgrep -q 'not overwriting'
+    { $BIN 2>&1 --ordered "$TMPDIR/overwritetest.png" && { echo "should refuse to overwrite"; exit 1; } || true; } | fgrep -q 'not overwriting'
 
-    $BIN "$TMPDIR/test.png" -o "$TMPDIR/overwritedest.png"
+    $BIN "$TMPDIR/overwritetest.png" -o "$TMPDIR/overwritedest.png"
     test -f "$TMPDIR/overwritedest.png"
 
-    $BIN 2>/dev/null "$TMPDIR/test.png" -o "$TMPDIR/overwritedest.png" && { echo "should refuse to overwrite"; exit 1; } || true
+    $BIN 2>/dev/null "$TMPDIR/overwritetest.png" -o "$TMPDIR/overwritedest.png" && { echo "should refuse to overwrite"; exit 1; } || true
 }
 
 function test_skip() {

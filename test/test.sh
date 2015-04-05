@@ -18,6 +18,10 @@ cp "$IMGSRC/test.png" "$TMPDIR/"
 $BIN "$TMPDIR/test.png"
 test -f "$TMPDIR/test-fs8.png"
 
+$BIN --floyd=0.5 --force "$TMPDIR/test.png"
+test -f "$TMPDIR/test-fs8.png"
+test '!' -e "$TMPDIR/test-or8.png"
+
 $BIN --nofs "$TMPDIR/test.png"
 test -f "$TMPDIR/test-or8.png"
 

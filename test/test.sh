@@ -13,22 +13,48 @@ $BIN --help | fgrep -q "usage:"
 
 $BIN 2>/dev/null && { echo "should fail without args"; exit 1; } || true
 
-cp "$IMGSRC/test.png" "$TMPDIR/"
+function test_overwrite() {
+    cp "$IMGSRC/test.png" "$TMPDIR/test.png"
+    rm -rf "$TMPDIR/test-fs8.png" "$TMPDIR/test-or8.png"
 
-$BIN "$TMPDIR/test.png"
-test -f "$TMPDIR/test-fs8.png"
+    $BIN "$TMPDIR/test.png"
+    test -f "$TMPDIR/test-fs8.png"
 
-$BIN --floyd=0.5 --force "$TMPDIR/test.png"
-test -f "$TMPDIR/test-fs8.png"
-test '!' -e "$TMPDIR/test-or8.png"
+    $BIN --floyd=0.5 --force "$TMPDIR/test.png"
+    test -f "$TMPDIR/test-fs8.png"
+    test '!' -e "$TMPDIR/test-or8.png"
 
-$BIN --nofs "$TMPDIR/test.png"
-test -f "$TMPDIR/test-or8.png"
+    $BIN --nofs "$TMPDIR/test.png"
+    test -f "$TMPDIR/test-or8.png"
 
-rm "$TMPDIR/test-or8.png"
-$BIN 2>&1 -nofs "$TMPDIR/test.png" | fgrep -q warning:
-test -f "$TMPDIR/test-or8.png"
+    rm "$TMPDIR/test-or8.png"
+    $BIN 2>&1 -nofs "$TMPDIR/test.png" | fgrep -q warning:
+    test -f "$TMPDIR/test-or8.png"
 
-$BIN 2>/dev/null --ordered "$TMPDIR/test.png" && { echo "should refuse to overwrite"; exit 1; } || true
+    $BIN 2>/dev/null --ordered "$TMPDIR/test.png" && { echo "should refuse to overwrite"; exit 1; } || true
 
-{ $BIN 2>&1 --ordered "$TMPDIR/test.png" && { echo "should refuse to overwrite"; exit 1; } || true; } | fgrep -q 'not overwriting'
+    { $BIN 2>&1 --ordered "$TMPDIR/test.png" && { echo "should refuse to overwrite"; exit 1; } || true; } | fgrep -q 'not overwriting'
+
+    $BIN "$TMPDIR/test.png" -o "$TMPDIR/overwritedest.png"
+    test -f "$TMPDIR/overwritedest.png"
+
+    $BIN 2>/dev/null "$TMPDIR/test.png" -o "$TMPDIR/overwritedest.png" && { echo "should refuse to overwrite"; exit 1; } || true
+}
+
+function test_skip() {
+    cp "$IMGSRC/test.png" "$TMPDIR/skiptest.png"
+    rm -rf "$TMPDIR/shouldskip.png"
+
+    $BIN 2>/dev/null "$TMPDIR/skiptest.png" -Q 100-100 -o "$TMPDIR/shouldskip.png" && { echo "should skip due to quality"; exit 1; } || true
+    test '!' -e "$TMPDIR/shouldskip.png"
+}
+
+test_overwrite &
+test_skip &
+
+for job in `jobs -p`
+do
+    wait $job
+done
+
+echo "OK"

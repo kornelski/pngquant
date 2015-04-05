@@ -45,8 +45,16 @@ function test_skip() {
     cp "$IMGSRC/test.png" "$TMPDIR/skiptest.png"
     rm -rf "$TMPDIR/shouldskip.png"
 
-    $BIN 2>/dev/null "$TMPDIR/skiptest.png" -Q 100-100 -o "$TMPDIR/shouldskip.png" && { echo "should skip due to quality"; exit 1; } || true
+    $BIN 2>/dev/null "$TMPDIR/skiptest.png" -Q 100-100 -o "$TMPDIR/shouldskip.png" && { echo "should skip due to quality"; exit 1; } || RET=$?
+    test "$RET" -eq 99 || { echo "should return 99, not $RET"; exit 1; }
     test '!' -e "$TMPDIR/shouldskip.png"
+
+    $BIN "$TMPDIR/skiptest.png" -Q 0-50 -o "$TMPDIR/q50output.png"
+    test -f "$TMPDIR/q50output.png"
+
+    $BIN "$TMPDIR/q50output.png" --skip-if-larger -Q 0-49 -o "$TMPDIR/q49output.png" && { echo "should skip due to filesize"; exit 1; } || RET=$?
+    test "$RET" -eq 98 || { echo "should return 98, not $RET"; exit 1; }
+    test '!' -e "$TMPDIR/q49output.png"
 }
 
 test_overwrite &

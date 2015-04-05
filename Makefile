@@ -24,8 +24,10 @@ DLLDEF=libimagequant_dll.def
 
 all: $(BIN)
 
-$(STATICLIB):: config.mk
+staticlib:
 	$(MAKE) -C lib static
+
+$(STATICLIB): config.mk staticlib
 
 $(OBJS): $(wildcard *.h) config.mk
 
@@ -69,5 +71,5 @@ ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 	./configure
 endif
 
-.PHONY: all clean dist distclean dll install uninstall test
+.PHONY: all clean dist distclean dll install uninstall test staticlib
 .DELETE_ON_ERROR:

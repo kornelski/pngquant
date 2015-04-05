@@ -4,6 +4,8 @@ version 2.3
  - tweaked quality metric to better estimate quality of images with large solid backgrounds [thanks to Rolf Timmermans]
  - atomic file saves and fixed --skip-if-larger
  - avoid applying quality setting to images that use palette already
+ - preserving standard PNG chunks (requires libpng 1.6)
+ - deprecated libpng 1.2 support
 
 version 2.2
 -----------

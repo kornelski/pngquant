@@ -107,7 +107,7 @@ static colormap *get_subset_palette(const colormap *map)
 LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 {
     colormap *subset_palette = get_subset_palette(map);
-    const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/4, subset_palette->colors) : 0;
+    const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/(fast ? 4 : 3), subset_palette->colors) : 0;
     const unsigned long heads_size = sizeof(struct head) * (num_vantage_points+1); // +1 is fallback head
 
     const unsigned long mempool_size = (sizeof(f_pixel) + sizeof(unsigned int)) * subset_palette->colors * map->colors/5 + (1<<14);

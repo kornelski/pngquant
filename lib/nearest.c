@@ -26,21 +26,6 @@ struct nearest_map {
     struct head heads[];
 };
 
-static unsigned int find_slow(const f_pixel px, const colormap *map)
-{
-    unsigned int best=0;
-    float bestdiff = colordifference(px, map->palette[0].acolor);
-
-    for(unsigned int i=1; i < map->colors; i++) {
-        float diff = colordifference(px, map->palette[i].acolor);
-        if (diff < bestdiff) {
-            best = i;
-            bestdiff = diff;
-        }
-    }
-    return best;
-}
-
 static float distance_from_nearest_other_color(const colormap *map, const unsigned int i)
 {
     float second_best=MAX_DIFF;
@@ -155,28 +140,9 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
 
     // assumption that there is no better color within radius of vantage point color
     // holds true only for colors within convex hull formed by palette colors.
-    // since finding proper convex hull is more than a few lines, this
-    // is a cheap shot at finding just few key points.
-    const f_pixel extrema[] = {
-        {.a=0,0,0,0},
-
-        {.a=.5,0,0,0}, {.a=.5,1,0,0},
-        {.a=.5,0,0,1}, {.a=.5,1,0,1},
-        {.a=.5,0,1,0}, {.a=.5,1,1,0},
-        {.a=.5,0,1,1}, {.a=.5,1,1,1},
-
-        {.a=1,0,0,0}, {.a=1,1,0,0},
-        {.a=1,0,0,1}, {.a=1,1,0,1},
-        {.a=1,0,1,0}, {.a=1,1,1,0},
-        {.a=1,0,1,1}, {.a=1,1,1,1},
-
-        {.a=1,.5, 0, 0}, {.a=1, 0,.5, 0}, {.a=1, 0, 0, .5},
-        {.a=1,.5, 0, 1}, {.a=1, 0,.5, 1}, {.a=1, 0, 1, .5},
-        {.a=1,.5, 1, 0}, {.a=1, 1,.5, 0}, {.a=1, 1, 0, .5},
-        {.a=1,.5, 1, 1}, {.a=1, 1,.5, 1}, {.a=1, 1, 1, .5},
-    };
-    for(unsigned int i=0; i < sizeof(extrema)/sizeof(extrema[0]); i++) {
-        skip_index[find_slow(extrema[i], map)]=0;
+    // The fallback must contain all colors, since there are too many edge cases to cover.
+    if (!fast) for(unsigned int j=0; j < map->colors; j++) {
+        skip_index[j] = false;
     }
 
     centroids->heads[h] = build_head((f_pixel){0,0,0,0}, map, map->colors, &centroids->mempool, error_margin, skip_index, &skipped);

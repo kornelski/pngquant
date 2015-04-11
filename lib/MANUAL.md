@@ -450,6 +450,18 @@ If the input is invalid, these all return -1.
 
 ---
 
+    liq_error liq_image_add_fixed_color(liq_image* img, liq_color color);
+
+Reserves a color in the output palette created from this image. It behaves as if the given color was used in the image and was very important.
+
+RGB values of `liq_color` are assumed to have the same gamma as the image.
+
+It must be called before the image is quantized.
+
+Returns error if more than 256 colors are added. If image is quantized to fewer colors than the number of fixed colors added, then excess fixed colors will be ignored.
+
+---
+
     int liq_version();
 
 Returns version of the library as an integer. Same as `LIQ_VERSION`. Human-readable version is defined as `LIQ_VERSION_STRING`.

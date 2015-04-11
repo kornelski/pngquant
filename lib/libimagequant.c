@@ -444,7 +444,7 @@ LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*custom_malloc)(size_
     return attr;
 }
 
-LIQ_EXPORT liq_error liq_add_fixed_color(liq_image *img, liq_color color) {
+LIQ_EXPORT liq_error liq_image_add_fixed_color(liq_image *img, liq_color color) {
     if (!CHECK_STRUCT_TYPE(img, liq_image)) return LIQ_INVALID_POINTER;
     if (img->fixed_colors_count > 255) return LIQ_BUFFER_TOO_SMALL;
 

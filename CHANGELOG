@@ -1,3 +1,8 @@
+version 2.4
+-----------
+ - fixed remapping of bright colors when dithering
+ - added libimagequant API to add fixed preset colors to the palette
+
 version 2.3
 -----------
  - added ./configure script for better support of Intel C compiler and dependencies [thanks to pdknsk]

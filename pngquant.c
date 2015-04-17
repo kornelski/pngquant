@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
                 {
                     png24_image tmp = {};
                     if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, false, false)) {
-                        fprintf(stderr, "  error: Unable to load %s", optarg);
+                        fprintf(stderr, "  error: unable to load %s", optarg);
                         return INVALID_ARGUMENT;
                     }
                 }
@@ -808,7 +808,7 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     }
 
     if (retval) {
-        fprintf(stderr, "  error: rwpng_read_image() error %d\n", retval);
+        fprintf(stderr, "  error: cannot decode image %s\n", using_stdin ? "from stdin" : filename_part(filename));
         return retval;
     }
 

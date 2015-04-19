@@ -55,7 +55,7 @@
 #define omp_get_max_threads() 1
 #endif
 
-#if PNG_LIBPNG_VER < 10600
+#if PNG_LIBPNG_VER < 10500
 typedef png_const_charp png_const_bytep;
 #endif
 

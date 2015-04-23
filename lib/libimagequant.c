@@ -600,6 +600,10 @@ LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int wi
     }
 
     liq_image *image = liq_image_create_internal(attr, rows, NULL, NULL, width, height, gamma);
+    if (!image) {
+        attr->free(rows);
+        return NULL;
+    }
     image->free_rows = true;
     image->free_rows_internal = true;
     return image;

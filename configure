@@ -28,14 +28,14 @@ for i in "$@"; do
     case $i in
     --help)
         echo
-        help "--prefix=                     installation directory [$PREFIX]"
-        help "--extra-cflags=               append to CFLAGS"
-        help "--extra-ldflags=              append to LDFLAGS"
+        help "--prefix=<dir>                installation directory [$PREFIX]"
+        help "--extra-cflags=<flags>        append to CFLAGS"
+        help "--extra-ldflags=<flags>       append to LDFLAGS"
         echo
         help "--enable-debug"
         help "--enable-sse/--disable-sse    enable/disable SSE instructions"
         echo
-        help "--with-openmp                 compile with multicore support"
+        help "--with-openmp=static          compile with multicore support"
         help "--with-lcms2/--without-lcms2  compile with color profile support"
 if [[ "$OSTYPE" =~ "darwin" ]]; then
         help "--with-cocoa/--without-cocoa  use Cocoa framework to read images"
@@ -68,6 +68,9 @@ fi
         ;;
     --with-openmp)
         OPENMP=1
+        ;;
+    --with-openmp=static)
+        OPENMP=static
         ;;
     --with-lcms2)
         LCMS2=1
@@ -263,11 +266,16 @@ fi
 
 # OpenMP
 if [ -n "$OPENMP" ]; then
-    if [[ "$("$CC" -xc -E -fopenmp <(echo "#ifdef _OPENMP
+    if [ "static" = "$OPENMP" ]; then
+        OPENMPFLAGS="-static-libgcc -Bstatic -fopenmp -Bdynamic"
+    else
+        OPENMPFLAGS="-fopenmp"
+    fi
+    if [[ "$("$CC" -xc -E $OPENMPFLAGS <(echo "#ifdef _OPENMP
            #include <omp.h>
            #endif") 2>&1)" =~ "omp_get_thread_num" ]]; then
-        cflags "-fopenmp"
-        lflags "-fopenmp"
+        cflags "$OPENMPFLAGS"
+        lflags "$OPENMPFLAGS"
         status "OpenMP" "yes"
     else
         error "OpenMP" "not supported by compiler (please install a compiler that supports OpenMP (e.g. gcc) and specify it with the CC= argument)"

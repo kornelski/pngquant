@@ -327,7 +327,16 @@ fi
 
 
 # libpng
+# try if given flags are enough
 SUCCESS=0
+if echo "#include \"png.h\"
+    int main(){
+    return !png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+}" | "$CC" -xc -std=c99 -o /dev/null $CFLAGS $LDFLAGS - &> /dev/null; then
+    status "libpng" "custom flags"
+    SUCCESS=1
+fi
+
 if [ "$SUCCESS" -eq 0 ]; then
     # try static in the given directory
     PNGH=$(find_h "$LIBPNG_DIR" "png.h")

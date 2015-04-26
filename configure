@@ -7,6 +7,7 @@ VERSION=$(grep LIQ_VERSION_STRING lib/libimagequant.h | grep -Eo "2\.[0-9.]+")
 DEBUG=
 SSE=auto
 OPENMP=
+LIBPNG_DIR=.
 if [[ "$OSTYPE" =~ "darwin" ]]; then
     COCOA_READER=auto
     LCMS2=0
@@ -39,6 +40,7 @@ for i in "$@"; do
         help "--with-lcms2/--without-lcms2  compile with color profile support"
 if [[ "$OSTYPE" =~ "darwin" ]]; then
         help "--with-cocoa/--without-cocoa  use Cocoa framework to read images"
+        help "--with-libpng=<dir>           search for libpng in directory"
 fi
         echo
         help "CC=<compiler>                 use given compiler command"
@@ -85,6 +87,9 @@ fi
         ;;
     --without-cocoa)
         COCOA_READER=0
+        ;;
+    --with-libpng=*)
+        LIBPNG_DIR=${i#*=}
         ;;
     --prefix=*)
         PREFIX=${i#*=}
@@ -323,18 +328,20 @@ fi
 
 # libpng
 SUCCESS=0
-# try static in current directory first
-PNGH=$(find_h . "png.h")
-if [ -n "$PNGH" ]; then
-    PNGH_STRING=$(pngh_string "$PNGH")
-    PNGH_MAJMIN=$(pngh_majmin "$PNGH")
-    if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
-        LIBPNGA=$(find_f . "libpng${PNGH_MAJMIN}.a")
-        if [ -n "$LIBPNGA" ]; then
-            cflags "-I${PNGH%/*}"
-            lflags "${LIBPNGA}"
-            status "libpng" "static (${PNGH_STRING})"
-            SUCCESS=1
+if [ "$SUCCESS" -eq 0 ]; then
+    # try static in the given directory
+    PNGH=$(find_h "$LIBPNG_DIR" "png.h")
+    if [ -n "$PNGH" ]; then
+        PNGH_STRING=$(pngh_string "$PNGH")
+        PNGH_MAJMIN=$(pngh_majmin "$PNGH")
+        if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
+            LIBPNGA=$(find_f "$LIBPNG_DIR" "libpng${PNGH_MAJMIN}.a")
+            if [ -n "$LIBPNGA" ]; then
+                cflags "-I${PNGH%/*}"
+                lflags "${LIBPNGA}"
+                status "libpng" "static (${PNGH_STRING})"
+                SUCCESS=1
+            fi
         fi
     fi
 fi

@@ -158,7 +158,7 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
 
 LIQ_PRIVATE struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors, unsigned int surface, unsigned int ignorebits, void* (*malloc)(size_t), void (*free)(void*))
 {
-    const unsigned int estimated_colors = MIN(maxcolors, surface/(ignorebits + (surface > 512*512 ? 5 : 4)));
+    const unsigned int estimated_colors = MIN(maxcolors, surface/(ignorebits + (surface > 512*512 ? 6 : 5)));
     const unsigned int hash_size = estimated_colors < 66000 ? 6673 : (estimated_colors < 200000 ? 12011 : 24019);
 
     mempool m = NULL;

@@ -1,5 +1,6 @@
 version 2.5
 -----------
+ - replaced color search algorithm with vantage point tree, which is much faster and more reliable
  - deprecated IE6 workaround
 
 version 2.4

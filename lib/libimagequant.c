@@ -998,7 +998,6 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
 {
     const int rows = input_image->height;
     const unsigned int cols = input_image->width;
-    const float min_opaque_val = input_image->min_opaque_val;
     double remapping_error=0;
 
     if (!liq_image_get_row_f(input_image, 0)) { // trigger lazy conversion
@@ -1020,7 +1019,7 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
             f_pixel px = row_pixels[col];
             float diff;
 
-            output_pixels[row][col] = last_match = nearest_search(n, px, last_match, min_opaque_val, &diff);
+            output_pixels[row][col] = last_match = nearest_search(n, px, last_match, &diff);
 
             remapping_error += diff;
             viter_update_color(px, 1.0, map, last_match, omp_get_thread_num(), average_color);
@@ -1083,7 +1082,6 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
 {
     const unsigned int rows = input_image->height, cols = input_image->width;
     const unsigned char *dither_map = use_dither_map ? (input_image->dither_map ? input_image->dither_map : input_image->edges) : NULL;
-    const float min_opaque_val = input_image->min_opaque_val;
 
     const colormap_item *acolormap = map->palette;
 
@@ -1129,7 +1127,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
             const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], row_pixels[col]);
 
             const unsigned int guessed_match = output_image_is_remapped ? output_pixels[row][col] : last_match;
-            output_pixels[row][col] = last_match = nearest_search(n, spx, guessed_match, min_opaque_val, NULL);
+            output_pixels[row][col] = last_match = nearest_search(n, spx, guessed_match, NULL);
 
             const f_pixel xp = acolormap[last_match].acolor;
             f_pixel err = {
@@ -1498,7 +1496,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
     do {
         colormap *newmap;
         if (hist->size && fixed_colors_count < max_colors) {
-            newmap = mediancut(hist, options->min_opaque_val, max_colors-fixed_colors_count, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
+            newmap = mediancut(hist, max_colors-fixed_colors_count, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
             options->malloc, options->free);
         } else {
             feedback_loop_trials = 0;
@@ -1518,7 +1516,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
         // and histogram weights are adjusted based on remapping error to give more weight to poorly matched colors
 
         const bool first_run_of_target_mse = !acolormap && target_mse > 0;
-        double total_error = viter_do_iteration(hist, newmap, options->min_opaque_val, first_run_of_target_mse ? NULL : adjust_histogram_callback, !acolormap || options->fast_palette);
+        double total_error = viter_do_iteration(hist, newmap, first_run_of_target_mse ? NULL : adjust_histogram_callback, !acolormap || options->fast_palette);
 
         // goal is to increase quality or to reduce number of colors used if quality is good enough
         if (!acolormap || total_error < least_error || (total_error <= target_mse && newmap->colors < max_colors)) {
@@ -1603,7 +1601,7 @@ static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, c
             double previous_palette_error = MAX_DIFF;
 
             for(unsigned int i=0; i < iterations; i++) {
-                palette_error = viter_do_iteration(hist, acolormap, options->min_opaque_val, NULL, i==0 || options->fast_palette);
+                palette_error = viter_do_iteration(hist, acolormap, NULL, i==0 || options->fast_palette);
 
                 if (fabs(previous_palette_error-palette_error) < iteration_limit) {
                     break;

@@ -267,7 +267,7 @@ Returns the value set by `liq_set_speed()`.
 
     liq_error liq_set_min_opacity(liq_attr* attr, int min);
 
-Alpha values higher than this will be rounded to opaque. This is a workaround for Internet Explorer 6 that truncates semitransparent values to completely transparent. The default is `255` (no change). 238 is a suggested value.
+Alpha values higher than this will be rounded to opaque. This is a workaround for Internet Explorer 6, but because this browser is not used any more, this option is deprecated and will be removed. The default is `255` (no change).
 
 Returns `LIQ_VALUE_OUT_OF_RANGE` if the value is outside the 0-255 range.
 

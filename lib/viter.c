@@ -79,7 +79,7 @@ LIQ_PRIVATE void viter_finalize(colormap *map, const unsigned int max_threads, c
     }
 }
 
-LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, const float min_opaque_val, viter_callback callback, const bool fast_palette)
+LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, viter_callback callback, const bool fast_palette)
 {
     const unsigned int max_threads = omp_get_max_threads();
     viter_state average_color[(VITER_CACHE_LINE_GAP+map->colors) * max_threads];
@@ -93,7 +93,7 @@ LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, cons
         schedule(static) default(none) shared(average_color,callback) reduction(+:total_diff)
     for(int j=0; j < hist_size; j++) {
         float diff;
-        unsigned int match = nearest_search(n, achv[j].acolor, achv[j].tmp.likely_colormap_index, min_opaque_val, &diff);
+        unsigned int match = nearest_search(n, achv[j].acolor, achv[j].tmp.likely_colormap_index, &diff);
         achv[j].tmp.likely_colormap_index = match;
         total_diff += diff * achv[j].perceptual_weight;
 

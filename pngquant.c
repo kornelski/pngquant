@@ -334,7 +334,7 @@ int main(int argc, char *argv[])
             case arg_iebug:
                 // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
                 liq_set_min_opacity(options.liq, 238);
-                options.ie_mode = true;
+                fputs("  warning: the workaround for IE6 is deprecated\n", stderr);
                 break;
 
             case arg_transbug:

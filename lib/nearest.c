@@ -90,7 +90,7 @@ static struct head build_head(f_pixel px, const colormap *map, unsigned int num_
     for(unsigned int i=0; i < num_candidates; i++) {
         h.candidates_color[i] = map->palette[colors[i].index].acolor;
         h.candidates_index[i] = colors[i].index;
-}
+    }
     // if all colors within this radius are included in candidates, then there cannot be any other better match
     // farther away from the vantage point than half of the radius. Due to alpha channel must assume pessimistic radius.
     h.radius = min_colordifference(px, h.candidates_color[num_candidates-1])/4.0f; // /4 = half of radius, but radius is squared
@@ -174,10 +174,8 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
     return centroids;
 }
 
-LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, int likely_colormap_index, const float min_opaque_val, float *diff)
+LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, int likely_colormap_index, float *diff)
 {
-    const bool iebug = px.a > min_opaque_val;
-
     const struct head *const heads = centroids->heads;
 
     assert(likely_colormap_index < centroids->map->colors);
@@ -185,7 +183,7 @@ LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, con
     if (guess_diff < centroids->nearest_other_color_dist[likely_colormap_index]) {
         if (diff) *diff = guess_diff;
         return likely_colormap_index;
-        }
+    }
 
     for(unsigned int i=0; /* last head will always be selected */ ; i++) {
         float vantage_point_dist = colordifference(px, heads[i].vantage_point);
@@ -195,29 +193,19 @@ LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, con
             unsigned int ind=0;
             float dist = colordifference(px, heads[i].candidates_color[0]);
 
-            /* penalty for making holes in IE */
-            if (iebug && heads[i].candidates_color[0].a < 1) {
-                dist += 1.f/1024.f;
-            }
-
             for(unsigned int j=1; j < heads[i].num_candidates; j++) {
                 float newdist = colordifference(px, heads[i].candidates_color[j]);
-
-                /* penalty for making holes in IE */
-                if (iebug && heads[i].candidates_color[j].a < 1) {
-                    newdist += 1.f/1024.f;
-            }
 
                 if (newdist < dist) {
                     dist = newdist;
                     ind = j;
-            }
+                }
             }
             if (diff) *diff = dist;
             return heads[i].candidates_index[ind];
         }
-}
     }
+}
 
 LIQ_PRIVATE void nearest_free(struct nearest_map *centroids)
 {

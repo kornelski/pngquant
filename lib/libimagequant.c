@@ -1016,13 +1016,11 @@ static float remap_to_palette(liq_image *const input_image, unsigned char *const
         const f_pixel *const row_pixels = liq_image_get_row_f(input_image, row);
         unsigned int last_match=0;
         for(unsigned int col = 0; col < cols; ++col) {
-            f_pixel px = row_pixels[col];
             float diff;
-
-            output_pixels[row][col] = last_match = nearest_search(n, px, last_match, &diff);
+            output_pixels[row][col] = last_match = nearest_search(n, &row_pixels[col], last_match, &diff);
 
             remapping_error += diff;
-            viter_update_color(px, 1.0, map, last_match, omp_get_thread_num(), average_color);
+            viter_update_color(row_pixels[col], 1.0, map, last_match, omp_get_thread_num(), average_color);
         }
     }
 
@@ -1127,7 +1125,7 @@ static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const 
             const f_pixel spx = get_dithered_pixel(dither_level, max_dither_error, thiserr[col + 1], row_pixels[col]);
 
             const unsigned int guessed_match = output_image_is_remapped ? output_pixels[row][col] : last_match;
-            output_pixels[row][col] = last_match = nearest_search(n, spx, guessed_match, NULL);
+            output_pixels[row][col] = last_match = nearest_search(n, &spx, guessed_match, NULL);
 
             const f_pixel xp = acolormap[last_match].acolor;
             f_pixel err = {

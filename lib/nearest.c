@@ -174,27 +174,27 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
     return centroids;
 }
 
-LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, int likely_colormap_index, float *diff)
+LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel *px, int likely_colormap_index, float *diff)
 {
     const struct head *const heads = centroids->heads;
 
     assert(likely_colormap_index < centroids->map->colors);
-    const float guess_diff = colordifference(centroids->map->palette[likely_colormap_index].acolor, px);
+    const float guess_diff = colordifference(*px, centroids->map->palette[likely_colormap_index].acolor);
     if (guess_diff < centroids->nearest_other_color_dist[likely_colormap_index]) {
         if (diff) *diff = guess_diff;
         return likely_colormap_index;
     }
 
     for(unsigned int i=0; /* last head will always be selected */ ; i++) {
-        float vantage_point_dist = colordifference(px, heads[i].vantage_point);
+        float vantage_point_dist = colordifference(*px, heads[i].vantage_point);
 
         if (vantage_point_dist <= heads[i].radius) {
             assert(heads[i].num_candidates);
             unsigned int ind=0;
-            float dist = colordifference(px, heads[i].candidates_color[0]);
+            float dist = colordifference(*px, heads[i].candidates_color[0]);
 
             for(unsigned int j=1; j < heads[i].num_candidates; j++) {
-                float newdist = colordifference(px, heads[i].candidates_color[j]);
+                float newdist = colordifference(*px, heads[i].candidates_color[j]);
 
                 if (newdist < dist) {
                     dist = newdist;

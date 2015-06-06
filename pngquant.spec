@@ -1,5 +1,5 @@
 Name:           pngquant
-Version:        2.4.1
+Version:        2.5.0
 Release:        1%{?dist}
 Summary:        PNG quantization tool for reducing image file size
 License:        BSD

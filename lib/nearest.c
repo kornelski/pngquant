@@ -23,188 +23,182 @@ along with libimagequant. If not, see <http://www.gnu.org/licenses/>.
 #include "mempool.h"
 #include <stdlib.h>
 
-struct sorttmp {
-    float radius;
-    unsigned int index;
-};
+typedef struct vp_sort_tmp {
+    float distance_squared;
+    unsigned int idx;
+} vp_sort_tmp;
 
-struct head {
-    // colors less than radius away from vantage_point color will have best match in candidates
+typedef struct vp_search_tmp {
+    float distance;
+    unsigned int idx;
+    int exclude;
+} vp_search_tmp;
+
+typedef struct vp_node {
+    struct vp_node *near, *far;
     f_pixel vantage_point;
     float radius;
-    unsigned int num_candidates;
-    f_pixel *candidates_color;
-    unsigned short *candidates_index;
-};
+    unsigned int idx;
+} vp_node;
 
 struct nearest_map {
-    const colormap *map;
+    vp_node *root;
+    const colormap_item *palette;
     float nearest_other_color_dist[256];
     mempool mempool;
-    struct head heads[];
 };
 
-static float distance_from_nearest_other_color(const colormap *map, const unsigned int i)
-{
-    float second_best=MAX_DIFF;
-    for(unsigned int j=0; j < map->colors; j++) {
-        if (i == j) continue;
-        float diff = colordifference(map->palette[i].acolor, map->palette[j].acolor);
-        if (diff <= second_best) {
-            second_best = diff;
+static void vp_search_node(const vp_node *node, const f_pixel *const needle, vp_search_tmp *const best_candidate);
+
+static int vp_compare_distance(const void *ap, const void *bp) {
+    float a = ((const vp_sort_tmp*)ap)->distance_squared;
+    float b = ((const vp_sort_tmp*)bp)->distance_squared;
+    return a > b ? 1 : -1;
+}
+
+static void vp_sort_indexes_by_distance(const f_pixel vantage_point, vp_sort_tmp *indexes, int num_indexes, const colormap_item items[]) {
+    for(int i=0; i < num_indexes; i++) {
+        indexes[i].distance_squared = colordifference(vantage_point, items[indexes[i].idx].acolor);
+    }
+    qsort(indexes, num_indexes, sizeof(indexes[0]), vp_compare_distance);
+}
+
+/*
+ * Usually it should pick farthest point, but picking most popular point seems to make search quicker anyway
+ */
+static int vp_find_best_vantage_point_index(vp_sort_tmp *indexes, int num_indexes, const colormap_item items[]) {
+    int best = 0;
+    float best_popularity = items[indexes[0].idx].popularity;
+    for(int i = 1; i < num_indexes; i++) {
+        if (items[indexes[i].idx].popularity > best_popularity) {
+            best_popularity = items[indexes[i].idx].popularity;
+            best = i;
         }
     }
-    return second_best;
+    return best;
 }
 
-static int compareradius(const void *ap, const void *bp)
-{
-    float a = ((const struct sorttmp*)ap)->radius;
-    float b = ((const struct sorttmp*)bp)->radius;
-    return a > b ? 1 : (a < b ? -1 : 0);
-}
-
-static struct head build_head(f_pixel px, const colormap *map, unsigned int num_candidates, mempool *m, float error_margin, bool skip_index[], unsigned int *skipped)
-{
-    struct sorttmp colors[map->colors];
-    unsigned int colorsused=0;
-
-    for(unsigned int i=0; i < map->colors; i++) {
-        if (skip_index[i]) continue; // colors in skip_index have been eliminated already in previous heads
-        colors[colorsused].index = i;
-        colors[colorsused].radius = colordifference(px, map->palette[i].acolor);
-        colorsused++;
+static vp_node *vp_create_node(mempool *m, vp_sort_tmp *indexes, int num_indexes, const colormap_item items[]) {
+    if (num_indexes <= 0) {
+        return NULL;
     }
 
-    qsort(&colors, colorsused, sizeof(colors[0]), compareradius);
-    assert(colorsused < 2 || colors[0].radius <= colors[1].radius); // closest first
+    vp_node *node = mempool_alloc(m, sizeof(node[0]), 0);
 
-    num_candidates = MIN(colorsused, num_candidates);
+    if (num_indexes == 1) {
+        *node = (vp_node){
+            .vantage_point = items[indexes[0].idx].acolor,
+            .idx = indexes[0].idx,
+            .radius = MAX_DIFF,
+        };
+        return node;
+    }
 
-    struct head h = {
-        .candidates_color = mempool_alloc(m, num_candidates * sizeof(h.candidates_color[0]), 0),
-        .candidates_index = mempool_alloc(m, num_candidates * sizeof(h.candidates_index[0]), 0),
-        .vantage_point = px,
-        .num_candidates = num_candidates,
+    const int ref = vp_find_best_vantage_point_index(indexes, num_indexes, items);
+    const int ref_idx = indexes[ref].idx;
+
+    // Removes the `ref_idx` item from remaining items, because it's included in the current node
+    num_indexes -= 1;
+    indexes[ref] = indexes[num_indexes];
+
+    vp_sort_indexes_by_distance(items[ref_idx].acolor, indexes, num_indexes, items);
+
+    // Remaining items are split by the median distance
+    const int half_idx = num_indexes/2;
+
+    *node = (vp_node){
+        .vantage_point = items[ref_idx].acolor,
+        .idx = ref_idx,
+        .radius = sqrtf(indexes[half_idx].distance_squared),
     };
-    for(unsigned int i=0; i < num_candidates; i++) {
-        h.candidates_color[i] = map->palette[colors[i].index].acolor;
-        h.candidates_index[i] = colors[i].index;
-    }
-    // if all colors within this radius are included in candidates, then there cannot be any other better match
-    // farther away from the vantage point than half of the radius. Due to alpha channel must assume pessimistic radius.
-    h.radius = min_colordifference(px, h.candidates_color[num_candidates-1])/4.0f; // /4 = half of radius, but radius is squared
+    node->near = vp_create_node(m, indexes, half_idx, items);
+    node->far = vp_create_node(m, &indexes[half_idx], num_indexes - half_idx, items);
 
-    for(unsigned int i=0; i < num_candidates; i++) {
-        // divide again as that's matching certain subset within radius-limited subset
-        // - 1/256 is a tolerance for miscalculation (seems like colordifference isn't exact)
-        if (colors[i].radius < h.radius/4.f - error_margin) {
-            skip_index[colors[i].index]=true;
-            (*skipped)++;
-        }
-    }
-    return h;
+    return node;
 }
 
-static colormap *get_subset_palette(const colormap *map)
-{
-    if (map->subset_palette) {
-        return map->subset_palette;
-    }
-
-    unsigned int subset_size = (map->colors+3)/4;
-    colormap *subset_palette = pam_colormap(subset_size, map->malloc, map->free);
-
-    for(unsigned int i=0; i < subset_size; i++) {
-        subset_palette->palette[i] = map->palette[i];
-    }
-
-    return subset_palette;
-}
-
-LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
-{
-    colormap *subset_palette = get_subset_palette(map);
-    const unsigned int num_vantage_points = map->colors > 16 ? MIN(map->colors/(fast ? 4 : 3), subset_palette->colors) : 0;
-    const unsigned long heads_size = sizeof(struct head) * (num_vantage_points+1); // +1 is fallback head
-
-    const unsigned long mempool_size = (sizeof(f_pixel) + sizeof(unsigned int)) * subset_palette->colors * map->colors/5 + (1<<14);
+LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, const bool fast) {
     mempool m = NULL;
-    struct nearest_map *centroids = mempool_create(&m, sizeof(*centroids) + heads_size /* heads array is appended to it */, mempool_size, map->malloc, map->free);
-    centroids->mempool = m;
+    struct nearest_map *handle = mempool_create(&m, sizeof(handle[0]), sizeof(handle[0]) + sizeof(vp_node)*map->colors+16, map->malloc, map->free);
+
+    vp_sort_tmp indexes[map->colors];
+
+    for(int i=0; i < map->colors; i++) {
+        indexes[i].idx = i;
+    }
+
+    vp_node *root = vp_create_node(&m, indexes, map->colors, map->palette);
+    *handle = (struct nearest_map){
+        .root = root,
+        .palette = map->palette,
+        .mempool = m,
+    };
 
     for(unsigned int i=0; i < map->colors; i++) {
-        const float dist = distance_from_nearest_other_color(map,i);
-        centroids->nearest_other_color_dist[i] = dist / 4.f; // half of squared distance
+        vp_search_tmp best = {
+            .distance = MAX_DIFF,
+            .exclude = i,
+        };
+        vp_search_node(root, &map->palette[i].acolor, &best);
+        handle->nearest_other_color_dist[i] = best.distance / 2.0;
     }
 
-    centroids->map = map;
-
-    unsigned int skipped=0;
-    assert(map->colors > 0);
-    bool skip_index[map->colors]; for(unsigned int j=0; j < map->colors; j++) skip_index[j]=false;
-
-    // floats and colordifference calculations are not perfect
-    const float error_margin = fast ? 0 : 8.f/256.f/256.f;
-    unsigned int h=0;
-    for(; h < num_vantage_points; h++) {
-        unsigned int num_candiadtes = 1+(map->colors - skipped)/((1+num_vantage_points-h)/2);
-
-        centroids->heads[h] = build_head(subset_palette->palette[h].acolor, map, num_candiadtes, &centroids->mempool, error_margin, skip_index, &skipped);
-        if (centroids->heads[h].num_candidates == 0) {
-            break;
-        }
-    }
-
-    // assumption that there is no better color within radius of vantage point color
-    // holds true only for colors within convex hull formed by palette colors.
-    // The fallback must contain all colors, since there are too many edge cases to cover.
-    if (!fast) for(unsigned int j=0; j < map->colors; j++) {
-        skip_index[j] = false;
-    }
-
-    centroids->heads[h] = build_head((f_pixel){0,0,0,0}, map, map->colors, &centroids->mempool, error_margin, skip_index, &skipped);
-    centroids->heads[h].radius = MAX_DIFF;
-
-    // get_subset_palette could have created a copy
-    if (subset_palette != map->subset_palette) {
-        pam_freecolormap(subset_palette);
-    }
-
-    return centroids;
+    return handle;
 }
 
-LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel *px, int likely_colormap_index, float *diff)
-{
-    const struct head *const heads = centroids->heads;
+static void vp_search_node(const vp_node *node, const f_pixel *const needle, vp_search_tmp *const best_candidate) {
+    do {
+        const float distance = sqrtf(colordifference(node->vantage_point, *needle));
 
-    assert(likely_colormap_index < centroids->map->colors);
-    const float guess_diff = colordifference(*px, centroids->map->palette[likely_colormap_index].acolor);
-    if (guess_diff < centroids->nearest_other_color_dist[likely_colormap_index]) {
+        if (distance < best_candidate->distance && best_candidate->exclude != node->idx) {
+            best_candidate->distance = distance;
+            best_candidate->idx = node->idx;
+        }
+
+        // Recurse towards most likely candidate first to narrow best candidate's distance as soon as possible
+        if (distance < node->radius) {
+            if (node->near) {
+                vp_search_node(node->near, needle, best_candidate);
+            }
+            // The best node (final answer) may be just ouside the radius, but not farther than
+            // the best distance we know so far. The vp_search_node above should have narrowed
+            // best_candidate->distance, so this path is rarely taken.
+            if (node->far && distance >= node->radius - best_candidate->distance) {
+                node = node->far; // Fast tail recursion
+            } else {
+                break;
+            }
+        } else {
+            if (node->far) {
+                vp_search_node(node->far, needle, best_candidate);
+            }
+            if (node->near && distance <= node->radius + best_candidate->distance) {
+                node = node->near; // Fast tail recursion
+            } else {
+                break;
+            }
+        }
+    } while(true);
+}
+
+LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *handle, const f_pixel *px, const int likely_colormap_index, float *diff) {
+    const float guess_diff = colordifference(handle->palette[likely_colormap_index].acolor, *px);
+    const float guess_distance = sqrtf(guess_diff);
+    if (guess_distance < handle->nearest_other_color_dist[likely_colormap_index]) {
         if (diff) *diff = guess_diff;
         return likely_colormap_index;
     }
 
-    for(unsigned int i=0; /* last head will always be selected */ ; i++) {
-        float vantage_point_dist = colordifference(*px, heads[i].vantage_point);
-
-        if (vantage_point_dist <= heads[i].radius) {
-            assert(heads[i].num_candidates);
-            unsigned int ind=0;
-            float dist = colordifference(*px, heads[i].candidates_color[0]);
-
-            for(unsigned int j=1; j < heads[i].num_candidates; j++) {
-                float newdist = colordifference(*px, heads[i].candidates_color[j]);
-
-                if (newdist < dist) {
-                    dist = newdist;
-                    ind = j;
-                }
-            }
-            if (diff) *diff = dist;
-            return heads[i].candidates_index[ind];
-        }
+    vp_search_tmp best_candidate = {
+        .distance = guess_distance,
+        .idx = likely_colormap_index,
+        .exclude = -1,
+    };
+    vp_search_node(handle->root, px, &best_candidate);
+    if (diff) {
+        *diff = best_candidate.distance * best_candidate.distance;
     }
+    return best_candidate.idx;
 }
 
 LIQ_PRIVATE void nearest_free(struct nearest_map *centroids)

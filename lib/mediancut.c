@@ -347,19 +347,10 @@ LIQ_PRIVATE colormap *mediancut(histogram *hist, unsigned int newcolors, const d
 
     unsigned int boxes = 1;
 
-    // remember smaller palette for fast searching
-    colormap *representative_subset = NULL;
-    unsigned int subset_size = ceilf(powf(newcolors,0.7f));
-
     /*
      ** Main loop: split boxes until we have enough.
      */
     while (boxes < newcolors) {
-
-        if (boxes == subset_size) {
-            representative_subset = pam_colormap(boxes, malloc, free);
-            set_colormap_from_boxes(representative_subset, bv, boxes, achv);
-        }
 
         // first splits boxes that exceed quality limit (to have colors for things like odd green pixel),
         // later raises the limit to allow large smooth areas/gradients get colors.
@@ -422,7 +413,6 @@ LIQ_PRIVATE colormap *mediancut(histogram *hist, unsigned int newcolors, const d
     colormap *map = pam_colormap(boxes, malloc, free);
     set_colormap_from_boxes(map, bv, boxes, achv);
 
-    map->subset_palette = representative_subset;
     adjust_histogram(achv, map, bv, boxes);
 
     return map;

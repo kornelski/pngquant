@@ -156,10 +156,8 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, bool fast)
     return centroids;
 }
 
-LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, int likely_colormap_index, const float min_opaque_val, float *diff)
+LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, const f_pixel px, int likely_colormap_index, float *diff)
 {
-    const bool iebug = px.a > min_opaque_val;
-
     const struct head *const heads = centroids->heads;
 
     assert(likely_colormap_index < centroids->map->colors);
@@ -177,18 +175,8 @@ LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *centroids, con
             unsigned int ind=0;
             float dist = colordifference(px, heads[i].candidates_color[0]);
 
-            /* penalty for making holes in IE */
-            if (iebug && heads[i].candidates_color[0].a < 1) {
-                dist += 1.f/1024.f;
-            }
-
             for(unsigned int j=1; j < heads[i].num_candidates; j++) {
                 float newdist = colordifference(px, heads[i].candidates_color[j]);
-
-                /* penalty for making holes in IE */
-                if (iebug && heads[i].candidates_color[j].a < 1) {
-                    newdist += 1.f/1024.f;
-                }
 
                 if (newdist < dist) {
                     dist = newdist;

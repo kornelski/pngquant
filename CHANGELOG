@@ -1,3 +1,7 @@
+version 2.5
+-----------
+ - deprecated IE6 workaround
+
 version 2.4
 -----------
  - fixed remapping of bright colors when dithering

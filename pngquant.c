@@ -12,7 +12,7 @@
 ** - - - -
 **
 ** © 1997-2002 by Greg Roelofs; based on an idea by Stefan Schneider.
-** © 2009-2014 by Kornel Lesiński.
+** © 2009-2015 by Kornel Lesiński.
 **
 ** All rights reserved.
 **

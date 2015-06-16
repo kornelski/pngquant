@@ -5,7 +5,7 @@
   ---------------------------------------------------------------------------
 
    © 1998-2000 by Greg Roelofs.
-   © 2009-2014 by Kornel Lesiński.
+   © 2009-2015 by Kornel Lesiński.
 
    All rights reserved.
 

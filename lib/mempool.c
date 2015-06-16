@@ -1,3 +1,8 @@
+/*
+** © 2011-2015 by Kornel Lesiński.
+** All rights reserved.
+** See COPYRIGHT file for full license.
+*/
 
 #include "libimagequant.h"
 #include "mempool.h"

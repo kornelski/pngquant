@@ -626,7 +626,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         }
     }
 
-    liq_image_destroy(input_image);
+    if (input_image) liq_image_destroy(input_image);
     rwpng_free_image24(&input_image_rwpng);
     rwpng_free_image8(&output_image);
 
@@ -775,8 +775,8 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
         if (retval) {
             unlink(tempname);
         }
-        free(tempname);
     }
+    free(tempname);
 
     if (retval && retval != TOO_LARGE_FILE) {
         fprintf(stderr, "  error: failed writing image to %s\n", outname);

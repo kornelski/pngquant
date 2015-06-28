@@ -144,14 +144,14 @@ inline static void verbose_print(const liq_attr *attr, const char *msg)
 {
     if (attr->log_callback) {
         attr->log_callback(attr, msg, attr->log_callback_user_info);
-}
+    }
 }
 
 static void liq_verbose_printf_flush(liq_attr *attr)
 {
     if (attr->log_flush_callback) {
         attr->log_flush_callback(attr, attr->log_flush_callback_user_info);
-}
+    }
 }
 
 #if USE_SSE
@@ -223,7 +223,7 @@ static unsigned int mse_to_quality(double mse)
     for(int i=100; i > 0; i--) {
         if (mse <= quality_to_mse(i) + 0.000001) { // + epsilon for floating point errors
             return i;
-    }
+        }
     }
     return 0;
 }
@@ -1432,7 +1432,8 @@ static void update_dither_map(unsigned char *const *const row_pointers, liq_imag
     input_image->edges = NULL;
 }
 
-static colormap *add_fixed_colors_to_palette(colormap *palette, const int max_colors, const f_pixel fixed_colors[], const int fixed_colors_count, void* (*malloc)(size_t), void (*free)(void*)) {
+static colormap *add_fixed_colors_to_palette(colormap *palette, const int max_colors, const f_pixel fixed_colors[], const int fixed_colors_count, void* (*malloc)(size_t), void (*free)(void*))
+{
     if (!fixed_colors_count) return palette;
 
     colormap *newpal = pam_colormap(MIN(max_colors, (palette ? palette->colors : 0) + fixed_colors_count), malloc, free);

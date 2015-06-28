@@ -16,9 +16,11 @@
 #if defined(__GNUC__) || defined (__llvm__)
 #define LIQ_PRIVATE __attribute__((visibility("hidden")))
 #define LIQ_NONNULL __attribute__((nonnull))
+#define LIQ_USERESULT __attribute__((warn_unused_result))
 #else
 #define LIQ_PRIVATE
 #define LIQ_NONNULL
+#define LIQ_USERESULT
 #endif
 #endif
 
@@ -54,22 +56,22 @@ typedef enum liq_error {
 
 enum liq_ownership {LIQ_OWN_ROWS=4, LIQ_OWN_PIXELS=8};
 
-LIQ_EXPORT liq_attr* liq_attr_create(void);
-LIQ_EXPORT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), void (*free)(void*));
-LIQ_EXPORT liq_attr* liq_attr_copy(liq_attr *orig) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT liq_attr* liq_attr_create(void);
+LIQ_EXPORT LIQ_USERESULT liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), void (*free)(void*));
+LIQ_EXPORT LIQ_USERESULT liq_attr* liq_attr_copy(liq_attr *orig) LIQ_NONNULL;
 LIQ_EXPORT void liq_attr_destroy(liq_attr *attr) LIQ_NONNULL;
 
 LIQ_EXPORT liq_error liq_set_max_colors(liq_attr* attr, int colors) LIQ_NONNULL;
-LIQ_EXPORT int liq_get_max_colors(const liq_attr* attr) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT int liq_get_max_colors(const liq_attr* attr) LIQ_NONNULL;
 LIQ_EXPORT liq_error liq_set_speed(liq_attr* attr, int speed) LIQ_NONNULL;
-LIQ_EXPORT int liq_get_speed(const liq_attr* attr) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT int liq_get_speed(const liq_attr* attr) LIQ_NONNULL;
 LIQ_EXPORT liq_error liq_set_min_opacity(liq_attr* attr, int min) LIQ_NONNULL;
-LIQ_EXPORT int liq_get_min_opacity(const liq_attr* attr) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT int liq_get_min_opacity(const liq_attr* attr) LIQ_NONNULL;
 LIQ_EXPORT liq_error liq_set_min_posterization(liq_attr* attr, int bits) LIQ_NONNULL;
-LIQ_EXPORT int liq_get_min_posterization(const liq_attr* attr) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT int liq_get_min_posterization(const liq_attr* attr) LIQ_NONNULL;
 LIQ_EXPORT liq_error liq_set_quality(liq_attr* attr, int minimum, int maximum) LIQ_NONNULL;
-LIQ_EXPORT int liq_get_min_quality(const liq_attr* attr) LIQ_NONNULL;
-LIQ_EXPORT int liq_get_max_quality(const liq_attr* attr) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT int liq_get_min_quality(const liq_attr* attr) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT int liq_get_max_quality(const liq_attr* attr) LIQ_NONNULL;
 LIQ_EXPORT void liq_set_last_index_transparent(liq_attr* attr, int is_last) LIQ_NONNULL;
 
 typedef void liq_log_callback_function(const liq_attr*, const char *message, void* user_info);
@@ -77,25 +79,25 @@ typedef void liq_log_flush_callback_function(const liq_attr*, void* user_info);
 LIQ_EXPORT void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void* user_info);
 LIQ_EXPORT void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void* user_info);
 
-LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma) LIQ_NONNULL;
-LIQ_EXPORT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma) LIQ_NONNULL;
 
 typedef void liq_image_get_rgba_row_callback(liq_color row_out[], int row, int width, void* user_info);
-LIQ_EXPORT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma);
+LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma);
 
 LIQ_EXPORT liq_error liq_image_set_memory_ownership(liq_image *image, int ownership_flags) LIQ_NONNULL;
 LIQ_EXPORT liq_error liq_image_add_fixed_color(liq_image *img, liq_color color) LIQ_NONNULL;
-LIQ_EXPORT int liq_image_get_width(const liq_image *img) LIQ_NONNULL;
-LIQ_EXPORT int liq_image_get_height(const liq_image *img) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT int liq_image_get_width(const liq_image *img) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT int liq_image_get_height(const liq_image *img) LIQ_NONNULL;
 LIQ_EXPORT void liq_image_destroy(liq_image *img) LIQ_NONNULL;
 
-LIQ_EXPORT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT liq_result *liq_quantize_image(liq_attr *options, liq_image *input_image) LIQ_NONNULL;
 
 LIQ_EXPORT liq_error liq_set_dithering_level(liq_result *res, float dither_level) LIQ_NONNULL;
 LIQ_EXPORT liq_error liq_set_output_gamma(liq_result* res, double gamma) LIQ_NONNULL;
-LIQ_EXPORT double liq_get_output_gamma(const liq_result *result) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT double liq_get_output_gamma(const liq_result *result) LIQ_NONNULL;
 
-LIQ_EXPORT const liq_palette *liq_get_palette(liq_result *result) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT const liq_palette *liq_get_palette(liq_result *result) LIQ_NONNULL;
 
 LIQ_EXPORT liq_error liq_write_remapped_image(liq_result *result, liq_image *input_image, void *buffer, size_t buffer_size) LIQ_NONNULL;
 LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *result, liq_image *input_image, unsigned char **row_pointers) LIQ_NONNULL;

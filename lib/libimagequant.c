@@ -1447,7 +1447,8 @@ static void update_dither_map(unsigned char *const *const row_pointers, liq_imag
     input_image->edges = NULL;
 }
 
-static colormap *add_fixed_colors_to_palette(colormap *palette, const int max_colors, const f_pixel fixed_colors[], const int fixed_colors_count, void* (*malloc)(size_t), void (*free)(void*)) {
+static colormap *add_fixed_colors_to_palette(colormap *palette, const int max_colors, const f_pixel fixed_colors[], const int fixed_colors_count, void* (*malloc)(size_t), void (*free)(void*))
+{
     if (!fixed_colors_count) return palette;
 
     colormap *newpal = pam_colormap(MIN(max_colors, (palette ? palette->colors : 0) + fixed_colors_count), malloc, free);

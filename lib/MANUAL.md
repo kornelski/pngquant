@@ -15,7 +15,7 @@ Files needed for the library are only in the `lib/` directory inside the reposit
 
 ## Compiling and Linking
 
-The library can be linked with ANSI C and C++ programs. It has no external dependencies.
+The library can be linked with ANSI C, C++ and [Rust](https://crates.io/crates/imagequant/) programs. It has no external dependencies.
 
 To build on Unix-like systems run:
 
@@ -30,6 +30,9 @@ On BSD, use `gmake` (GNU make) rather than the native `make`.
 Alternatively you can compile the library with your program simply by including all `.c` files (and define `NDEBUG` to get a fast version):
 
     gcc -std=c99 -O3 -DNDEBUG lib/*.c yourprogram.c
+
+In [Rust](https://github.com/pornel/libimagequant-rust),
+if using Cargo, add `imagequant` to dependencies.
 
 ### Compiling on Windows/Visual Studio
 

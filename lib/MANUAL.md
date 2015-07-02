@@ -55,13 +55,13 @@ Please note that libimagequant only handles raw uncompressed bitmaps in memory a
     #include "lib/libimagequant.h"
 
     liq_attr *attr = liq_attr_create();
-    liq_image *image = liq_image_create_rgba(attr, bitmap, width, height, 0);
+    liq_image *image = liq_image_create_rgba(attr, bitmap_rgba, width, height, 0);
     liq_result *res = liq_quantize_image(attr, image);
 
-    liq_write_remapped_image(res, image, bitmap, bitmap_size);
+    liq_write_remapped_image(res, image, bitmap_8bpp, bitmap_size);
     const liq_palette *pal = liq_get_palette(res);
 
-    // use image and palette here
+    // save image and palette here
 
     liq_attr_destroy(attr);
     liq_image_destroy(image);

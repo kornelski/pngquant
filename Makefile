@@ -1,7 +1,8 @@
 -include config.mk
 
 BIN ?= pngquant
-BINPREFIX = $(DESTDIR)$(PREFIX)/bin
+BINPREFIX ?= $(DESTDIR)$(PREFIX)/bin
+MANPREFIX ?= $(DESTDIR)$(PREFIX)/share/man
 
 OBJS = pngquant.o rwpng.o
 COCOA_OBJS = rwpng_cocoa.o
@@ -51,9 +52,11 @@ $(TARFILE): $(DISTFILES)
 	rm -rf $(TARNAME)
 	-shasum $(TARFILE)
 
-install: $(BIN)
+install: $(BIN) pngquant.1
 	-mkdir -p '$(BINPREFIX)'
+	-mkdir -p '$(MANPREFIX)/man1'
 	install -m 0755 -p '$(BIN)' '$(BINPREFIX)/$(BIN)'
+	cp pngquant.1 '$(MANPREFIX)/man1/'
 
 uninstall:
 	rm -f '$(BINPREFIX)/$(BIN)'

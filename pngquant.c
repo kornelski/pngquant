@@ -846,8 +846,8 @@ static pngquant_error prepare_output_image(liq_result *result, liq_image *input_
         return OUT_OF_MEMORY_ERROR;
     }
 
-    for(unsigned int row = 0;  row < output_image->height;  ++row) {
-        output_image->row_pointers[row] = output_image->indexed_data + row*output_image->width;
+    for(size_t row = 0; row < output_image->height; row++) {
+        output_image->row_pointers[row] = output_image->indexed_data + row * output_image->width;
     }
 
     const liq_palette *palette = liq_get_palette(result);

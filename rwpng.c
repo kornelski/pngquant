@@ -143,7 +143,7 @@ static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_
 
     png_bytepp row_pointers = malloc(height * sizeof(row_pointers[0]));
     if (!row_pointers) return NULL;
-    for(unsigned int row = 0;  row < height;  ++row) {
+    for(size_t row = 0; row < height; row++) {
         row_pointers[row] = base + row * rowbytes;
     }
     return row_pointers;
@@ -278,7 +278,7 @@ pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr
 
     rowbytes = png_get_rowbytes(png_ptr, info_ptr);
 
-    if ((mainprog_ptr->rgba_data = malloc(rowbytes*mainprog_ptr->height)) == NULL) {
+    if ((mainprog_ptr->rgba_data = malloc(rowbytes * mainprog_ptr->height)) == NULL) {
         fprintf(stderr, "pngquant readpng:  unable to allocate image data\n");
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         return PNG_OUT_OF_MEMORY_ERROR;

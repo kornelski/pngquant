@@ -1333,6 +1333,9 @@ LIQ_NONNULL static void contrast_maps(liq_image *image)
     unsigned char *restrict tmp = image->malloc(cols*rows);
 
     if (!noise || !edges || !tmp) {
+		image->free(noise);
+        image->free(edges);
+		image->free(tmp);
         return;
     }
 

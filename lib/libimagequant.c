@@ -1453,6 +1453,9 @@ LIQ_NONNULL static void update_dither_map(unsigned char *const *const row_pointe
     input_image->edges = NULL;
 }
 
+/**
+ * Palette can be NULL, in which case it creates a new palette from scratch.
+ */
 static colormap *add_fixed_colors_to_palette(colormap *palette, const int max_colors, const f_pixel fixed_colors[], const int fixed_colors_count, void* (*malloc)(size_t), void (*free)(void*))
 {
     if (!fixed_colors_count) return palette;
@@ -1561,6 +1564,18 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
     return acolormap;
 }
 
+static colormap *histogram_to_palette(const histogram *hist, const liq_attr *options) {
+    if (!hist->size) {
+        return NULL;
+    }
+    colormap *acolormap = pam_colormap(hist->size, options->malloc, options->free);
+    for(unsigned int i=0; i < hist->size; i++) {
+        acolormap->palette[i].acolor = hist->achv[i].acolor;
+        acolormap->palette[i].popularity = hist->achv[i].perceptual_weight;
+    }
+    return acolormap;
+}
+
 LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, const liq_image *img)
 {
     colormap *acolormap;
@@ -1573,12 +1588,7 @@ LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr
     // If image has few colors to begin with (and no quality degradation is required)
     // then it's possible to skip quantization entirely
     if (few_input_colors && options->target_mse == 0) {
-        acolormap = pam_colormap(hist->size, options->malloc, options->free);
-        for(unsigned int i=0; i < hist->size; i++) {
-            acolormap->palette[i].acolor = hist->achv[i].acolor;
-            acolormap->palette[i].popularity = hist->achv[i].perceptual_weight;
-        }
-        acolormap = add_fixed_colors_to_palette(acolormap, options->max_colors, img->fixed_colors, img->fixed_colors_count, options->malloc, options->free);
+        acolormap = add_fixed_colors_to_palette(histogram_to_palette(hist, options), options->max_colors, img->fixed_colors, img->fixed_colors_count, options->malloc, options->free);
         palette_error = 0;
     } else {
         const double max_mse = options->max_mse * (few_input_colors ? 0.33 : 1.0); // when degrading image that's already paletted, require much higher improvement, since pal2pal often looks bad and there's little gain

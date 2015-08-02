@@ -593,7 +593,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
         if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) {
             liq_log_error(attr, "invalid row pointers");
             return NULL;
-        }
+    }
     }
     return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
 }
@@ -914,20 +914,20 @@ LIQ_NONNULL static void sort_palette(colormap *map, const liq_attr *options)
     ** therefore be omitted from the tRNS chunk.
     */
     if (options->last_index_transparent) {
-        for(unsigned int i=0; i < map->colors; i++) {
+	for(unsigned int i=0; i < map->colors; i++) {
             if (map->palette[i].acolor.a < 1.0/256.0) {
                 const unsigned int old = i, transparent_dest = map->colors-1;
 
                 SWAP_PALETTE(map, transparent_dest, old);
 
                 /* colors sorted by popularity make pngs slightly more compressible */
-                sort_palette_qsort(map, 0, map->colors-1);
+			sort_palette_qsort(map, 0, map->colors-1);
                 return;
             }
         }
     }
     /* move transparent colors to the beginning to shrink trns chunk */
-    unsigned int num_transparent = 0;
+    unsigned int num_transparent=0;
     for(unsigned int i=0; i < map->colors; i++) {
         if (map->palette[i].acolor.a < 255.0/256.0) {
             // current transparent color is swapped with earlier opaque one
@@ -975,7 +975,7 @@ LIQ_NONNULL static void set_rounded_palette(liq_palette *const dest, colormap *c
 
         map->palette[x].acolor = to_f(gamma_lut, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
-        if (!px.a) {
+        if (!px.a && !map->palette[x].fixed) {
             px.r = 71; px.g = 112; px.b = 76;
         }
 
@@ -1506,7 +1506,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
         colormap *newmap;
         if (hist->size && fixed_colors_count < max_colors) {
             newmap = mediancut(hist, max_colors-fixed_colors_count, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
-                               options->malloc, options->free);
+            options->malloc, options->free);
         } else {
             feedback_loop_trials = 0;
             newmap = NULL;

@@ -6,6 +6,7 @@ TESTDIR=$1
 IMGSRC=$TESTDIR/img
 TMPDIR=$(mktemp -d -t pngquantXXXXXX)
 BIN=$2
+TESTBIN=$3
 PATH=.:$PATH # Required, since BIN may be just 'pngquant'
 
 $BIN --version 2>&1 | fgrep 2.
@@ -65,4 +66,4 @@ do
     wait $job
 done
 
-echo "OK"
+$TESTBIN

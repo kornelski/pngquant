@@ -23,6 +23,8 @@ DLL=libimagequant.dll
 DLLIMP=libimagequant_dll.a
 DLLDEF=libimagequant_dll.def
 
+TESTBIN = test/test
+
 all: $(BIN)
 
 staticlib:
@@ -38,8 +40,11 @@ rwpng_cocoa.o: rwpng_cocoa.m
 $(BIN): $(OBJS) $(STATICLIB)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
-test: $(BIN)
-	./test/test.sh ./test $(BIN)
+$(TESTBIN): test/test.o $(STATICLIB)
+	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
+
+test: $(BIN) $(TESTBIN)
+	./test/test.sh ./test $(BIN) $(TESTBIN)
 
 dist: $(TARFILE)
 

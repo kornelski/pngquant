@@ -9,3 +9,4 @@ pngquant
 build_configuration
 lib/libimagequant.a
 config.mk
+test/test

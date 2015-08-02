@@ -114,7 +114,7 @@ inline static unsigned int qsort_pivot(const hist_item *const base, const unsign
     const unsigned int aidx=8, bidx=len/2, cidx=len-1;
     const unsigned int a=base[aidx].tmp.sort_value, b=base[bidx].tmp.sort_value, c=base[cidx].tmp.sort_value;
     return (a < b) ? ((b < c) ? bidx : ((a < c) ? cidx : aidx ))
-                   : ((b > c) ? bidx : ((a < c) ? aidx : cidx ));
+           : ((b > c) ? bidx : ((a < c) ? aidx : cidx ));
 }
 
 ALWAYS_INLINE static unsigned int qsort_partition(hist_item *const base, const unsigned int len);
@@ -490,7 +490,7 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const f_
             px.r /= px.a;
             px.g /= px.a;
             px.b /= px.a;
-    }
+        }
 
         r += px.r * new_a * weight;
         g += px.g * new_a * weight;

@@ -975,7 +975,7 @@ LIQ_NONNULL static void set_rounded_palette(liq_palette *const dest, colormap *c
         map->palette[x].acolor = to_f(gamma_lut, px); /* saves rounding error introduced by to_rgb, which makes remapping & dithering more accurate */
 
         if (!px.a) {
-            px.r = 'L'; px.g = 'i'; px.b = 'q';
+            px.r = 71; px.g = 112; px.b = 76;
         }
 
         dest->entries[x] = (liq_color){.r=px.r,.g=px.g,.b=px.b,.a=px.a};
@@ -1505,7 +1505,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
         colormap *newmap;
         if (hist->size && fixed_colors_count < max_colors) {
             newmap = mediancut(hist, max_colors-fixed_colors_count, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
-            options->malloc, options->free);
+                               options->malloc, options->free);
         } else {
             feedback_loop_trials = 0;
             newmap = NULL;

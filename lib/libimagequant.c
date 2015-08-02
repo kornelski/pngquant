@@ -899,14 +899,14 @@ LIQ_NONNULL static void sort_palette(colormap *map, const liq_attr *options)
     */
     if (options->last_index_transparent) {
     	for(unsigned int i=0; i < map->colors; i++) {
-        if (map->palette[i].acolor.a < 1.0/256.0) {
-            const unsigned int old = i, transparent_dest = map->colors-1;
+            if (map->palette[i].acolor.a < 1.0/256.0) {
+                const unsigned int old = i, transparent_dest = map->colors-1;
 
-            SWAP_PALETTE(map, transparent_dest, old);
+                SWAP_PALETTE(map, transparent_dest, old);
 
-            /* colors sorted by popularity make pngs slightly more compressible */
+                /* colors sorted by popularity make pngs slightly more compressible */
         		sort_palette_qsort(map, 0, map->colors-1);
-            return;
+                return;
             }
         }
     }

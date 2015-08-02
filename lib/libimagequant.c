@@ -926,9 +926,18 @@ LIQ_NONNULL static void sort_palette(colormap *map, const liq_attr *options)
             }
         }
     }
+
+    unsigned int non_fixed_colors = 0;
+    for(int i = 0; i < map->colors; i++) {
+        if (map->palette[i].fixed) {
+            break;
+        }
+        non_fixed_colors++;
+    }
+
     /* move transparent colors to the beginning to shrink trns chunk */
-    unsigned int num_transparent=0;
-    for(unsigned int i=0; i < map->colors; i++) {
+    unsigned int num_transparent = 0;
+    for(unsigned int i = 0; i < non_fixed_colors; i++) {
         if (map->palette[i].acolor.a < 255.0/256.0) {
             // current transparent color is swapped with earlier opaque one
             if (i != num_transparent) {
@@ -945,9 +954,9 @@ LIQ_NONNULL static void sort_palette(colormap *map, const liq_attr *options)
      * opaque and transparent are sorted separately
      */
     sort_palette_qsort(map, 0, num_transparent);
-    sort_palette_qsort(map, num_transparent, map->colors-num_transparent);
+    sort_palette_qsort(map, num_transparent, non_fixed_colors - num_transparent);
 
-    if (map->colors > 16) {
+    if (non_fixed_colors > 9 && map->colors > 16) {
         SWAP_PALETTE(map, 7, 1); // slightly improves compression
         SWAP_PALETTE(map, 8, 2);
         SWAP_PALETTE(map, 9, 3);

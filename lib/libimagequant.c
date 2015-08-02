@@ -897,6 +897,7 @@ LIQ_NONNULL static int compare_popularity(const void *ch1, const void *ch2)
 
 LIQ_NONNULL static void sort_palette_qsort(colormap *map, int start, int nelem)
 {
+    if (!nelem) return;
     qsort(map->palette + start, nelem, sizeof(map->palette[0]), compare_popularity);
 }
 

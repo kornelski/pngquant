@@ -229,7 +229,7 @@ error() {
 echo
 
 # basic check
-if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /dev/null - &> /dev/null; then
+if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /dev/null - > /dev/null; then
     error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
 fi
 

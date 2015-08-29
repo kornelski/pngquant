@@ -895,7 +895,7 @@ LIQ_EXPORT LIQ_NONNULL int liq_get_quantization_quality(liq_result *result) {
     return -1;
 }
 
-LIQ_EXPORT LIQ_NONNULL double liq_get_remapping_quality(liq_result *result) {
+LIQ_EXPORT LIQ_NONNULL int liq_get_remapping_quality(liq_result *result) {
     if (!CHECK_STRUCT_TYPE(result, liq_result)) return -1;
 
     if (result->remapping && result->remapping->palette_error >= 0) {

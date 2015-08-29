@@ -286,7 +286,7 @@ inline static double color_weight(f_pixel median, hist_item h)
 static void set_colormap_from_boxes(colormap *map, struct box* bv, unsigned int boxes, hist_item *achv);
 static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, unsigned int boxes);
 
-double box_error(const struct box *box, const hist_item achv[])
+static double box_error(const struct box *box, const hist_item achv[])
 {
     f_pixel avg = box->color;
 

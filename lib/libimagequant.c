@@ -945,7 +945,7 @@ LIQ_NONNULL static void sort_palette(colormap *map, const liq_attr *options)
     }
 
     unsigned int non_fixed_colors = 0;
-    for(int i = 0; i < map->colors; i++) {
+    for(unsigned int i = 0; i < map->colors; i++) {
         if (map->palette[i].fixed) {
             break;
         }

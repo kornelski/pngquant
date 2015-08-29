@@ -123,7 +123,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, const bool fas
 
     vp_sort_tmp indexes[map->colors];
 
-    for(int i=0; i < map->colors; i++) {
+    for(unsigned int i=0; i < map->colors; i++) {
         indexes[i].idx = i;
     }
 

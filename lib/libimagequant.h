@@ -109,6 +109,8 @@ LIQ_EXPORT int liq_get_remapping_quality(liq_result *result) LIQ_NONNULL;
 
 LIQ_EXPORT void liq_result_destroy(liq_result *) LIQ_NONNULL;
 
+LIQ_EXPORT int liq_version(void);
+
 #ifdef __cplusplus
 }
 #endif

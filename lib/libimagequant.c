@@ -244,6 +244,12 @@ static unsigned int mse_to_quality(double mse)
     return 0;
 }
 
+/** internally MSE is a sum of all channels with pixels 0..1 range,
+ but other software gives per-RGB-channel MSE for 0..255 range */
+static double mse_to_standard_mse(double mse) {
+    return mse * 65536.0/6.0;
+}
+
 LIQ_EXPORT LIQ_NONNULL liq_error liq_set_quality(liq_attr* attr, int minimum, int target)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
@@ -858,23 +864,22 @@ LIQ_EXPORT LIQ_NONNULL void liq_result_destroy(liq_result *res)
     res->free(res);
 }
 
-LIQ_EXPORT LIQ_NONNULL double liq_get_quantization_error(liq_result *result)
-{
+
+LIQ_EXPORT LIQ_NONNULL double liq_get_quantization_error(liq_result *result) {
     if (!CHECK_STRUCT_TYPE(result, liq_result)) return -1;
 
     if (result->palette_error >= 0) {
-        return result->palette_error*65536.0/6.0;
+        return mse_to_standard_mse(result->palette_error);
     }
 
     if (result->remapping && result->remapping->palette_error >= 0) {
-        return result->remapping->palette_error*65536.0/6.0;
+        return mse_to_standard_mse(result->remapping->palette_error);
     }
 
-    return result->palette_error;
+    return -1;
 }
 
-LIQ_EXPORT LIQ_NONNULL int liq_get_quantization_quality(liq_result *result)
-{
+LIQ_EXPORT LIQ_NONNULL int liq_get_quantization_quality(liq_result *result) {
     if (!CHECK_STRUCT_TYPE(result, liq_result)) return -1;
 
     if (result->palette_error >= 0) {
@@ -885,7 +890,7 @@ LIQ_EXPORT LIQ_NONNULL int liq_get_quantization_quality(liq_result *result)
         return mse_to_quality(result->remapping->palette_error);
     }
 
-    return result->palette_error;
+    return -1;
 }
 
 LIQ_NONNULL static int compare_popularity(const void *ch1, const void *ch2)
@@ -1643,8 +1648,8 @@ LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr
 
         if (palette_error > max_mse) {
             liq_verbose_printf(options, "  image degradation MSE=%.3f (Q=%d) exceeded limit of %.3f (%d)",
-                               palette_error*65536.0/6.0, mse_to_quality(palette_error),
-                               max_mse*65536.0/6.0, mse_to_quality(max_mse));
+                               mse_to_standard_mse(palette_error), mse_to_quality(palette_error),
+                               mse_to_standard_mse(max_mse), mse_to_quality(max_mse));
             pam_freecolormap(acolormap);
             return NULL;
         }

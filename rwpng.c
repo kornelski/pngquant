@@ -185,7 +185,7 @@ static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
     26 = wrong PNG color type (no alpha channel)
  */
 
-pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr, int verbose)
+static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr, int verbose)
 {
     png_structp  png_ptr = NULL;
     png_infop    info_ptr = NULL;
@@ -469,7 +469,7 @@ static pngquant_error rwpng_write_image_init(rwpng_png_image *mainprog_ptr, png_
 }
 
 
-void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_bytepp row_pointers)
+static void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_bytepp row_pointers)
 {
     png_write_info(*png_ptr_p, *info_ptr_p);
 
@@ -482,7 +482,7 @@ void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_bytepp r
     png_destroy_write_struct(png_ptr_p, info_ptr_p);
 }
 
-void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma)
+static void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma)
 {
     /* remap sets gamma to 0.45455 */
     png_set_gAMA(png_ptr, info_ptr, gamma);

@@ -378,6 +378,14 @@ This function may return `-1` if the value is not available (this happens when a
 
 ----
 
+    double liq_get_remapping_error(liq_result *result);
+
+Returns mean square error of last remapping done (square of difference between pixel values in the remapped image and its remapped version). Alpha channel and gamma correction are taken into account, so the result isn't exactly the mean square error of all channels.
+
+This function may return `-1` if the value is not available (this happens when a high speed has been requested or the image hasn't been remapped yet).
+
+----
+
     double liq_get_quantization_quality(liq_result *result);
 
 Analoguous to `liq_get_quantization_error()`, but returns quantization error as quality value in the same 0-100 range that is used by `liq_set_quality()`.
@@ -398,6 +406,12 @@ This function can be used to add upper limit to quality options presented to the
         res = liq_quantize_image(attr, img);
     }
     liq_write_remapped_image(…);
+
+----
+
+    double liq_get_remapping_quality(liq_result *result);
+
+Analoguous to `liq_get_remapping_error()`, but returns quantization error as quality value in the same 0-100 range that is used by `liq_set_quality()`.
 
 ----
 

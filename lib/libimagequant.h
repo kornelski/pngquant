@@ -9,8 +9,8 @@
 #define LIQ_EXPORT extern
 #endif
 
-#define LIQ_VERSION 20501
-#define LIQ_VERSION_STRING "2.5.1"
+#define LIQ_VERSION 20502
+#define LIQ_VERSION_STRING "2.5.2"
 
 #ifndef LIQ_PRIVATE
 #if defined(__GNUC__) || defined (__llvm__)
@@ -104,6 +104,8 @@ LIQ_EXPORT liq_error liq_write_remapped_image_rows(liq_result *result, liq_image
 
 LIQ_EXPORT double liq_get_quantization_error(liq_result *result) LIQ_NONNULL;
 LIQ_EXPORT int liq_get_quantization_quality(liq_result *result) LIQ_NONNULL;
+LIQ_EXPORT double liq_get_remapping_error(liq_result *result) LIQ_NONNULL;
+LIQ_EXPORT int liq_get_remapping_quality(liq_result *result) LIQ_NONNULL;
 
 LIQ_EXPORT void liq_result_destroy(liq_result *) LIQ_NONNULL;
 

@@ -872,6 +872,12 @@ LIQ_EXPORT LIQ_NONNULL double liq_get_quantization_error(liq_result *result) {
         return mse_to_standard_mse(result->palette_error);
     }
 
+    return -1;
+}
+
+LIQ_EXPORT LIQ_NONNULL double liq_get_remapping_error(liq_result *result) {
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) return -1;
+
     if (result->remapping && result->remapping->palette_error >= 0) {
         return mse_to_standard_mse(result->remapping->palette_error);
     }
@@ -885,6 +891,12 @@ LIQ_EXPORT LIQ_NONNULL int liq_get_quantization_quality(liq_result *result) {
     if (result->palette_error >= 0) {
         return mse_to_quality(result->palette_error);
     }
+
+    return -1;
+}
+
+LIQ_EXPORT LIQ_NONNULL double liq_get_remapping_quality(liq_result *result) {
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) return -1;
 
     if (result->remapping && result->remapping->palette_error >= 0) {
         return mse_to_quality(result->remapping->palette_error);

@@ -489,7 +489,7 @@ void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma)
     png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
 }
 
-pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
+pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 {
     png_structp png_ptr;
     png_infop info_ptr;
@@ -562,7 +562,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
     return write_state.retval;
 }
 
-pngquant_error rwpng_write_image24(FILE *outfile, const png24_image *mainprog_ptr)
+pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
 {
     png_structp png_ptr;
     png_infop info_ptr;

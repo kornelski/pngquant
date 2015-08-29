@@ -382,7 +382,9 @@ This function should be called *after* `liq_write_remapped_image()`. It may retu
 
 Analoguous to `liq_get_quantization_error()`, but returns quantization error as quality value in the same 0-100 range that is used by `liq_set_quality()`.
 
-This function should be called *after* `liq_write_remapped_image()`. It may return `-1` if the value is not available (this is affected by `liq_set_speed()` and `liq_set_quality()`).
+This function gives an approximation if it's called before `liq_write_remapped_image()`. After remapping it gives the actual quality.
+
+It may return `-1` if the value is not available (this is affected by `liq_set_speed()` and `liq_set_quality()`).
 
 This function can be used to add upper limit to quality options presented to the user, e.g.
 

@@ -370,11 +370,11 @@ Returns `LIQ_INVALID_POINTER` if `result` or `input_image` is `NULL`.
 
     double liq_get_quantization_error(liq_result *result);
 
-Returns mean square error of quantization (square of difference between pixel values in the original image and remapped image). Alpha channel and gamma correction are taken into account, so the result isn't exactly the mean square error of all channels.
+Returns mean square error of quantization (square of difference between pixel values in the source image and its remapped version). Alpha channel, gamma correction and approximate importance of pixels is taken into account, so the result isn't exactly the mean square error of all channels.
 
 For most images MSE 1-5 is excellent. 7-10 is OK. 20-30 will have noticeable errors. 100 is awful.
 
-This function should be called *after* `liq_write_remapped_image()`. It may return `-1` if the value is not available (this is affected by `liq_set_speed()` and `liq_set_quality()`).
+This function may return `-1` if the value is not available (this happens when a high speed has been requested, the image hasn't been remapped yet, and quality limit hasn't been set, see `liq_set_speed()` and `liq_set_quality()`). The value is not updated when multiple images are remapped, it applies only to the image used in `liq_quantize_image()` or the first image that has been remapped. See `liq_get_remapping_error()`.
 
 ----
 
@@ -382,9 +382,7 @@ This function should be called *after* `liq_write_remapped_image()`. It may retu
 
 Analoguous to `liq_get_quantization_error()`, but returns quantization error as quality value in the same 0-100 range that is used by `liq_set_quality()`.
 
-This function gives an approximation if it's called before `liq_write_remapped_image()`. After remapping it gives the actual quality.
-
-It may return `-1` if the value is not available (this is affected by `liq_set_speed()` and `liq_set_quality()`).
+It may return `-1` if the value is not available (see note in `liq_get_quantization_error()`).
 
 This function can be used to add upper limit to quality options presented to the user, e.g.
 

@@ -310,7 +310,7 @@ LIQ_EXPORT LIQ_NONNULL liq_error liq_set_speed(liq_attr* attr, int speed)
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return LIQ_INVALID_POINTER;
     if (speed < 1 || speed > 10) return LIQ_VALUE_OUT_OF_RANGE;
 
-    int iterations = MAX(8-speed,0); iterations += iterations * iterations/2;
+    unsigned int iterations = MAX(8-speed, 0); iterations += iterations * iterations/2;
     attr->voronoi_iterations = iterations;
     attr->voronoi_iteration_limit = 1.0/(double)(1<<(23-speed));
     attr->feedback_loop_trials = MAX(56-9*speed, 0);
@@ -1350,7 +1350,7 @@ LIQ_NONNULL static void modify_alpha(liq_image *input_image, rgba_pixel *const r
  */
 LIQ_NONNULL static void contrast_maps(liq_image *image)
 {
-    const int cols = image->width, rows = image->height;
+    const unsigned int cols = image->width, rows = image->height;
     if (cols < 4 || rows < 4 || (3*cols*rows) > LIQ_HIGH_MEMORY_LIMIT) {
         return;
     }
@@ -1369,13 +1369,13 @@ LIQ_NONNULL static void contrast_maps(liq_image *image)
     const f_pixel *curr_row, *prev_row, *next_row;
     curr_row = prev_row = next_row = liq_image_get_row_f(image, 0);
 
-    for (int j=0; j < rows; j++) {
+    for (unsigned int j=0; j < rows; j++) {
         prev_row = curr_row;
         curr_row = next_row;
         next_row = liq_image_get_row_f(image, MIN(rows-1,j+1));
 
         f_pixel prev, curr = curr_row[0], next=curr;
-        for (int i=0; i < cols; i++) {
+        for (unsigned int i=0; i < cols; i++) {
             prev=curr;
             curr=next;
             next = curr_row[MIN(cols-1,i+1)];
@@ -1423,7 +1423,7 @@ LIQ_NONNULL static void contrast_maps(liq_image *image)
 
     liq_min3(edges, tmp, cols, rows);
     liq_max3(tmp, edges, cols, rows);
-    for(int i=0; i < cols*rows; i++) edges[i] = MIN(noise[i], edges[i]);
+    for(unsigned int i=0; i < cols*rows; i++) edges[i] = MIN(noise[i], edges[i]);
 
     image->free(tmp);
 

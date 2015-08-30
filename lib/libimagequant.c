@@ -599,7 +599,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
         if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) {
             liq_log_error(attr, "invalid row pointers");
             return NULL;
-    }
+        }
     }
     return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
 }
@@ -931,14 +931,14 @@ LIQ_NONNULL static void sort_palette(colormap *map, const liq_attr *options)
     ** therefore be omitted from the tRNS chunk.
     */
     if (options->last_index_transparent) {
-	for(unsigned int i=0; i < map->colors; i++) {
+        for(unsigned int i=0; i < map->colors; i++) {
             if (map->palette[i].acolor.a < 1.0/256.0) {
                 const unsigned int old = i, transparent_dest = map->colors-1;
 
                 SWAP_PALETTE(map, transparent_dest, old);
 
                 /* colors sorted by popularity make pngs slightly more compressible */
-			sort_palette_qsort(map, 0, map->colors-1);
+                sort_palette_qsort(map, 0, map->colors-1);
                 return;
             }
         }
@@ -1360,9 +1360,9 @@ LIQ_NONNULL static void contrast_maps(liq_image *image)
     unsigned char *restrict tmp = image->malloc(cols*rows);
 
     if (!noise || !edges || !tmp) {
-		image->free(noise);
+        image->free(noise);
         image->free(edges);
-		image->free(tmp);
+        image->free(tmp);
         return;
     }
 

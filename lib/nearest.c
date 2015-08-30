@@ -137,7 +137,7 @@ static void vp_search_node(const vp_node *node, const f_pixel *const needle, vp_
     do {
         const float distance = sqrtf(colordifference(node->vantage_point, *needle));
 
-        if (distance < best_candidate->distance && best_candidate->exclude != node->idx) {
+        if (distance < best_candidate->distance && best_candidate->exclude != (int)node->idx) {
             best_candidate->distance = distance;
             best_candidate->idx = node->idx;
         }

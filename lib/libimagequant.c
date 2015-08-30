@@ -1230,7 +1230,7 @@ LIQ_NONNULL static void remove_fixed_colors_from_histogram(histogram *hist, cons
 {
     const float max_difference = MAX(target_mse/2.0, 2.0/256.0/256.0);
     if (input_image->fixed_colors_count) {
-        for(int j=0; j < hist->size; j++) {
+        for(int j=0; j < (int)hist->size; j++) {
             for(unsigned int i=0; i < input_image->fixed_colors_count; i++) {
                 if (colordifference(hist->achv[j].acolor, input_image->fixed_colors[i]) < max_difference) {
                     hist->achv[j] = hist->achv[--hist->size]; // remove color from histogram by overwriting with the last entry
@@ -1472,10 +1472,10 @@ static colormap *add_fixed_colors_to_palette(colormap *palette, const int max_co
 {
     if (!fixed_colors_count) return palette;
 
-    colormap *newpal = pam_colormap(MIN(max_colors, (palette ? palette->colors : 0) + fixed_colors_count), malloc, free);
+    colormap *newpal = pam_colormap(MIN(max_colors, (palette ? (int)palette->colors : 0) + fixed_colors_count), malloc, free);
     unsigned int i=0;
     if (palette && fixed_colors_count < max_colors) {
-        unsigned int palette_max = MIN(palette->colors, max_colors - fixed_colors_count);
+        unsigned int palette_max = MIN((int)palette->colors, max_colors - fixed_colors_count);
         for(; i < palette_max; i++) {
             newpal->palette[i] = palette->palette[i];
         }

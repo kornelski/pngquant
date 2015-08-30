@@ -268,6 +268,7 @@ inline static double color_weight(f_pixel median, hist_item h)
 
 static void set_colormap_from_boxes(colormap *map, struct box* bv, unsigned int boxes, hist_item *achv);
 static void adjust_histogram(hist_item *achv, const colormap *map, const struct box* bv, unsigned int boxes);
+static double box_error(const struct box *box, const hist_item achv[]);
 
 static double box_error(const struct box *box, const hist_item achv[])
 {
@@ -362,7 +363,7 @@ LIQ_PRIVATE colormap *mediancut(histogram *hist, unsigned int newcolors, const d
         // hist_item_sort_halfvar sorts and sums lowervar at the same time
         // returns item to break at …minus one, which does smell like an off-by-one error.
         hist_item *break_p = hist_item_sort_halfvar(&achv[indx], clrs, &lowervar, halfvar);
-        unsigned int break_at = MIN(clrs-1, break_p - &achv[indx] + 1);
+        unsigned int break_at = MIN(clrs-1, (unsigned int)(break_p - &achv[indx] + 1));
 
         /*
          ** Split the box.

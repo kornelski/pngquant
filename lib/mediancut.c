@@ -495,10 +495,10 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], f_pixel 
     }
 
     if (sum) {
-    a /= sum;
-    r /= sum;
-    g /= sum;
-    b /= sum;
+        a /= sum;
+        r /= sum;
+        g /= sum;
+        b /= sum;
     }
 
     assert(!isnan(r) && !isnan(g) && !isnan(b) && !isnan(a));

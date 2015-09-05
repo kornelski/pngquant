@@ -10,8 +10,6 @@ DLLDEF=libimagequant_dll.def
 OBJS = pam.o mediancut.o blur.o mempool.o viter.o nearest.o libimagequant.o
 SHAREDOBJS = $(subst .o,.lo,$(OBJS))
 
-BUILD_CONFIGURATION="$(CC) $(CFLAGS) $(LDFLAGS)"
-
 DISTFILES = $(OBJS:.o=.c) *.h MANUAL.md COPYRIGHT Makefile configure
 TARNAME = libimagequant-$(VERSION)
 TARFILE = $(TARNAME)-src.tar.bz2

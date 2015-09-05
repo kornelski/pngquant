@@ -21,14 +21,18 @@ for i in "$@"; do
     case $i in
     --help)
         echo
-        help "--prefix=                     installation directory [$PREFIX]"
-        help "--extra-cflags=               append to CFLAGS"
-        help "--extra-ldflags=              append to LDFLAGS"
+        help "--prefix=<dir>                installation directory [$PREFIX]"
+        help "--extra-cflags=<flags>        append to CFLAGS"
+        help "--extra-ldflags=<flags>       append to LDFLAGS"
         echo
         help "--enable-debug"
         help "--enable-sse/--disable-sse    enable/disable SSE instructions"
         echo
-        help "--with-openmp                 compile with multicore support"
+        help "--with-openmp=static          compile with multicore support"
+        echo
+        help "CC=<compiler>                 use given compiler command"
+        help "CFLAGS=<flags>                pass options to the compiler"
+        help "LDFLAGS=<flags>               pass options to the linker"
         echo
         exit 0
         ;;
@@ -54,6 +58,9 @@ for i in "$@"; do
     --with-openmp)
         OPENMP=1
         ;;
+    --with-openmp=static)
+        OPENMP=static
+        ;;
     --prefix=*)
         PREFIX=${i#*=}
         ;;
@@ -65,7 +72,7 @@ for i in "$@"; do
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS ${i#*=}"
         ;;
     *)
-        echo "error: unknown switch ${i%%=*}"
+        echo "error: unknown switch ${i%%=*} (see $0 --help for the list)"
         exit 1
         ;;
     esac
@@ -93,7 +100,7 @@ status() {
 # Append to CFLAGS if compiler supports flag, with optional prerequisite.
 # Fails on errors and warnings.
 conditional_cflags() {
-    if [ -z "$("$CC" -xc -S -o /dev/null $2 $1 <(echo) 2>&1)" ]; then
+    if [ -z "echo | $("$CC" -xc -S -o /dev/null $2 $1 2>&1)" ]; then
         cflags "$1"
     fi
 }
@@ -107,8 +114,8 @@ error() {
 echo
 
 # basic check
-if ! "$CC" -xc -std=c99 <(echo "int main(){}") -o /dev/null &> /dev/null; then
-    error "Compiler" "$CC is no C compiler"
+if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /dev/null - > /dev/null; then
+    error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
 fi
 
 status "Compiler" "$CC"
@@ -149,15 +156,19 @@ fi
 
 # OpenMP
 if [ -n "$OPENMP" ]; then
-    if [[ "$("$CC" -xc -E -fopenmp <(echo -e \
-          "#ifdef _OPENMP
+    if [ "static" = "$OPENMP" ]; then
+        OPENMPFLAGS="-static-libgcc -Bstatic -fopenmp -Bdynamic"
+    else
+        OPENMPFLAGS="-fopenmp"
+    fi
+    if [[ "$("$CC" -xc -E $OPENMPFLAGS <(echo "#ifdef _OPENMP
            #include <omp.h>
            #endif") 2>&1)" =~ "omp_get_thread_num" ]]; then
-        cflags "-fopenmp"
-        lflags "-fopenmp"
+        cflags "$OPENMPFLAGS"
+        lflags "$OPENMPFLAGS"
         status "OpenMP" "yes"
     else
-        error "OpenMP" "not supported by compiler"
+        error "OpenMP" "not supported by compiler (please install a compiler that supports OpenMP (e.g. gcc) and specify it with the CC= argument)"
     fi
 else
     # silence warnings about omp pragmas
@@ -202,4 +213,4 @@ VERSION = $VERSION
 CC = $CC
 CFLAGS = $CFLAGS
 LDFLAGS = $LDFLAGS
-" > $CONFIG
+" > "$CONFIG"

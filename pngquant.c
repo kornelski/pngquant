@@ -164,10 +164,10 @@ static void print_full_version(FILE *fd)
 {
     fprintf(fd, "pngquant, %s, by Greg Roelofs, Kornel Lesinski.\n"
         #ifndef NDEBUG
-                    "   DEBUG (slow) version.\n" /* NDEBUG disables assert() */
+                    "   WARNING: this is a DEBUG (slow) version.\n" /* NDEBUG disables assert() */
         #endif
-        #if USE_SSE
-                    "   Compiled with SSE instructions.\n"
+        #if !USE_SSE && (defined(__SSE__) || defined(__amd64__) || defined(__X86_64__) || defined(__i386__))
+                    "   SSE acceleration disabled.\n"
         #endif
         #if _OPENMP
                     "   Compiled with OpenMP (multicore support).\n"

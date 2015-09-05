@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (August 2015)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (September 2015)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\
@@ -47,16 +47,15 @@ usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\
 options:\n\
   --force           overwrite existing output files (synonym: -f)\n\
   --skip-if-larger  only save converted files if they're smaller than original\n\
-  --output file     output path, only if one input file is specified (synonym: -o)\n\
+  --output file     destination file path to use instead of --ext (synonym: -o)\n\
   --ext new.png     set custom suffix/extension for output filenames\n\
   --quality min-max don't save below min, use fewer colors below max (0-100)\n\
   --speed N         speed/quality trade-off. 1=slow, 3=default, 11=fast & rough\n\
   --nofs            disable Floyd-Steinberg dithering\n\
-  --posterize N     output lower resolution color (e.g. for ARGB4444 output)\n\
+  --posterize N     output lower-precision color (e.g. for ARGB4444 output)\n\
   --verbose         print status messages (synonym: -v)\n\
 \n\
-Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette\n\
-PNGs using Floyd-Steinberg diffusion dithering (unless disabled).\n\
+Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette.\n\
 The output filename is the same as the input name except that\n\
 it ends in \"-fs8.png\", \"-or8.png\" or your custom extension (unless the\n\
 input is stdin, in which case the quantized image will go to stdout).\n\

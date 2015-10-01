@@ -40,8 +40,8 @@ for i in "$@"; do
         help "--with-lcms2/--without-lcms2  compile with color profile support"
 if [[ "$OSTYPE" =~ "darwin" ]]; then
         help "--with-cocoa/--without-cocoa  use Cocoa framework to read images"
-        help "--with-libpng=<dir>           search for libpng in directory"
 fi
+        help "--with-libpng=<dir>           search for libpng in directory"
         echo
         help "CC=<compiler>                 use given compiler command"
         help "CFLAGS=<flags>                pass options to the compiler"
@@ -308,7 +308,13 @@ if [[ "$OSTYPE" =~ "darwin" ]]; then
 fi
 
 # pairs of possible *.h and lib*.so locations
-DIRS=("/usr/local/include /usr/local/lib"
+DIRS=()
+
+if which -s libpng-config; then
+    DIRS+=("$(libpng-config --prefix) $(libpng-config --libdir)")
+fi
+
+DIRS+=("/usr/local/include /usr/local/lib"
       "/usr/include /usr/lib"
       "/opt/local/include /opt/local/lib" # macports
       )

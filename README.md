@@ -2,10 +2,10 @@
 
 [This](https://github.com/pornel/pngquant) is the official `pngquant` and `libimagequant`.
 
-[pngquant](http://pngquant.org) converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*.
-Such images are compatible with all modern browsers, and a special compatibility setting exists which helps transparency degrade well in Internet Explorer 6.
+[pngquant](https://pngquant.org) converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*.
+Such images are fully standards-compliant and are supported by all web browsers.
 
-Quantized files are often 40-70% smaller than their 24/32-bit version.
+Quantized files are often 60-80% smaller than their 24/32-bit versions.
 
 This utility works on Linux, Mac OS X and Windows.
 
@@ -14,7 +14,7 @@ This utility works on Linux, Mac OS X and Windows.
 - batch conversion of multiple files: `pngquant *.png`
 - Unix-style stdin/stdout chaining: `… | pngquant - | …`
 
-To further reduce file size, try [optipng](http://optipng.sourceforge.net) or [ImageOptim](http://imageoptim.pornel.net).
+To further reduce file size, try [optipng](http://optipng.sourceforge.net) or [ImageOptim](https://imageoptim.com).
 
 ##Improvements since 1.0
 
@@ -28,16 +28,16 @@ Generated files are both smaller and look much better.
   - feedback loop that repeats median cut for poorly quantized colors
   - additional colormap improvement using Voronoi iteration
   - supports much larger number of colors in input images without degradation of quality
-  - gamma correction (output is always generated with gamma 2.2 for web compatibility)
+  - gamma correction and optional color profile support (output is always in gamma 2.2 for web compatibility)
 
 * More flexible commandline usage
 
-  - number of colors defaults to 256
+  - number of colors defaults to 256, and can be set automatically with the `--quality` switch
   - long options and standard switches like `--` and `-` are allowed
 
 * Refactored and modernised code
 
-  - C99 with no workarounds for old systems
+  - C99 with no workarounds for legacy systems or compilers ([apart from Visual Studio](https://github.com/pornel/pngquant/tree/msvc))
   - floating-point math used throughout
   - Intel SSE optimisations
   - multicore support via OpenMP
@@ -75,7 +75,7 @@ Disables Floyd-Steinberg dithering.
 
 ###`--floyd=0.5`
 
-Controls level of dithering (0 = none, 1 = full).
+Controls level of dithering (0 = none, 1 = full). Note that the `=` character is required.
 
 ###`--posterize bits`
 

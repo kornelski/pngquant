@@ -1,7 +1,14 @@
+version 2.6
+-----------
+ - when source image has no color profile information, the output won't have either
+
 version 2.5
 -----------
  - replaced color search algorithm with vantage point tree, which is much faster and more reliable
  - deprecated IE6 workaround
+ - warn when compiled without color profile support
+ - improved support for predefined colors in libimagequant
+ - Rust API for libimagequant
 
 version 2.4
 -----------

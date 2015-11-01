@@ -262,13 +262,20 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
         png_set_gray_to_rgb(png_ptr);
     }
 
-
     /* get source gamma for gamma correction, or use sRGB default */
     double gamma = 0.45455;
-    if (!png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB)) {
+    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_sRGB)) {
+        mainprog_ptr->input_color = RWPNG_SRGB;
+        mainprog_ptr->output_color = RWPNG_SRGB;
+    } else {
         png_get_gAMA(png_ptr, info_ptr, &gamma);
-        if (gamma < 0 || gamma > 1.0) {
+        if (gamma > 0 && gamma <= 1.0) {
+            mainprog_ptr->input_color = RWPNG_GAMA_ONLY;
+            mainprog_ptr->output_color = RWPNG_GAMA_ONLY;
+        } else {
             fprintf(stderr, "pngquant readpng:  ignored out-of-range gamma %f\n", gamma);
+            mainprog_ptr->input_color = RWPNG_NONE;
+            mainprog_ptr->output_color = RWPNG_NONE;
             gamma = 0.45455;
         }
     }
@@ -313,8 +320,6 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
     /* color_type is read from the image before conversion to RGBA */
     int COLOR_PNG = color_type & PNG_COLOR_MASK_COLOR;
 
-    mainprog_ptr->lcms_status = NONE;
-
     /* embedded ICC profile */
     if (png_get_iCCP(png_ptr, info_ptr, &(png_charp){0}, &(int){0}, &ProfileData, &ProfileLen)) {
 
@@ -323,10 +328,12 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
 
         /* only RGB (and GRAY) valid for PNGs */
         if (colorspace == cmsSigRgbData && COLOR_PNG) {
-            mainprog_ptr->lcms_status = ICCP;
+            mainprog_ptr->input_color = RWPNG_ICCP;
+            mainprog_ptr->output_color = RWPNG_SRGB;
         } else {
             if (colorspace == cmsSigGrayData && !COLOR_PNG) {
-                mainprog_ptr->lcms_status = ICCP_WARN_GRAY;
+                mainprog_ptr->input_color = RWPNG_ICCP_WARN_GRAY;
+                mainprog_ptr->output_color = RWPNG_SRGB;
             }
             cmsCloseProfile(hInProfile);
             hInProfile = NULL;
@@ -356,7 +363,8 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
 
         cmsFreeToneCurve(GammaTable[0]);
 
-        mainprog_ptr->lcms_status = GAMA_CHRM;
+        mainprog_ptr->input_color = RWPNG_GAMA_CHRM;
+        mainprog_ptr->output_color = RWPNG_SRGB;
     }
 
     /* transform image to sRGB colorspace */
@@ -482,11 +490,14 @@ static void rwpng_write_end(png_infopp info_ptr_p, png_structpp png_ptr_p, png_b
     png_destroy_write_struct(png_ptr_p, info_ptr_p);
 }
 
-static void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma)
+static void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamma, rwpng_color_transform color)
 {
-    /* remap sets gamma to 0.45455 */
-    png_set_gAMA(png_ptr, info_ptr, gamma);
-    png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
+    if (color != RWPNG_GAMA_ONLY && color != RWPNG_NONE) {
+        png_set_gAMA(png_ptr, info_ptr, gamma);
+    }
+    if (color == RWPNG_SRGB) {
+        png_set_sRGB(png_ptr, info_ptr, 0); // 0 = Perceptual
+    }
 }
 
 pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
@@ -508,7 +519,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
     // Palette images generally don't gain anything from filtering
     png_set_filter(png_ptr, PNG_FILTER_TYPE_BASE, PNG_FILTER_VALUE_NONE);
 
-    rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma);
+    rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma, mainprog_ptr->output_color);
 
     /* set the image parameters appropriately */
     int sample_depth;
@@ -572,7 +583,7 @@ pngquant_error rwpng_write_image24(FILE *outfile, png24_image *mainprog_ptr)
 
     png_init_io(png_ptr, outfile);
 
-    rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma);
+    rwpng_set_gamma(info_ptr, png_ptr, mainprog_ptr->gamma, mainprog_ptr->output_color);
 
     png_set_IHDR(png_ptr, info_ptr, mainprog_ptr->width, mainprog_ptr->height,
                  8, PNG_COLOR_TYPE_RGB_ALPHA,

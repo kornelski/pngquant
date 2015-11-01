@@ -58,8 +58,21 @@ function test_skip() {
     test '!' -e "$TMPDIR/q49output.png"
 }
 
+function test_metadata() {
+    cp "$IMGSRC/metadata.png" "$TMPDIR/metadatatest.png"
+    $BIN 2>/dev/null "$TMPDIR/metadatatest.png"
+
+    # This test will fail if compiled with old libpng
+    fgrep -q '<rdf:RDF xmlns:rdf' "$TMPDIR/metadatatest-fs8.png"
+
+    # This test will fail if compiled without liblcms or cocoa
+    fgrep -q 'gAMA' "$TMPDIR/metadatatest-fs8.png"
+    fgrep -q 'sRGB' "$TMPDIR/metadatatest-fs8.png"
+}
+
 test_overwrite &
 test_skip &
+test_metadata &
 
 for job in `jobs -p`
 do

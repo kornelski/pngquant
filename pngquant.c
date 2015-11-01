@@ -100,7 +100,7 @@ struct pngquant_options {
         verbose;
 };
 
-static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image);
+static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, rwpng_color_transform tag, png8_image *output_image);
 static void set_palette(liq_result *result, png8_image *output_image);
 static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels, bool verbose);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
@@ -556,18 +556,18 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     if (SUCCESS == retval) {
         verbose_printf(options, "  read %luKB file", (input_image_rwpng.file_size+1023UL)/1024UL);
 
-#if USE_LCMS
-        if (input_image_rwpng.lcms_status == ICCP) {
+        if (RWPNG_ICCP == input_image_rwpng.input_color) {
             verbose_printf(options, "  used embedded ICC profile to transform image to sRGB colorspace");
-        } else if (input_image_rwpng.lcms_status == GAMA_CHRM) {
+        } else if (RWPNG_GAMA_CHRM == input_image_rwpng.input_color) {
             verbose_printf(options, "  used gAMA and cHRM chunks to transform image to sRGB colorspace");
-        } else if (input_image_rwpng.lcms_status == ICCP_WARN_GRAY) {
+        } else if (RWPNG_ICCP_WARN_GRAY == input_image_rwpng.input_color) {
             verbose_printf(options, "  warning: ignored ICC profile in GRAY colorspace");
-        }
-#endif
-
-        if (input_image_rwpng.gamma != 0.45455) {
-            verbose_printf(options, "  corrected image from gamma %2.1f to sRGB gamma",
+        } else if (RWPNG_COCOA == input_image_rwpng.input_color) {
+            // No comment
+        } else if (RWPNG_SRGB == input_image_rwpng.input_color) {
+            verbose_printf(options, "  passing sRGB tag from the input");
+        } else if (input_image_rwpng.gamma != 0.45455) {
+            verbose_printf(options, "  converted image from gamma %2.1f to gamma 2.2",
                            1.0/input_image_rwpng.gamma);
         }
 
@@ -575,10 +575,13 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         liq_result *remap = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
 
         if (remap) {
-            liq_set_output_gamma(remap, 0.45455); // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
+
+            // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
+            // NB: can't change gamma here, because output_color is allowed to be an sRGB tag
+            liq_set_output_gamma(remap, 0.45455);
             liq_set_dithering_level(remap, options->floyd);
 
-            retval = prepare_output_image(remap, input_image, &output_image);
+            retval = prepare_output_image(remap, input_image, input_image_rwpng.output_color, &output_image);
             if (SUCCESS == retval) {
                 if (LIQ_OK != liq_write_remapped_image_rows(remap, input_image, output_image.row_pointers)) {
                     retval = OUT_OF_MEMORY_ERROR;
@@ -828,11 +831,12 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     return SUCCESS;
 }
 
-static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, png8_image *output_image)
+static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, rwpng_color_transform output_color, png8_image *output_image)
 {
     output_image->width = liq_image_get_width(input_image);
     output_image->height = liq_image_get_height(input_image);
     output_image->gamma = liq_get_output_gamma(result);
+    output_image->output_color = output_color;
 
     /*
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image

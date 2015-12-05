@@ -37,7 +37,7 @@ int rwpng_read_image24_cocoa(FILE *fp, png24_image *out)
                                                      width, height,
                                                      8, width*4,
                                                      colorspace,
-                                                     kCGImageAlphaPremultipliedLast);
+                                                     (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
 
         CGColorSpaceRelease(colorspace);
 

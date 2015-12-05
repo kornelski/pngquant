@@ -1,9 +1,24 @@
-/* pngquant.c - quantize the colors in an alphamap down to a specified number
+/*
+** © 2009-2015 by Kornel Lesiński.
 **
-** Copyright (C) 1989, 1991 by Jef Poskanzer.
+** This file is part of libimagequant.
+**
+** libimagequant is free software: you can redistribute it and/or modify
+** it under the terms of the GNU General Public License as published by
+** the Free Software Foundation, either version 3 of the License, or
+** (at your option) any later version.
+**
+** libimagequant is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with libimagequant. If not, see <http://www.gnu.org/licenses/>.
+*/
+/* Copyright (C) 1989, 1991 by Jef Poskanzer.
 ** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
 **                                Stefan Schneider.
-** © 2009-2013 by Kornel Lesinski.
 **
 ** Permission to use, copy, modify, and distribute this software and its
 ** documentation for any purpose and without fee is hereby granted, provided
@@ -144,14 +159,14 @@ inline static void verbose_print(const liq_attr *attr, const char *msg)
 {
     if (attr->log_callback) {
         attr->log_callback(attr, msg, attr->log_callback_user_info);
-}
+    }
 }
 
 static void liq_verbose_printf_flush(liq_attr *attr)
 {
     if (attr->log_flush_callback) {
         attr->log_flush_callback(attr, attr->log_flush_callback_user_info);
-}
+    }
 }
 
 #if USE_SSE
@@ -223,7 +238,7 @@ static unsigned int mse_to_quality(double mse)
     for(int i=100; i > 0; i--) {
         if (mse <= quality_to_mse(i) + 0.000001) { // + epsilon for floating point errors
             return i;
-    }
+        }
     }
     return 0;
 }
@@ -576,7 +591,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
         if (!CHECK_USER_POINTER(rows+i) || !CHECK_USER_POINTER(rows[i])) {
             liq_log_error(attr, "invalid row pointers");
             return NULL;
-    }
+        }
     }
     return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
 }
@@ -896,20 +911,20 @@ static void sort_palette(colormap *map, const liq_attr *options)
     ** therefore be omitted from the tRNS chunk.
     */
     if (options->last_index_transparent) {
-    	for(unsigned int i=0; i < map->colors; i++) {
-        if (map->palette[i].acolor.a < 1.0/256.0) {
-            const unsigned int old = i, transparent_dest = map->colors-1;
+        for(unsigned int i=0; i < map->colors; i++) {
+            if (map->palette[i].acolor.a < 1.0/256.0) {
+                const unsigned int old = i, transparent_dest = map->colors-1;
 
-            SWAP_PALETTE(map, transparent_dest, old);
+                SWAP_PALETTE(map, transparent_dest, old);
 
-            /* colors sorted by popularity make pngs slightly more compressible */
-        		sort_palette_qsort(map, 0, map->colors-1);
-            return;
+                /* colors sorted by popularity make pngs slightly more compressible */
+                sort_palette_qsort(map, 0, map->colors-1);
+                return;
             }
         }
     }
     /* move transparent colors to the beginning to shrink trns chunk */
-    unsigned int num_transparent=0;
+    unsigned int num_transparent = 0;
     for(unsigned int i=0; i < map->colors; i++) {
         if (map->palette[i].acolor.a < 255.0/256.0) {
             // current transparent color is swapped with earlier opaque one

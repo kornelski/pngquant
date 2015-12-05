@@ -1,8 +1,25 @@
 /*
+** © 2009-2015 by Kornel Lesiński.
+**
+** This file is part of libimagequant.
+**
+** libimagequant is free software: you can redistribute it and/or modify
+** it under the terms of the GNU General Public License as published by
+** the Free Software Foundation, either version 3 of the License, or
+** (at your option) any later version.
+**
+** libimagequant is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with libimagequant. If not, see <http://www.gnu.org/licenses/>.
+*/
+/*
 ** Copyright (C) 1989, 1991 by Jef Poskanzer.
 ** Copyright (C) 1997, 2000, 2002 by Greg Roelofs; based on an idea by
 **                                Stefan Schneider.
-** © 2009-2013 by Kornel Lesinski.
 **
 ** Permission to use, copy, modify, and distribute this software and its
 ** documentation for any purpose and without fee is hereby granted, provided
@@ -486,7 +503,7 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const fl
             px.r /= px.a;
             px.g /= px.a;
             px.b /= px.a;
-        }
+    }
 
         r += px.r * new_a * weight;
         g += px.g * new_a * weight;
@@ -495,10 +512,10 @@ static f_pixel averagepixels(unsigned int clrs, const hist_item achv[], const fl
     }
 
     if (sum) {
-    a /= sum;
-    r /= sum;
-    g /= sum;
-    b /= sum;
+        a /= sum;
+        r /= sum;
+        g /= sum;
+        b /= sum;
     }
 
     assert(!isnan(r) && !isnan(g) && !isnan(b) && !isnan(a));

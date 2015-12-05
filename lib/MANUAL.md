@@ -5,8 +5,7 @@ It's powering [pngquant2](http://pngquant.org).
 
 ## License
 
-[BSD](https://raw.github.com/pornel/pngquant/master/lib/COPYRIGHT).
-It can be linked with both free and closed-source software.
+Libimagequant is is available under [GPL v3 or later](https://raw.github.com/pornel/pngquant/master/lib/COPYRIGHT) with additional copyright notices for older parts of the code.
 
 ## Download
 

@@ -102,8 +102,7 @@ fi
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS ${i#*=}"
         ;;
     *)
-        echo "error: unknown switch ${i%%=*} (see $0 --help for the list)"
-        exit 1
+        echo "warning: unknown switch ${i%%=*} (see $0 --help for the list)"
         ;;
     esac
 done

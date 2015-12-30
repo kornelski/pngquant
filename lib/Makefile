@@ -1,7 +1,8 @@
 -include config.mk
 
 STATICLIB=libimagequant.a
-SHAREDLIB=libimagequant.so.0
+SHAREDLIB=libimagequant.so
+SOVER=0
 
 DLL=libimagequant.dll
 DLLIMP=libimagequant_dll.a
@@ -34,7 +35,8 @@ $(SHAREDOBJS):
 	$(CC) -fPIC $(CFLAGS) -c $(@:.lo=.c) -o $@
 
 $(SHAREDLIB): $(SHAREDOBJS)
-	$(CC) -shared -o $@ $^ $(LDFLAGS)
+	$(CC) -shared -Wl,-soname,$(SHAREDLIB).$(SOVER) -o $(SHAREDLIB).$(SOVER) $^ $(LDFLAGS)
+	ln -fs $(SHAREDLIB).$(SOVER) $(SHAREDLIB)
 
 $(OBJS): $(wildcard *.h) config.mk
 
@@ -49,7 +51,7 @@ $(TARFILE): $(DISTFILES)
 	-shasum $(TARFILE)
 
 clean:
-	rm -f $(OBJS) $(SHAREDOBJS) $(SHAREDLIB) $(STATICLIB) $(TARFILE) $(DLL) $(DLLIMP) $(DLLDEF)
+	rm -f $(OBJS) $(SHAREDOBJS) $(SHAREDLIB).$(SOVER) $(SHAREDLIB) $(STATICLIB) $(TARFILE) $(DLL) $(DLLIMP) $(DLLDEF)
 
 distclean: clean
 	rm -f config.mk

@@ -12,6 +12,7 @@ OBJS += $(COCOA_OBJS)
 endif
 
 STATICLIB = lib/libimagequant.a
+SHAREDLIB = lib/libimagequant.so
 
 DISTFILES = *.[chm] pngquant.1 Makefile configure README.md INSTALL CHANGELOG COPYRIGHT
 TARNAME = pngquant-$(VERSION)
@@ -31,6 +32,11 @@ staticlib:
 	$(MAKE) -C lib static
 
 $(STATICLIB): config.mk staticlib
+
+sharedlib:
+	$(MAKE) -C lib shared
+
+$(SHAREDLIB): config.mk sharedlib
 
 $(OBJS): $(wildcard *.h) config.mk
 

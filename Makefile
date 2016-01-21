@@ -63,14 +63,15 @@ $(TARFILE): $(DISTFILES)
 	rm -rf $(TARNAME)
 	-shasum $(TARFILE)
 
-install: $(BIN) pngquant.1
+install: $(BIN) $(BIN).1
 	-mkdir -p '$(BINPREFIX)'
 	-mkdir -p '$(MANPREFIX)/man1'
 	install -m 0755 -p '$(BIN)' '$(BINPREFIX)/$(BIN)'
-	cp pngquant.1 '$(MANPREFIX)/man1/'
+	install -m 0644 -p '$(BIN).1' '$(MANPREFIX)/man1/'
 
 uninstall:
 	rm -f '$(BINPREFIX)/$(BIN)'
+	rm -f '$(MANPREFIX)/man1/$(BIN).1'
 
 clean:
 	$(MAKE) -C lib clean

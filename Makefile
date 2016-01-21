@@ -52,6 +52,15 @@ $(TESTBIN): test/test.o $(STATICLIB)
 test: $(BIN) $(TESTBIN)
 	./test/test.sh ./test $(BIN) $(TESTBIN)
 
+bin.shared: $(OBJS) $(SHAREDLIB)
+	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $(BIN)
+
+testbin.shared: test/test.o $(SHAREDLIB)
+	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $(TESTBIN)
+
+test.shared: bin.shared testbin.shared
+	./test/test.sh ./test $(BIN) $(TESTBIN)
+
 dist: $(TARFILE)
 
 $(TARFILE): $(DISTFILES)

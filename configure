@@ -309,7 +309,7 @@ fi
 # pairs of possible *.h and lib*.so locations
 DIRS=()
 
-if which -s libpng-config; then
+if command -v >/dev/null libpng-config; then
     DIRS+=("$(libpng-config --prefix) $(libpng-config --libdir)")
 fi
 

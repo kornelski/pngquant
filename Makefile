@@ -16,7 +16,7 @@ SHAREDLIB = lib/libimagequant.so
 
 DISTFILES = *.[chm] pngquant.1 Makefile configure README.md INSTALL CHANGELOG COPYRIGHT
 TARNAME = pngquant-$(VERSION)
-TARFILE = $(TARNAME)-src.tar.bz2
+TARFILE = $(TARNAME)-src.tar.gz
 
 LIBDISTFILES = lib/*.[ch] lib/COPYRIGHT lib/MANUAL.md lib/configure lib/Makefile
 
@@ -68,7 +68,7 @@ $(TARFILE): $(DISTFILES)
 	mkdir -p $(TARNAME)/lib
 	cp $(DISTFILES) $(TARNAME)
 	cp $(LIBDISTFILES) $(TARNAME)/lib
-	tar -cjf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
+	tar -czf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
 	rm -rf $(TARNAME)
 	-shasum $(TARFILE)
 
@@ -88,7 +88,7 @@ clean:
 
 distclean: clean
 	$(MAKE) -C lib distclean
-	rm -f config.mk pngquant-*-src.tar.bz2
+	rm -f config.mk pngquant-*-src.tar.gz
 
 config.mk:
 ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )

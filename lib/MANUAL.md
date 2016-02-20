@@ -5,7 +5,11 @@ It's powering [pngquant2](https://pngquant.org).
 
 ## License
 
-Libimagequant is is available under [GPL v3 or later](https://raw.github.com/pornel/pngquant/master/lib/COPYRIGHT) with additional copyright notices for older parts of the code.
+Libimagequant is dual-licensed:
+
+* For Free/Libre Open Source Software it's available under [GPL v3 or later](https://raw.github.com/pornel/pngquant/master/lib/COPYRIGHT) with additional copyright notices for older parts of the code.
+
+* For use in commercial/closed-source/AppStore software please ask kornel@pngquant.org for a license.
 
 ## Download
 

@@ -97,4 +97,8 @@ Stops processing of arguments. This allows use of file names that start with `-`
 
 ## License
 
-GPL v3 or later, and additional copyright notice must be kept for older parts of the code. See [COPYRIGHT](https://github.com/pornel/pngquant/blob/master/COPYRIGHT) for details.
+pngquant is dual-licensed:
+
+* GPL v3 or later, and additional copyright notice must be kept for older parts of the code. See [COPYRIGHT](https://github.com/pornel/pngquant/blob/master/COPYRIGHT) for details.
+
+* For commercial/closed-source/AppStore distribution please ask kornel@pngquant.org for a license.

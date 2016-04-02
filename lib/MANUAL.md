@@ -428,13 +428,13 @@ Analoguous to `liq_get_remapping_error()`, but returns quantization error as qua
 
     void log_flush_callback_function(const liq_attr*, void *user_info) {}
 
-Sets up callback function to be called when the library reports work progress or errors. The callback must not call any library functions.
+Sets up callback function to be called when the library reports status or errors. The callback must not call any library functions.
 
-`user_info` value will be passed to the callback.
+`user_info` value will be passed through to the callback. It can be `NULL`.
 
 `NULL` callback clears the current callback.
 
-In the log callback the `message` is a zero-terminated string containing informative message to output. It is valid only until the callback returns.
+In the log callback the `message` is a zero-terminated string containing informative message to output. It is valid only until the callback returns, so you must copy it.
 
 `liq_set_log_flush_callback()` sets up callback function that will be called after the last log callback, which can be used to flush buffers and free resources used by the log callback.
 

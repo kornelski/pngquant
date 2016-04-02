@@ -1,5 +1,5 @@
 /*
- * http://pngquant.org
+ * https://pngquant.org
  */
 
 #ifndef LIBIMAGEQUANT_H

@@ -1,7 +1,7 @@
 # libimagequant—Image Quantization Library
 
 Small, portable C library for high-quality conversion of RGBA images to 8-bit indexed-color (palette) images.
-It's powering [pngquant2](http://pngquant.org).
+It's powering [pngquant2](https://pngquant.org).
 
 ## License
 
@@ -9,7 +9,7 @@ Libimagequant is is available under [GPL v3 or later](https://raw.github.com/por
 
 ## Download
 
-The [library](http://pngquant.org/lib) is currently a part of the [pngquant2 project](https://github.com/pornel/pngquant/tree/master/lib).
+The [library](https://pngquant.org/lib) is currently a part of the [pngquant2 project](https://github.com/pornel/pngquant/tree/master/lib).
 
 Files needed for the library are only in the `lib/` directory inside the repository (and you can ignore the rest).
 
@@ -148,7 +148,7 @@ The bitmap must not be modified or freed until this object is freed with `liq_im
 
 `width` and `height` are dimensions in pixels. An image 10x10 pixel large will need 400-byte bitmap.
 
-`gamma` can be `0` for images with the typical 1/2.2 [gamma](http://en.wikipedia.org/wiki/Gamma_correction).
+`gamma` can be `0` for images with the typical 1/2.2 [gamma](https://en.wikipedia.org/wiki/Gamma_correction).
 Otherwise `gamma` must be > 0 and < 1, e.g. `0.45455` (1/2.2) or `0.55555` (1/1.8). Generated palette will use the same gamma unless `liq_set_output_gamma()` is used. If `liq_set_output_gamma` is not used, then it only affects whether brighter or darker areas of the image will get more palette colors allocated.
 
 Returns `NULL` on failure, e.g. if `bitmap` is `NULL` or `width`/`height` is <= 0.

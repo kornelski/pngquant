@@ -76,7 +76,12 @@ struct liq_attr {
     unsigned int min_posterization_output /* user setting */, min_posterization_input /* speed setting */;
     unsigned int voronoi_iterations, feedback_loop_trials;
     bool last_index_transparent, use_contrast_maps, use_dither_map, fast_palette;
-    unsigned int speed;
+    unsigned char speed;
+
+    unsigned char progress_stage1, progress_stage2, progress_stage3;
+    liq_progress_callback_function *progress_callback;
+    void *progress_callback_user_info;
+
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
     liq_log_flush_callback_function *log_flush_callback;
@@ -110,10 +115,13 @@ typedef struct liq_remapping_result {
 
     unsigned char *pixels;
     colormap *palette;
+    liq_progress_callback_function *progress_callback;
+    void *progress_callback_user_info;
+
     liq_palette int_palette;
     double gamma, palette_error;
     float dither_level;
-    bool use_dither_map;
+    bool use_dither_map; unsigned char progress_stage1;
 } liq_remapping_result;
 
 struct liq_result {
@@ -123,6 +131,9 @@ struct liq_result {
 
     liq_remapping_result *remapping;
     colormap *palette;
+    liq_progress_callback_function *progress_callback;
+    void *progress_callback_user_info;
+
     liq_palette int_palette;
     float dither_level;
     double gamma, palette_error;
@@ -167,6 +178,16 @@ LIQ_NONNULL static void liq_verbose_printf_flush(liq_attr *attr)
     if (attr->log_flush_callback) {
         attr->log_flush_callback(attr, attr->log_flush_callback_user_info);
     }
+}
+
+LIQ_NONNULL static bool liq_progress(const liq_attr *attr, const float percent)
+{
+    return attr->progress_callback && !attr->progress_callback(percent, attr->progress_callback_user_info);
+}
+
+LIQ_NONNULL static bool liq_remap_progress(const liq_remapping_result *quant, const float percent)
+{
+    return quant->progress_callback && !quant->progress_callback(percent, quant->progress_callback_user_info);
 }
 
 #if USE_SSE
@@ -321,6 +342,11 @@ LIQ_EXPORT LIQ_NONNULL liq_error liq_set_speed(liq_attr* attr, int speed)
     attr->use_dither_map = (speed <= (omp_get_max_threads() > 1 ? 7 : 5)); // parallelized dither map might speed up floyd remapping
     attr->use_contrast_maps = (speed <= 7) || attr->use_dither_map;
     attr->speed = speed;
+
+    attr->progress_stage1 = attr->use_contrast_maps ? 20 : 8;
+    if (attr->feedback_loop_trials < 2) attr->progress_stage1 += 30;
+    attr->progress_stage3 = 50 / (1+speed);
+    attr->progress_stage2 = 100 - attr->progress_stage1 - attr->progress_stage3;
     return LIQ_OK;
 }
 
@@ -366,6 +392,22 @@ LIQ_EXPORT LIQ_NONNULL void liq_set_last_index_transparent(liq_attr* attr, int i
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return;
 
     attr->last_index_transparent = !!is_last;
+}
+
+LIQ_EXPORT void liq_attr_set_progress_callback(liq_attr *attr, liq_progress_callback_function *callback, void *user_info)
+{
+    if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return;
+
+    attr->progress_callback = callback;
+    attr->progress_callback_user_info = user_info;
+}
+
+LIQ_EXPORT void liq_result_set_progress_callback(liq_result *result, liq_progress_callback_function *callback, void *user_info)
+{
+    if (!CHECK_STRUCT_TYPE(result, liq_result)) return;
+
+    result->progress_callback = callback;
+    result->progress_callback_user_info = user_info;
 }
 
 LIQ_EXPORT void liq_set_log_callback(liq_attr *attr, liq_log_callback_function *callback, void* user_info)
@@ -783,6 +825,8 @@ LIQ_EXPORT LIQ_NONNULL liq_result *liq_quantize_image(liq_attr *attr, liq_image 
         return NULL;
     }
 
+    if (liq_progress(attr, 0)) return NULL;
+
     histogram *hist = get_histogram(img, attr);
     if (!hist) {
         return NULL;
@@ -825,6 +869,9 @@ LIQ_NONNULL static liq_remapping_result *liq_remapping_result_create(liq_result 
         .palette_error = result->palette_error,
         .gamma = result->gamma,
         .palette = pam_duplicate_colormap(result->palette),
+        .progress_callback = result->progress_callback,
+        .progress_callback_user_info = result->progress_callback_user_info,
+        .progress_stage1 = result->use_dither_map ? 20 : 0,
     };
     return res;
 }
@@ -1105,7 +1152,7 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
 
   If output_image_is_remapped is true, only pixels noticeably changed by error diffusion will be written to output image.
  */
-LIQ_NONNULL static void remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], liq_remapping_result *quant, const float max_dither_error, const bool output_image_is_remapped)
+LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned char *const output_pixels[], liq_remapping_result *quant, const float max_dither_error, const bool output_image_is_remapped)
 {
     const unsigned int rows = input_image->height, cols = input_image->width;
     const unsigned char *dither_map = quant->use_dither_map ? (input_image->dither_map ? input_image->dither_map : input_image->edges) : NULL;
@@ -1113,14 +1160,15 @@ LIQ_NONNULL static void remap_to_palette_floyd(liq_image *input_image, unsigned 
     const colormap *map = quant->palette;
     const colormap_item *acolormap = map->palette;
 
-    struct nearest_map *const n = nearest_init(map, false);
-
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;
     thiserr = input_image->malloc((cols + 2) * sizeof(*thiserr) * 2); // +2 saves from checking out of bounds access
+    if (!thiserr) return false;
     nexterr = thiserr + (cols + 2);
     srand(12345); /* deterministic dithering is better for comparing results */
-    if (!thiserr) return;
+
+    bool ok = true;
+    struct nearest_map *const n = nearest_init(map, false);
 
     for (unsigned int col = 0; col < cols + 2; ++col) {
         const double rand_max = RAND_MAX;
@@ -1142,7 +1190,10 @@ LIQ_NONNULL static void remap_to_palette_floyd(liq_image *input_image, unsigned 
     bool fs_direction = true;
     unsigned int last_match=0;
     for (unsigned int row = 0; row < rows; ++row) {
-        liq_remap_progress(quant, row * 100.f / rows);
+        if (liq_remap_progress(quant, quant->progress_stage1 + row * (100.f - quant->progress_stage1) / rows)) {
+            ok = false;
+            break;
+        }
 
         memset(nexterr, 0, (cols + 2) * sizeof(*nexterr));
 
@@ -1242,6 +1293,8 @@ LIQ_NONNULL static void remap_to_palette_floyd(liq_image *input_image, unsigned 
 
     input_image->free(MIN(thiserr, nexterr)); // MIN because pointers were swapped
     nearest_free(n);
+
+    return ok;
 }
 
 /* fixed colors are always included in the palette, so it would be wasteful to duplicate them in palette from histogram */
@@ -1276,6 +1329,7 @@ LIQ_NONNULL static histogram *get_histogram(liq_image *input_image, const liq_at
     ** coherence and try again.
     */
 
+    if (liq_progress(options, options->progress_stage1 * 0.4f)) return NULL;
     unsigned int maxcolors = options->max_histogram_entries;
 
     struct acolorhash_table *acht;
@@ -1300,6 +1354,7 @@ LIQ_NONNULL static histogram *get_histogram(liq_image *input_image, const liq_at
                 liq_verbose_printf(options, "  too many colors! Scaling colors to improve clustering... %d", ignorebits);
                 pam_freeacolorhash(acht);
                 acht = NULL;
+                if (liq_progress(options, options->progress_stage1 * 0.6f)) return NULL;
                 break;
             }
         }
@@ -1312,6 +1367,11 @@ LIQ_NONNULL static histogram *get_histogram(liq_image *input_image, const liq_at
 
     if (input_image->free_pixels && input_image->f_pixels) {
         liq_image_free_rgba_source(input_image); // bow can free the RGBA source if copy has been made in f_pixels
+    }
+
+    if (liq_progress(options, options->progress_stage1 * 0.9f)) {
+        pam_freeacolorhash(acht);
+        return NULL;
     }
 
     histogram *hist = pam_acolorhashtoacolorhist(acht, input_image->gamma, options->malloc, options->free);
@@ -1530,7 +1590,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
     colormap *acolormap = NULL;
     double least_error = MAX_DIFF;
     double target_mse_overshoot = feedback_loop_trials>0 ? 1.05 : 1.0;
-    const double percent = (double)(feedback_loop_trials>0?feedback_loop_trials:1)/100.0;
+    const float total_trials = (float)(feedback_loop_trials>0?feedback_loop_trials:1);
 
     do {
         colormap *newmap;
@@ -1587,7 +1647,9 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
             pam_freecolormap(newmap);
         }
 
-        liq_verbose_printf(options, "  selecting colors...%d%%",100-MAX(0,(int)(feedback_loop_trials/percent)));
+        float fraction_done = 1.f-MAX(0.f, feedback_loop_trials/total_trials);
+        if (liq_progress(options, options->progress_stage1 + fraction_done * options->progress_stage2)) break;
+        liq_verbose_printf(options, "  selecting colors...%d%%", (int)(100.f * fraction_done));
     }
     while(feedback_loop_trials > 0);
 
@@ -1615,6 +1677,8 @@ LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr
     // no point having perfect match with imperfect colors (ignorebits > 0)
     const bool fast_palette = options->fast_palette || hist->ignorebits > 0;
     const bool few_input_colors = hist->size+img->fixed_colors_count <= options->max_colors;
+
+    if (liq_progress(options, options->progress_stage1)) return NULL;
 
     // If image has few colors to begin with (and no quality degradation is required)
     // then it's possible to skip quantization entirely
@@ -1649,6 +1713,10 @@ LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr
             for(unsigned int i=0; i < iterations; i++) {
                 palette_error = viter_do_iteration(hist, acolormap, NULL, i==0 || options->fast_palette);
 
+                if (liq_progress(options, options->progress_stage1 + options->progress_stage2 + (i * options->progress_stage3 * 0.9f) / iterations)) {
+                    break;
+                }
+
                 if (fabs(previous_palette_error-palette_error) < iteration_limit) {
                     break;
                 }
@@ -1669,6 +1737,11 @@ LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr
             pam_freecolormap(acolormap);
             return NULL;
         }
+    }
+
+    if (liq_progress(options, options->progress_stage1 + options->progress_stage2 + options->progress_stage3 * 0.95f)) {
+        pam_freecolormap(acolormap);
+        return NULL;
     }
 
     sort_palette(acolormap, options);
@@ -1732,6 +1805,10 @@ LIQ_EXPORT LIQ_NONNULL liq_error liq_write_remapped_image_rows(liq_result *quant
         contrast_maps(input_image);
     }
 
+    if (liq_remap_progress(result, result->progress_stage1 * 0.25f)) {
+        return LIQ_ABORTED;
+    }
+
     /*
      ** Step 4: map the colors in the image to their closest match in the
      ** new colormap, and write 'em out.
@@ -1749,10 +1826,16 @@ LIQ_EXPORT LIQ_NONNULL liq_error liq_write_remapped_image_rows(liq_result *quant
             update_dither_map(row_pointers, input_image);
         }
 
+        if (liq_remap_progress(result, result->progress_stage1 * 0.5f)) {
+            return LIQ_ABORTED;
+        }
+
         // remapping above was the last chance to do voronoi iteration, hence the final palette is set after remapping
         set_rounded_palette(&result->int_palette, result->palette, result->gamma, quant->min_posterization_output);
 
-        remap_to_palette_floyd(input_image, row_pointers, result, MAX(remapping_error*2.4, 16.f/256.f), generate_dither_map);
+        if (!remap_to_palette_floyd(input_image, row_pointers, result, MAX(remapping_error*2.4, 16.f/256.f), generate_dither_map)) {
+            return LIQ_ABORTED;
+        }
     }
 
     // remapping error from dithered image is absurd, so always non-dithered value is used

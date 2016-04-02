@@ -444,6 +444,27 @@ In the log callback the `message` is a zero-terminated string containing informa
 
 ----
 
+    void liq_set_progress_callback(liq_attr*, liq_progress_callback_function*, void *user_info);
+    void liq_result_set_progress_callback(liq_result*, liq_progress_callback_function*, void *user_info);
+
+<p>
+
+    int progress_callback_function(const liq_attr*, float progress_percent, void *user_info) {}
+
+Sets up callback function to be called while the library is processing images. The callback may abort processing by returning `0`.
+
+Setting callback to `NULL` clears the current callback. `liq_set_progress_callback` is for quantization progress, and `liq_result_set_progress_callback` is for remapping progress (currently only dithered remapping reports progress).
+
+`user_info` value will be passed through to the callback. It can be `NULL`.
+
+The callback must not call any library functions.
+
+`progress_percent` is a value between 0 and 100 that estimates how much of the current task has been done.
+
+The callback should return `1` to continue the operation, and `0` to abort current operation.
+
+----
+
     liq_attr* liq_attr_create_with_allocator(void* (*malloc)(size_t), void (*free)(void*));
 
 Same as `liq_attr_create`, but uses given `malloc` and `free` replacements to allocate all memory used by the library.

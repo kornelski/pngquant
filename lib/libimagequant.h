@@ -9,8 +9,8 @@
 #define LIQ_EXPORT extern
 #endif
 
-#define LIQ_VERSION 20600
-#define LIQ_VERSION_STRING "2.6.0"
+#define LIQ_VERSION 20700
+#define LIQ_VERSION_STRING "2.7.0"
 
 #ifndef LIQ_PRIVATE
 #if defined(__GNUC__) || defined (__llvm__)
@@ -48,7 +48,7 @@ typedef enum liq_error {
     LIQ_QUALITY_TOO_LOW = 99,
     LIQ_VALUE_OUT_OF_RANGE = 100,
     LIQ_OUT_OF_MEMORY,
-    LIQ_NOT_READY,
+    LIQ_ABORTED,
     LIQ_BITMAP_NOT_AVAILABLE,
     LIQ_BUFFER_TOO_SMALL,
     LIQ_INVALID_POINTER,
@@ -78,6 +78,10 @@ typedef void liq_log_callback_function(const liq_attr*, const char *message, voi
 typedef void liq_log_flush_callback_function(const liq_attr*, void* user_info);
 LIQ_EXPORT void liq_set_log_callback(liq_attr*, liq_log_callback_function*, void* user_info);
 LIQ_EXPORT void liq_set_log_flush_callback(liq_attr*, liq_log_flush_callback_function*, void* user_info);
+
+typedef int liq_progress_callback_function(float progress_percent, void* user_info);
+LIQ_EXPORT void liq_attr_set_progress_callback(liq_attr*, liq_progress_callback_function*, void* user_info);
+LIQ_EXPORT void liq_result_set_progress_callback(liq_result*, liq_progress_callback_function*, void* user_info);
 
 LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma) LIQ_NONNULL;
 LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma) LIQ_NONNULL;

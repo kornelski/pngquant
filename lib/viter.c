@@ -82,7 +82,7 @@ LIQ_PRIVATE void viter_finalize(colormap *map, const unsigned int max_threads, c
 LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, viter_callback callback, const bool fast_palette)
 {
     const unsigned int max_threads = omp_get_max_threads();
-    viter_state average_color[(VITER_CACHE_LINE_GAP+map->colors) * max_threads];
+    viter_state *average_color = malloc((VITER_CACHE_LINE_GAP+map->colors) * max_threads * sizeof(viter_state));
     viter_init(map, max_threads, average_color);
     struct nearest_map *const n = nearest_init(map, fast_palette);
     hist_item *const achv = hist->achv;
@@ -105,5 +105,6 @@ LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, vite
     nearest_free(n);
     viter_finalize(map, max_threads, average_color);
 
+    free(average_color);
     return total_diff / hist->total_perceptual_weight;
 }

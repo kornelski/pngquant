@@ -170,8 +170,17 @@ ALWAYS_INLINE static float colordifference(f_pixel px, f_pixel py);
 inline static float colordifference(f_pixel px, f_pixel py)
 {
 #if USE_SSE
+#ifdef _MSC_VER
+    /* In MSVC we cannot use the align attribute in parameters.
+     * This is used a lot, so we just use an unaligned load.
+     * Also the compiler incorrectly inlines vpx and vpy without
+     * the volatile when optimization is applied for x86_64. */
+    const volatile __m128 vpx = _mm_loadu_ps((const float*)&px);
+    const volatile __m128 vpy = _mm_loadu_ps((const float*)&py);
+#else
     const __m128 vpx = _mm_load_ps((const float*)&px);
     const __m128 vpy = _mm_load_ps((const float*)&py);
+#endif
 
     // y.a - x.a
     __m128 alphas = _mm_sub_ss(vpy, vpx);

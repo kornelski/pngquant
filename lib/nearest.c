@@ -54,7 +54,7 @@ static int vp_compare_distance(const void *ap, const void *bp) {
     float a = ((const vp_sort_tmp*)ap)->distance_squared;
     float b = ((const vp_sort_tmp*)bp)->distance_squared;
     return a > b ? 1 : -1;
-}
+        }
 
 static void vp_sort_indexes_by_distance(const f_pixel vantage_point, vp_sort_tmp *indexes, int num_indexes, const colormap_item items[]) {
     for(int i=0; i < num_indexes; i++) {
@@ -81,7 +81,7 @@ static int vp_find_best_vantage_point_index(vp_sort_tmp *indexes, int num_indexe
 static vp_node *vp_create_node(mempool *m, vp_sort_tmp *indexes, int num_indexes, const colormap_item items[]) {
     if (num_indexes <= 0) {
         return NULL;
-    }
+}
 
     vp_node *node = mempool_alloc(m, sizeof(node[0]), 0);
 
@@ -115,13 +115,14 @@ static vp_node *vp_create_node(mempool *m, vp_sort_tmp *indexes, int num_indexes
     node->far = vp_create_node(m, &indexes[half_idx], num_indexes - half_idx, items);
 
     return node;
-}
+        }
 
 LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map, const bool fast) {
     mempool m = NULL;
     struct nearest_map *handle = mempool_create(&m, sizeof(handle[0]), sizeof(handle[0]) + sizeof(vp_node)*map->colors+16, map->malloc, map->free);
 
-    vp_sort_tmp indexes[map->colors];
+    vp_sort_tmp indexes[256];
+    assert(map->colors <= 256);
 
     for(unsigned int i=0; i < map->colors; i++) {
         indexes[i].idx = i;
@@ -166,18 +167,18 @@ static void vp_search_node(const vp_node *node, const f_pixel *const needle, vp_
             if (node->far && distance >= node->radius - best_candidate->distance) {
                 node = node->far; // Fast tail recursion
             } else {
-                break;
-            }
+            break;
+        }
         } else {
             if (node->far) {
                 vp_search_node(node->far, needle, best_candidate);
-            }
+    }
             if (node->near && distance <= node->radius + best_candidate->distance) {
                 node = node->near; // Fast tail recursion
             } else {
                 break;
-            }
-        }
+    }
+    }
     } while(true);
 }
 
@@ -196,9 +197,9 @@ LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *handle, const 
     vp_search_node(handle->root, px, &best_candidate);
     if (diff) {
         *diff = best_candidate.distance * best_candidate.distance;
-    }
+            }
     return best_candidate.idx;
-}
+                }
 
 LIQ_PRIVATE void nearest_free(struct nearest_map *centroids)
 {

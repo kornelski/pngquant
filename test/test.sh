@@ -63,11 +63,10 @@ function test_metadata() {
     $BIN 2>/dev/null "$TMPDIR/metadatatest.png"
 
     # This test will fail if compiled with old libpng
-    fgrep -q '<rdf:RDF xmlns:rdf' "$TMPDIR/metadatatest-fs8.png"
+    fgrep -q '<rdf:RDF xmlns:rdf' "$TMPDIR/metadatatest-fs8.png" || { echo "embedded RDF not found. This is expected if configured with Cocoa reader"; exit 1; }
 
     # This test will fail if compiled without liblcms or cocoa
-    fgrep -q 'gAMA' "$TMPDIR/metadatatest-fs8.png"
-    fgrep -q 'sRGB' "$TMPDIR/metadatatest-fs8.png"
+    fgrep -q 'sRGB' "$TMPDIR/metadatatest-fs8.png" || { echo "sRGB chunk not found. This test requires lcms2"; exit 1; }
 }
 
 test_overwrite &

@@ -100,7 +100,7 @@ status() {
 # Append to CFLAGS if compiler supports flag, with optional prerequisite.
 # Fails on errors and warnings.
 conditional_cflags() {
-    if [ -z "echo | $("$CC" -xc -S -o /dev/null $2 $1 2>&1)" ]; then
+    if [ -z "$(echo | "$CC" -xc -S -o /dev/null $2 $1 - 2>&1)" ]; then
         cflags "$1"
     fi
 }

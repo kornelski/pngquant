@@ -602,7 +602,7 @@ pngquant_error rwpng_write_image24(FILE *outfile, const png24_image *mainprog_pt
 
 
 static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp msg) {
-    fprintf(stderr, "  %s\n", msg);
+    fprintf(stderr, "  libpng warning: %s\n", msg);
 }
 
 static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg) {

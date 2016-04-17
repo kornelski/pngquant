@@ -477,8 +477,8 @@ int main(int argc, char *argv[])
         if (opts.log_callback && omp_get_num_threads() > 1 && num_files > 1) {
             liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
             liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
-            options.log_callback = log_callback_buferred;
-            options.log_callback_user_info = &buf;
+            opts.log_callback = log_callback_buferred;
+            opts.log_callback_user_info = &buf;
         }
         #endif
 
@@ -487,11 +487,11 @@ int main(int argc, char *argv[])
 
         const char *outname = output_file_path;
         char *outname_free = NULL;
-        if (!options.using_stdout) {
+        if (!opts.using_stdout) {
             if (!outname) {
                 outname = outname_free = add_filename_extension(filename, newext);
             }
-            if (!options.force && file_exists(outname)) {
+            if (!opts.force && file_exists(outname)) {
                 fprintf(stderr, "  error: '%s' exists; not overwriting\n", outname);
                 retval = NOT_OVERWRITING_ERROR;
             }

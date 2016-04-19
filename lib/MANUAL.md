@@ -9,7 +9,7 @@ Libimagequant is dual-licensed:
 
 * For Free/Libre Open Source Software it's available under [GPL v3 or later](https://raw.github.com/pornel/pngquant/master/lib/COPYRIGHT) with additional copyright notices for older parts of the code.
 
-* For use in commercial/closed-source/AppStore software please ask kornel@pngquant.org for a license.
+* For use in non-GPL software (e.g. closed-source or App Store distribution) please ask kornel@pngquant.org for a commercial license.
 
 ## Download
 

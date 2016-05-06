@@ -379,10 +379,20 @@ int main(int argc, char *argv[])
             case arg_map:
                 {
                     png24_image tmp = {};
-                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, false, false)) {
+                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, true, false)) {
                         fprintf(stderr, "  error: unable to load %s", optarg);
                         return INVALID_ARGUMENT;
                     }
+                    liq_result *tmp_quantize = liq_quantize_image(options.liq, options.fixed_palette_image);
+                    const liq_palette *pal = liq_get_palette(tmp_quantize);
+                    if (!pal) {
+                        fprintf(stderr, "  error: unable to read colors from %s", optarg);
+                        return INVALID_ARGUMENT;
+                    }
+                    for(int i=0; i < pal->count; i++) {
+                        liq_image_add_fixed_color(options.fixed_palette_image, pal->entries[i]);
+                    }
+                    liq_result_destroy(tmp_quantize);
                 }
                 break;
 

@@ -682,15 +682,25 @@ LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *cal
     callback(temp_row, row, width, user_info);
 }
 
-LIQ_NONNULL inline static bool liq_image_can_use_rows(liq_image *img)
+LIQ_NONNULL inline static bool liq_image_has_rgba_pixels(const liq_image *img)
 {
+    if (!CHECK_STRUCT_TYPE(img, liq_image)) {
+        return false;
+    }
+    return img->rows || (img->temp_row && img->row_callback);
+}
+
+LIQ_NONNULL inline static bool liq_image_can_use_rgba_rows(const liq_image *img)
+{
+    assert(liq_image_has_rgba_pixels(img));
+
     const bool iebug = img->min_opaque_val < 1.f;
     return (img->rows && !iebug);
 }
 
 LIQ_NONNULL static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
 {
-    if (liq_image_can_use_rows(img)) {
+    if (liq_image_can_use_rgba_rows(img)) {
         return img->rows[row];
     }
 
@@ -820,7 +830,7 @@ LIQ_EXPORT LIQ_NONNULL void liq_image_destroy(liq_image *input_image)
 LIQ_EXPORT LIQ_NONNULL liq_result *liq_quantize_image(liq_attr *attr, liq_image *img)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) return NULL;
-    if (!CHECK_STRUCT_TYPE(img, liq_image)) {
+    if (!liq_image_has_rgba_pixels(img)) {
         liq_log_error(attr, "invalid image pointer");
         return NULL;
     }
@@ -1333,7 +1343,7 @@ LIQ_NONNULL static histogram *get_histogram(liq_image *input_image, const liq_at
     unsigned int maxcolors = options->max_histogram_entries;
 
     struct acolorhash_table *acht;
-    const bool all_rows_at_once = liq_image_can_use_rows(input_image);
+    const bool all_rows_at_once = liq_image_can_use_rgba_rows(input_image);
     do {
         acht = pam_allocacolorhash(maxcolors, rows*cols, ignorebits, options->malloc, options->free);
         if (!acht) return NULL;

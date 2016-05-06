@@ -1223,12 +1223,12 @@ LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned 
             const unsigned int guessed_match = output_image_is_remapped ? output_pixels[row][col] : last_match;
             output_pixels[row][col] = last_match = nearest_search(n, &spx, guessed_match, NULL);
 
-            const f_pixel xp = acolormap[last_match].acolor;
+            const f_pixel output_px = acolormap[last_match].acolor;
             f_pixel err = {
-                .r = (spx.r - xp.r),
-                .g = (spx.g - xp.g),
-                .b = (spx.b - xp.b),
-                .a = (spx.a - xp.a),
+                .r = (spx.r - output_px.r),
+                .g = (spx.g - output_px.g),
+                .b = (spx.b - output_px.b),
+                .a = (spx.a - output_px.a),
             };
 
             // If dithering error is crazy high, don't propagate it that much
@@ -1241,7 +1241,7 @@ LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned 
             }
 
             // if pixel is transparent, it doesn't matter how bad rgb was
-            const float visible_alpha = acolormap[last_match].acolor.a;
+            const float visible_alpha = output_px.a;
             if (visible_alpha < 1.f) {
                 err.r *= visible_alpha;
                 err.g *= visible_alpha;
@@ -1533,25 +1533,24 @@ LIQ_NONNULL static void update_dither_map(unsigned char *const *const row_pointe
             const unsigned char px = row_pointers[row][col];
 
             if (px != lastpixel || col == width-1) {
-                float neighbor_count = 2.5f + col-lastcol;
+                int neighbor_count = 10 * (col-lastcol);
 
                 unsigned int i=lastcol;
                 while(i < col) {
                     if (row > 0) {
                         unsigned char pixelabove = row_pointers[row-1][i];
-                        if (pixelabove == lastpixel) neighbor_count += 1.f;
+                        if (pixelabove == lastpixel) neighbor_count += 15;
                     }
                     if (row < height-1) {
                         unsigned char pixelbelow = row_pointers[row+1][i];
-                        if (pixelbelow == lastpixel) neighbor_count += 1.f;
+                        if (pixelbelow == lastpixel) neighbor_count += 15;
                     }
                     i++;
                 }
 
                 while(lastcol <= col) {
-                    float e = edges[row*width + lastcol] / 255.f;
-                    e *= 1.f - 2.5f/neighbor_count;
-                    edges[row*width + lastcol++] = e * 255.f;
+                    int e = edges[row*width + lastcol];
+                    edges[row*width + lastcol++] = (e+128) * (255.f/(255+128)) * (1.f - 20.f / (20 + neighbor_count));
                 }
                 lastpixel = px;
             }

@@ -1126,14 +1126,16 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
                 sa = thiserr.a * dither_level;
 
     float ratio = 1.0;
+    const float max_overflow = 1.1f;
+    const float max_underflow = -0.1f;
 
     // allowing some overflow prevents undithered bands caused by clamping of all channels
-         if (px.r + sr > 1.03) ratio = MIN(ratio, (1.03-px.r)/sr);
-    else if (px.r + sr < 0)    ratio = MIN(ratio, px.r/-sr);
-         if (px.g + sg > 1.03) ratio = MIN(ratio, (1.03-px.g)/sg);
-    else if (px.g + sg < 0)    ratio = MIN(ratio, px.g/-sg);
-         if (px.b + sb > 1.03) ratio = MIN(ratio, (1.03-px.b)/sb);
-    else if (px.b + sb < 0)    ratio = MIN(ratio, px.b/-sb);
+         if (px.r + sr > max_overflow)  ratio = MIN(ratio, (max_overflow -px.r)/sr);
+    else if (px.r + sr < max_underflow) ratio = MIN(ratio, (max_underflow-px.r)/sr);
+         if (px.g + sg > max_overflow)  ratio = MIN(ratio, (max_overflow -px.g)/sg);
+    else if (px.g + sg < max_underflow) ratio = MIN(ratio, (max_underflow-px.g)/sg);
+         if (px.b + sb > max_overflow)  ratio = MIN(ratio, (max_overflow -px.b)/sb);
+    else if (px.b + sb < max_underflow) ratio = MIN(ratio, (max_underflow-px.b)/sb);
 
     float a = px.a + sa;
          if (a > 1.0) { a = 1.0; }

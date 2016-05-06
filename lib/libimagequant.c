@@ -1190,7 +1190,7 @@ LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned 
 
     // response to this value is non-linear and without it any value < 0.8 would give almost no dithering
     float base_dithering_level = quant->dither_level;
-    base_dithering_level = 1.0 - (1.0-base_dithering_level)*(1.0-base_dithering_level)*(1.0-base_dithering_level);
+    base_dithering_level = 1.0 - (1.0-base_dithering_level)*(1.0-base_dithering_level);
 
     if (dither_map) {
         base_dithering_level *= 1.0/255.0; // convert byte to float
@@ -1232,14 +1232,19 @@ LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned 
             // If dithering error is crazy high, don't propagate it that much
             // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
             if (err.r*err.r + err.g*err.g + err.b*err.b + err.a*err.a > max_dither_error) {
-                dither_level *= 0.75;
+                err.r *= 0.75;
+                err.g *= 0.75;
+                err.b *= 0.75;
+                err.a *= 0.75;
             }
 
-            const float colorimp = (3.0f + acolormap[last_match].acolor.a)/4.0f * dither_level;
-            err.r *= colorimp;
-            err.g *= colorimp;
-            err.b *= colorimp;
-            err.a *= dither_level;
+            // if pixel is transparent, it doesn't matter how bad rgb was
+            const float visible_alpha = acolormap[last_match].acolor.a;
+            if (visible_alpha < 1.f) {
+                err.r *= visible_alpha;
+                err.g *= visible_alpha;
+                err.b *= visible_alpha;
+            }
 
             /* Propagate Floyd-Steinberg error terms. */
             if (fs_direction) {

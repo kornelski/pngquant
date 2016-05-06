@@ -3,6 +3,8 @@ version 2.7
  - libimagequant reports detailed progress and supports aborting of operations via callbacks
  - fixed order of log output when using openmp
  - improved quality sanity check in --skip-if-larger option
+ - disabled palette post-processing on colors from --map option to preserve them exactly
+ - improved dithering of semitransparent colors
 
 version 2.6
 -----------

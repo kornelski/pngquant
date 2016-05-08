@@ -75,7 +75,7 @@ void rwpng_version_info(FILE *fp)
 #elif USE_LCMS
     fprintf(fp, "   Color profiles are supported via Little CMS. Using libpng %s.\n", pngver);
 #else
-    fprintf(fp, "   Compiled without support for color profiles. Using libpng %s.\n", pngver);
+    fprintf(fp, "   Compiled with no support for color profiles. Using libpng %s.\n", pngver);
 #endif
 
 #if PNG_LIBPNG_VER < 10600

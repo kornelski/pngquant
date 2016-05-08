@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (April 2016)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (May 2016)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\
@@ -163,7 +163,7 @@ static void log_callback_buferred(const liq_attr *attr, const char *msg, void* c
 
 static void print_full_version(FILE *fd)
 {
-    fprintf(fd, "pngquant, %s, by Greg Roelofs, Kornel Lesinski.\n"
+    fprintf(fd, "pngquant, %s, by Kornel Lesinski, Greg Roelofs.\n"
         #ifndef NDEBUG
                     "   WARNING: this is a DEBUG (slow) version.\n" /* NDEBUG disables assert() */
         #endif

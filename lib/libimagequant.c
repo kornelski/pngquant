@@ -535,7 +535,7 @@ LIQ_NONNULL static bool liq_image_should_use_low_memory(liq_image *img, const bo
     return img->width * img->height > (low_memory_hint ? LIQ_HIGH_MEMORY_LIMIT/8 : LIQ_HIGH_MEMORY_LIMIT) / sizeof(f_pixel); // Watch out for integer overflow
 }
 
-static liq_image *liq_image_create_internal(liq_attr *attr, rgba_pixel* rows[], liq_image_get_rgba_row_callback *row_callback, void *row_callback_user_info, int width, int height, double gamma)
+static liq_image *liq_image_create_internal(const liq_attr *attr, rgba_pixel* rows[], liq_image_get_rgba_row_callback *row_callback, void *row_callback_user_info, int width, int height, double gamma)
 {
     if (gamma < 0 || gamma > 1.0) {
         liq_log_error(attr, "gamma must be >= 0 and <= 1 (try 1/gamma instead)");
@@ -623,7 +623,7 @@ LIQ_NONNULL static bool check_image_size(const liq_attr *attr, const int width, 
     return true;
 }
 
-LIQ_EXPORT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma)
+LIQ_EXPORT liq_image *liq_image_create_custom(const liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma)
 {
     if (!check_image_size(attr, width, height)) {
         return NULL;
@@ -631,7 +631,7 @@ LIQ_EXPORT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba
     return liq_image_create_internal(attr, NULL, row_callback, user_info, width, height, gamma);
 }
 
-LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma)
+LIQ_EXPORT liq_image *liq_image_create_rgba_rows(const liq_attr *attr, void* rows[], int width, int height, double gamma)
 {
     if (!check_image_size(attr, width, height)) {
         return NULL;
@@ -646,7 +646,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], i
     return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
 }
 
-LIQ_EXPORT LIQ_NONNULL liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma)
+LIQ_EXPORT LIQ_NONNULL liq_image *liq_image_create_rgba(const liq_attr *attr, void* bitmap, int width, int height, double gamma)
 {
     if (!check_image_size(attr, width, height)) {
         return NULL;

@@ -83,11 +83,11 @@ typedef int liq_progress_callback_function(float progress_percent, void* user_in
 LIQ_EXPORT void liq_attr_set_progress_callback(liq_attr*, liq_progress_callback_function*, void* user_info);
 LIQ_EXPORT void liq_result_set_progress_callback(liq_result*, liq_progress_callback_function*, void* user_info);
 
-LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma) LIQ_NONNULL;
-LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_rgba_rows(const liq_attr *attr, void* rows[], int width, int height, double gamma) LIQ_NONNULL;
+LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_rgba(const liq_attr *attr, void* bitmap, int width, int height, double gamma) LIQ_NONNULL;
 
 typedef void liq_image_get_rgba_row_callback(liq_color row_out[], int row, int width, void* user_info);
-LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_custom(liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma);
+LIQ_EXPORT LIQ_USERESULT liq_image *liq_image_create_custom(const liq_attr *attr, liq_image_get_rgba_row_callback *row_callback, void* user_info, int width, int height, double gamma);
 
 LIQ_EXPORT liq_error liq_image_set_memory_ownership(liq_image *image, int ownership_flags) LIQ_NONNULL;
 LIQ_EXPORT liq_error liq_image_add_fixed_color(liq_image *img, liq_color color) LIQ_NONNULL;

@@ -60,7 +60,7 @@ LIQ_PRIVATE void* mempool_create(mempool *mptr, const unsigned int size, unsigne
     return mempool_alloc(mptr, size, size);
 }
 
-LIQ_PRIVATE void* mempool_alloc(mempool *mptr, unsigned int size, unsigned int max_size)
+LIQ_PRIVATE void* mempool_alloc(mempool *mptr, const unsigned int size, const unsigned int max_size)
 {
     if (((*mptr)->used+size) <= (*mptr)->size) {
         unsigned int prevused = (*mptr)->used;

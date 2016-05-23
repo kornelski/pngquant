@@ -684,15 +684,25 @@ LIQ_EXPORT void liq_executing_user_callback(liq_image_get_rgba_row_callback *cal
     callback(temp_row, row, width, user_info);
 }
 
-LIQ_NONNULL inline static bool liq_image_can_use_rows(liq_image *img)
+LIQ_NONNULL inline static bool liq_image_has_rgba_pixels(const liq_image *img)
 {
+    if (!CHECK_STRUCT_TYPE(img, liq_image)) {
+        return false;
+    }
+    return img->rows || (img->temp_row && img->row_callback);
+}
+
+LIQ_NONNULL inline static bool liq_image_can_use_rgba_rows(const liq_image *img)
+{
+    assert(liq_image_has_rgba_pixels(img));
+
     const bool iebug = img->min_opaque_val < 1.f;
     return (img->rows && !iebug);
 }
 
 LIQ_NONNULL static const rgba_pixel *liq_image_get_row_rgba(liq_image *img, unsigned int row)
 {
-    if (liq_image_can_use_rows(img)) {
+    if (liq_image_can_use_rgba_rows(img)) {
         return img->rows[row];
     }
 
@@ -824,7 +834,7 @@ LIQ_EXPORT LIQ_NONNULL void liq_image_destroy(liq_image *input_image)
 LIQ_EXPORT LIQ_NONNULL liq_result *liq_quantize_image(liq_attr *attr, liq_image *img)
 {
     if (!CHECK_STRUCT_TYPE(attr, liq_attr)) { return NULL; }
-    if (!CHECK_STRUCT_TYPE(img, liq_image)) {
+    if (!liq_image_has_rgba_pixels(img)) {
         liq_log_error(attr, "invalid image pointer");
         return NULL;
     }
@@ -1124,14 +1134,16 @@ inline static f_pixel get_dithered_pixel(const float dither_level, const float m
                 sa = thiserr.a * dither_level;
 
     float ratio = 1.0;
+    const float max_overflow = 1.1f;
+    const float max_underflow = -0.1f;
 
     // allowing some overflow prevents undithered bands caused by clamping of all channels
-         if (px.r + sr > 1.03) ratio = MIN(ratio, (1.03-px.r)/sr);
-    else if (px.r + sr < 0)    ratio = MIN(ratio, px.r/-sr);
-         if (px.g + sg > 1.03) ratio = MIN(ratio, (1.03-px.g)/sg);
-    else if (px.g + sg < 0)    ratio = MIN(ratio, px.g/-sg);
-         if (px.b + sb > 1.03) ratio = MIN(ratio, (1.03-px.b)/sb);
-    else if (px.b + sb < 0)    ratio = MIN(ratio, px.b/-sb);
+         if (px.r + sr > max_overflow)  ratio = MIN(ratio, (max_overflow -px.r)/sr);
+    else if (px.r + sr < max_underflow) ratio = MIN(ratio, (max_underflow-px.r)/sr);
+         if (px.g + sg > max_overflow)  ratio = MIN(ratio, (max_overflow -px.g)/sg);
+    else if (px.g + sg < max_underflow) ratio = MIN(ratio, (max_underflow-px.g)/sg);
+         if (px.b + sb > max_overflow)  ratio = MIN(ratio, (max_overflow -px.b)/sb);
+    else if (px.b + sb < max_underflow) ratio = MIN(ratio, (max_underflow-px.b)/sb);
 
     float a = px.a + sa;
          if (a > 1.0) { a = 1.0; }
@@ -1188,7 +1200,7 @@ LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned 
 
     // response to this value is non-linear and without it any value < 0.8 would give almost no dithering
     float base_dithering_level = quant->dither_level;
-    base_dithering_level = 1.0 - (1.0-base_dithering_level)*(1.0-base_dithering_level)*(1.0-base_dithering_level);
+    base_dithering_level = 1.0 - (1.0-base_dithering_level)*(1.0-base_dithering_level);
 
     if (dither_map) {
         base_dithering_level *= 1.0/255.0; // convert byte to float
@@ -1219,25 +1231,30 @@ LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned 
             const unsigned int guessed_match = output_image_is_remapped ? output_pixels[row][col] : last_match;
             output_pixels[row][col] = last_match = nearest_search(n, &spx, guessed_match, NULL);
 
-            const f_pixel xp = acolormap[last_match].acolor;
+            const f_pixel output_px = acolormap[last_match].acolor;
             f_pixel err = {
-                .r = (spx.r - xp.r),
-                .g = (spx.g - xp.g),
-                .b = (spx.b - xp.b),
-                .a = (spx.a - xp.a),
+                .r = (spx.r - output_px.r),
+                .g = (spx.g - output_px.g),
+                .b = (spx.b - output_px.b),
+                .a = (spx.a - output_px.a),
             };
 
             // If dithering error is crazy high, don't propagate it that much
             // This prevents crazy geen pixels popping out of the blue (or red or black! ;)
             if (err.r*err.r + err.g*err.g + err.b*err.b + err.a*err.a > max_dither_error) {
-                dither_level *= 0.75;
+                err.r *= 0.75;
+                err.g *= 0.75;
+                err.b *= 0.75;
+                err.a *= 0.75;
             }
 
-            const float colorimp = (3.0f + acolormap[last_match].acolor.a)/4.0f * dither_level;
-            err.r *= colorimp;
-            err.g *= colorimp;
-            err.b *= colorimp;
-            err.a *= dither_level;
+            // if pixel is transparent, it doesn't matter how bad rgb was
+            const float visible_alpha = output_px.a;
+            if (visible_alpha < 1.f) {
+                err.r *= visible_alpha;
+                err.g *= visible_alpha;
+                err.b *= visible_alpha;
+            }
 
             /* Propagate Floyd-Steinberg error terms. */
             if (fs_direction) {
@@ -1341,7 +1358,7 @@ LIQ_NONNULL static histogram *get_histogram(liq_image *input_image, const liq_at
     unsigned int maxcolors = options->max_histogram_entries;
 
     struct acolorhash_table *acht;
-    const bool all_rows_at_once = liq_image_can_use_rows(input_image);
+    const bool all_rows_at_once = liq_image_can_use_rgba_rows(input_image);
     do {
         acht = pam_allocacolorhash(maxcolors, rows*cols, ignorebits, options->malloc, options->free);
         if (!acht) return NULL;
@@ -1524,25 +1541,24 @@ LIQ_NONNULL static void update_dither_map(unsigned char *const *const row_pointe
             const unsigned char px = row_pointers[row][col];
 
             if (px != lastpixel || col == width-1) {
-                float neighbor_count = 2.5f + col-lastcol;
+                int neighbor_count = 10 * (col-lastcol);
 
                 unsigned int i=lastcol;
                 while(i < col) {
                     if (row > 0) {
                         unsigned char pixelabove = row_pointers[row-1][i];
-                        if (pixelabove == lastpixel) neighbor_count += 1.f;
+                        if (pixelabove == lastpixel) neighbor_count += 15;
                     }
                     if (row < height-1) {
                         unsigned char pixelbelow = row_pointers[row+1][i];
-                        if (pixelbelow == lastpixel) neighbor_count += 1.f;
+                        if (pixelbelow == lastpixel) neighbor_count += 15;
                     }
                     i++;
                 }
 
                 while(lastcol <= col) {
-                    float e = edges[row*width + lastcol] / 255.f;
-                    e *= 1.f - 2.5f/neighbor_count;
-                    edges[row*width + lastcol++] = e * 255.f;
+                    int e = edges[row*width + lastcol];
+                    edges[row*width + lastcol++] = (e+128) * (255.f/(255+128)) * (1.f - 20.f / (20 + neighbor_count));
                 }
                 lastpixel = px;
             }

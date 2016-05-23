@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (April 2016)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (May 2016)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\
@@ -70,6 +70,7 @@ use --force to overwrite. See man page for full list of options.\n"
 #include <stdbool.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <math.h>
 
 extern char *optarg;
 extern int optind, opterr;
@@ -162,7 +163,7 @@ static void log_callback_buferred(const liq_attr *attr, const char *msg, void* c
 
 static void print_full_version(FILE *fd)
 {
-    fprintf(fd, "pngquant, %s, by Greg Roelofs, Kornel Lesinski.\n"
+    fprintf(fd, "pngquant, %s, by Kornel Lesinski, Greg Roelofs.\n"
         #ifndef NDEBUG
                     "   WARNING: this is a DEBUG (slow) version.\n" /* NDEBUG disables assert() */
         #endif
@@ -378,10 +379,20 @@ int main(int argc, char *argv[])
             case arg_map:
                 {
                     png24_image tmp = {};
-                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, false, false)) {
+                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, true, false)) {
                         fprintf(stderr, "  error: unable to load %s", optarg);
                         return INVALID_ARGUMENT;
                     }
+                    liq_result *tmp_quantize = liq_quantize_image(options.liq, options.fixed_palette_image);
+                    const liq_palette *pal = liq_get_palette(tmp_quantize);
+                    if (!pal) {
+                        fprintf(stderr, "  error: unable to read colors from %s", optarg);
+                        return INVALID_ARGUMENT;
+                    }
+                    for(int i=0; i < pal->count; i++) {
+                        liq_image_add_fixed_color(options.fixed_palette_image, pal->entries[i]);
+                    }
+                    liq_result_destroy(tmp_quantize);
                 }
                 break;
 
@@ -477,8 +488,8 @@ int main(int argc, char *argv[])
         if (opts.log_callback && omp_get_num_threads() > 1 && num_files > 1) {
             liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
             liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
-            options.log_callback = log_callback_buferred;
-            options.log_callback_user_info = &buf;
+            opts.log_callback = log_callback_buferred;
+            opts.log_callback_user_info = &buf;
         }
         #endif
 
@@ -487,11 +498,11 @@ int main(int argc, char *argv[])
 
         const char *outname = output_file_path;
         char *outname_free = NULL;
-        if (!options.using_stdout) {
+        if (!opts.using_stdout) {
             if (!outname) {
                 outname = outname_free = add_filename_extension(filename, newext);
             }
-            if (!options.force && file_exists(outname)) {
+            if (!opts.force && file_exists(outname)) {
                 fprintf(stderr, "  error: '%s' exists; not overwriting\n", outname);
                 retval = NOT_OVERWRITING_ERROR;
             }
@@ -605,9 +616,11 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
 
         if (options->skip_if_larger) {
             // this is very rough approximation, but generally avoid losing more quality than is gained in file size.
-            // Quality is squared, because even greater savings are needed to justify big quality loss.
-            double quality = quality_percent/100.0;
-            output_image.maximum_file_size = (input_image_rwpng.file_size-1) * quality*quality;
+            // Quality is raised to 1.5, because even greater savings are needed to justify big quality loss.
+            // but >50% savings are considered always worthwile in order to allow low quality conversions to work at all
+            const double quality = quality_percent/100.0;
+            const double expected_reduced_size = pow(quality, 1.5);
+            output_image.maximum_file_size = (input_image_rwpng.file_size-1) * (expected_reduced_size < 0.5 ? 0.5 : expected_reduced_size);
         }
 
         output_image.fast_compression = options->fast_compression;

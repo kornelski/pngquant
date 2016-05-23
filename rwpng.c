@@ -75,7 +75,7 @@ void rwpng_version_info(FILE *fp)
 #elif USE_LCMS
     fprintf(fp, "   Color profiles are supported via Little CMS. Using libpng %s.\n", pngver);
 #else
-    fprintf(fp, "   Compiled without support for color profiles. Using libpng %s.\n", pngver);
+    fprintf(fp, "   Compiled with no support for color profiles. Using libpng %s.\n", pngver);
 #endif
 
 #if PNG_LIBPNG_VER < 10600
@@ -211,6 +211,10 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         return LIBPNG_FATAL_ERROR;   /* fatal libpng error (via longjmp()) */
     }
+
+#if defined(PNG_SKIP_sRGB_CHECK_PROFILE) && defined(PNG_SET_OPTION_SUPPORTED)
+    png_set_option(png_ptr, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
+#endif
 
 #if PNG_LIBPNG_VER >= 10500 && defined(PNG_UNKNOWN_CHUNKS_SUPPORTED)
     /* copy standard chunks too */
@@ -602,7 +606,7 @@ pngquant_error rwpng_write_image24(FILE *outfile, const png24_image *mainprog_pt
 
 
 static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp msg) {
-    fprintf(stderr, "  %s\n", msg);
+    fprintf(stderr, "  libpng warning: %s\n", msg);
 }
 
 static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg) {

@@ -1,3 +1,11 @@
+version 2.7
+-----------
+ - improved dithering of saturated and semitransparent colors
+ - libimagequant reports detailed progress and supports aborting of operations via callbacks
+ - fixed order of log output when using openmp
+ - improved quality sanity check in --skip-if-larger option
+ - disabled palette post-processing on colors from --map option to preserve them exactly
+
 version 2.6
 -----------
  - when source image has no color profile information, the output won't have either

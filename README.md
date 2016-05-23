@@ -101,4 +101,4 @@ pngquant is dual-licensed:
 
 * GPL v3 or later, and additional copyright notice must be kept for older parts of the code. See [COPYRIGHT](https://github.com/pornel/pngquant/blob/master/COPYRIGHT) for details.
 
-* For commercial/closed-source/AppStore distribution please ask kornel@pngquant.org for a license.
+* For use in non-GPL software (e.g. closed-source or App Store distribution) please ask kornel@pngquant.org for a commercial license.

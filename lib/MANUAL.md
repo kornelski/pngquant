@@ -50,12 +50,12 @@ The library can be compiled with any C compiler that has at least basic support 
 The basic flow is:
 
 1. Create attributes object and configure the library.
-2. Create image object from RGBA bitmap or data source.
+2. Create image object from RGBA pixels or data source.
 3. Perform quantization (generate palette).
 4. Store remapped image and final palette.
 5. Free memory.
 
-Please note that libimagequant only handles raw uncompressed bitmaps in memory and is completely independent of any file format.
+Please note that libimagequant only handles raw uncompressed arrays of pixels in memory and is completely independent of any file format.
 
 <p>
 
@@ -85,8 +85,8 @@ It's safe to pass `NULL` to any function accepting `liq_attr`, `liq_image`, `liq
 
 There are 3 ways to create image object for quantization:
 
-  * `liq_image_create_rgba()` for simple, contiguous RGBA bitmaps (width×height×4 bytes large array).
-  * `liq_image_create_rgba_rows()` for non-contiguous RGBA bitmaps (that have padding between rows or reverse order, e.g. BMP).
+  * `liq_image_create_rgba()` for simple, contiguous RGBA pixel arrays (width×height×4 bytes large bitmap).
+  * `liq_image_create_rgba_rows()` for non-contiguous RGBA pixel arrays (that have padding between rows or reverse order, e.g. BMP).
   * `liq_image_create_custom()` for RGB, ABGR, YUV and all other formats that can be converted on-the-fly to RGBA (you have to supply the conversion function).
 
 Note that "image" here means raw uncompressed pixels. If you have a compressed image file, such as PNG, you must use another library (e.g. libpng or lodepng) to decode it first.
@@ -149,26 +149,26 @@ Returns the upper bound set by `liq_set_quality()`.
 
 ----
 
-    liq_image *liq_image_create_rgba(liq_attr *attr, void* bitmap, int width, int height, double gamma);
+    liq_image *liq_image_create_rgba(liq_attr *attr, void* pixels, int width, int height, double gamma);
 
-Creates image object that represents a bitmap later used for quantization and remapping. The bitmap must be contiguous run of RGBA pixels (alpha is the last component, 0 = transparent, 255 = opaque).
+Creates an object that represents the image pixels later used for quantization and remapping. The pixel array must be contiguous run of RGBA pixels (alpha is the last component, 0 = transparent, 255 = opaque).
 
-The bitmap must not be modified or freed until this object is freed with `liq_image_destroy()`. See also `liq_image_set_memory_ownership()`.
+The pixel array must not be modified or freed until this object is freed with `liq_image_destroy()`. See also `liq_image_set_memory_ownership()`.
 
-`width` and `height` are dimensions in pixels. An image 10x10 pixel large will need 400-byte bitmap.
+`width` and `height` are dimensions in pixels. An image 10x10 pixel large will need 400-byte array.
 
 `gamma` can be `0` for images with the typical 1/2.2 [gamma](https://en.wikipedia.org/wiki/Gamma_correction).
 Otherwise `gamma` must be > 0 and < 1, e.g. `0.45455` (1/2.2) or `0.55555` (1/1.8). Generated palette will use the same gamma unless `liq_set_output_gamma()` is used. If `liq_set_output_gamma` is not used, then it only affects whether brighter or darker areas of the image will get more palette colors allocated.
 
-Returns `NULL` on failure, e.g. if `bitmap` is `NULL` or `width`/`height` is <= 0.
+Returns `NULL` on failure, e.g. if `pixels` is `NULL` or `width`/`height` is <= 0.
 
 ----
 
     liq_image *liq_image_create_rgba_rows(liq_attr *attr, void* rows[], int width, int height, double gamma);
 
-Same as `liq_image_create_rgba()`, but takes array of pointers to rows in the bitmap. This allows defining bitmaps with reversed rows (like in BMP), "stride" different than width or using only fragment of a larger bitmap, etc.
+Same as `liq_image_create_rgba()`, but takes an array of pointers to rows of pixels. This allows defining images with reversed rows (like in BMP), "stride" different than width or using only fragment of a larger bitmap, etc.
 
-`rows` array must have at least `height` elements and each row must be at least `width` RGBA pixels wide.
+The `rows` array must have at least `height` elements, and each row must be at least `width` RGBA pixels wide.
 
     unsigned char *bitmap = …;
     void *rows = malloc(height * sizeof(void*));
@@ -181,7 +181,7 @@ Same as `liq_image_create_rgba()`, but takes array of pointers to rows in the bi
     liq_image_destroy(img);
     free(rows);
 
-The row pointers and bitmap must not be modified or freed until this object is freed with `liq_image_destroy()` (you can change that with `liq_image_set_memory_ownership()`).
+The row pointers and pixels must not be modified or freed until this object is freed with `liq_image_destroy()` (you can change that with `liq_image_set_memory_ownership()`).
 
 See also `liq_image_create_rgba()` and `liq_image_create_custom()`.
 
@@ -353,17 +353,17 @@ The library doesn't support RGB bitmaps "natively", because supporting only sing
 
     liq_error liq_image_set_memory_ownership(liq_image *image, int ownership_flags);
 
-Passes ownership of bitmap and/or rows memory to the `liq_image` object, so you don't have to free it yourself. Memory owned by the object will be freed at its discretion with `free` function specified in `liq_attr_create_with_allocator()` (by default it's stdlib's `free()`).
+Passes ownership of image pixel data and/or its rows array to the `liq_image` object, so you don't have to free it yourself. Memory owned by the object will be freed at its discretion with `free` function specified in `liq_attr_create_with_allocator()` (by default it's stdlib's `free()`).
 
-* `LIQ_OWN_PIXELS` makes bitmap owned by the object. The bitmap will be freed automatically at any point when it's no longer needed. If you set this flag you must **not** free the bitmap yourself. If the image has been created with `liq_image_create_rgba_rows()` then the bitmap address is assumed to be the lowest address of any row.
+* `LIQ_OWN_PIXELS` makes pixel array owned by the object. The pixels will be freed automatically at any point when it's no longer needed. If you set this flag you must **not** free the pixel array yourself. If the image has been created with `liq_image_create_rgba_rows()` then the starting address of the array of pixels is assumed to be the lowest address of any row.
 
-* `LIQ_OWN_ROWS` makes array of row pointers (but not bitmap pointed by these rows) owned by the object. Rows will be freed when object is deallocated. If you set this flag you must **not** free the rows array yourself. This flag is valid only if the object has been created with `liq_image_create_rgba_rows()`.
+* `LIQ_OWN_ROWS` makes array of row pointers (but not the pixels pointed by these rows) owned by the object. Rows will be freed when object is deallocated. If you set this flag you must **not** free the rows array yourself. This flag is valid only if the object has been created with `liq_image_create_rgba_rows()`.
 
 These flags can be combined with binary *or*, i.e. `LIQ_OWN_PIXELS | LIQ_OWN_ROWS`.
 
 This function must not be used if the image has been created with `liq_image_create_custom()`.
 
-Returns `LIQ_VALUE_OUT_OF_RANGE` if invalid flags are specified or image is not backed by a bitmap.
+Returns `LIQ_VALUE_OUT_OF_RANGE` if invalid flags are specified or the image object only takes pixels from a callback.
 
 ----
 

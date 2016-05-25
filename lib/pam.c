@@ -172,7 +172,7 @@ LIQ_PRIVATE struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors,
         .maxcolors = maxcolors,
         .ignorebits = ignorebits,
     };
-    memset(t->buckets, 0, hash_size * sizeof(struct acolorhist_arr_head));
+    memset(t->buckets, 0, buckets_size);
     return t;
 }
 

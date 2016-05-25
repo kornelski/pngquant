@@ -242,11 +242,8 @@ struct acolorhist_arr_item {
 };
 
 struct acolorhist_arr_head {
+    struct acolorhist_arr_item inline1, inline2;
     unsigned int used, capacity;
-    struct {
-        union rgba_as_int color;
-        float perceptual_weight;
-    } inline1, inline2;
     struct acolorhist_arr_item *other_items;
 };
 

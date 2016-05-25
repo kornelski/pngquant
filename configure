@@ -388,7 +388,7 @@ if [ "$SUCCESS" -eq 0 ]; then
     if [[ "$OSTYPE" =~ "darwin" ]]; then
         LIBPNG_CMD='`brew install libpng`'
     else
-        LIBPNG_CMD='`apt-get install libpng-dev` or `yum install libpng-devel`'
+        LIBPNG_CMD='`apt-get install libpng16-dev` or `apt-get install libpng-dev` or `yum install libpng-devel`'
     fi
     error "libpng" "not found (try: $LIBPNG_CMD)"
 fi

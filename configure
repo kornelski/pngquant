@@ -145,7 +145,7 @@ find_h() {
 }
 
 find_pkgconfig() {
-    LIBNAME=$1
+    local LIBNAME=$1
     if pkg-config --exists "$LIBNAME" &> /dev/null; then
         cflags "$(pkg-config --cflags "$LIBNAME")"
         lflags "$(pkg-config --libs "$LIBNAME")"
@@ -156,13 +156,13 @@ find_pkgconfig() {
 }
 
 find_static() {
-    LIBNAME=$1
-    HEADERPATTERN=$2
-    STATICPATTERN=$3
+    local LIBNAME=$1
+    local HEADERPATTERN=$2
+    local STATICPATTERN=$3
 
-    HPATH=$(find_h . "$HEADERPATTERN")
+    local HPATH=$(find_h . "$HEADERPATTERN")
     if [ -n "$HPATH" ]; then
-        APATH=$(find_f . "$STATICPATTERN")
+        local APATH=$(find_f . "$STATICPATTERN")
         if [ -n "$APATH" ]; then
             cflags "-I${HPATH%/*}"
             lflags "${APATH}"
@@ -174,11 +174,11 @@ find_static() {
 }
 
 find_library() {
-    LIBNAME=$1
-    DYNAMICLIBNAME=$2
-    HEADERPATTERN=$3
-    STATICPATTERN=$4
-    DYNAMICPATTERN=$5
+    local LIBNAME=$1
+    local DYNAMICLIBNAME=$2
+    local HEADERPATTERN=$3
+    local STATICPATTERN=$4
+    local DYNAMICPATTERN=$5
 
     # try static in current directory first
     if find_static "$LIBNAME" "$HEADERPATTERN" "$STATICPATTERN"; then
@@ -191,10 +191,10 @@ find_library() {
     fi
 
     for i in "${DIRS[@]}"; do
-        DIR=($i)
-        HPATH=$(find_h "${DIR[0]}" "$HEADERPATTERN")
+        local DIR=($i)
+        local HPATH=$(find_h "${DIR[0]}" "$HEADERPATTERN")
         if [ -n "$HPATH" ]; then
-            SOPATH=$(find_f "${DIR[1]}" "$DYNAMICPATTERN")
+            local SOPATH=$(find_f "${DIR[1]}" "$DYNAMICPATTERN")
             if [ -n "$SOPATH" ]; then
                 cflags "-I${HPATH%/*}"
                 lflags "-L${SOPATH%/*} -l$DYNAMICLIBNAME"

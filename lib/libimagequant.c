@@ -1619,7 +1619,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
     do {
         colormap *newmap;
         if (hist->size && fixed_colors_count < max_colors) {
-            newmap = mediancut(hist, max_colors-fixed_colors_count, target_mse * target_mse_overshoot, MAX(MAX(90.0/65536.0, target_mse), least_error)*1.2,
+            newmap = mediancut(hist, max_colors-fixed_colors_count, target_mse * target_mse_overshoot, MAX(MAX(45.0/65536.0, target_mse), least_error)*1.2,
             options->malloc, options->free);
         } else {
             feedback_loop_trials = 0;

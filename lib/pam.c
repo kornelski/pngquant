@@ -52,6 +52,7 @@ LIQ_PRIVATE bool pam_computeacolorhash(struct acolorhash_table *acht, const rgba
             if (!px.rgba.a) {
                 // "dirty alpha" has different RGBA values that end up being the same fully transparent color
                 px.l=0; hash=0;
+                boost = 10;
             } else {
                 // mask posterizes all 4 channels in one go
                 px.l = (px.l & posterize_mask) | ((px.l & posterize_high_mask) >> (8-ignorebits));
@@ -173,7 +174,7 @@ LIQ_PRIVATE struct acolorhash_table *pam_allocacolorhash(unsigned int maxcolors,
         .maxcolors = maxcolors,
         .ignorebits = ignorebits,
     };
-    memset(t->buckets, 0, hash_size * sizeof(struct acolorhist_arr_head));
+    memset(t->buckets, 0, buckets_size);
     return t;
 }
 

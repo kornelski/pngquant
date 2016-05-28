@@ -173,6 +173,26 @@ find_static() {
     return 1
 }
 
+find_dynamic() {
+    local LIBNAME=$1
+    local HEADERPATTERN=$2
+    local DYNAMICPATTERN=$3
+    local HEADERDIR=$4
+    local LIBDIR=$5
+
+    local HPATH=$(find_h "$HEADERDIR" "$HEADERPATTERN")
+    if [ -n "$HPATH" ]; then
+        local SOPATH=$(find_f "$LIBDIR" "$DYNAMICPATTERN")
+        if [ -n "$SOPATH" ]; then
+            cflags "-I${HPATH%/*}"
+            lflags "-L${SOPATH%/*} -l$DYNAMICLIBNAME"
+            status "$LIBNAME" "shared ... $SOPATH"
+            return 0
+        fi
+    fi
+    return 1
+}
+
 find_library() {
     local LIBNAME=$1
     local DYNAMICLIBNAME=$2
@@ -191,17 +211,8 @@ find_library() {
     fi
 
     for i in "${DIRS[@]}"; do
-        local DIR=($i)
-        local HPATH=$(find_h "${DIR[0]}" "$HEADERPATTERN")
-        if [ -n "$HPATH" ]; then
-            local SOPATH=$(find_f "${DIR[1]}" "$DYNAMICPATTERN")
-            if [ -n "$SOPATH" ]; then
-                cflags "-I${HPATH%/*}"
-                lflags "-L${SOPATH%/*} -l$DYNAMICLIBNAME"
-                status "$LIBNAME" "shared ... $SOPATH"
-                return 0
-            fi
-        fi
+        DIR=($i)
+        find_dynamic "$LIBNAME" "$HEADERPATTERN" "$DYNAMICPATTERN" "${DIR[0]}" "${DIR[1]}"
     done
     return 1
 }

@@ -37,7 +37,7 @@
 #include <string.h>
 #include <limits.h>
 
-#include "png.h"
+#include "png.h"  /* if this include fails, you need to install libpng (e.g. libpng-devel package) and run ./configure */
 #include "rwpng.h"
 #if USE_LCMS
 #include "lcms2.h"
@@ -509,6 +509,8 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
     png_structp png_ptr;
     png_infop info_ptr;
 
+    if (mainprog_ptr->num_palette > 256) return INVALID_ARGUMENT;
+
     pngquant_error retval = rwpng_write_image_init((rwpng_png_image*)mainprog_ptr, &png_ptr, &info_ptr, mainprog_ptr->fast_compression);
     if (retval) return retval;
 
@@ -562,10 +564,25 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
       0, PNG_COMPRESSION_TYPE_DEFAULT,
       PNG_FILTER_TYPE_BASE);
 
-    png_set_PLTE(png_ptr, info_ptr, &mainprog_ptr->palette[0], mainprog_ptr->num_palette);
+    png_color palette[256];
+    png_byte trans[256];
+    unsigned int num_trans = 0;
+    for(unsigned int i = 0; i < mainprog_ptr->num_palette; i++) {
+        palette[i] = (png_color){
+            .red   = mainprog_ptr->palette[i].r,
+            .green = mainprog_ptr->palette[i].g,
+            .blue  = mainprog_ptr->palette[i].b,
+        };
+        trans[i] = mainprog_ptr->palette[i].a;
+        if (mainprog_ptr->palette[i].a < 255) {
+            num_trans = i+1;
+        }
+    }
 
-    if (mainprog_ptr->num_trans > 0) {
-        png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans, mainprog_ptr->num_trans, NULL);
+    png_set_PLTE(png_ptr, info_ptr, palette, mainprog_ptr->num_palette);
+
+    if (num_trans > 0) {
+        png_set_tRNS(png_ptr, info_ptr, trans, num_trans, NULL);
     }
 
     rwpng_write_end(&info_ptr, &png_ptr, mainprog_ptr->row_pointers);

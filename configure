@@ -212,7 +212,9 @@ find_library() {
 
     for i in "${DIRS[@]}"; do
         DIR=($i)
-        find_dynamic "$LIBNAME" "$HEADERPATTERN" "$DYNAMICPATTERN" "${DIR[0]}" "${DIR[1]}"
+        if find_dynamic "$LIBNAME" "$HEADERPATTERN" "$DYNAMICPATTERN" "${DIR[0]}" "${DIR[1]}"; then
+            return 0
+        fi
     done
     return 1
 }

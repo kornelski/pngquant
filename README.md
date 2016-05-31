@@ -14,7 +14,7 @@ This utility works on Linux, Mac OS X and Windows.
 - batch conversion of multiple files: `pngquant *.png`
 - Unix-style stdin/stdout chaining: `… | pngquant - | …`
 
-To further reduce file size, try [optipng](http://optipng.sourceforge.net) or [ImageOptim](https://imageoptim.com).
+To further reduce file size, try [optipng](http://optipng.sourceforge.net), [ImageOptim](https://imageoptim.com), or [zopflipng](https://github.com/google/zopfli).
 
 ## Improvements since 1.0
 

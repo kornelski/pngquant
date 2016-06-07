@@ -22,7 +22,7 @@ static: $(STATICLIB)
 shared: $(SHAREDLIB)
 
 dll:
-	$(MAKE) CFLAGSADD="-DLIQ_EXPORT='__declspec(dllexport)'" $(DLL)
+	$(MAKE) CFLAGSADD="-DIMAGEQUANT_EXPORTS" $(DLL)
 
 
 $(DLL) $(DLLIMP): $(OBJS)

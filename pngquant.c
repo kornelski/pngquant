@@ -652,16 +652,10 @@ static void set_palette(liq_result *result, png8_image *output_image)
 {
     const liq_palette *palette = liq_get_palette(result);
 
-    // tRNS, etc.
     output_image->num_palette = palette->count;
-    output_image->num_trans = 0;
     for(unsigned int i=0; i < palette->count; i++) {
         liq_color px = palette->entries[i];
-        if (px.a < 255) {
-            output_image->num_trans = i+1;
-        }
-        output_image->palette[i] = (png_color){.red=px.r, .green=px.g, .blue=px.b};
-        output_image->trans[i] = px.a;
+        output_image->palette[i] = (rwpng_rgba){.r=px.r, .g=px.g, .b=px.b, .a=px.a};
     }
 }
 
@@ -869,12 +863,6 @@ static pngquant_error prepare_output_image(liq_result *result, liq_image *input_
     const liq_palette *palette = liq_get_palette(result);
     // tRNS, etc.
     output_image->num_palette = palette->count;
-    output_image->num_trans = 0;
-    for(unsigned int i=0; i < palette->count; i++) {
-        if (palette->entries[i].a < 255) {
-            output_image->num_trans = i+1;
-        }
-    }
 
     return SUCCESS;
 }

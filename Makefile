@@ -20,10 +20,6 @@ TARFILE = $(TARNAME)-src.tar.gz
 
 LIBDISTFILES = lib/*.[ch] lib/COPYRIGHT lib/MANUAL.md lib/configure lib/Makefile
 
-DLL=libimagequant.dll
-DLLIMP=libimagequant_dll.a
-DLLDEF=libimagequant_dll.def
-
 TESTBIN = test/test
 
 all: $(BIN)

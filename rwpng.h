@@ -35,7 +35,9 @@
 #ifndef RWPNG_H
 #define RWPNG_H
 
-#include "png.h"  /* if this include fails, you need to install libpng (e.g. libpng-devel package) and run ./configure */
+#include <stdio.h>
+#include <stdint.h>
+#include <stddef.h>
 #include <setjmp.h>
 
 #ifndef USE_COCOA
@@ -59,12 +61,16 @@ typedef enum {
     TOO_LOW_QUALITY = 99,
 } pngquant_error;
 
+typedef struct rwpng_rgba {
+  unsigned char r,g,b,a;
+} rwpng_rgba;
+
 struct rwpng_chunk {
     struct rwpng_chunk *next;
-    png_byte *data;
-    png_size_t size;
-    png_byte name[5];
-    png_byte location;
+    unsigned char *data;
+    size_t size;
+    unsigned char name[5];
+    unsigned char location;
 };
 
 typedef enum {
@@ -79,9 +85,9 @@ typedef enum {
 
 typedef struct {
     jmp_buf jmpbuf;
-    png_uint_32 width;
-    png_uint_32 height;
-    png_size_t file_size;
+    uint32_t width;
+    uint32_t height;
+    size_t file_size;
     double gamma;
     unsigned char **row_pointers;
     unsigned char *rgba_data;
@@ -92,17 +98,15 @@ typedef struct {
 
 typedef struct {
     jmp_buf jmpbuf;
-    png_uint_32 width;
-    png_uint_32 height;
-    png_size_t maximum_file_size;
+    uint32_t width;
+    uint32_t height;
+    size_t maximum_file_size;
     double gamma;
     unsigned char **row_pointers;
     unsigned char *indexed_data;
-    unsigned int num_palette;
-    unsigned int num_trans;
-    png_color palette[256];
-    unsigned char trans[256];
     struct rwpng_chunk *chunks;
+    unsigned int num_palette;
+    rwpng_rgba palette[256];
     rwpng_color_transform output_color;
     char fast_compression;
 } png8_image;

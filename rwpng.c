@@ -37,7 +37,7 @@
 #include <string.h>
 #include <limits.h>
 
-#include "png.h"
+#include "png.h"  /* if this include fails, you need to install libpng (e.g. libpng-devel package) and run ./configure */
 #include "rwpng.h"
 #if USE_LCMS
 #include "lcms2.h"
@@ -61,8 +61,6 @@ typedef png_const_charp png_const_bytep;
 #endif
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg);
-static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp msg);
-static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg);
 int rwpng_read_image24_cocoa(FILE *infile, png24_image *mainprog_ptr);
 
 
@@ -97,6 +95,7 @@ struct rwpng_read_data {
     png_size_t bytes_read;
 };
 
+#if !USE_COCOA
 static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t length)
 {
     struct rwpng_read_data *read_data = (struct rwpng_read_data *)png_get_io_ptr(png_ptr);
@@ -107,6 +106,7 @@ static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t lengt
     }
     read_data->bytes_read += read;
 }
+#endif
 
 struct rwpng_write_state {
     FILE *outfile;
@@ -150,6 +150,7 @@ static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_
     return row_pointers;
 }
 
+#if !USE_COCOA
 static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
 {
     if (0 == memcmp("iCCP", in_chunk->name, 5) ||
@@ -174,6 +175,7 @@ static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
 
     return 1; // marks as "handled", libpng won't store it
 }
+#endif
 
 /*
    retval:
@@ -184,6 +186,14 @@ static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
     25 = libpng error (via longjmp())
     26 = wrong PNG color type (no alpha channel)
  */
+
+#if !USE_COCOA
+static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp msg) {
+    fprintf(stderr, "  libpng warning: %s\n", msg);
+}
+
+static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg) {
+}
 
 static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr, int verbose)
 {
@@ -406,6 +416,7 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
 
     return SUCCESS;
 }
+#endif
 
 static void rwpng_free_chunks(struct rwpng_chunk *chunk) {
     if (!chunk) return;
@@ -509,6 +520,8 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
     png_structp png_ptr;
     png_infop info_ptr;
 
+    if (mainprog_ptr->num_palette > 256) return INVALID_ARGUMENT;
+
     pngquant_error retval = rwpng_write_image_init((rwpng_png_image*)mainprog_ptr, &png_ptr, &info_ptr, mainprog_ptr->fast_compression);
     if (retval) return retval;
 
@@ -562,10 +575,25 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
       0, PNG_COMPRESSION_TYPE_DEFAULT,
       PNG_FILTER_TYPE_BASE);
 
-    png_set_PLTE(png_ptr, info_ptr, &mainprog_ptr->palette[0], mainprog_ptr->num_palette);
+    png_color palette[256];
+    png_byte trans[256];
+    unsigned int num_trans = 0;
+    for(unsigned int i = 0; i < mainprog_ptr->num_palette; i++) {
+        palette[i] = (png_color){
+            .red   = mainprog_ptr->palette[i].r,
+            .green = mainprog_ptr->palette[i].g,
+            .blue  = mainprog_ptr->palette[i].b,
+        };
+        trans[i] = mainprog_ptr->palette[i].a;
+        if (mainprog_ptr->palette[i].a < 255) {
+            num_trans = i+1;
+        }
+    }
 
-    if (mainprog_ptr->num_trans > 0) {
-        png_set_tRNS(png_ptr, info_ptr, mainprog_ptr->trans, mainprog_ptr->num_trans, NULL);
+    png_set_PLTE(png_ptr, info_ptr, palette, mainprog_ptr->num_palette);
+
+    if (num_trans > 0) {
+        png_set_tRNS(png_ptr, info_ptr, trans, num_trans, NULL);
     }
 
     rwpng_write_end(&info_ptr, &png_ptr, mainprog_ptr->row_pointers);
@@ -602,14 +630,6 @@ pngquant_error rwpng_write_image24(FILE *outfile, const png24_image *mainprog_pt
     free(row_pointers);
 
     return SUCCESS;
-}
-
-
-static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp msg) {
-    fprintf(stderr, "  libpng warning: %s\n", msg);
-}
-
-static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg) {
 }
 
 static void rwpng_error_handler(png_structp png_ptr, png_const_charp msg)

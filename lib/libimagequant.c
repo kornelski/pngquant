@@ -616,7 +616,8 @@ LIQ_NONNULL static bool check_image_size(const liq_attr *attr, const int width, 
         liq_log_error(attr, "width and height must be > 0");
         return false;
     }
-    if (width > INT_MAX/height) {
+
+    if (width > INT_MAX/sizeof(rgba_pixel)/height || width > INT_MAX/16/sizeof(f_pixel) || height > INT_MAX/sizeof(size_t)) {
         liq_log_error(attr, "image too large");
         return false;
     }

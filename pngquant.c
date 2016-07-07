@@ -788,7 +788,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     free(tempname);
 
     if (retval && retval != TOO_LARGE_FILE) {
-        fprintf(stderr, "  error: failed writing image to %s\n", outname);
+        fprintf(stderr, "  error: failed writing image to %s (%d)\n", options->using_stdout ? "stdout" : outname, retval);
     }
 
     return retval;

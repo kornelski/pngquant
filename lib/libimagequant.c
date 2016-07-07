@@ -618,7 +618,8 @@ LIQ_NONNULL static bool check_image_size(const liq_attr *attr, const int width, 
         liq_log_error(attr, "width and height must be > 0");
         return false;
     }
-    if (width > INT_MAX/height) {
+
+    if (width > INT_MAX/sizeof(rgba_pixel)/height || width > INT_MAX/16/sizeof(f_pixel) || height > INT_MAX/sizeof(size_t)) {
         liq_log_error(attr, "image too large");
         return false;
     }
@@ -1182,21 +1183,14 @@ LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned 
 
     /* Initialize Floyd-Steinberg error vectors. */
     f_pixel *restrict thiserr, *restrict nexterr;
-    thiserr = input_image->malloc((cols + 2) * sizeof(*thiserr) * 2); // +2 saves from checking out of bounds access
+    const size_t errsize = (cols + 2) * sizeof(*thiserr) * 2;
+    thiserr = input_image->malloc(errsize); // +2 saves from checking out of bounds access
     if (!thiserr) return false;
+    memset(thiserr, 0, errsize);
     nexterr = thiserr + (cols + 2);
-    srand(12345); /* deterministic dithering is better for comparing results */
 
     bool ok = true;
     struct nearest_map *const n = nearest_init(map, false);
-
-    for (unsigned int col = 0; col < cols + 2; ++col) {
-        const double rand_max = RAND_MAX;
-        thiserr[col].r = ((double)rand() - rand_max/2.0)/rand_max/255.0;
-        thiserr[col].g = ((double)rand() - rand_max/2.0)/rand_max/255.0;
-        thiserr[col].b = ((double)rand() - rand_max/2.0)/rand_max/255.0;
-        thiserr[col].a = ((double)rand() - rand_max/2.0)/rand_max/255.0;
-    }
 
     // response to this value is non-linear and without it any value < 0.8 would give almost no dithering
     float base_dithering_level = quant->dither_level;

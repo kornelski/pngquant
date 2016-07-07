@@ -244,12 +244,6 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
     png_get_IHDR(png_ptr, info_ptr, &mainprog_ptr->width, &mainprog_ptr->height,
                  &bit_depth, &color_type, NULL, NULL, NULL);
 
-    // For overflow safety reject images that won't fit in 32-bit
-    if (mainprog_ptr->width > INT_MAX/mainprog_ptr->height) {
-        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        return PNG_OUT_OF_MEMORY_ERROR;  /* not quite true, but whatever */
-    }
-
     /* expand palette images to RGB, low-bit-depth grayscale images to 8 bits,
      * transparency chunks to full alpha channel; strip 16-bit-per-sample
      * images to 8 bits per sample; and convert grayscale to RGB[A] */
@@ -303,6 +297,12 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
     png_read_update_info(png_ptr, info_ptr);
 
     rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+
+    // For overflow safety reject images that won't fit in 32-bit
+    if (rowbytes > INT_MAX/mainprog_ptr->height) {
+        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+        return PNG_OUT_OF_MEMORY_ERROR;
+    }
 
     if ((mainprog_ptr->rgba_data = malloc(rowbytes * mainprog_ptr->height)) == NULL) {
         fprintf(stderr, "pngquant readpng:  unable to allocate image data\n");

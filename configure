@@ -78,6 +78,10 @@ fi
         LCMS2=1
         COCOA_READER=0
         ;;
+     --with-lcms2=*)
+        LCMS2_DIR=${i#*=}
+        COCOA_READER=0
+        ;;
     --without-lcms2)
         LCMS2=0
         ;;
@@ -90,6 +94,9 @@ fi
         ;;
     --with-libpng=*)
         LIBPNG_DIR=${i#*=}
+        ;;
+    --with-zlib=*)
+        ZLIB_DIR=${i#*=}
         ;;
     --prefix=*)
         PREFIX=${i#*=}
@@ -161,6 +168,9 @@ find_static() {
     local STATICPATTERN=$3
 
     local HPATH=$(find_h . "$HEADERPATTERN")
+    if [ -z "$HPATH" ]; then
+        local HPATH=$(find_f . "$HEADERPATTERN")
+    fi
     if [ -n "$HPATH" ]; then
         local APATH=$(find_f . "$STATICPATTERN")
         if [ -n "$APATH" ]; then
@@ -230,6 +240,24 @@ pngh_majmin() {
     local MAJ=$(grep -m1 "define PNG_LIBPNG_VER_MAJOR" "$1" | grep -Eo "[0-9]+")
     local MIN=$(grep -m1 "define PNG_LIBPNG_VER_MINOR" "$1" | grep -Eo "[0-9]+")
     echo "${MAJ}${MIN}"
+}
+
+# returns full zlib.h version string
+zlibh_string() {
+    echo "$(grep -m1 "define ZLIB_VERSION" "$1" | \
+            grep -Eo '"[^"]+"' | grep -Eo '[^"]+')"
+}
+
+# returns major minor version numbers from zlib.h
+zlibh_majmin() {
+    local MAJ=$(grep -m1 "define ZLIB_VER_MAJOR" "$1" | grep -Eo "[0-9]+")
+    local MIN=$(grep -m1 "define ZLIB_VER_MINOR" "$1" | grep -Eo "[0-9]+")
+    echo "${MAJ}${MIN}"
+}
+
+# returns full lcms2.h version string
+lcms2h_string() {
+    echo "$(grep -m1 "define LCMS_VERSION" "$1" | grep -Eo '[0-9]+')"
 }
 
 error() {
@@ -363,6 +391,9 @@ if [ "$HAS_LIBPNG" -eq 0 ]; then
         PNGH_MAJMIN=$(pngh_majmin "$PNGH")
         if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
             LIBPNGA=$(find_f "$LIBPNG_DIR" "libpng${PNGH_MAJMIN}.a")
+            if [ -z "$LIBPNGA" ]; then
+                LIBPNGA=$(find_f "$LIBPNG_DIR" "libz.a")
+            fi
             if [ -n "$LIBPNGA" ]; then
                 cflags "-I${PNGH%/*}"
                 lflags "${LIBPNGA}"
@@ -385,7 +416,16 @@ if [ "$HAS_LIBPNG" -eq 0 ]; then
                 PNGH_MAJMIN=$(pngh_majmin "$PNGH")
                 if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
                     LIBPNGSO=$(find_f "${DIR[1]}" "libpng${PNGH_MAJMIN}.$SOLIBSUFFIX*")
-                    if [ -n "$LIBPNGSO" ]; then
+                    if [ -z "$LIBPNGSO" ]; then
+                        LIBPNGSO=$(find_f "${DIR[1]}" "libpng.$SOLIBSUFFIX*")
+                        if [ -n "$LIBPNGSO" ]; then
+                            cflags "-I${PNGH%/*}"
+                            lflags "-L${LIBPNGSO%/*} -lz"
+                            status "zlib" "shared (${PNGH_STRING})"
+                            HAS_LIBPNG=1
+                            break
+                        fi
+                    else
                         cflags "-I${PNGH%/*}"
                         lflags "-L${LIBPNGSO%/*} -lpng${PNGH_MAJMIN}"
                         status "libpng" "shared (${PNGH_STRING})"
@@ -407,23 +447,127 @@ if [ "$HAS_LIBPNG" -eq 0 ]; then
 fi
 
 # zlib
-if ! find_library "zlib" "z" "zlib.h" "libz.a" "libz.$SOLIBSUFFIX*"; then
-    error "zlib" "not found (please install zlib-devel package)"
+if [ -n "$ZLIB_DIR" ]; then
+    HAS_ZLIB=0
+    # try static in the given directory
+    ZLIBH=$(find_h "$ZLIB_DIR" "zlib.h")
+    if [ -n "$ZLIBH" ]; then
+        ZLIBH_STRING=$(zlibh_string "$ZLIBH")
+        ZLIBH_MAJMIN=$(zlibh_majmin "$ZLIBH")
+        if [[ -n "$ZLIBH_STRING" && -n "$ZLIBH_MAJMIN" ]]; then
+            LIBZA=$(find_f "$ZLIB_DIR" "libz${ZLIBH_MAJMIN}.a")
+            if [ -z "$LIBZA" ]; then
+                LIBZA=$(find_f "$ZLIB_DIR" "libz.a")
+            fi
+            if [ -n "$LIBZA" ]; then
+                cflags "-I${ZLIBH%/*}"
+                lflags "${LIBZA}"
+                status "zlib" "static (${ZLIBH_STRING})"
+                HAS_ZLIB=1
+            fi
+        fi
+    fi
+    # try shared
+    if [ "$HAS_ZLIB" -eq 0 ]; then
+        if find_pkgconfig zlib; then
+            HAS_ZLIB=1
+        else
+            for i in "${DIRS[@]}"; do
+                DIR=($i)
+                ZLIBH=$(find_h "${DIR[0]}" "zlib.h")
+                if [ -n "$ZLIBH" ]; then
+                    ZLIBH_STRING=$(zlibh_string "$ZLIBH")
+                    ZLIBH_MAJMIN=$(zlibh_majmin "$ZLIBH")
+                    if [[ -n "$ZLIBH_STRING" && -n "$ZLIBH_MAJMIN" ]]; then
+                        LIBZSO=$(find_f "${DIR[1]}" "libz${ZLIBH_MAJMIN}.$SOLIBSUFFIX*")
+                        if [ -z "$LIBZSO" ]; then
+                            LIBZSO=$(find_f "${DIR[1]}" "libz.$SOLIBSUFFIX*")
+                            if [ -n "$LIBZSO" ]; then
+                                cflags "-I${ZLIBH%/*}"
+                                lflags "-L${LIBZSO%/*} -lz"
+                                status "zlib" "shared (${ZLIBH_STRING})"
+                                HAS_ZLIB=1
+                                break
+                            fi
+                        else
+                            cflags "-I${ZLIBH%/*}"
+                            lflags "-L${LIBZSO%/*} -lz${ZLIBH_MAJMIN}"
+                            status "zlib" "shared (${ZLIBH_STRING})"
+                            HAS_ZLIB=1
+                            break
+                        fi
+                    fi
+                fi
+            done
+        fi
+    fi
+    if [ "$HAS_ZLIB" -eq 0 ]; then
+        error "zlib" "not found using --with-zlib=$ZLIB_DIR"
+    fi
+else
+    if ! find_library "zlib" "z" "zlib.h" "libz.a" "libz.$SOLIBSUFFIX*"; then
+        error "zlib" "not found (please install zlib-devel package)"
+    fi
 fi
 
 # lcms2
-if [ "$LCMS2" != 0 ]; then
-    if find_library "lcms2" "lcms2" "lcms2.h" "liblcms2.a" "liblcms2.$SOLIBSUFFIX*"; then
-        cflags "-DUSE_LCMS=1"
-    else
-        if [ "$LCMS2" = 'auto' ]; then
-            status "lcms2" "no"
-        else
-            error "lcms2" "not found (please install libcms2-devel package)"
+if [ -n "$LCMS2_DIR" ]; then
+    HAS_LCMS2=0
+    # try static in the given directory
+    LCMS2H=$(find_h "$LCMS2_DIR" "lcms2.h")
+    if [ -n "$LCMS2H" ]; then
+        LCMS2H_STRING=$(lcms2h_string "$LCMS2H")
+        if [[ -n "$LCMS2H_STRING" ]]; then
+            LIBLCMS2A=$(find_f "$LCMS2_DIR" "liblcms2.a")
+            if [ -n "$LIBLCMS2A" ]; then
+                cflags "-I${LCMS2H%/*}"
+                lflags "${LIBLCMS2A}"
+                status "lcms2" "static (${LCMS2H_STRING})"
+                HAS_LCMS2=1
+            fi
         fi
     fi
+    # try shared
+    if [ "$HAS_LCMS2" -eq 0 ]; then
+        if find_pkgconfig liblcms2; then
+            HAS_LCMS2=1
+        else
+            for i in "${DIRS[@]}"; do
+                DIR=($i)
+                LCMS2H=$(find_h "${DIR[0]}" "lcms2.h")
+                if [ -n "$LCMS2H" ]; then
+                    LCMS2H_STRING=$(lcms2h_string "$LCMS2H")
+                    if [[ -n "$LCMS2H_STRING" ]]; then
+                        LIBLCMS2SO=$(find_f "${DIR[1]}" "liblcms2.$SOLIBSUFFIX*")
+                        if [ -n "$LIBLCMS2SO" ]; then
+                            cflags "-I${LCMS2H%/*}"
+                            lflags "-L${LIBLCMS2SO%/*} -llcms2"
+                            status "lcms2" "shared (${LCMS2H_STRING})"
+                            HAS_LCMS2=1
+                            break
+                        fi
+                    fi
+                fi
+            done
+        fi
+    fi
+    if [ "$HAS_LCMS2" -eq 0 ]; then
+        error "lcms2" "not found using --with-lcms2=$LCMS2_DIR"
+    fi
 else
-    status "lcms2" "no"
+    if [ "$LCMS2" != 0 ]; then
+        if find_library "lcms2" "lcms2" "lcms2.h" "liblcms2.a" "liblcms2.$SOLIBSUFFIX*"; then
+            cflags "-DUSE_LCMS=1"
+        else
+            if [ "$LCMS2" = 'auto' ]; then
+                status "lcms2" "no"
+            else
+                error "lcms2" "not found (please install libcms2-devel package)"
+            fi
+        fi
+    else
+        status "lcms2" "no"
+    fi
 fi
 
 echo

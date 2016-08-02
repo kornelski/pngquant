@@ -1234,14 +1234,6 @@ LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned 
                 err.a *= 0.75;
             }
 
-            // if pixel is transparent, it doesn't matter how bad rgb was
-            const float visible_alpha = output_px.a;
-            if (visible_alpha < 1.f) {
-                err.r *= visible_alpha;
-                err.g *= visible_alpha;
-                err.b *= visible_alpha;
-            }
-
             /* Propagate Floyd-Steinberg error terms. */
             if (fs_direction) {
                 thiserr[col + 2].a += err.a * (7.f/16.f);

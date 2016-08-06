@@ -222,8 +222,8 @@ LIQ_EXPORT bool liq_crash_if_invalid_handle_pointer_given(const liq_attr *user_s
     return user_supplied_pointer->magic_header == expected_magic_header;
 }
 
-NEVER_INLINE LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer);
-LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(void *pointer)
+NEVER_INLINE LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(const void *pointer);
+LIQ_EXPORT bool liq_crash_if_invalid_pointer_given(const void *pointer)
 {
     if (!pointer) {
         return false;
@@ -632,7 +632,7 @@ LIQ_EXPORT liq_image *liq_image_create_custom(const liq_attr *attr, liq_image_ge
     return liq_image_create_internal(attr, NULL, row_callback, user_info, width, height, gamma);
 }
 
-LIQ_EXPORT liq_image *liq_image_create_rgba_rows(const liq_attr *attr, void* rows[], int width, int height, double gamma)
+LIQ_EXPORT liq_image *liq_image_create_rgba_rows(const liq_attr *attr, void *const rows[], int width, int height, double gamma)
 {
     if (!check_image_size(attr, width, height)) {
         return NULL;
@@ -647,7 +647,7 @@ LIQ_EXPORT liq_image *liq_image_create_rgba_rows(const liq_attr *attr, void* row
     return liq_image_create_internal(attr, (rgba_pixel**)rows, NULL, NULL, width, height, gamma);
 }
 
-LIQ_EXPORT LIQ_NONNULL liq_image *liq_image_create_rgba(const liq_attr *attr, void* bitmap, int width, int height, double gamma)
+LIQ_EXPORT LIQ_NONNULL liq_image *liq_image_create_rgba(const liq_attr *attr, const void* bitmap, int width, int height, double gamma)
 {
     if (!check_image_size(attr, width, height)) {
         return NULL;
@@ -657,7 +657,7 @@ LIQ_EXPORT LIQ_NONNULL liq_image *liq_image_create_rgba(const liq_attr *attr, vo
         return NULL;
     }
 
-    rgba_pixel *pixels = bitmap;
+    rgba_pixel *const pixels = (rgba_pixel *const)bitmap;
     rgba_pixel **rows = attr->malloc(sizeof(rows[0])*height);
     if (!rows) return NULL;
 

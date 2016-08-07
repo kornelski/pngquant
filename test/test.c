@@ -2,8 +2,15 @@
 #include <assert.h>
 #include "../lib/libimagequant.h"
 #include <stdio.h>
+#include <string.h>
 
 static char magic[] = "magic";
+
+static void test_log_callback_function(const liq_attr *at, const char *message, void* user_info) {
+    assert(user_info == magic);
+    assert(message);
+    assert(strlen(message));
+}
 
 static int test_abort_callback(float progress_percent, void* user_info) {
     assert(user_info == magic);
@@ -35,6 +42,7 @@ static void test_fixed_colors() {
     liq_attr *attr = liq_attr_create();
 
     liq_attr_set_progress_callback(attr, test_continue_callback, magic);
+    liq_set_log_callback(attr, test_log_callback_function, magic);
 
     unsigned char dummy[4] = {0};
     liq_image *img = liq_image_create_rgba(attr, dummy, 1, 1, 0);

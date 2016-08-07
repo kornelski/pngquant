@@ -141,13 +141,13 @@ struct liq_result {
     bool use_dither_map, fast_palette;
 };
 
-static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, const liq_image *img) LIQ_NONNULL;
 static void modify_alpha(liq_image *input_image, rgba_pixel *const row_pixels) LIQ_NONNULL;
 static void contrast_maps(liq_image *image) LIQ_NONNULL;
 static histogram *get_histogram(liq_image *input_image, const liq_attr *options) LIQ_NONNULL;
 static const rgba_pixel *liq_image_get_row_rgba(liq_image *input_image, unsigned int row) LIQ_NONNULL;
 static const f_pixel *liq_image_get_row_f(liq_image *input_image, unsigned int row) LIQ_NONNULL;
 static void liq_remapping_result_destroy(liq_remapping_result *result) LIQ_NONNULL;
+static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, const int fixed_colors_count, const f_pixel fixed_colors[], const double gamma) LIQ_NONNULL;
 
 LIQ_NONNULL static void liq_verbose_printf(const liq_attr *context, const char *fmt, ...)
 {
@@ -843,7 +843,7 @@ LIQ_EXPORT LIQ_NONNULL liq_result *liq_quantize_image(liq_attr *attr, liq_image 
         return NULL;
     }
 
-    liq_result *result = pngquant_quantize(hist, attr, img);
+    liq_result *result = pngquant_quantize(hist, attr, img->fixed_colors_count, img->fixed_colors, img->gamma);
 
     pam_freeacolorhist(hist);
     return result;
@@ -1301,13 +1301,13 @@ LIQ_NONNULL static bool remap_to_palette_floyd(liq_image *input_image, unsigned 
 }
 
 /* fixed colors are always included in the palette, so it would be wasteful to duplicate them in palette from histogram */
-LIQ_NONNULL static void remove_fixed_colors_from_histogram(histogram *hist, const liq_image *input_image, const float target_mse)
+LIQ_NONNULL static void remove_fixed_colors_from_histogram(histogram *hist, const int fixed_colors_count, const f_pixel fixed_colors[], const float target_mse)
 {
     const float max_difference = MAX(target_mse/2.0, 2.0/256.0/256.0);
-    if (input_image->fixed_colors_count) {
+    if (fixed_colors_count) {
         for(int j=0; j < hist->size; j++) {
-            for(unsigned int i=0; i < input_image->fixed_colors_count; i++) {
-                if (colordifference(hist->achv[j].acolor, input_image->fixed_colors[i]) < max_difference) {
+            for(unsigned int i=0; i < fixed_colors_count; i++) {
+                if (colordifference(hist->achv[j].acolor, fixed_colors[i]) < max_difference) {
                     hist->achv[j] = hist->achv[--hist->size]; // remove color from histogram by overwriting with the last entry
                     j--; break; // continue searching histogram
                 }
@@ -1381,7 +1381,7 @@ LIQ_NONNULL static histogram *get_histogram(liq_image *input_image, const liq_at
     pam_freeacolorhash(acht);
     if (hist) {
         liq_verbose_printf(options, "  made histogram...%d colors found", hist->size);
-        remove_fixed_colors_from_histogram(hist, input_image, options->target_mse);
+        remove_fixed_colors_from_histogram(hist, input_image->fixed_colors_count, input_image->fixed_colors, options->target_mse);
     }
 
     return hist;
@@ -1674,25 +1674,25 @@ static colormap *histogram_to_palette(const histogram *hist, const liq_attr *opt
     return acolormap;
 }
 
-LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, const liq_image *img)
+LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr *options, const int fixed_colors_count, const f_pixel fixed_colors[], const double gamma)
 {
     colormap *acolormap;
     double palette_error = -1;
 
     // no point having perfect match with imperfect colors (ignorebits > 0)
     const bool fast_palette = options->fast_palette || hist->ignorebits > 0;
-    const bool few_input_colors = hist->size+img->fixed_colors_count <= options->max_colors;
+    const bool few_input_colors = hist->size+fixed_colors_count <= options->max_colors;
 
     if (liq_progress(options, options->progress_stage1)) return NULL;
 
     // If image has few colors to begin with (and no quality degradation is required)
     // then it's possible to skip quantization entirely
     if (few_input_colors && options->target_mse == 0) {
-        acolormap = add_fixed_colors_to_palette(histogram_to_palette(hist, options), options->max_colors, img->fixed_colors, img->fixed_colors_count, options->malloc, options->free);
+        acolormap = add_fixed_colors_to_palette(histogram_to_palette(hist, options), options->max_colors, fixed_colors, fixed_colors_count, options->malloc, options->free);
         palette_error = 0;
     } else {
         const double max_mse = options->max_mse * (few_input_colors ? 0.33 : 1.0); // when degrading image that's already paletted, require much higher improvement, since pal2pal often looks bad and there's little gain
-        acolormap = find_best_palette(hist, options, max_mse, img->fixed_colors, img->fixed_colors_count, &palette_error);
+        acolormap = find_best_palette(hist, options, max_mse, fixed_colors, fixed_colors_count, &palette_error);
         if (!acolormap) {
             return NULL;
         }
@@ -1761,7 +1761,7 @@ LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr
         .palette_error = palette_error,
         .fast_palette = fast_palette,
         .use_dither_map = options->use_dither_map,
-        .gamma = img->gamma,
+        .gamma = gamma,
         .min_posterization_output = options->min_posterization_output,
     };
     return result;

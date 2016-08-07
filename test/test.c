@@ -38,6 +38,60 @@ static void test_abort() {
     liq_attr_destroy(attr);
 }
 
+static void test_zero_histogram() {
+    liq_attr *attr = liq_attr_create();
+    liq_histogram *hist = liq_histogram_create(attr);
+    assert(hist);
+
+    liq_result *res;
+    liq_error err = liq_histogram_quantize(hist, attr, &res);
+    assert(!res);
+    assert(err);
+
+    liq_attr_destroy(attr);
+    liq_histogram_destroy(hist);
+}
+
+static void test_histogram() {
+    liq_attr *attr = liq_attr_create();
+    liq_histogram *hist = liq_histogram_create(attr);
+    assert(hist);
+
+    const unsigned char dummy1[4] = {255,0,255,255};
+    liq_image *const img1 = liq_image_create_rgba(attr, dummy1, 1, 1, 0);
+    assert(img1);
+
+    const liq_error err1 = liq_histogram_add_image(hist, attr, img1);
+    assert(LIQ_OK == err1);
+
+    const unsigned char dummy2[4] = {0,0,0,0};
+    liq_image *const img2 = liq_image_create_rgba(attr, dummy2, 1, 1, 0);
+    assert(img2);
+    liq_image_add_fixed_color(img2, (liq_color){255,255,255,255});
+
+
+    const liq_error err2 = liq_histogram_add_image(hist, attr, img2);
+    assert(LIQ_OK == err2);
+
+    liq_image_destroy(img1);
+    liq_image_destroy(img2);
+
+    liq_result *res;
+    liq_error err = liq_histogram_quantize(hist, attr, &res);
+    assert(LIQ_OK == err);
+    assert(res);
+
+    liq_attr_destroy(attr);
+
+    liq_histogram_destroy(hist);
+
+    const liq_palette *pal = liq_get_palette(res);
+    assert(pal);
+    assert(pal->count == 3);
+
+    liq_result_destroy(res);
+}
+
 static void test_fixed_colors() {
     liq_attr *attr = liq_attr_create();
 
@@ -111,6 +165,8 @@ int main(void) {
     test_fixed_colors();
     test_fixed_colors_order();
     test_abort();
+    test_histogram();
+    test_zero_histogram();
     assert(printf("OK\n"));
     return 0;
 }

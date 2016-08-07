@@ -583,9 +583,10 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         }
 
         // when using image as source of a fixed palette the palette is extracted using regular quantization
-        liq_result *remap = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
+        liq_result *remap;
+        liq_error remap_error = liq_image_quantize(options->fixed_palette_image ? options->fixed_palette_image : input_image, options->liq, &remap);
 
-        if (remap) {
+        if (LIQ_OK == remap_error) {
 
             // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
             // NB: can't change gamma here, because output_color is allowed to be an sRGB tag
@@ -607,8 +608,10 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
                 }
             }
             liq_result_destroy(remap);
-        } else {
+        } else if (LIQ_QUALITY_TOO_LOW == remap_error) {
             retval = TOO_LOW_QUALITY;
+        } else {
+            retval = INVALID_ARGUMENT; // dunno
         }
     }
 

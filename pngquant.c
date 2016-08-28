@@ -389,7 +389,7 @@ int main(int argc, char *argv[])
                         fprintf(stderr, "  error: unable to read colors from %s", optarg);
                         return INVALID_ARGUMENT;
                     }
-                    for(int i=0; i < pal->count; i++) {
+                    for(unsigned int i=0; i < pal->count; i++) {
                         liq_image_add_fixed_color(options.fixed_palette_image, pal->entries[i]);
                     }
                     liq_result_destroy(tmp_quantize);

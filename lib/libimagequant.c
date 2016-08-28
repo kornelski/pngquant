@@ -1679,6 +1679,8 @@ LIQ_NONNULL static liq_result *pngquant_quantize(histogram *hist, const liq_attr
     colormap *acolormap;
     double palette_error = -1;
 
+    assert((verbose_print(options, "SLOW debug checks enabled. Recompile with NDEBUG for normal operation."),1));
+
     // no point having perfect match with imperfect colors (ignorebits > 0)
     const bool fast_palette = options->fast_palette || hist->ignorebits > 0;
     const bool few_input_colors = hist->size+fixed_colors_count <= options->max_colors;

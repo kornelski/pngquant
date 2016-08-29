@@ -87,11 +87,12 @@ LIQ_PRIVATE double viter_do_iteration(histogram *hist, colormap *const map, vite
     struct nearest_map *const n = nearest_init(map, fast_palette);
     hist_item *const achv = hist->achv;
     const int hist_size = hist->size;
+    int j;
 
     double total_diff=0;
     #pragma omp parallel for if (hist_size > 3000) \
         schedule(static) default(none) shared(average_color,callback) reduction(+:total_diff)
-    for(int j=0; j < hist_size; j++) {
+    for(j=0; j < hist_size; j++) {
         float diff;
         unsigned int match = nearest_search(n, &achv[j].acolor, achv[j].tmp.likely_colormap_index, &diff);
         achv[j].tmp.likely_colormap_index = match;

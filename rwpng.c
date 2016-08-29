@@ -383,6 +383,7 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
 
     /* transform image to sRGB colorspace */
     if (hInProfile != NULL) {
+        long i;
 
         cmsHPROFILE hOutProfile = cmsCreate_sRGBProfile();
         cmsHTRANSFORM hTransform = cmsCreateTransform(hInProfile, TYPE_RGBA_8,
@@ -393,7 +394,7 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
         #pragma omp parallel for \
             if (mainprog_ptr->height*mainprog_ptr->width > 8000) \
             schedule(static)
-        for (unsigned int i = 0; i < mainprog_ptr->height; i++) {
+        for (i = 0; i < mainprog_ptr->height; i++) {
             /* It is safe to use the same block for input and output,
                when both are of the same TYPE. */
             cmsDoTransform(hTransform, row_pointers[i],

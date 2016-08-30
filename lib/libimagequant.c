@@ -59,9 +59,11 @@
 #define LIQ_HIGH_MEMORY_LIMIT (1<<26)  /* avoid allocating buffers larger than 64MB */
 
 // each structure has a pointer as a unique identifier that allows type checking at run time
-static const char *const liq_attr_magic = "liq_attr", *const liq_image_magic = "liq_image",
-     *const liq_result_magic = "liq_result", *const liq_remapping_result_magic = "liq_remapping_result",
-     *const liq_freed_magic = "free";
+static const char liq_attr_magic[] = "liq_attr";
+static const char liq_image_magic[] = "liq_image";
+static const char liq_result_magic[] = "liq_result";
+static const char liq_remapping_result_magic[] = "liq_remapping_result";
+static const char liq_freed_magic[] = "free";
 #define CHECK_STRUCT_TYPE(attr, kind) liq_crash_if_invalid_handle_pointer_given((const liq_attr*)attr, kind ## _magic)
 #define CHECK_USER_POINTER(ptr) liq_crash_if_invalid_pointer_given(ptr)
 

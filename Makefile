@@ -18,7 +18,7 @@ DISTFILES = *.[chm] pngquant.1 Makefile configure README.md INSTALL CHANGELOG CO
 TARNAME = pngquant-$(VERSION)
 TARFILE = $(TARNAME)-src.tar.gz
 
-LIBDISTFILES = lib/*.[ch] lib/COPYRIGHT lib/MANUAL.md lib/configure lib/Makefile
+LIBDISTFILES = lib/*.[ch] lib/COPYRIGHT lib/README.md lib/configure lib/Makefile
 
 TESTBIN = test/test
 

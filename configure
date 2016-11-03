@@ -463,6 +463,7 @@ CC = $CC
 CFLAGS = $CFLAGS
 LDFLAGS = $LDFLAGS
 COCOA_READER = $COCOA_READER
+SOLIBSUFFIX = $SOLIBSUFFIX
 " > "$CONFIG"
 
 # Configure static library the same way

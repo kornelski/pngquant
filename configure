@@ -136,12 +136,12 @@ conditional_cflags() {
 
 # returns first matching file in directory
 find_f() {
-    echo $(find "$1" -not -type d -name "$2" -print -quit 2> /dev/null)
+    echo $(find "$1" -not -path '*/.git/*' -not -type d -name "$2" -print -quit 2> /dev/null)
 }
 
 # returns first matching file in directory (no symlinks)
 find_h() {
-    echo $(find "$1" -type f -name "$2" -print -quit 2> /dev/null)
+    echo $(find "$1" -not -path '*/.*/*' -type f -name "$2" -print -quit 2> /dev/null)
 }
 
 find_pkgconfig() {

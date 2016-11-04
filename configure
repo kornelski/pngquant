@@ -2,6 +2,8 @@
 
 CONFIG="config.mk"
 PREFIX="/usr/local"
+
+test -f lib/libimagequant.h || { git submodule init && git submodule update; }
 VERSION=$(grep LIQ_VERSION_STRING lib/libimagequant.h | grep -Eo "2\.[0-9.]+")
 
 DEBUG=

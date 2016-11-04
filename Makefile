@@ -24,12 +24,12 @@ TESTBIN = test/test
 
 all: $(BIN)
 
-staticlib:
+staticlib: lib/libimagequant.h
 	$(MAKE) -C lib static
 
 $(STATICLIB): config.mk staticlib
 
-sharedlib:
+sharedlib: lib/libimagequant.h
 	$(MAKE) -C lib shared
 
 $(SHAREDLIB): config.mk sharedlib
@@ -86,10 +86,13 @@ distclean: clean
 	$(MAKE) -C lib distclean
 	rm -f config.mk pngquant-*-src.tar.gz
 
-config.mk:
+config.mk: lib/libimagequant.h
 ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 	./configure
 endif
+
+lib/libimagequant.h:
+	git submodule init && git submodule update
 
 .PHONY: all clean dist distclean dll install uninstall test staticlib
 .DELETE_ON_ERROR:

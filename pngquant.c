@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (June 2016)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (November 2016)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\
@@ -389,7 +389,7 @@ int main(int argc, char *argv[])
                         fprintf(stderr, "  error: unable to read colors from %s", optarg);
                         return INVALID_ARGUMENT;
                     }
-                    for(int i=0; i < pal->count; i++) {
+                    for(unsigned int i=0; i < pal->count; i++) {
                         liq_image_add_fixed_color(options.fixed_palette_image, pal->entries[i]);
                     }
                     liq_result_destroy(tmp_quantize);
@@ -583,9 +583,10 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         }
 
         // when using image as source of a fixed palette the palette is extracted using regular quantization
-        liq_result *remap = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
+        liq_result *remap;
+        liq_error remap_error = liq_image_quantize(options->fixed_palette_image ? options->fixed_palette_image : input_image, options->liq, &remap);
 
-        if (remap) {
+        if (LIQ_OK == remap_error) {
 
             // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
             // NB: can't change gamma here, because output_color is allowed to be an sRGB tag
@@ -607,8 +608,10 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
                 }
             }
             liq_result_destroy(remap);
-        } else {
+        } else if (LIQ_QUALITY_TOO_LOW == remap_error) {
             retval = TOO_LOW_QUALITY;
+        } else {
+            retval = INVALID_ARGUMENT; // dunno
         }
     }
 
@@ -788,7 +791,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     free(tempname);
 
     if (retval && retval != TOO_LARGE_FILE) {
-        fprintf(stderr, "  error: failed writing image to %s\n", outname);
+        fprintf(stderr, "  error: failed writing image to %s (%d)\n", options->using_stdout ? "stdout" : outname, retval);
     }
 
     return retval;

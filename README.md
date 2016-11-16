@@ -1,13 +1,11 @@
 # pngquant 2
 
-[This](https://github.com/pornel/pngquant) is the official `pngquant` and `libimagequant`.
-
 [pngquant](https://pngquant.org) converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*.
 Such images are fully standards-compliant and are supported by all web browsers.
 
 Quantized files are often 60-80% smaller than their 24/32-bit versions.
 
-This utility works on Linux, Mac OS X and Windows.
+This utility works on Linux, Mac OS X and Windows. [This](https://github.com/pornel/pngquant) is the official `pngquant` repository.
 
 ## Usage
 
@@ -24,24 +22,15 @@ Generated files are both smaller and look much better.
 
   - more accurate remapping of semitransparent colors
   - special dithering algorithm that does not add noise in well-quantized areas of the image
-  - uses variance instead of popularity for box selection (improvement suggested in the original median cut paper)
-  - feedback loop that repeats median cut for poorly quantized colors
-  - additional colormap improvement using Voronoi iteration
   - supports much larger number of colors in input images without degradation of quality
   - gamma correction and optional color profile support (output is always in gamma 2.2 for web compatibility)
 
-* More flexible commandline usage
-
-  - number of colors defaults to 256, and can be set automatically with the `--quality` switch
-  - long options and standard switches like `--` and `-` are allowed
-
 * Refactored and modernised code
 
+  - quantization [moved to standalone libimagequant](https://github.com/ImageOptim/libimagequant)
   - C99 with no workarounds for legacy systems or compilers ([apart from Visual Studio](https://github.com/pornel/pngquant/tree/msvc))
-  - floating-point math used throughout
-  - Intel SSE optimisations
+  - Intel SSE optimisations and floating-point math used throughout
   - multicore support via OpenMP
-  - quantization moved to standalone libimagequant
 
 ## Options
 

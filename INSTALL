@@ -1,5 +1,8 @@
-To build pngquant from source on Mac OS X and most Linux distributions,
-simply run:
+To get the code:
+
+      $ git clone --recursive https://github.com/pornel/pngquant.git
+
+To build pngquant from source on macOS and most Linux distributions, run:
 
       $ make
 

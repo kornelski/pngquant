@@ -1,7 +1,10 @@
+version 2.8
+-----------
+ - libimagequant is a separate project
+
 version 2.7
 -----------
  - improved dithering of saturated and semitransparent colors
- - libimagequant reports detailed progress and supports aborting of operations via callbacks
  - fixed order of log output when using openmp
  - improved quality sanity check in --skip-if-larger option
  - disabled palette post-processing on colors from --map option to preserve them exactly
@@ -15,13 +18,11 @@ version 2.5
  - replaced color search algorithm with vantage point tree, which is much faster and more reliable
  - deprecated IE6 workaround
  - warn when compiled without color profile support
- - improved support for predefined colors in libimagequant
  - Rust API for libimagequant
 
 version 2.4
 -----------
  - fixed remapping of bright colors when dithering
- - added libimagequant API to add fixed preset colors to the palette
 
 version 2.3
 -----------

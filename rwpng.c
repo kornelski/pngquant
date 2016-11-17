@@ -159,6 +159,10 @@ static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
         return 0; // not handled
     }
 
+    if (in_chunk->location == 0 ) {
+        return 1; // ignore chunks with invalid location
+    }
+
     struct rwpng_chunk **head = (struct rwpng_chunk **)png_get_user_chunk_ptr(png_ptr);
 
     struct rwpng_chunk *chunk = malloc(sizeof(struct rwpng_chunk));

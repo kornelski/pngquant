@@ -121,7 +121,7 @@ typedef union {
 
 void rwpng_version_info(FILE *fp);
 
-pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr, int verbose);
+pngquant_error rwpng_read_image24(FILE *infile, png24_image *mainprog_ptr, int strip, int verbose);
 pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr);
 pngquant_error rwpng_write_image24(FILE *outfile, const png24_image *mainprog_ptr);
 void rwpng_free_image24(png24_image *);

@@ -199,7 +199,7 @@ static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp ms
 static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg) {
 }
 
-static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr, int verbose)
+static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr, int strip, int verbose)
 {
     png_structp  png_ptr = NULL;
     png_infop    info_ptr = NULL;
@@ -231,10 +231,14 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
 #endif
 
 #if PNG_LIBPNG_VER >= 10500 && defined(PNG_UNKNOWN_CHUNKS_SUPPORTED)
-    /* copy standard chunks too */
-    png_set_keep_unknown_chunks(png_ptr, PNG_HANDLE_CHUNK_IF_SAFE, (png_const_bytep)"pHYs\0iTXt\0tEXt\0zTXt", 4);
+    if (!strip) {
+        /* copy standard chunks too */
+        png_set_keep_unknown_chunks(png_ptr, PNG_HANDLE_CHUNK_IF_SAFE, (png_const_bytep)"pHYs\0iTXt\0tEXt\0zTXt", 4);
+    }
 #endif
-    png_set_read_user_chunk_fn(png_ptr, &mainprog_ptr->chunks, read_chunk_callback);
+    if (!strip) {
+        png_set_read_user_chunk_fn(png_ptr, &mainprog_ptr->chunks, read_chunk_callback);
+    }
 
     struct rwpng_read_data read_data = {infile, 0};
     png_set_read_fn(png_ptr, &read_data, user_read_data);
@@ -453,12 +457,12 @@ void rwpng_free_image8(png8_image *image)
     image->chunks = NULL;
 }
 
-pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p, int verbose)
+pngquant_error rwpng_read_image24(FILE *infile, png24_image *input_image_p, int strip, int verbose)
 {
 #if USE_COCOA
     return rwpng_read_image24_cocoa(infile, input_image_p);
 #else
-    return rwpng_read_image24_libpng(infile, input_image_p, verbose);
+    return rwpng_read_image24_libpng(infile, input_image_p, strip, verbose);
 #endif
 }
 

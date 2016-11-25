@@ -641,6 +641,9 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         if (TOO_LARGE_FILE == retval) {
             verbose_printf(options, "  file exceeded expected size of %luKB", (unsigned long)output_image.maximum_file_size/1024UL);
         }
+        if (SUCCESS == retval && output_image.metadata_size > 0) {
+            verbose_printf(options, "  copied %dKB of additional PNG metadata", (int)(output_image.metadata_size+999)/1000);
+        }
     }
 
     if (options->using_stdout && keep_input_pixels && (TOO_LARGE_FILE == retval || TOO_LOW_QUALITY == retval)) {

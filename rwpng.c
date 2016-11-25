@@ -523,7 +523,7 @@ static void rwpng_set_gamma(png_infop info_ptr, png_structp png_ptr, double gamm
     }
 }
 
-pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
+pngquant_error rwpng_write_image8(FILE *outfile, png8_image *mainprog_ptr)
 {
     png_structp png_ptr;
     png_infop info_ptr;
@@ -560,6 +560,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
         sample_depth = 8;
 
     struct rwpng_chunk *chunk = mainprog_ptr->chunks;
+    mainprog_ptr->metadata_size = 0;
     int chunk_num=0;
     while(chunk) {
         png_unknown_chunk pngchunk = {
@@ -574,6 +575,7 @@ pngquant_error rwpng_write_image8(FILE *outfile, const png8_image *mainprog_ptr)
         png_set_unknown_chunk_location(png_ptr, info_ptr, chunk_num, pngchunk.location ? pngchunk.location : PNG_HAVE_IHDR);
         #endif
 
+        mainprog_ptr->metadata_size += chunk->size + 12;
         chunk = chunk->next;
         chunk_num++;
     }

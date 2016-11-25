@@ -70,6 +70,10 @@ Controls level of dithering (0 = none, 1 = full). Note that the `=` character is
 
 Reduce precision of the palette by number of bits. Use when the image will be displayed on low-depth screens (e.g. 16-bit displays or compressed textures in ARGB444 format).
 
+### `--strip`
+
+Don't copy optional PNG chunks. Metadata is always removed on Mac (when using Cocoa reader).
+
 ### `--version`
 
 Print version information to stdout.

@@ -24,10 +24,10 @@ TESTBIN = test/test
 
 all: $(BIN)
 
-staticlib: lib/libimagequant.h
-	$(MAKE) -C lib static
+staticlib: $(STATICLIB)
 
-$(STATICLIB): config.mk staticlib
+$(STATICLIB): config.mk lib/libimagequant.h lib/libimagequant.c
+	$(MAKE) -C lib static
 
 sharedlib: lib/libimagequant.h
 	$(MAKE) -C lib shared

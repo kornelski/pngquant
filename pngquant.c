@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (November 2016)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (December 2016)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\
@@ -53,6 +53,7 @@ options:\n\
   --speed N         speed/quality trade-off. 1=slow, 3=default, 11=fast & rough\n\
   --nofs            disable Floyd-Steinberg dithering\n\
   --posterize N     output lower-precision color (e.g. for ARGB4444 output)\n\
+  --strip           remove optional metadata (default on Mac)\n\
   --verbose         print status messages (synonym: -v)\n\
 \n\
 Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette.\n\
@@ -98,12 +99,13 @@ struct pngquant_options {
     float floyd;
     bool using_stdin, using_stdout, force, fast_compression, ie_mode,
         min_quality_limit, skip_if_larger,
+        strip,
         verbose;
 };
 
 static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, rwpng_color_transform tag, png8_image *output_image);
 static void set_palette(liq_result *result, png8_image *output_image);
-static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels, bool verbose);
+static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels, bool strip, bool verbose);
 static pngquant_error write_image(png8_image *output_image, png24_image *output_image24, const char *outname, struct pngquant_options *options);
 static char *add_filename_extension(const char *filename, const char *newext);
 static bool file_exists(const char *outname);
@@ -255,7 +257,7 @@ static void fix_obsolete_options(const unsigned int argc, char *argv[])
 }
 
 enum {arg_floyd=1, arg_ordered, arg_ext, arg_no_force, arg_iebug,
-    arg_transbug, arg_map, arg_posterize, arg_skip_larger};
+    arg_transbug, arg_map, arg_posterize, arg_skip_larger, arg_strip};
 
 static const struct option long_options[] = {
     {"verbose", no_argument, NULL, 'v'},
@@ -273,6 +275,7 @@ static const struct option long_options[] = {
     {"speed", required_argument, NULL, 's'},
     {"quality", required_argument, NULL, 'Q'},
     {"posterize", required_argument, NULL, arg_posterize},
+    {"strip", no_argument, NULL, arg_strip},
     {"map", required_argument, NULL, arg_map},
     {"version", no_argument, NULL, 'V'},
     {"help", no_argument, NULL, 'h'},
@@ -286,6 +289,7 @@ int main(int argc, char *argv[])
 {
     struct pngquant_options options = {
         .floyd = 1.f, // floyd-steinberg dithering
+        .strip = false,
     };
     options.liq = liq_attr_create();
 
@@ -376,10 +380,14 @@ int main(int argc, char *argv[])
                 }
                 break;
 
+            case arg_strip:
+                options.strip = true;
+                break;
+
             case arg_map:
                 {
                     png24_image tmp = {};
-                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, true, false)) {
+                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, true, true, false)) {
                         fprintf(stderr, "  error: unable to load %s", optarg);
                         return INVALID_ARGUMENT;
                     }
@@ -559,7 +567,7 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     png24_image input_image_rwpng = {};
     bool keep_input_pixels = options->skip_if_larger || (options->using_stdout && options->min_quality_limit); // original may need to be output to stdout
     if (SUCCESS == retval) {
-        retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels, options->verbose);
+        retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels, options->strip, options->verbose);
     }
 
     int quality_percent = 90; // quality on 0-100 scale, updated upon successful remap
@@ -632,6 +640,9 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
 
         if (TOO_LARGE_FILE == retval) {
             verbose_printf(options, "  file exceeded expected size of %luKB", (unsigned long)output_image.maximum_file_size/1024UL);
+        }
+        if (SUCCESS == retval && output_image.metadata_size > 0) {
+            verbose_printf(options, "  copied %dKB of additional PNG metadata", (int)(output_image.metadata_size+999)/1000);
         }
     }
 
@@ -797,7 +808,7 @@ static pngquant_error write_image(png8_image *output_image, png24_image *output_
     return retval;
 }
 
-static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels, bool verbose)
+static pngquant_error read_image(liq_attr *options, const char *filename, int using_stdin, png24_image *input_image_p, liq_image **liq_image_p, bool keep_input_pixels, bool strip, bool verbose)
 {
     FILE *infile;
 
@@ -812,7 +823,7 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     pngquant_error retval;
     #pragma omp critical (libpng)
     {
-        retval = rwpng_read_image24(infile, input_image_p, verbose);
+        retval = rwpng_read_image24(infile, input_image_p, strip, verbose);
     }
 
     if (!using_stdin) {

@@ -1,6 +1,7 @@
 version 2.8
 -----------
  - libimagequant is a separate project
+ - --strip option to disable copying of PNG metadata
 
 version 2.7
 -----------

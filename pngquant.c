@@ -551,7 +551,7 @@ int main(int argc, char *argv[])
                        file_count, (file_count == 1)? "" : "s");
     }
 
-    liq_image_destroy(options.fixed_palette_image);
+    if (options.fixed_palette_image) liq_image_destroy(options.fixed_palette_image);
     liq_attr_destroy(options.liq);
 
     return latest_error;

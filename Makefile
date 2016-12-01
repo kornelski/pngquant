@@ -26,7 +26,7 @@ all: $(BIN)
 
 staticlib: $(STATICLIB)
 
-$(STATICLIB): config.mk lib/libimagequant.h lib/libimagequant.c
+$(STATICLIB): config.mk $(LIBDISTFILES)
 	$(MAKE) -C lib static
 
 sharedlib: lib/libimagequant.h

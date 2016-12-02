@@ -92,7 +92,7 @@ ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 endif
 
 lib/libimagequant.h:
-	git submodule init && git submodule update
+	git submodule init && git submodule update || true
 
 .PHONY: all clean dist distclean dll install uninstall test staticlib
 .DELETE_ON_ERROR:

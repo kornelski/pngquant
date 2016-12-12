@@ -668,7 +668,7 @@ static void set_palette(liq_result *result, png8_image *output_image)
 
     output_image->num_palette = palette->count;
     for(unsigned int i=0; i < palette->count; i++) {
-        liq_color px = palette->entries[i];
+        const liq_color px = palette->entries[i];
         output_image->palette[i] = (rwpng_rgba){.r=px.r, .g=px.g, .b=px.b, .a=px.a};
     }
 }

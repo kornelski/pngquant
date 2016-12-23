@@ -26,7 +26,7 @@ all: $(BIN)
 
 staticlib: $(STATICLIB)
 
-$(STATICLIB): config.mk lib/libimagequant.h lib/libimagequant.c
+$(STATICLIB): config.mk $(LIBDISTFILES)
 	$(MAKE) -C lib static
 
 sharedlib: lib/libimagequant.h
@@ -92,7 +92,7 @@ ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 endif
 
 lib/libimagequant.h:
-	git submodule init && git submodule update
+	git submodule init && git submodule update || true
 
 .PHONY: all clean dist distclean dll install uninstall test staticlib
 .DELETE_ON_ERROR:

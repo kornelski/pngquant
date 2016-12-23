@@ -3,7 +3,11 @@
 CONFIG="config.mk"
 PREFIX="/usr/local"
 
-test -f lib/libimagequant.h || { git submodule init && git submodule update; }
+test -f lib/libimagequant.h || { git submodule init && git submodule update; } || {
+    echo "error: libimagequant not found in ./lib/"
+    echo "If you're using git, do clone with --recursive, or download from https://github.com/ImageOptim/libimagequant"
+    exit 1;
+}
 VERSION=$(grep LIQ_VERSION_STRING lib/libimagequant.h | grep -Eo "2\.[0-9.]+")
 
 DEBUG=

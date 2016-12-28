@@ -70,15 +70,16 @@ use --force to overwrite. See man page for full list of options.\n"
 #include <stdarg.h>
 #include <stdbool.h>
 #include <getopt.h>
-#include <unistd.h>
 #include <math.h>
 
 extern char *optarg;
 extern int optind, opterr;
 
-#if defined(WIN32) || defined(__WIN32__)
+#if defined(_WIN32) || defined(WIN32) || defined(__WIN32__)
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
+#else
+#  include <unistd.h>
 #endif
 
 #ifdef _OPENMP
@@ -118,12 +119,19 @@ static void verbose_printf(struct pngquant_options *context, const char *fmt, ..
         int required_space = vsnprintf(NULL, 0, fmt, va)+1; // +\0
         va_end(va);
 
+#if defined(_MSC_VER)
+        char *buf = malloc(required_space);
+#else
         char buf[required_space];
+#endif
         va_start(va, fmt);
         vsnprintf(buf, required_space, fmt, va);
         va_end(va);
 
         context->log_callback(context->liq, buf, context->log_callback_user_info);
+#if defined(_MSC_VER)
+        free(buf);
+#endif
     }
 }
 
@@ -386,7 +394,7 @@ int main(int argc, char *argv[])
 
             case arg_map:
                 {
-                    png24_image tmp = {};
+                    png24_image tmp = {0};
                     if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, true, true, false)) {
                         fprintf(stderr, "  error: unable to load %s", optarg);
                         return INVALID_ARGUMENT;
@@ -483,16 +491,17 @@ int main(int argc, char *argv[])
     }
 #endif
 
+    int i;
     #pragma omp parallel for \
         schedule(static, 1) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
-    for(int i=0; i < num_files; i++) {
+    for(i=0; i < num_files; i++) {
         struct pngquant_options opts = options;
         opts.liq = liq_attr_copy(options.liq);
 
         const char *filename = opts.using_stdin ? "stdin" : argv[argn+i];
 
         #ifdef _OPENMP
-        struct buffered_log buf = {};
+        struct buffered_log buf = {0};
         if (opts.log_callback && omp_get_num_threads() > 1 && num_files > 1) {
             liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
             liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
@@ -564,14 +573,14 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     verbose_printf(options, "%s:", filename);
 
     liq_image *input_image = NULL;
-    png24_image input_image_rwpng = {};
+    png24_image input_image_rwpng = {0};
     bool keep_input_pixels = options->skip_if_larger || (options->using_stdout && options->min_quality_limit); // original may need to be output to stdout
     if (SUCCESS == retval) {
         retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels, options->strip, options->verbose);
     }
 
     int quality_percent = 90; // quality on 0-100 scale, updated upon successful remap
-    png8_image output_image = {};
+    png8_image output_image = {0};
     if (SUCCESS == retval) {
         verbose_printf(options, "  read %luKB file", (input_image_rwpng.file_size+1023UL)/1024UL);
 
@@ -718,7 +727,7 @@ static char *temp_filename(const char *basename) {
 
 static void set_binary_mode(FILE *fp)
 {
-#if defined(WIN32) || defined(__WIN32__)
+#if defined(_WIN32) || defined(WIN32) || defined(__WIN32__)
     setmode(fp == stdout ? 1 : 0, O_BINARY);
 #endif
 }
@@ -734,7 +743,7 @@ static const char *filename_part(const char *path)
 }
 
 static bool replace_file(const char *from, const char *to, const bool force) {
-#if defined(WIN32) || defined(__WIN32__)
+#if defined(_WIN32) || defined(WIN32) || defined(__WIN32__)
     if (force) {
         // On Windows rename doesn't replace
         unlink(to);

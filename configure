@@ -273,7 +273,7 @@ fi
 if [ "$SSE" = 'auto' ]; then
     SSE=0
     if type uname > /dev/null; then
-        if [[ "$(uname -m)" =~ (amd|x86_)64 ||
+        if [[ "$(uname -m)" =~ "amd64" || "$(uname -m)" =~ "x86_64" ||
               "$(grep -E -m1 "^flags" /proc/cpuinfo)" =~ "sse" ]]; then
             SSE=1
         fi

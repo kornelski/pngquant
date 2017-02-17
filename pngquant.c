@@ -547,7 +547,7 @@ int main(int argc, char *argv[])
                        skipped_count, (skipped_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (!skipped_count && !error_count) {
-        verbose_printf(&options, "No errors detected while quantizing %d image%s.",
+        verbose_printf(&options, "Quantized %d image%s.",
                        file_count, (file_count == 1)? "" : "s");
     }
 

@@ -18,7 +18,7 @@ To further reduce file size, try [optipng](http://optipng.sourceforge.net), [Ima
 
 Generated files are both smaller and look much better.
 
-* Significantly better quality of quantisation
+* Significantly better quality of quantization
 
   - more accurate remapping of semitransparent colors
   - special dithering algorithm that does not add noise in well-quantized areas of the image
@@ -29,7 +29,7 @@ Generated files are both smaller and look much better.
 
   - quantization [moved to standalone libimagequant](https://github.com/ImageOptim/libimagequant)
   - C99 with no workarounds for legacy systems or compilers ([apart from Visual Studio](https://github.com/pornel/pngquant/tree/msvc))
-  - Intel SSE optimisations and floating-point math used throughout
+  - Intel SSE optimizations and floating-point math used throughout
   - multicore support via OpenMP
 
 ## Options

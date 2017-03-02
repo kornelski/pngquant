@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (December 2016)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (March 2017)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\
@@ -547,7 +547,7 @@ int main(int argc, char *argv[])
                        skipped_count, (skipped_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (!skipped_count && !error_count) {
-        verbose_printf(&options, "No errors detected while quantizing %d image%s.",
+        verbose_printf(&options, "Quantized %d image%s.",
                        file_count, (file_count == 1)? "" : "s");
     }
 

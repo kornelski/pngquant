@@ -246,9 +246,12 @@ error() {
 
 echo
 
-# basic check
-if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /dev/null - > /dev/null; then
-    error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
+# mingw has problems opening /dev/null and gives false negative
+if echo "uh, nothing works on Windows" | tee /dev/null > /dev/null; then
+    # basic check
+    if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /dev/null - > /dev/null; then
+        error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
+    fi
 fi
 
 status "Compiler" "$CC"
@@ -268,9 +271,12 @@ fi
 
 # SSE
 if [ "$SSE" = 'auto' ]; then
-    if [[ "$(uname -m)" =~ (amd|x86_)64 ||
-          "$(grep -E -m1 "^flags" /proc/cpuinfo)" =~ "sse" ]]; then
-        SSE=1
+    SSE=0
+    if type uname > /dev/null; then
+        if [[ "$(uname -m)" =~ "amd64" || "$(uname -m)" =~ "x86_64" ||
+              "$(grep -E -m1 "^flags" /proc/cpuinfo)" =~ "sse" ]]; then
+            SSE=1
+        fi
     fi
 fi
 

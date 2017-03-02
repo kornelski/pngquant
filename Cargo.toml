@@ -1,0 +1,40 @@
+[package]
+authors = ["Kornel Lesiński <kornel@pngquant.org>"]
+build = "rust/build.rs"
+categories = ["multimedia::images"]
+description = "Convert 24/32-bit images to 8-bit palette with alpha channel.\nBindings for libimagequant that powers pngquant lossy PNG compressor.\n\nDual-licensed like pngquant. See https://pngquant.org for details."
+documentation= "https://github.com/pornel/pngquant#readme"
+homepage = "https://pngquant.org"
+include = ["rwpng*", "pngquant.c", "rust/*", "COPYRIGHT", "Cargo.toml", "README.md"]
+keywords = ["quantization", "palette", "image", "pngquant", "compression"]
+license = "GPL-3.0+"
+name = "pngquant"
+repository = "https://github.com/pornel/pngquant.git"
+version = "2.9.1"
+
+[[bin]]
+name = "pngquant"
+path = "rust/bin.rs"
+
+[build-dependencies]
+gcc = "0.3.51"
+pkg-config = "0.3.9"
+
+[build-dependencies.lcms2-sys]
+optional = true
+version = "2.4.0"
+
+[dependencies.imagequant-sys]
+path = "lib"
+version = "0.1"
+
+[dependencies.lcms2-sys]
+optional = true
+version = "2.4.1"
+
+[features]
+default = ["sse", "lcms2"]
+cocoa = []
+lcms2 = ["lcms2-sys"]
+sse = ["imagequant-sys/sse"]
+static = []

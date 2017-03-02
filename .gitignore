@@ -10,3 +10,4 @@ pngquant
 lib/libimagequant.a
 config.mk
 test/test
+target/

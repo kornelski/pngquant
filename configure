@@ -348,6 +348,8 @@ if [[ "$OSTYPE" =~ "darwin" ]]; then
     XCODE_PATH=$($XCODE_CMD -p)
     DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/lib")
     DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/usr/lib")
+elif [[ "$OSTYPE" =~ "msys" ]]; then
+    SOLIBSUFFIX=dll
 else
     SOLIBSUFFIX=so
 fi

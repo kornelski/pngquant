@@ -374,7 +374,7 @@ if [ "$HAS_LIBPNG" -eq 0 ]; then
         PNGH_MAJMIN=$(pngh_majmin "$PNGH")
         if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
             LIBPNGA=$(find_f "$LIBPNG_DIR" "libpng${PNGH_MAJMIN}.a")
-            if [ -z "$LIBPNGA"]; then
+            if [ -z "$LIBPNGA" ]; then
                 LIBPNGA=$(find_f "$LIBPNG_DIR" "libpng.a")
             fi
             if [ -n "$LIBPNGA" ]; then

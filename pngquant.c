@@ -335,7 +335,7 @@ int main(int argc, char *argv[])
                     fputs("--output option can be used only once\n", stderr);
                     return INVALID_ARGUMENT;
                 }
-                if (strncmp(optarg, "-", 1) == 0) {
+                if (strcmp(optarg, "-") == 0) {
                     options.using_stdout = true;
                     break;
                 }

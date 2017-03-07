@@ -1,11 +1,8 @@
 # pngquant 2
 
-[pngquant](https://pngquant.org) converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*.
-Such images are fully standards-compliant and are supported by all web browsers.
+[pngquant](https://pngquant.org) is a PNG compresor that significantly reduces file sizes by converting images to a more efficient 8-bit PNG format *with alpha channel* (often 60-80% smaller than 24/32-bit PNG files). Compressed images are fully standards-compliant and are supported by all web browsers and operating systems.
 
-Quantized files are often 60-80% smaller than their 24/32-bit versions.
-
-This utility works on Linux, Mac OS X and Windows. [This](https://github.com/pornel/pngquant) is the official `pngquant` repository.
+[This](https://github.com/pornel/pngquant) is the official `pngquant` repository. The compression engine is also available [as an embeddable library](https://github.com/ImageOptim/libimagequant).
 
 ## Usage
 
@@ -70,19 +67,7 @@ Reduce precision of the palette by number of bits. Use when the image will be di
 
 Don't copy optional PNG chunks. Metadata is always removed on Mac (when using Cocoa reader).
 
-### `--version`
-
-Print version information to stdout.
-
-### `-`
-
-Read image from stdin and send result to stdout.
-
-### `--`
-
-Stops processing of arguments. This allows use of file names that start with `-`. If you're using pngquant in a script, it's advisable to put this before file names:
-
-    pngquant $OPTIONS -- "$FILE"
+See [man page](https://github.com/pornel/pngquant/blob/master/pngquant.1) (`man pngquant`) for the full list of options.
 
 ## License
 

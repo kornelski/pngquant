@@ -73,6 +73,6 @@ See [man page](https://github.com/pornel/pngquant/blob/master/pngquant.1) (`man 
 
 pngquant is dual-licensed:
 
-* GPL v3 or later, and additional copyright notice must be kept for older parts of the code. See [COPYRIGHT](https://github.com/pornel/pngquant/blob/master/COPYRIGHT) for details.
+* Under **GPL v3** or later with an additional [copyright notice](https://github.com/pornel/pngquant/blob/master/COPYRIGHT) that must be kept for the older parts of the code.
 
-* For use in non-GPL software (e.g. closed-source or App Store distribution) please ask kornel@pngquant.org for a commercial license.
+* Or [a **commercial license**](https://supportedsource.org/projects/pngquant) for use in non-GPL software (e.g. closed-source or App Store distribution). You can [get the license via Supported Source](https://supportedsource.org/projects/pngquant/purchase). Email kornel@pngquant.org if you have any questions.

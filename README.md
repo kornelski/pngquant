@@ -14,23 +14,19 @@ This utility works on Linux, Mac OS X and Windows. [This](https://github.com/por
 
 To further reduce file size, try [optipng](http://optipng.sourceforge.net), [ImageOptim](https://imageoptim.com), or [zopflipng](https://github.com/google/zopfli).
 
-## Improvements since 1.0
+## Features
 
-Generated files are both smaller and look much better.
+ * High-quality palette generation
+  - advanced quantization algorithm with support for gamma correction and premultiplied alpha
+  - unique dithering algorithm that does not add unnecessary noise to the image
 
-* Significantly better quality of quantization
+ * Configurable quality level
+  - automatically finds required number of colors and can skip images which can't be converted with the desired quality
 
-  - more accurate remapping of semitransparent colors
-  - special dithering algorithm that does not add noise in well-quantized areas of the image
-  - supports much larger number of colors in input images without degradation of quality
-  - gamma correction and optional color profile support (output is always in gamma 2.2 for web compatibility)
-
-* Refactored and modernised code
-
-  - quantization [moved to standalone libimagequant](https://github.com/ImageOptim/libimagequant)
+ * Fast, modern code
+  - based on a portable [libimagequant library](https://github.com/ImageOptim/libimagequant)
   - C99 with no workarounds for legacy systems or compilers ([apart from Visual Studio](https://github.com/pornel/pngquant/tree/msvc))
-  - Intel SSE optimizations and floating-point math used throughout
-  - multicore support via OpenMP
+  - multicore support (via OpenMP) and Intel SSE optimizations
 
 ## Options
 

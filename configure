@@ -246,12 +246,9 @@ error() {
 
 echo
 
-# mingw has problems opening /dev/null and gives false negative
-if echo "uh, nothing works on Windows" | tee /dev/null > /dev/null; then
-    # basic check
-    if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /dev/null - > /dev/null; then
-        error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
-    fi
+# /tmp, because mingw has problems opening /dev/null and gives false negative
+if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /tmp/gcccheck - > /dev/null; then
+    error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
 fi
 
 status "Compiler" "$CC"
@@ -351,6 +348,8 @@ if [[ "$OSTYPE" =~ "darwin" ]]; then
     XCODE_PATH=$($XCODE_CMD -p)
     DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/lib")
     DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/usr/lib")
+elif [[ "$OSTYPE" =~ "msys" ]]; then
+    SOLIBSUFFIX=dll
 else
     SOLIBSUFFIX=so
 fi
@@ -375,6 +374,9 @@ if [ "$HAS_LIBPNG" -eq 0 ]; then
         PNGH_MAJMIN=$(pngh_majmin "$PNGH")
         if [[ -n "$PNGH_STRING" && -n "$PNGH_MAJMIN" ]]; then
             LIBPNGA=$(find_f "$LIBPNG_DIR" "libpng${PNGH_MAJMIN}.a")
+            if [ -z "$LIBPNGA" ]; then
+                LIBPNGA=$(find_f "$LIBPNG_DIR" "libpng.a")
+            fi
             if [ -n "$LIBPNGA" ]; then
                 cflags "-I${PNGH%/*}"
                 lflags "${LIBPNGA}"

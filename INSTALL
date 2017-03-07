@@ -1,50 +1,90 @@
+## Compiling on Linux, *BSD and macOS
+
+(For instructions for Windows see section below.)
+
 To get the code:
 
-      $ git clone --recursive https://github.com/pornel/pngquant.git
+    git clone --recursive https://github.com/pornel/pngquant.git
 
-To build pngquant from source on macOS and most Linux distributions, run:
+You will need libpng installed with development headers.
+On Linux install `libpng-dev` package. On macOS `brew install libpng`.
 
-      $ make
+    make
 
-It will create pngquant executable in the current directory. If you'd like
+It will create `pngquant` executable in the current directory. If you'd like
 to install it system-wide:
 
-      $ sudo make install
+    sudo make install
 
 By default it will be installed in /usr/local/bin. To install it in another
 directory run `./configure --prefix=dir && make`.
 
-pngquant uses GNU Makefile. To compile on FreeBSD you will need to use gmake,
-and on Windows the MinGW compiler (MSVC does not support C99).
+pngquant uses GNU Makefile. To compile on FreeBSD you will need to use `gmake`.
 
-pngquant will compile with libpng 1.2, but you should use 1.5 or later.
+Avoid Linux distros that ship with libpng 1.2. It is old and buggy.
+Use libpng 1.6 or later.
+
+## Windows
+
+Compiling on Windows is horrible. Please use pre-built binaries if possible.
+
+Install git (msys-git). Install mingw or mingw64, depending on your OS version.
+Ensure system PATH environment variable to contains `C:\mingw\bin`.
+
+Restart Windows.
+
+Open Git's Bash prompt and run:
+
+    git clone -b msvc --recursive https://github.com/pornel/pngquant.git
+    cd pngquant
+
+This will create pngquant folder in your user folder.
+
+Download zlib source code 1.2 or later.
+Do not download a DLL-only version — it will not work.
+
+Move the zlib-1.2.tar.gz archive to the pngquant folder and run:
+
+    tar xf zlib*gz
+    mv zlib-<press tab> zlib
+    cd zlib
+    make -f win32/Makefile.gcc
+    cd ..
+
+if `make` doesn't work, try `mingw32-make`. If that doesn't work, fix your PATH.
+
+Download libpng 1.6 or later, extract it as a subfolder of pngquant folder.
+Do not use pre-built libpng — it will not work.
+
+Change current directory to the extracted libpng (ir will be "lpng168" or such)
+
+    cd lpng<press tab>
+    cp ../zlib/*.h ./
+    make -f scripts/makefile.msys ZLIBLIB=../zlib
+    cd ..
+    make
+
+Ignore the compilation errors. Hopefully it'll work anyway. Good luck!
 
 
-##Compilation with OpenMP
+## Compilation with OpenMP
 
-     $ ./configure --with-openmp && make
+    ./configure --with-openmp && make
 
-This makes pngquant faster in wall-clock time on multicore machines when one
-image at a time is processed.
-
-However, it increases total CPU time used, and thus it's not most optimal
-for server-side and parallelized batch jobs which run many pngquant
-instances at a time.
-
-On OS X you may need to install gcc and add `CC=gcc-4.9` to `./configure`,
+On macOS you may need to install gcc and add `CC=gcc-6` to `./configure`,
 because clang doesn't support OpenMP (yet).
 
 
-##Compilation without Cocoa image reader
+## Compilation without Cocoa image reader
 
-Mac OS X version uses Cocoa to read images. This adds support for color profiles
+macOS version uses Cocoa to read images. This adds support for color profiles
 and other image formats as input. `./configure --without-cocoa` switches back
 to libpng.
 
 
-##Compilation with Little CMS 2
+## Compilation with Little CMS 2
 
-     $ ./configure --with-lcms2 && make
+    ./configure --with-lcms2 && make
 
 Enables support for ICC v2/v4 color profiles when reading images.
 Requires Little CMS library available via `pgk-config` (e.g. install `liblcms2-dev`).

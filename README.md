@@ -1,11 +1,8 @@
 # pngquant 2
 
-[pngquant](https://pngquant.org) converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*.
-Such images are fully standards-compliant and are supported by all web browsers.
+[pngquant](https://pngquant.org) is a PNG compresor that significantly reduces file sizes by converting images to a more efficient 8-bit PNG format *with alpha channel* (often 60-80% smaller than 24/32-bit PNG files). Compressed images are fully standards-compliant and are supported by all web browsers and operating systems.
 
-Quantized files are often 60-80% smaller than their 24/32-bit versions.
-
-This utility works on Linux, Mac OS X and Windows. [This](https://github.com/pornel/pngquant) is the official `pngquant` repository.
+[This](https://github.com/pornel/pngquant) is the official `pngquant` repository. The compression engine is also available [as an embeddable library](https://github.com/ImageOptim/libimagequant).
 
 ## Usage
 
@@ -14,23 +11,19 @@ This utility works on Linux, Mac OS X and Windows. [This](https://github.com/por
 
 To further reduce file size, try [optipng](http://optipng.sourceforge.net), [ImageOptim](https://imageoptim.com), or [zopflipng](https://github.com/google/zopfli).
 
-## Improvements since 1.0
+## Features
 
-Generated files are both smaller and look much better.
+ * High-quality palette generation
+  - advanced quantization algorithm with support for gamma correction and premultiplied alpha
+  - unique dithering algorithm that does not add unnecessary noise to the image
 
-* Significantly better quality of quantization
+ * Configurable quality level
+  - automatically finds required number of colors and can skip images which can't be converted with the desired quality
 
-  - more accurate remapping of semitransparent colors
-  - special dithering algorithm that does not add noise in well-quantized areas of the image
-  - supports much larger number of colors in input images without degradation of quality
-  - gamma correction and optional color profile support (output is always in gamma 2.2 for web compatibility)
-
-* Refactored and modernised code
-
-  - quantization [moved to standalone libimagequant](https://github.com/ImageOptim/libimagequant)
+ * Fast, modern code
+  - based on a portable [libimagequant library](https://github.com/ImageOptim/libimagequant)
   - C99 with no workarounds for legacy systems or compilers ([apart from Visual Studio](https://github.com/pornel/pngquant/tree/msvc))
-  - Intel SSE optimizations and floating-point math used throughout
-  - multicore support via OpenMP
+  - multicore support (via OpenMP) and Intel SSE optimizations
 
 ## Options
 
@@ -74,24 +67,12 @@ Reduce precision of the palette by number of bits. Use when the image will be di
 
 Don't copy optional PNG chunks. Metadata is always removed on Mac (when using Cocoa reader).
 
-### `--version`
-
-Print version information to stdout.
-
-### `-`
-
-Read image from stdin and send result to stdout.
-
-### `--`
-
-Stops processing of arguments. This allows use of file names that start with `-`. If you're using pngquant in a script, it's advisable to put this before file names:
-
-    pngquant $OPTIONS -- "$FILE"
+See [man page](https://github.com/pornel/pngquant/blob/master/pngquant.1) (`man pngquant`) for the full list of options.
 
 ## License
 
 pngquant is dual-licensed:
 
-* GPL v3 or later, and additional copyright notice must be kept for older parts of the code. See [COPYRIGHT](https://github.com/pornel/pngquant/blob/master/COPYRIGHT) for details.
+* Under **GPL v3** or later with an additional [copyright notice](https://github.com/pornel/pngquant/blob/master/COPYRIGHT) that must be kept for the older parts of the code.
 
-* For use in non-GPL software (e.g. closed-source or App Store distribution) please ask kornel@pngquant.org for a commercial license.
+* Or [a **commercial license**](https://supportedsource.org/projects/pngquant) for use in non-GPL software (e.g. closed-source or App Store distribution). You can [get the license via Supported Source](https://supportedsource.org/projects/pngquant/purchase). Email kornel@pngquant.org if you have any questions.

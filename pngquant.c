@@ -60,6 +60,8 @@ Quantizes one or more 32-bit RGBA PNGs to 8-bit (or smaller) RGBA-palette.\n\
 The output filename is the same as the input name except that\n\
 it ends in \"-fs8.png\", \"-or8.png\" or your custom extension (unless the\n\
 input is stdin, in which case the quantized image will go to stdout).\n\
+If you pass the special output path \"-\" and a single input file, that file\n\
+will be processed and the quantized image will go to stdout.\n\
 The default behavior if the output file exists is to skip the conversion;\n\
 use --force to overwrite. See man page for full list of options.\n"
 
@@ -341,6 +343,10 @@ int main(int argc, char *argv[])
                     fputs("--output option can be used only once\n", stderr);
                     return INVALID_ARGUMENT;
                 }
+                if (strcmp(optarg, "-") == 0) {
+                    options.using_stdout = true;
+                    break;
+                }
                 output_file_path = optarg; break;
 
             case arg_iebug:
@@ -478,6 +484,10 @@ int main(int argc, char *argv[])
 
     if (output_file_path && num_files != 1) {
         fputs("Only one input file is allowed when --output is used\n", stderr);
+        return INVALID_ARGUMENT;
+    }
+    if (options.using_stdout && !options.using_stdin && num_files != 1) {
+        fputs("Only one input file is allowed when using the special output path \"-\" to write to stdout\n", stderr);
         return INVALID_ARGUMENT;
     }
 

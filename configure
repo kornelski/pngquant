@@ -26,6 +26,7 @@ EXTRA_LDFLAGS=
 
 # make gcc default compiler unless CC is already set
 CC=${CC:-gcc}
+SKIP_CC_CHECK=0
 
 help() {
     printf "%4s %s\n" "" "$1"
@@ -58,6 +59,7 @@ fi
     # Can be set before or after configure. Latter overrides former.
     CC=*)
         CC=${i#*=}
+        SKIP_CC_CHECK=1
         ;;
     CFLAGS=*)
         CFLAGS=${i#*=}
@@ -248,7 +250,11 @@ echo
 
 # /tmp, because mingw has problems opening /dev/null and gives false negative
 if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /tmp/gcccheck - > /dev/null; then
-    error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
+    if [ "$SKIP_CC_CHECK" -eq 1 ]; then
+        status "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
+    else
+        error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
+    fi
 fi
 
 status "Compiler" "$CC"

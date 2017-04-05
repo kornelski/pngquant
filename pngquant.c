@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (March 2017)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (April 2017)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\

@@ -75,9 +75,6 @@ use --force to overwrite. See man page for full list of options.\n"
 #include <unistd.h>
 #include <math.h>
 
-extern char *optarg;
-extern int optind, opterr;
-
 #if defined(WIN32) || defined(__WIN32__)
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
@@ -131,6 +128,8 @@ static void verbose_printf(struct pngquant_options *context, const char *fmt, ..
 
 static void log_callback(const liq_attr *attr, const char *msg, void* user_info)
 {
+    (void)(attr);
+    (void)(user_info);
     fprintf(stderr, "%s\n", msg);
 }
 
@@ -730,6 +729,8 @@ static void set_binary_mode(FILE *fp)
 {
 #if defined(WIN32) || defined(__WIN32__)
     setmode(fp == stdout ? 1 : 0, O_BINARY);
+#else
+    (void)(fp);
 #endif
 }
 
@@ -749,6 +750,8 @@ static bool replace_file(const char *from, const char *to, const bool force) {
         // On Windows rename doesn't replace
         unlink(to);
     }
+#else
+    (void)(force);
 #endif
     return (0 == rename(from, to));
 }

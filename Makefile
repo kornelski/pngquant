@@ -24,38 +24,35 @@ TESTBIN = test/test
 
 all: $(BIN)
 
+ifeq ($(SHARED),1)
+  LIB=$(SHAREDLIB)
+else
+  LIB=$(STATICLIB)
+endif
+
 staticlib: $(STATICLIB)
+
+sharedlib: $(SHAREDLIB)
 
 $(STATICLIB): config.mk $(LIBDISTFILES)
 	$(MAKE) -C lib static
 
-sharedlib: lib/libimagequant.h
+$(SHAREDLIB): config.mk $(LIBDISTFILES)
 	$(MAKE) -C lib shared
-
-$(SHAREDLIB): config.mk sharedlib
 
 $(OBJS): $(wildcard *.h) config.mk
 
 rwpng_cocoa.o: rwpng_cocoa.m
 	$(CC) -Wno-enum-conversion -c $(CFLAGS) -o $@ $< &> /dev/null || clang -Wno-enum-conversion -c -O3 -o $@ $<
 
-$(BIN): $(OBJS) $(STATICLIB)
+$(BIN): $(OBJS) $(LIB)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
-$(TESTBIN): test/test.o $(STATICLIB)
+$(TESTBIN): test/test.o $(LIB)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 test: $(BIN) $(TESTBIN)
-	./test/test.sh ./test $(BIN) $(TESTBIN)
-
-bin.shared: $(OBJS) $(SHAREDLIB)
-	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $(BIN)
-
-testbin.shared: test/test.o $(SHAREDLIB)
-	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $(TESTBIN)
-
-test.shared: bin.shared testbin.shared
-	./test/test.sh ./test $(BIN) $(TESTBIN)
+	LD_LIBRARY_PATH="lib" ./test/test.sh ./test $(BIN) $(TESTBIN)
 
 dist: $(TARFILE)
 
@@ -94,5 +91,5 @@ endif
 lib/libimagequant.h:
 	git submodule init && git submodule update || true
 
-.PHONY: all clean dist distclean dll install uninstall test staticlib
+.PHONY: all clean dist distclean dll install uninstall test staticlib sharedlib
 .DELETE_ON_ERROR:

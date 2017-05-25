@@ -24,6 +24,13 @@ pngquant uses GNU Makefile. To compile on FreeBSD you will need to use `gmake`.
 Avoid Linux distros that ship with libpng 1.2. It is old and buggy.
 Use libpng 1.6 or later.
 
+### Custom static libpng
+
+Extract libpng source code as a *sub*directory of pngquant source directory.
+Build static libpng (`./configure --enable-static && make`), and then
+`./configure && make` pngquant.
+
+
 ## Windows
 
 Compiling on Windows is horrible. Please use pre-built binaries if possible.
@@ -90,9 +97,9 @@ Enables support for ICC v2/v4 color profiles when reading images.
 Requires Little CMS library available via `pgk-config` (e.g. install `liblcms2-dev`).
 
 
-##Compilation of `libimagequant.a` only
+## Compilation of `libimagequant.a` only
 
 If you want to use pngquant's conversion algorithm without loading/saving PNG
 files, then you can run `make` in the `lib/` directory.
-The library doesn't need libpng or zlib.
+The library doesn't need libpng nor zlib.
 

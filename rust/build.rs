@@ -1,31 +1,8 @@
 extern crate gcc;
-extern crate pkg_config;
-
-#[cfg(feature = "lcms2")]
-extern crate lcms2_sys;
 
 use std::env;
 
-fn probe(lib: &str, ver: &str) -> Option<pkg_config::Library> {
-    let statik = cfg!(feature = "static");
-    let mut pkg = pkg_config::Config::new();
-    pkg.atleast_version(ver);
-    pkg.statik(statik);
-    match pkg.probe(lib) {
-        Ok(lib) => Some(lib),
-        Err(pkg_config::Error::Failure{output,..}) => {
-            println!("cargo:warning={}", String::from_utf8_lossy(&output.stderr).trim_right().replace("\n", "\ncargo:warning="));
-            None
-        },
-        Err(err) => {
-            println!("cargo:warning=Can't find {} v{}: {:?}", lib, ver, err);
-            None
-        }
-    }
-}
-
 fn main() {
-    let libpng = probe("libpng", "1.4").unwrap();
     let mut cc = gcc::Config::new();
 
     // Muahahaha
@@ -59,7 +36,10 @@ fn main() {
     cc.file("rwpng.c");
     cc.file("pngquant.c");
 
-    for p in libpng.include_paths {
+    if let Ok(p) = env::var("DEP_IMAGEQUANT_INCLUDE") {
+        cc.include(p);
+    }
+    if let Ok(p) = env::var("DEP_LIBPNG_INCLUDE") {
         cc.include(p);
     }
 

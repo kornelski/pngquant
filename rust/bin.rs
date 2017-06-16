@@ -1,4 +1,5 @@
 extern crate imagequant_sys;
+extern crate libpng_sys;
 
 #[cfg(feature = "lcms2")]
 extern crate lcms2_sys;

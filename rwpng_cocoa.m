@@ -10,8 +10,10 @@
 #import <Cocoa/Cocoa.h>
 #import <CoreGraphics/CoreGraphics.h>
 #include <stdio.h>
-#include "lib/libimagequant.h"
-#include "lib/pam.h"
+#include "libimagequant.h"
+typedef struct {
+    unsigned char r, g, b, a;
+} rgba_pixel;
 
 int rwpng_read_image24_cocoa(FILE *fp, png24_image *out)
 {

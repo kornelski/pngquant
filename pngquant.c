@@ -91,7 +91,7 @@ extern int optind, opterr;
 #endif
 
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
-#include "lib/libimagequant.h"
+#include "libimagequant.h" /* if you get compile error, add -Ilib to compiler flags */
 
 struct pngquant_options {
     liq_attr *liq;

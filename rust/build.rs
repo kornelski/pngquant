@@ -2,6 +2,14 @@ extern crate gcc;
 
 use std::env;
 
+fn fudge_windows_unc_path(path: &str) -> &str {
+    if path.starts_with("\\\\?\\") {
+        &path[4..]
+    } else {
+        path
+    }
+}
+
 fn main() {
     let mut cc = gcc::Config::new();
 
@@ -18,8 +26,8 @@ fn main() {
         cc.file("rwpng_cocoa.m");
     }
     else if cfg!(feature = "lcms2") {
-        if let Ok(path) = env::var("DEP_LCMS2_INCLUDE") {
-            cc.include(path);
+        if let Ok(p) = env::var("DEP_LCMS2_INCLUDE") {
+            cc.include(fudge_windows_unc_path(&p));
         }
         cc.define("USE_LCMS", Some("1"));
     }
@@ -37,10 +45,10 @@ fn main() {
     cc.file("pngquant.c");
 
     if let Ok(p) = env::var("DEP_IMAGEQUANT_INCLUDE") {
-        cc.include(p);
+        cc.include(fudge_windows_unc_path(&p));
     }
     if let Ok(p) = env::var("DEP_LIBPNG_INCLUDE") {
-        cc.include(p);
+        cc.include(fudge_windows_unc_path(&p));
     }
 
     cc.compile("libpngquant.a");

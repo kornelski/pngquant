@@ -132,6 +132,7 @@ static void user_write_data(png_structp png_ptr, png_bytep data, png_size_t leng
 
 static void user_flush_data(png_structp png_ptr)
 {
+    (void)(png_ptr);
     // libpng never calls this :(
 }
 
@@ -193,10 +194,13 @@ static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
 
 #if !USE_COCOA
 static void rwpng_warning_stderr_handler(png_structp png_ptr, png_const_charp msg) {
+    (void)(png_ptr);
     fprintf(stderr, "  libpng warning: %s\n", msg);
 }
 
 static void rwpng_warning_silent_handler(png_structp png_ptr, png_const_charp msg) {
+    (void)(png_ptr);
+    (void)(msg);
 }
 
 static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainprog_ptr, int strip, int verbose)
@@ -249,7 +253,7 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
      * etc., but want bit_depth and color_type for later [don't care about
      * compression_type and filter_type => NULLs] */
 
-    png_get_IHDR(png_ptr, info_ptr, &mainprog_ptr->width, &mainprog_ptr->height,
+    png_get_IHDR(png_ptr, info_ptr, (png_uint_32 *)&mainprog_ptr->width, (png_uint_32 *)&mainprog_ptr->height,
                  &bit_depth, &color_type, NULL, NULL, NULL);
 
     /* expand palette images to RGB, low-bit-depth grayscale images to 8 bits,

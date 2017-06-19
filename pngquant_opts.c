@@ -123,17 +123,7 @@ pngquant_error pngquant_parse_options(int argc, char *argv[], struct pngquant_op
                 break;
 
             case 's':
-                {
-                    int speed = atoi(optarg);
-                    if (speed >= 10) {
-                        options->fast_compression = true;
-                    }
-                    if (speed == 11) {
-                        options->floyd = 0;
-                        speed = 10;
-                    }
-                    options->speed = speed;
-                }
+                options->speed = atoi(optarg);
                 break;
 
             case 'Q':

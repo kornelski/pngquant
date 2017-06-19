@@ -273,11 +273,18 @@ pngquant_error pngquant_main(struct pngquant_options *options)
         liq_set_last_index_transparent(options->liq, true);
     }
 
+    if (options->speed >= 10) {
+        options->fast_compression = true;
+        if (options->speed == 11) {
+            options->floyd = 0;
+            options->speed = 10;
+        }
+    }
+
     if (options->speed && LIQ_OK != liq_set_speed(options->liq, options->speed)) {
         fputs("Speed should be between 1 (slow) and 11 (fast).\n", stderr);
         return INVALID_ARGUMENT;
     }
-
     if (options->colors && LIQ_OK != liq_set_max_colors(options->liq, options->colors)) {
         fputs("Number of colors must be between 2 and 256.\n", stderr);
         return INVALID_ARGUMENT;
@@ -295,10 +302,7 @@ pngquant_error pngquant_main(struct pngquant_options *options)
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if (options->extension == NULL) {
-        options->extension = options->floyd > 0 ? "-ie-fs8.png" : "-ie-or8.png";
-        if (!options->ie_mode) {
-            options->extension += 3;    /* skip "-ie" */
-        }
+        options->extension = options->floyd > 0 ? "-fs8.png" : "-or8.png";
     }
 
     if (options->output_file_path && options->num_files != 1) {

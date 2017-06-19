@@ -4,7 +4,7 @@ BIN ?= pngquant
 BINPREFIX ?= $(DESTDIR)$(PREFIX)/bin
 MANPREFIX ?= $(DESTDIR)$(PREFIX)/share/man
 
-OBJS = pngquant.o rwpng.o
+OBJS = pngquant.o pngquant_opts.o rwpng.o
 COCOA_OBJS = rwpng_cocoa.o
 
 ifeq (1, $(COCOA_READER))

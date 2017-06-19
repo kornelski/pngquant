@@ -1,3 +1,7 @@
+#![cfg_attr(feature="alloc_system", feature(alloc_system))]
+
+#[cfg(feature="alloc_system")]
+extern crate alloc_system;
 extern crate imagequant_sys;
 extern crate libpng_sys;
 

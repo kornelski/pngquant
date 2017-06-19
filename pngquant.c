@@ -426,11 +426,6 @@ int main(int argc, char *argv[])
         return MISSING_ARGUMENT;
     }
 
-    if (options.verbose) {
-        liq_set_log_callback(options.liq, log_callback, NULL);
-        options.log_callback = log_callback;
-    }
-
     char *colors_end;
     unsigned long colors = strtoul(argv[argn], &colors_end, 10);
     if (colors_end != argv[argn] && '\0' == colors_end[0]) {
@@ -439,6 +434,20 @@ int main(int argc, char *argv[])
             return INVALID_ARGUMENT;
         }
         argn++;
+    }
+
+    if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
+        options.using_stdin = true;
+        options.using_stdout = !options.output_file_path;
+        argn = argc-1;
+    }
+
+    options.num_files = argc-argn;
+    options.files = argv+argn;
+
+    if (options.verbose) {
+        liq_set_log_callback(options.liq, log_callback, NULL);
+        options.log_callback = log_callback;
     }
 
     if (options.extension && options.output_file_path) {
@@ -454,20 +463,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
-        options.using_stdin = true;
-        options.using_stdout = !options.output_file_path;
-        argn = argc-1;
-    }
-
-
-    options.num_files = argc-argn;
-    options.files = argv+argn;
-
     if (options.output_file_path && options.num_files != 1) {
         fputs("Only one input file is allowed when --output is used\n", stderr);
         return INVALID_ARGUMENT;
     }
+
     if (options.using_stdout && !options.using_stdin && options.num_files != 1) {
         fputs("Only one input file is allowed when using the special output path \"-\" to write to stdout\n", stderr);
         return INVALID_ARGUMENT;

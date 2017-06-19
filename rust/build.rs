@@ -14,7 +14,7 @@ fn main() {
     let mut cc = gcc::Config::new();
 
     // Muahahaha
-    cc.define("main", Some("pngquant_main"));
+    cc.define("main", Some("_unused_c_main"));
 
     if cfg!(feature = "cocoa") {
         if cfg!(feature = "lcms2") {

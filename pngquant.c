@@ -39,7 +39,7 @@
 **
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (April 2017)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (June 2017)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\
@@ -111,6 +111,7 @@ struct pngquant_options {
     bool using_stdin, using_stdout, force, fast_compression, ie_mode,
         min_quality_limit, skip_if_larger,
         strip, iebug, last_index_transparent,
+        print_help, print_version, missing_arguments,
         verbose;
 };
 
@@ -386,13 +387,12 @@ int main(int argc, char *argv[])
                 break;
 
             case 'h':
-                print_full_version(stdout);
-                print_usage(stdout);
-                return SUCCESS;
+                options.print_help = true;
+                break;
 
             case 'V':
-                puts(PNGQUANT_VERSION);
-                return SUCCESS;
+                options.print_version = true;
+                break;
 
             case -1: break;
 
@@ -403,31 +403,42 @@ int main(int argc, char *argv[])
 
     int argn = optind;
 
-    if (argn >= argc) {
-        if (argn > 1) {
-            fputs("No input files specified.\n", stderr);
-        } else {
-            print_full_version(stderr);
+    if (argn < argc) {
+        char *colors_end;
+        unsigned long colors = strtoul(argv[argn], &colors_end, 10);
+        if (colors_end != argv[argn] && '\0' == colors_end[0]) {
+            options.colors = colors;
+            argn++;
         }
+
+        if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
+            options.using_stdin = true;
+            options.using_stdout = !options.output_file_path;
+            argn = argc-1;
+        }
+
+        options.num_files = argc-argn;
+        options.files = argv+argn;
+    } else if (argn <= 1) {
+        options.missing_arguments = true;
+    }
+
+    if (options.print_version) {
+        puts(PNGQUANT_VERSION);
+        return SUCCESS;
+    }
+
+    if (options.missing_arguments) {
+        print_full_version(stderr);
         print_usage(stderr);
         return MISSING_ARGUMENT;
     }
 
-    char *colors_end;
-    unsigned long colors = strtoul(argv[argn], &colors_end, 10);
-    if (colors_end != argv[argn] && '\0' == colors_end[0]) {
-        options.colors = colors;
-        argn++;
+    if (options.print_help) {
+        print_full_version(stdout);
+        print_usage(stdout);
+        return SUCCESS;
     }
-
-    if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
-        options.using_stdin = true;
-        options.using_stdout = !options.output_file_path;
-        argn = argc-1;
-    }
-
-    options.num_files = argc-argn;
-    options.files = argv+argn;
 
     options.liq = liq_attr_create();
 
@@ -510,6 +521,15 @@ int main(int argc, char *argv[])
             liq_image_add_fixed_color(options.fixed_palette_image, pal->entries[i]);
         }
         liq_result_destroy(tmp_quantize);
+    }
+
+    if (!options.num_files && !options.using_stdin) {
+        fputs("No input files specified.\n", stderr);
+        if (options.verbose) {
+            print_full_version(stderr);
+        }
+        print_usage(stderr);
+        return MISSING_ARGUMENT;
     }
 
 #ifdef _OPENMP

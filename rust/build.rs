@@ -13,8 +13,7 @@ fn fudge_windows_unc_path(path: &str) -> &str {
 fn main() {
     let mut cc = gcc::Config::new();
 
-    // Muahahaha
-    cc.define("main", Some("_unused_c_main"));
+    cc.define("PNGQUANT_NO_MAIN", Some("1"));
 
     if cfg!(feature = "cocoa") {
         if cfg!(feature = "lcms2") {

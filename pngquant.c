@@ -213,6 +213,7 @@ static bool parse_quality(const char *quality, liq_attr *options, bool *min_qual
 pngquant_error pngquant_main(struct pngquant_options *options);
 pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options);
 
+#ifndef PNGQUANT_NO_MAIN
 int main(int argc, char *argv[])
 {
     struct pngquant_options options = {
@@ -227,6 +228,7 @@ int main(int argc, char *argv[])
 
     return pngquant_main(&options);
 }
+#endif
 
 pngquant_error pngquant_main(struct pngquant_options *options)
 {

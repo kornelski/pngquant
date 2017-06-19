@@ -98,6 +98,8 @@ struct pngquant_options {
     liq_image *fixed_palette_image;
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
+    const char *extension;
+    const char *output_file_path;
     const char *map_file;
     char *const *files;
     int num_files;
@@ -305,7 +307,6 @@ int main(int argc, char *argv[])
 
     unsigned int error_count=0, skipped_count=0, file_count=0;
     pngquant_error latest_error=SUCCESS;
-    const char *newext = NULL, *output_file_path = NULL;
 
     fix_obsolete_options(argc, argv);
 
@@ -332,9 +333,9 @@ int main(int argc, char *argv[])
             case 'f': options.force = true; break;
             case arg_no_force: options.force = false; break;
 
-            case arg_ext: newext = optarg; break;
+            case arg_ext: options.extension = optarg; break;
             case 'o':
-                if (output_file_path) {
+                if (options.output_file_path) {
                     fputs("--output option can be used only once\n", stderr);
                     return INVALID_ARGUMENT;
                 }
@@ -342,7 +343,7 @@ int main(int argc, char *argv[])
                     options.using_stdout = true;
                     break;
                 }
-                output_file_path = optarg; break;
+                options.output_file_path = optarg; break;
 
             case arg_iebug:
                 // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
@@ -440,22 +441,22 @@ int main(int argc, char *argv[])
         argn++;
     }
 
-    if (newext && output_file_path) {
+    if (options.extension && options.output_file_path) {
         fputs("--ext and --output options can't be used at the same time\n", stderr);
         return INVALID_ARGUMENT;
     }
 
     // new filename extension depends on options used. Typically basename-fs8.png
-    if (newext == NULL) {
-        newext = options.floyd > 0 ? "-ie-fs8.png" : "-ie-or8.png";
+    if (options.extension == NULL) {
+        options.extension = options.floyd > 0 ? "-ie-fs8.png" : "-ie-or8.png";
         if (!options.ie_mode) {
-            newext += 3;    /* skip "-ie" */
+            options.extension += 3;    /* skip "-ie" */
         }
     }
 
     if (argn == argc || (argn == argc-1 && 0==strcmp(argv[argn],"-"))) {
         options.using_stdin = true;
-        options.using_stdout = !output_file_path;
+        options.using_stdout = !options.output_file_path;
         argn = argc-1;
     }
 
@@ -463,7 +464,7 @@ int main(int argc, char *argv[])
     options.num_files = argc-argn;
     options.files = argv+argn;
 
-    if (output_file_path && options.num_files != 1) {
+    if (options.output_file_path && options.num_files != 1) {
         fputs("Only one input file is allowed when --output is used\n", stderr);
         return INVALID_ARGUMENT;
     }
@@ -521,11 +522,11 @@ int main(int argc, char *argv[])
 
         pngquant_error retval = SUCCESS;
 
-        const char *outname = output_file_path;
+        const char *outname = opts.output_file_path;
         char *outname_free = NULL;
         if (!opts.using_stdout) {
             if (!outname) {
-                outname = outname_free = add_filename_extension(filename, newext);
+                outname = outname_free = add_filename_extension(filename, opts.extension);
             }
             if (!opts.force && file_exists(outname)) {
                 fprintf(stderr, "  error: '%s' exists; not overwriting\n", outname);

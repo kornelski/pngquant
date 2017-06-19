@@ -99,6 +99,8 @@ struct pngquant_options {
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
     const char *map_file;
+    char *const *files;
+    int num_files;
     float floyd;
     bool using_stdin, using_stdout, force, fast_compression, ie_mode,
         min_quality_limit, skip_if_larger,
@@ -457,13 +459,15 @@ int main(int argc, char *argv[])
         argn = argc-1;
     }
 
-    const int num_files = argc-argn;
 
-    if (output_file_path && num_files != 1) {
+    options.num_files = argc-argn;
+    options.files = argv+argn;
+
+    if (output_file_path && options.num_files != 1) {
         fputs("Only one input file is allowed when --output is used\n", stderr);
         return INVALID_ARGUMENT;
     }
-    if (options.using_stdout && !options.using_stdin && num_files != 1) {
+    if (options.using_stdout && !options.using_stdin && options.num_files != 1) {
         fputs("Only one input file is allowed when using the special output path \"-\" to write to stdout\n", stderr);
         return INVALID_ARGUMENT;
     }
@@ -498,11 +502,11 @@ int main(int argc, char *argv[])
 
     #pragma omp parallel for \
         schedule(static, 1) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
-    for(int i=0; i < num_files; i++) {
+    for(int i=0; i < options.num_files; i++) {
+        const char *filename = options.using_stdin ? "stdin" : options.files[i];
         struct pngquant_options opts = options;
         opts.liq = liq_attr_copy(options.liq);
 
-        const char *filename = opts.using_stdin ? "stdin" : argv[argn+i];
 
         #ifdef _OPENMP
         struct buffered_log buf = {};

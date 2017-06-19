@@ -73,7 +73,7 @@ use --force to overwrite. See man page for full list of options.\n"
 #include <stdbool.h>
 #include <math.h>
 
-#if defined(WIN32) || defined(__WIN32__) || defined(_MSC_VER)
+#if defined(_WIN32) || defined(WIN32) || defined(__WIN32__)
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
 #else
@@ -106,12 +106,19 @@ static void verbose_printf(struct pngquant_options *context, const char *fmt, ..
         int required_space = vsnprintf(NULL, 0, fmt, va)+1; // +\0
         va_end(va);
 
+#if defined(_MSC_VER)
+        char *buf = malloc(required_space);
+#else
         char buf[required_space];
+#endif
         va_start(va, fmt);
         vsnprintf(buf, required_space, fmt, va);
         va_end(va);
 
         context->log_callback(context->liq, buf, context->log_callback_user_info);
+#if defined(_MSC_VER)
+        free(buf);
+#endif
     }
 }
 
@@ -367,7 +374,7 @@ pngquant_error pngquant_main(struct pngquant_options *options)
 
 
         #ifdef _OPENMP
-        struct buffered_log buf = {};
+        struct buffered_log buf = {0};
         if (opts.log_callback && omp_get_num_threads() > 1 && num_files > 1) {
             liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
             liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
@@ -593,7 +600,7 @@ static char *temp_filename(const char *basename) {
 
 static void set_binary_mode(FILE *fp)
 {
-#if defined(WIN32) || defined(__WIN32__)
+#if defined(_WIN32) || defined(WIN32) || defined(__WIN32__)
     setmode(fp == stdout ? 1 : 0, O_BINARY);
 #endif
 }
@@ -609,7 +616,7 @@ static const char *filename_part(const char *path)
 }
 
 static bool replace_file(const char *from, const char *to, const bool force) {
-#if defined(WIN32) || defined(__WIN32__)
+#if defined(_WIN32) || defined(WIN32) || defined(__WIN32__)
     if (force) {
         // On Windows rename doesn't replace
         unlink(to);

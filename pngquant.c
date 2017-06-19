@@ -98,6 +98,7 @@ struct pngquant_options {
     liq_image *fixed_palette_image;
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
+    const char *map_file;
     float floyd;
     bool using_stdin, using_stdout, force, fast_compression, ie_mode,
         min_quality_limit, skip_if_larger,
@@ -391,23 +392,7 @@ int main(int argc, char *argv[])
                 break;
 
             case arg_map:
-                {
-                    png24_image tmp = {};
-                    if (SUCCESS != read_image(options.liq, optarg, false, &tmp, &options.fixed_palette_image, true, true, false)) {
-                        fprintf(stderr, "  error: unable to load %s", optarg);
-                        return INVALID_ARGUMENT;
-                    }
-                    liq_result *tmp_quantize = liq_quantize_image(options.liq, options.fixed_palette_image);
-                    const liq_palette *pal = liq_get_palette(tmp_quantize);
-                    if (!pal) {
-                        fprintf(stderr, "  error: unable to read colors from %s", optarg);
-                        return INVALID_ARGUMENT;
-                    }
-                    for(unsigned int i=0; i < pal->count; i++) {
-                        liq_image_add_fixed_color(options.fixed_palette_image, pal->entries[i]);
-                    }
-                    liq_result_destroy(tmp_quantize);
-                }
+                options.map_file = optarg;
                 break;
 
             case 'h':
@@ -481,6 +466,24 @@ int main(int argc, char *argv[])
     if (options.using_stdout && !options.using_stdin && num_files != 1) {
         fputs("Only one input file is allowed when using the special output path \"-\" to write to stdout\n", stderr);
         return INVALID_ARGUMENT;
+    }
+
+    if (options.map_file) {
+        png24_image tmp = {};
+        if (SUCCESS != read_image(options.liq, options.map_file, false, &tmp, &options.fixed_palette_image, true, true, false)) {
+            fprintf(stderr, "  error: unable to load %s", options.map_file);
+            return INVALID_ARGUMENT;
+        }
+        liq_result *tmp_quantize = liq_quantize_image(options.liq, options.fixed_palette_image);
+        const liq_palette *pal = liq_get_palette(tmp_quantize);
+        if (!pal) {
+            fprintf(stderr, "  error: unable to read colors from %s", options.map_file);
+            return INVALID_ARGUMENT;
+        }
+        for(unsigned int i=0; i < pal->count; i++) {
+            liq_image_add_fixed_color(options.fixed_palette_image, pal->entries[i]);
+        }
+        liq_result_destroy(tmp_quantize);
     }
 
 #ifdef _OPENMP

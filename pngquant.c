@@ -317,7 +317,7 @@ pngquant_error pngquant_main(struct pngquant_options *options)
     }
 
     if (options->map_file) {
-        png24_image tmp = {};
+        png24_image tmp = {.width=0};
         if (SUCCESS != read_image(options->liq, options->map_file, false, &tmp, &options->fixed_palette_image, true, true, false)) {
             fprintf(stderr, "  error: unable to load %s", options->map_file);
             return INVALID_ARGUMENT;
@@ -437,14 +437,14 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
     verbose_printf(options, "%s:", filename);
 
     liq_image *input_image = NULL;
-    png24_image input_image_rwpng = {};
+    png24_image input_image_rwpng = {.width=0};
     bool keep_input_pixels = options->skip_if_larger || (options->using_stdout && options->min_quality_limit); // original may need to be output to stdout
     if (SUCCESS == retval) {
         retval = read_image(options->liq, filename, options->using_stdin, &input_image_rwpng, &input_image, keep_input_pixels, options->strip, options->verbose);
     }
 
     int quality_percent = 90; // quality on 0-100 scale, updated upon successful remap
-    png8_image output_image = {};
+    png8_image output_image = {.width=0};
     if (SUCCESS == retval) {
         verbose_printf(options, "  read %luKB file", (input_image_rwpng.file_size+1023UL)/1024UL);
 

@@ -71,12 +71,13 @@ use --force to overwrite. See man page for full list of options.\n"
 #include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <unistd.h>
 #include <math.h>
 
-#if defined(WIN32) || defined(__WIN32__)
+#if defined(WIN32) || defined(__WIN32__) || defined(_MSC_VER)
 #  include <fcntl.h>    /* O_BINARY */
 #  include <io.h>   /* setmode() */
+#else
+#  include <unistd.h>
 #endif
 
 #ifdef _OPENMP

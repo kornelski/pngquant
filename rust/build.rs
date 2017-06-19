@@ -46,7 +46,10 @@ fn main() {
 
     if let Ok(p) = env::var("DEP_IMAGEQUANT_INCLUDE") {
         cc.include(fudge_windows_unc_path(&p));
+    } else {
+        cc.include("lib");
     }
+
     if let Ok(p) = env::var("DEP_LIBPNG_INCLUDE") {
         cc.include(fudge_windows_unc_path(&p));
     }

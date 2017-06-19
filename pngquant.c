@@ -98,15 +98,19 @@ struct pngquant_options {
     liq_image *fixed_palette_image;
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
+    const char *quality;
     const char *extension;
     const char *output_file_path;
     const char *map_file;
     char *const *files;
     int num_files;
+    int colors;
+    int speed;
+    int posterize;
     float floyd;
     bool using_stdin, using_stdout, force, fast_compression, ie_mode,
         min_quality_limit, skip_if_larger,
-        strip,
+        strip, iebug, last_index_transparent,
         verbose;
 };
 
@@ -298,12 +302,6 @@ int main(int argc, char *argv[])
         .floyd = 1.f, // floyd-steinberg dithering
         .strip = false,
     };
-    options.liq = liq_attr_create();
-
-    if (!options.liq) {
-        fputs("SSE-capable CPU is required for this build.\n", stderr);
-        return WRONG_ARCHITECTURE;
-    }
 
     unsigned int error_count=0, skipped_count=0, file_count=0;
     pngquant_error latest_error=SUCCESS;
@@ -346,13 +344,11 @@ int main(int argc, char *argv[])
                 options.output_file_path = optarg; break;
 
             case arg_iebug:
-                // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
-                liq_set_min_opacity(options.liq, 238);
-                fputs("  warning: the workaround for IE6 is deprecated\n", stderr);
+                options.iebug = true;
                 break;
 
             case arg_transbug:
-                liq_set_last_index_transparent(options.liq, true);
+                options.last_index_transparent = true;
                 break;
 
             case arg_skip_larger:
@@ -369,25 +365,16 @@ int main(int argc, char *argv[])
                         options.floyd = 0;
                         speed = 10;
                     }
-                    if (LIQ_OK != liq_set_speed(options.liq, speed)) {
-                        fputs("Speed should be between 1 (slow) and 11 (fast).\n", stderr);
-                        return INVALID_ARGUMENT;
-                    }
+                    options.speed = speed;
                 }
                 break;
 
             case 'Q':
-                if (!parse_quality(optarg, options.liq, &options.min_quality_limit)) {
-                    fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
-                    return INVALID_ARGUMENT;
-                }
+                options.quality = optarg;
                 break;
 
             case arg_posterize:
-                if (LIQ_OK != liq_set_min_posterization(options.liq, atoi(optarg))) {
-                    fputs("Posterization should be number of bits in range 0-4.\n", stderr);
-                    return INVALID_ARGUMENT;
-                }
+                options.posterize = atoi(optarg);
                 break;
 
             case arg_strip:
@@ -429,10 +416,7 @@ int main(int argc, char *argv[])
     char *colors_end;
     unsigned long colors = strtoul(argv[argn], &colors_end, 10);
     if (colors_end != argv[argn] && '\0' == colors_end[0]) {
-        if (LIQ_OK != liq_set_max_colors(options.liq, colors)) {
-            fputs("Number of colors must be between 2 and 256.\n", stderr);
-            return INVALID_ARGUMENT;
-        }
+        options.colors = colors;
         argn++;
     }
 
@@ -445,9 +429,46 @@ int main(int argc, char *argv[])
     options.num_files = argc-argn;
     options.files = argv+argn;
 
+    options.liq = liq_attr_create();
+
+    if (!options.liq) {
+        fputs("SSE-capable CPU is required for this build.\n", stderr);
+        return WRONG_ARCHITECTURE;
+    }
+
     if (options.verbose) {
         liq_set_log_callback(options.liq, log_callback, NULL);
         options.log_callback = log_callback;
+    }
+
+    if (options.quality && !parse_quality(options.quality, options.liq, &options.min_quality_limit)) {
+        fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
+        return INVALID_ARGUMENT;
+    }
+
+    if (options.iebug) {
+        // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
+        liq_set_min_opacity(options.liq, 238);
+        fputs("  warning: the workaround for IE6 is deprecated\n", stderr);
+    }
+
+    if (options.last_index_transparent) {
+        liq_set_last_index_transparent(options.liq, true);
+    }
+
+    if (options.speed && LIQ_OK != liq_set_speed(options.liq, options.speed)) {
+        fputs("Speed should be between 1 (slow) and 11 (fast).\n", stderr);
+        return INVALID_ARGUMENT;
+    }
+
+    if (options.colors && LIQ_OK != liq_set_max_colors(options.liq, options.colors)) {
+        fputs("Number of colors must be between 2 and 256.\n", stderr);
+        return INVALID_ARGUMENT;
+    }
+
+    if (options.posterize && LIQ_OK != liq_set_min_posterization(options.liq, options.posterize)) {
+        fputs("Posterization should be number of bits in range 0-4.\n", stderr);
+        return INVALID_ARGUMENT;
     }
 
     if (options.extension && options.output_file_path) {

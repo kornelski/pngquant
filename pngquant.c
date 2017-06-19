@@ -208,8 +208,9 @@ static bool parse_quality(const char *quality, liq_attr *options, bool *min_qual
     *min_quality_limit = (limit > 0);
     return LIQ_OK == liq_set_quality(options, limit, target);
 }
-pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options);
 
+pngquant_error pngquant_main(struct pngquant_options *options);
+pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options);
 
 int main(int argc, char *argv[])
 {
@@ -218,117 +219,119 @@ int main(int argc, char *argv[])
         .strip = false,
     };
 
-    unsigned int error_count=0, skipped_count=0, file_count=0;
-    pngquant_error latest_error=SUCCESS;
-
     pngquant_error retval = pngquant_parse_options(argc, argv, &options);
     if (retval != SUCCESS) {
         return retval;
     }
 
-    if (options.print_version) {
+    return pngquant_main(&options);
+}
+
+pngquant_error pngquant_main(struct pngquant_options *options)
+{
+    if (options->print_version) {
         puts(PNGQUANT_VERSION);
         return SUCCESS;
     }
 
-    if (options.missing_arguments) {
+    if (options->missing_arguments) {
         print_full_version(stderr);
         print_usage(stderr);
         return MISSING_ARGUMENT;
     }
 
-    if (options.print_help) {
+    if (options->print_help) {
         print_full_version(stdout);
         print_usage(stdout);
         return SUCCESS;
     }
 
-    options.liq = liq_attr_create();
+    options->liq = liq_attr_create();
 
-    if (!options.liq) {
+    if (!options->liq) {
         fputs("SSE-capable CPU is required for this build.\n", stderr);
         return WRONG_ARCHITECTURE;
     }
 
-    if (options.verbose) {
-        liq_set_log_callback(options.liq, log_callback, NULL);
-        options.log_callback = log_callback;
+    if (options->verbose) {
+        liq_set_log_callback(options->liq, log_callback, NULL);
+        options->log_callback = log_callback;
     }
 
-    if (options.quality && !parse_quality(options.quality, options.liq, &options.min_quality_limit)) {
+    if (options->quality && !parse_quality(options->quality, options->liq, &options->min_quality_limit)) {
         fputs("Quality should be in format min-max where min and max are numbers in range 0-100.\n", stderr);
         return INVALID_ARGUMENT;
     }
 
-    if (options.iebug) {
+    if (options->iebug) {
         // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
-        liq_set_min_opacity(options.liq, 238);
+        liq_set_min_opacity(options->liq, 238);
         fputs("  warning: the workaround for IE6 is deprecated\n", stderr);
     }
 
-    if (options.last_index_transparent) {
-        liq_set_last_index_transparent(options.liq, true);
+    if (options->last_index_transparent) {
+        liq_set_last_index_transparent(options->liq, true);
     }
 
-    if (options.speed && LIQ_OK != liq_set_speed(options.liq, options.speed)) {
+    if (options->speed && LIQ_OK != liq_set_speed(options->liq, options->speed)) {
         fputs("Speed should be between 1 (slow) and 11 (fast).\n", stderr);
         return INVALID_ARGUMENT;
     }
 
-    if (options.colors && LIQ_OK != liq_set_max_colors(options.liq, options.colors)) {
+    if (options->colors && LIQ_OK != liq_set_max_colors(options->liq, options->colors)) {
         fputs("Number of colors must be between 2 and 256.\n", stderr);
         return INVALID_ARGUMENT;
     }
 
-    if (options.posterize && LIQ_OK != liq_set_min_posterization(options.liq, options.posterize)) {
+    if (options->posterize && LIQ_OK != liq_set_min_posterization(options->liq, options->posterize)) {
         fputs("Posterization should be number of bits in range 0-4.\n", stderr);
         return INVALID_ARGUMENT;
     }
 
-    if (options.extension && options.output_file_path) {
+    if (options->extension && options->output_file_path) {
         fputs("--ext and --output options can't be used at the same time\n", stderr);
         return INVALID_ARGUMENT;
     }
 
     // new filename extension depends on options used. Typically basename-fs8.png
-    if (options.extension == NULL) {
-        options.extension = options.floyd > 0 ? "-ie-fs8.png" : "-ie-or8.png";
-        if (!options.ie_mode) {
-            options.extension += 3;    /* skip "-ie" */
+    if (options->extension == NULL) {
+        options->extension = options->floyd > 0 ? "-ie-fs8.png" : "-ie-or8.png";
+        if (!options->ie_mode) {
+            options->extension += 3;    /* skip "-ie" */
         }
     }
 
-    if (options.output_file_path && options.num_files != 1) {
+    if (options->output_file_path && options->num_files != 1) {
         fputs("Only one input file is allowed when --output is used\n", stderr);
         return INVALID_ARGUMENT;
     }
 
-    if (options.using_stdout && !options.using_stdin && options.num_files != 1) {
+    if (options->using_stdout && !options->using_stdin && options->num_files != 1) {
         fputs("Only one input file is allowed when using the special output path \"-\" to write to stdout\n", stderr);
         return INVALID_ARGUMENT;
     }
 
-    if (options.map_file) {
+    if (options->map_file) {
         png24_image tmp = {};
-        if (SUCCESS != read_image(options.liq, options.map_file, false, &tmp, &options.fixed_palette_image, true, true, false)) {
-            fprintf(stderr, "  error: unable to load %s", options.map_file);
+        if (SUCCESS != read_image(options->liq, options->map_file, false, &tmp, &options->fixed_palette_image, true, true, false)) {
+            fprintf(stderr, "  error: unable to load %s", options->map_file);
             return INVALID_ARGUMENT;
         }
-        liq_result *tmp_quantize = liq_quantize_image(options.liq, options.fixed_palette_image);
+        liq_result *tmp_quantize = liq_quantize_image(options->liq, options->fixed_palette_image);
         const liq_palette *pal = liq_get_palette(tmp_quantize);
         if (!pal) {
-            fprintf(stderr, "  error: unable to read colors from %s", options.map_file);
+            fprintf(stderr, "  error: unable to read colors from %s", options->map_file);
             return INVALID_ARGUMENT;
         }
         for(unsigned int i=0; i < pal->count; i++) {
-            liq_image_add_fixed_color(options.fixed_palette_image, pal->entries[i]);
+            liq_image_add_fixed_color(options->fixed_palette_image, pal->entries[i]);
         }
         liq_result_destroy(tmp_quantize);
     }
 
-    if (!options.num_files && !options.using_stdin) {
+    if (!options->num_files && !options->using_stdin) {
         fputs("No input files specified.\n", stderr);
-        if (options.verbose) {
+        if (options->verbose) {
             print_full_version(stderr);
         }
         print_usage(stderr);
@@ -345,12 +348,15 @@ int main(int argc, char *argv[])
     }
 #endif
 
+    unsigned int error_count=0, skipped_count=0, file_count=0;
+    pngquant_error latest_error=SUCCESS;
+
     #pragma omp parallel for \
         schedule(static, 1) reduction(+:skipped_count) reduction(+:error_count) reduction(+:file_count) shared(latest_error)
-    for(int i=0; i < options.num_files; i++) {
-        const char *filename = options.using_stdin ? "stdin" : options.files[i];
-        struct pngquant_options opts = options;
-        opts.liq = liq_attr_copy(options.liq);
+    for(int i=0; i < options->num_files; i++) {
+        const char *filename = options->using_stdin ? "stdin" : options->files[i];
+        struct pngquant_options opts = *options;
+        opts.liq = liq_attr_copy(options->liq);
 
 
         #ifdef _OPENMP
@@ -401,20 +407,20 @@ int main(int argc, char *argv[])
     }
 
     if (error_count) {
-        verbose_printf(&options, "There were errors quantizing %d file%s out of a total of %d file%s.",
+        verbose_printf(options, "There were errors quantizing %d file%s out of a total of %d file%s.",
                        error_count, (error_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (skipped_count) {
-        verbose_printf(&options, "Skipped %d file%s out of a total of %d file%s.",
+        verbose_printf(options, "Skipped %d file%s out of a total of %d file%s.",
                        skipped_count, (skipped_count == 1)? "" : "s", file_count, (file_count == 1)? "" : "s");
     }
     if (!skipped_count && !error_count) {
-        verbose_printf(&options, "Quantized %d image%s.",
+        verbose_printf(options, "Quantized %d image%s.",
                        file_count, (file_count == 1)? "" : "s");
     }
 
-    if (options.fixed_palette_image) liq_image_destroy(options.fixed_palette_image);
-    liq_attr_destroy(options.liq);
+    if (options->fixed_palette_image) liq_image_destroy(options->fixed_palette_image);
+    liq_attr_destroy(options->liq);
 
     return latest_error;
 }

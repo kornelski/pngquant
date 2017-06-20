@@ -9,6 +9,8 @@ To get the code:
 You will need libpng installed with development headers.
 On Linux install `libpng-dev` package. On macOS `brew install libpng`.
 
+There's an optional `./configure` step (see sections below). Run:
+
     make
 
 It will create `pngquant` executable in the current directory. If you'd like
@@ -24,6 +26,9 @@ pngquant uses GNU Makefile. To compile on FreeBSD you will need to use `gmake`.
 Avoid Linux distros that ship with libpng 1.2. It is old and buggy.
 Use libpng 1.6 or later.
 
+If you have Rust, you can also build with `cargo build`.
+
+
 ### Custom static libpng
 
 Extract libpng source code as a *sub*directory of pngquant source directory.
@@ -33,10 +38,40 @@ Build static libpng (`./configure --enable-static && make`), and then
 
 ## Windows
 
-Compiling on Windows is horrible. Please use pre-built binaries if possible.
+Compiling on Windows can be done in two ways: using Rust or using C toolchain.
 
-Install git (msys-git). Install mingw or mingw64, depending on your OS version.
-Ensure system PATH environment variable to contains `C:\mingw\bin`.
+### Building with Rust's Cargo
+
+This is the easiest option.
+
+Install git (msys-git).
+
+Install Visual C++ 2015 Build Tools.
+
+Install Rust (https://www.rust-lang.org/install.html)
+
+Restart Windows.
+
+Open Git's Bash prompt and run:
+
+    git clone -b msvc --recursive https://github.com/pornel/pngquant.git
+    cd pngquant
+
+This will create pngquant folder in your user folder. And then run:
+
+    cargo build --release
+
+It will create `pngquant.exe` in `target/release` subfolder.
+
+
+### Building using C toolchain
+
+It's going to be much harder. Please reconsider the Rust/Cargo option.
+
+Install git (msys-git).
+
+Install mingw64. Ensure system PATH environment variable
+contains `C:\mingw64\bin`.
 
 Restart Windows.
 

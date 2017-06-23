@@ -35,6 +35,7 @@ Extract libpng source code as a *sub*directory of pngquant source directory.
 Build static libpng (`./configure --enable-static && make`), and then
 `./configure && make` pngquant.
 
+When building with Cargo, `export PNG_STATIC=1`.
 
 ## Windows
 
@@ -131,6 +132,9 @@ to libpng.
 Enables support for ICC v2/v4 color profiles when reading images.
 Requires Little CMS library available via `pgk-config` (e.g. install `liblcms2-dev`).
 
+When building with Cargo lcms2 is used by default. It's linked dynamically if
+`pkg-config` is working. Otherwise uses static build as a fallback.
+Set `export LCMS2_STATIC=1` to force static linking in Cargo.
 
 ## Compilation of `libimagequant.a` only
 

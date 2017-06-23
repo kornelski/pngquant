@@ -11,6 +11,7 @@ test -f lib/libimagequant.h || { git submodule init && git submodule update; } |
 VERSION=$(grep LIQ_VERSION_STRING lib/libimagequant.h | grep -Eo "2\.[0-9.]+")
 
 DEBUG=
+LIQCONFIGURE=()
 SSE=auto
 OPENMP=
 LIBPNG_DIR=.
@@ -60,27 +61,34 @@ fi
     CC=*)
         CC=${i#*=}
         SKIP_CC_CHECK=1
+        LIQCONFIGURE+=("$i")
         ;;
     CFLAGS=*)
         CFLAGS=${i#*=}
+        LIQCONFIGURE+=("$i")
         ;;
     LDFLAGS=*)
         LDFLAGS=${i#*=}
+        LIQCONFIGURE+=("$i")
         ;;
     --enable-debug)
         DEBUG=1
+        LIQCONFIGURE+=("$i")
         ;;
     --enable-sse)
         SSE=1
+        LIQCONFIGURE+=("$i")
         ;;
     --disable-sse)
         SSE=0
         ;;
     --with-openmp)
         OPENMP=1
+        LIQCONFIGURE+=("$i")
         ;;
     --with-openmp=static)
         OPENMP=static
+        LIQCONFIGURE+=("$i")
         ;;
     --with-lcms2)
         LCMS2=1
@@ -101,13 +109,16 @@ fi
         ;;
     --prefix=*)
         PREFIX=${i#*=}
+        LIQCONFIGURE+=("$i")
         ;;
     # can be used multiple times or in quotes to set multiple flags
     --extra-cflags=*)
         EXTRA_CFLAGS="$EXTRA_CFLAGS ${i#*=}"
+        LIQCONFIGURE+=("$i")
         ;;
     --extra-ldflags=*)
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS ${i#*=}"
+        LIQCONFIGURE+=("$i")
         ;;
     *)
         echo "warning: unknown switch ${i%%=*} (see $0 --help for the list)"
@@ -361,6 +372,11 @@ else
 fi
 
 
+(
+    cd "lib";
+    "./configure" --quiet CC="$CC" "${LIQCONFIGURE[@]}";
+)
+
 # libpng
 # try if given flags are enough
 HAS_LIBPNG=0
@@ -486,5 +502,3 @@ COCOA_READER = $COCOA_READER
 SOLIBSUFFIX = $SOLIBSUFFIX
 " > "$CONFIG"
 
-# Configure static library the same way
-cp "$CONFIG" lib/

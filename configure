@@ -34,7 +34,7 @@ help() {
 
 for i in "$@"; do
     case $i in
-    --help)
+    --help|-h)
         echo
         help "--prefix=<dir>                installation directory [$PREFIX]"
         help "--extra-cflags=<flags>        append to CFLAGS"

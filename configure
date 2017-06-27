@@ -370,6 +370,7 @@ fi
 
 DIRS+=("$LIQSRCDIR" "$LIQSRCDIR" # local libimagequant
       "/usr/local/include /usr/local/lib"
+      "/usr/include /usr/lib64"
       "/usr/include /usr/lib"
       "/opt/local/include /opt/local/lib" # macports
       )

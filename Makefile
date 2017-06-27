@@ -1,5 +1,6 @@
 -include config.mk
 
+LIQSRCDIR ?= lib
 BIN ?= pngquant
 BINPREFIX ?= $(DESTDIR)$(PREFIX)/bin
 MANPREFIX ?= $(DESTDIR)$(PREFIX)/share/man
@@ -16,14 +17,14 @@ DISTFILES = *.[chm] pngquant.1 Makefile configure README.md INSTALL CHANGELOG CO
 TARNAME = pngquant-$(VERSION)
 TARFILE = $(TARNAME)-src.tar.gz
 
-LIBDISTFILES = lib/*.[ch] lib/COPYRIGHT lib/README.md lib/configure lib/Makefile
+LIBDISTFILES = $(LIQSRCDIR)/*.[ch] $(LIQSRCDIR)/COPYRIGHT $(LIQSRCDIR)/README.md $(LIQSRCDIR)/configure $(LIQSRCDIR)/Makefile
 
 TESTBIN = test/test
 
 all: $(BIN)
 
-$(STATICLIB): config.mk $(LIBDISTFILES)
-	$(MAKE) -C lib static
+$(STATICLIB): $(LIQSRCDIR)/config.mk $(LIBDISTFILES)
+	$(MAKE) -C '$(LIQSRCDIR)' static
 
 $(OBJS): $(wildcard *.h) config.mk
 
@@ -37,7 +38,7 @@ $(TESTBIN): test/test.o $(STATICLIBDEPS)
 	$(CC) $(OBJS) $(CFLAGS) $(LDFLAGS) -o $@
 
 test: $(BIN) $(TESTBIN)
-	LD_LIBRARY_PATH="lib" ./test/test.sh ./test $(BIN) $(TESTBIN)
+	LD_LIBRARY_PATH='$(LIQSRCDIR)' ./test/test.sh ./test $(BIN) $(TESTBIN)
 
 dist: $(TARFILE)
 
@@ -61,11 +62,11 @@ uninstall:
 	rm -f '$(MANPREFIX)/man1/$(BIN).1'
 
 clean:
-	$(MAKE) -C lib clean
+	$(MAKE) -C '$(LIQSRCDIR)' clean
 	rm -f '$(BIN)' $(OBJS) $(COCOA_OBJS) $(STATICLIB) $(TARFILE)
 
 distclean: clean
-	$(MAKE) -C lib distclean
+	$(MAKE) -C '$(LIQSRCDIR)' distclean
 	rm -f config.mk pngquant-*-src.tar.gz
 
 config.mk:

@@ -136,9 +136,21 @@ When building with Cargo lcms2 is used by default. It's linked dynamically if
 `pkg-config` is working. Otherwise uses static build as a fallback.
 Set `export LCMS2_STATIC=1` to force static linking in Cargo.
 
+
 ## Compilation of `libimagequant.a` only
 
 If you want to use pngquant's conversion algorithm without loading/saving PNG
 files, then you can run `make` in the `lib/` directory.
 The library doesn't need libpng nor zlib.
 
+
+## Compilation with other versions of libimagequant
+
+This is an advanced option for Linux distributions wishing to unbundle libimagequant.
+
+Option `--with-libimagequant` makes `./configure` query pkg-config for `imagequant`.
+
+Additionally, `--with-libimagequant=<dir>` makes `./configure` search in `<dir>/lib`
+for `libimagequant.so` and `<dir>/include` for `libimagequant.h`.
+
+    ./configure --with-libimagequant=/usr/local

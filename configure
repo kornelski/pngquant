@@ -106,6 +106,9 @@ fi
     --with-libimagequant=*)
         LIQSRCDIR=${i#*=}
         ;;
+    --with-libimagequant)
+        LIQSRCDIR="whatever pkg-config said"
+        ;;
     --prefix=*)
         PREFIX=${i#*=}
         LIQCONFIGURE+=("$i")
@@ -390,9 +393,8 @@ else
 fi
 
 
-# libimagequannt
-if [ ! -f "$LIQSRCDIR"/libimagequant.h ]; then
-    # if --with-libimagequant=/usr was specified, fix it to be  /usr/include
+# libimagequant
+if [ "./lib" = "$LIQSRCDIR" -a -d ".git" -a ! -f "lib/libimagequant.h" ]; then
     git submodule init && git submodule update;
 fi
 

@@ -354,7 +354,7 @@ pngquant_error pngquant_main(struct pngquant_options *options)
 
 #ifdef _OPENMP
     // if there's a lot of files, coarse parallelism can be used
-    if (num_files > 2*omp_get_max_threads()) {
+    if (options->num_files > 2*omp_get_max_threads()) {
         omp_set_nested(0);
         omp_set_dynamic(1);
     } else {
@@ -375,7 +375,7 @@ pngquant_error pngquant_main(struct pngquant_options *options)
 
         #ifdef _OPENMP
         struct buffered_log buf = {0};
-        if (opts.log_callback && omp_get_num_threads() > 1 && num_files > 1) {
+        if (opts.log_callback && omp_get_num_threads() > 1 && opts.num_files > 1) {
             liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
             liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
             opts.log_callback = log_callback_buferred;

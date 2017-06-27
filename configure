@@ -103,6 +103,9 @@ fi
     --with-libpng=*)
         LIBPNG_DIR=${i#*=}
         ;;
+    --with-libimagequant=*)
+        LIQSRCDIR=${i#*=}
+        ;;
     --prefix=*)
         PREFIX=${i#*=}
         LIQCONFIGURE+=("$i")
@@ -390,11 +393,6 @@ fi
 if [ ! -f "$LIQSRCDIR"/libimagequant.h ]; then
     # if --with-libimagequant=/usr was specified, fix it to be  /usr/include
     git submodule init && git submodule update;
-    if [ ! -f "$LIQSRCDIR"/libimagequant.h ]; then
-        echo "error: libimagequant.h not found in $LIQSRCDIR/"
-        echo "If you're using git, do clone with --recursive, or download from https://github.com/ImageOptim/libimagequant"
-        exit 1;
-    fi
 fi
 
 
@@ -412,7 +410,12 @@ if find_library "imagequant" "imagequant" "libimagequant.h" "libimagequant.a" "l
         LIQSRCDIR="$LIBRARY_FOUND_BUILD"
     fi
 else
-    error "imagequant" "not found. Get it from https://github.com/ImageOptim/libimagequant and build it in ./lib/"
+    if [ ! -f "$LIQSRCDIR"/libimagequant.h ]; then
+        echo "If you're using git, do clone with --recursive, or download from https://github.com/ImageOptim/libimagequant"
+        error "imagequant" "libimagequant.h not found in $LIQSRCDIR/"
+    else
+        error "imagequant" "not found. Get it from https://github.com/ImageOptim/libimagequant and build it in ./lib/"
+    fi
 fi
 
 # libpng

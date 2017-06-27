@@ -65,11 +65,11 @@ uninstall:
 	rm -f '$(MANPREFIX)/man1/$(BIN).1'
 
 clean:
-	$(MAKE) -C '$(LIQSRCDIR)' clean
+	-$(MAKE) -C '$(LIQSRCDIR)' clean
 	rm -f '$(BIN)' $(OBJS) $(COCOA_OBJS) $(STATICLIB) $(TARFILE)
 
 distclean: clean
-	$(MAKE) -C '$(LIQSRCDIR)' distclean
+	-$(MAKE) -C '$(LIQSRCDIR)' distclean
 	rm -f config.mk pngquant-*-src.tar.gz
 
 config.mk:

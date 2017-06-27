@@ -3,13 +3,6 @@
 CONFIG="config.mk"
 PREFIX="/usr/local"
 
-test -f lib/libimagequant.h || { git submodule init && git submodule update; } || {
-    echo "error: libimagequant not found in ./lib/"
-    echo "If you're using git, do clone with --recursive, or download from https://github.com/ImageOptim/libimagequant"
-    exit 1;
-}
-VERSION=$(grep LIQ_VERSION_STRING lib/libimagequant.h | grep -Eo "2\.[0-9.]+")
-
 DEBUG=
 LIQSRCDIR=./lib
 LIQCONFIGURE=()
@@ -171,7 +164,8 @@ find_pkgconfig() {
     if pkg-config --exists "$LIBNAME" &> /dev/null; then
         cflags "$(pkg-config --cflags "$LIBNAME")"
         lflags "$(pkg-config --libs "$LIBNAME")"
-        status "$LIBNAME" "shared ($(pkg-config --modversion "$LIBNAME"))"
+        LIBRARY_FOUND_VERSION=$(pkg-config --modversion "$LIBNAME")
+        status "$LIBNAME" "shared ($LIBRARY_FOUND_VERSION)"
         return 0
     fi
     return 1
@@ -186,9 +180,10 @@ find_static() {
     if [ -n "$HPATH" ]; then
         local APATH=$(find_f . "$STATICPATTERN")
         if [ -n "$APATH" ]; then
+            LIBRARY_FOUND_HEADER=$HPATH
             cflags "-I${HPATH%/*}"
             lflags "${APATH}"
-            status "$LIBNAME" "static"
+            status "$LIBNAME" "static ($APATH)"
             return 0
         fi
     fi
@@ -206,6 +201,7 @@ find_dynamic() {
     if [ -n "$HPATH" ]; then
         local SOPATH=$(find_f "$LIBDIR" "$DYNAMICPATTERN")
         if [ -n "$SOPATH" ]; then
+            LIBRARY_FOUND_HEADER=$HPATH
             cflags "-I${HPATH%/*}"
             lflags "-L${SOPATH%/*} -l$DYNAMICLIBNAME"
             status "$LIBNAME" "shared ... $SOPATH"
@@ -221,6 +217,20 @@ find_library() {
     local HEADERPATTERN=$3
     local STATICPATTERN=$4
     local DYNAMICPATTERN=$5
+
+    # other functions will overwrite it
+    LIBRARY_FOUND_HEADER=
+    LIBRARY_FOUND_VERSION=
+    LIBRARY_FOUND_BUILD=
+
+    if [ "imagequant" = "$LIBNAME" -a -f "$LIQSRCDIR"/"$HEADERPATTERN" ]; then
+        status "$LIBNAME" "build static"
+        cflags "-I$LIQSRCDIR"
+        lflags "$LIQSRCDIR/libimagequant.a"
+        LIBRARY_FOUND_HEADER="$LIQSRCDIR"/"$HEADERPATTERN"
+        LIBRARY_FOUND_BUILD="$LIQSRCDIR"
+        return 0;
+    fi
 
     # try static in current directory first
     if find_static "$LIBNAME" "$HEADERPATTERN" "$STATICPATTERN"; then
@@ -376,10 +386,35 @@ else
 fi
 
 
-(
-    cd "lib";
-    "./configure" --quiet CC="$CC" "${LIQCONFIGURE[@]}";
-)
+# libimagequannt
+if [ ! -f "$LIQSRCDIR"/libimagequant.h ]; then
+    # if --with-libimagequant=/usr was specified, fix it to be  /usr/include
+    git submodule init && git submodule update;
+    if [ ! -f "$LIQSRCDIR"/libimagequant.h ]; then
+        echo "error: libimagequant.h not found in $LIQSRCDIR/"
+        echo "If you're using git, do clone with --recursive, or download from https://github.com/ImageOptim/libimagequant"
+        exit 1;
+    fi
+fi
+
+
+if find_library "imagequant" "imagequant" "libimagequant.h" "libimagequant.a" "libimagequant.$SOLIBSUFFIX*"; then
+    if [ -z "$LIBRARY_FOUND_VERSION" ]; then
+        VERSION=$LIBRARY_FOUND_VERSION
+    elif [ -z "$LIBRARY_FOUND_HEADER" ]; then
+        VERSION=$(grep LIQ_VERSION_STRING "$LIBRARY_FOUND_HEADER" | grep -Eo "2\.[0-9.]+")
+    else
+        VERSION=unknown
+    fi
+
+    if [ -n "$LIBRARY_FOUND_BUILD" ]; then
+        STATICLIBDEPS="$LIBRARY_FOUND_BUILD/libimagequant.h $LIBRARY_FOUND_BUILD/libimagequant.a"
+        LIQSRCDIR="$LIBRARY_FOUND_BUILD"
+        LIQCONFIGUREFLAGS="--quiet CC='$CC' '${LIQCONFIGURE[@]}'"
+    fi
+else
+    error "imagequant" "not found. Get it from https://github.com/ImageOptim/libimagequant and build it in ./lib/"
+fi
 
 # libpng
 # try if given flags are enough
@@ -504,6 +539,8 @@ CFLAGS = $CFLAGS
 LDFLAGS = $LDFLAGS
 COCOA_READER = $COCOA_READER
 SOLIBSUFFIX = $SOLIBSUFFIX
+STATICLIBDEPS = $STATICLIBDEPS
 LIQSRCDIR = $LIQSRCDIR
+LIQCONFIGUREFLAGS = $LIQCONFIGUREFLAGS
 " > "$CONFIG"
 

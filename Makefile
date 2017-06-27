@@ -23,6 +23,9 @@ TESTBIN = test/test
 
 all: $(BIN)
 
+$(LIQSRCDIR)/config.mk: config.mk
+	( cd '$(LIQSRCDIR)'; ./configure $(LIQCONFIGUREFLAGS) )
+
 $(STATICLIB): $(LIQSRCDIR)/config.mk $(LIBDISTFILES)
 	$(MAKE) -C '$(LIQSRCDIR)' static
 

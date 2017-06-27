@@ -12,8 +12,6 @@ OBJS += $(COCOA_OBJS)
 endif
 
 STATICLIB = lib/libimagequant.a
-SHAREDLIB = lib/libimagequant.so
-
 DISTFILES = *.[chm] pngquant.1 Makefile configure README.md INSTALL CHANGELOG COPYRIGHT
 TARNAME = pngquant-$(VERSION)
 TARFILE = $(TARNAME)-src.tar.gz
@@ -24,32 +22,19 @@ TESTBIN = test/test
 
 all: $(BIN)
 
-ifeq ($(SHARED),1)
-  LIB=$(SHAREDLIB)
-else
-  LIB=$(STATICLIB)
-endif
-
-staticlib: $(STATICLIB)
-
-sharedlib: $(SHAREDLIB)
-
 $(STATICLIB): config.mk $(LIBDISTFILES)
 	$(MAKE) -C lib static
-
-$(SHAREDLIB): config.mk $(LIBDISTFILES)
-	$(MAKE) -C lib shared
 
 $(OBJS): $(wildcard *.h) config.mk
 
 rwpng_cocoa.o: rwpng_cocoa.m
 	$(CC) -Wno-enum-conversion -c $(CFLAGS) -o $@ $< &> /dev/null || clang -Wno-enum-conversion -c -O3 -o $@ $<
 
-$(BIN): $(OBJS) $(LIB)
-	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
+$(BIN): $(OBJS) $(STATICLIBDEPS)
+	$(CC) $(OBJS) $(CFLAGS) $(LDFLAGS) -o $@
 
-$(TESTBIN): test/test.o $(LIB)
-	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
+$(TESTBIN): test/test.o $(STATICLIBDEPS)
+	$(CC) $(OBJS) $(CFLAGS) $(LDFLAGS) -o $@
 
 test: $(BIN) $(TESTBIN)
 	LD_LIBRARY_PATH="lib" ./test/test.sh ./test $(BIN) $(TESTBIN)
@@ -83,13 +68,10 @@ distclean: clean
 	$(MAKE) -C lib distclean
 	rm -f config.mk pngquant-*-src.tar.gz
 
-config.mk: lib/libimagequant.h
+config.mk:
 ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 	./configure
 endif
 
-lib/libimagequant.h:
-	git submodule init && git submodule update || true
-
-.PHONY: all clean dist distclean dll install uninstall test staticlib sharedlib
+.PHONY: all clean dist distclean dll install uninstall test staticlib
 .DELETE_ON_ERROR:

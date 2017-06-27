@@ -5,7 +5,7 @@ PREFIX="/usr/local"
 
 DEBUG=
 LIQSRCDIR=./lib
-LIQCONFIGURE=()
+LIQCONFIGURE=(--quiet)
 SSE=auto
 OPENMP=
 LIBPNG_DIR=.
@@ -410,7 +410,6 @@ if find_library "imagequant" "imagequant" "libimagequant.h" "libimagequant.a" "l
     if [ -n "$LIBRARY_FOUND_BUILD" ]; then
         STATICLIBDEPS="$LIBRARY_FOUND_BUILD/libimagequant.h $LIBRARY_FOUND_BUILD/libimagequant.a"
         LIQSRCDIR="$LIBRARY_FOUND_BUILD"
-        LIQCONFIGUREFLAGS="--quiet CC='$CC' '${LIQCONFIGURE[@]}'"
     fi
 else
     error "imagequant" "not found. Get it from https://github.com/ImageOptim/libimagequant and build it in ./lib/"
@@ -541,6 +540,6 @@ COCOA_READER = $COCOA_READER
 SOLIBSUFFIX = $SOLIBSUFFIX
 STATICLIBDEPS = $STATICLIBDEPS
 LIQSRCDIR = $LIQSRCDIR
-LIQCONFIGUREFLAGS = $LIQCONFIGUREFLAGS
+LIQCONFIGUREFLAGS = $(printf "'%s' " "${LIQCONFIGURE[@]}")
 " > "$CONFIG"
 

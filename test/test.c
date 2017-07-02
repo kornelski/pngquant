@@ -1,6 +1,6 @@
 #undef NDEBUG
 #include <assert.h>
-#include "../lib/libimagequant.h"
+#include "libimagequant.h"
 #include <stdio.h>
 #include <string.h>
 

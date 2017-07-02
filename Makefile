@@ -38,7 +38,7 @@ $(BIN): $(OBJS) $(STATICLIBDEPS)
 	$(CC) $(OBJS) $(CFLAGS) $(LDFLAGS) -o $@
 
 $(TESTBIN): test/test.o $(STATICLIBDEPS)
-	$(CC) $(OBJS) $(CFLAGS) $(LDFLAGS) -o $@
+	$(CC) test/test.o $(CFLAGS) $(LDFLAGS) -o $@
 
 test: $(BIN) $(TESTBIN)
 	LD_LIBRARY_PATH='$(LIQSRCDIR)' ./test/test.sh ./test $(BIN) $(TESTBIN)

@@ -12,7 +12,7 @@ ifeq (1, $(COCOA_READER))
 OBJS += $(COCOA_OBJS)
 endif
 
-STATICLIB = lib/libimagequant.a
+STATICLIB = $(LIQSRCDIR)/libimagequant.a
 DISTFILES = *.[chm] pngquant.1 Makefile configure README.md INSTALL CHANGELOG COPYRIGHT
 TARNAME = pngquant-$(VERSION)
 TARFILE = $(TARNAME)-src.tar.gz

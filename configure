@@ -107,7 +107,7 @@ fi
         LIQSRCDIR=${i#*=}
         ;;
     --with-libimagequant)
-        LIQSRCDIR="whatever pkg-config said"
+        LIQSRCDIR=""
         ;;
     --prefix=*)
         PREFIX=${i#*=}
@@ -229,7 +229,7 @@ find_library() {
     LIBRARY_FOUND_VERSION=
     LIBRARY_FOUND_BUILD=
 
-    if [ "imagequant" = "$LIBNAME" -a -f "$LIQSRCDIR"/"$HEADERPATTERN" ]; then
+    if [ "imagequant" = "$LIBNAME" -a -n "$LIQSRCDIR" -a -f "$LIQSRCDIR"/"$HEADERPATTERN" ]; then
         status "$LIBNAME" "build static"
         cflags "-I$LIQSRCDIR"
         lflags "$LIQSRCDIR/libimagequant.a"
@@ -371,7 +371,11 @@ if command -v >/dev/null libpng-config; then
     DIRS+=("$(libpng-config --prefix) $(libpng-config --libdir)")
 fi
 
-DIRS+=("$LIQSRCDIR" "$LIQSRCDIR" # local libimagequant
+if [ -n $"LIQSRCDIR" ]; then
+    DIRS+=("$LIQSRCDIR" "$LIQSRCDIR") # local libimagequant
+fi
+
+DIRS+=(
       "/usr/local/include /usr/local/lib"
       "/usr/include /usr/lib64"
       "/usr/include /usr/lib"
@@ -413,7 +417,7 @@ if find_library "imagequant" "imagequant" "libimagequant.h" "libimagequant.a" "l
         LIQSRCDIR="$LIBRARY_FOUND_BUILD"
     fi
 else
-    if [ ! -f "$LIQSRCDIR"/libimagequant.h ]; then
+    if [ -n "$LIQSRCDIR" -a ! -f "$LIQSRCDIR"/libimagequant.h ]; then
         echo "If you're using git, do clone with --recursive, or download from https://github.com/ImageOptim/libimagequant"
         error "imagequant" "libimagequant.h not found in $LIQSRCDIR/"
     else

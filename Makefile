@@ -65,11 +65,11 @@ uninstall:
 	rm -f '$(MANPREFIX)/man1/$(BIN).1'
 
 clean:
-	-$(MAKE) -C '$(LIQSRCDIR)' clean
-	rm -f '$(BIN)' $(OBJS) $(COCOA_OBJS) $(STATICLIB) $(TARFILE)
+	-test -n '$(LIQSRCDIR)' && $(MAKE) -C '$(LIQSRCDIR)' clean
+	rm -f '$(BIN)' $(OBJS) $(COCOA_OBJS) $(TARFILE)
 
 distclean: clean
-	-$(MAKE) -C '$(LIQSRCDIR)' distclean
+	-test -n '$(LIQSRCDIR)' && $(MAKE) -C '$(LIQSRCDIR)' distclean
 	rm -f config.mk pngquant-*-src.tar.gz
 
 config.mk:
@@ -77,5 +77,5 @@ ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 	./configure
 endif
 
-.PHONY: all clean dist distclean dll install uninstall test staticlib
+.PHONY: all clean dist distclean dll install uninstall test
 .DELETE_ON_ERROR:

@@ -13,11 +13,11 @@ OBJS += $(COCOA_OBJS)
 endif
 
 STATICLIB = $(LIQSRCDIR)/libimagequant.a
-DISTFILES = *.[chm] pngquant.1 Makefile configure README.md INSTALL CHANGELOG COPYRIGHT
+DISTFILES = *.[chm] pngquant.1 Makefile configure README.md INSTALL CHANGELOG COPYRIGHT Cargo.toml
 TARNAME = pngquant-$(VERSION)
 TARFILE = $(TARNAME)-src.tar.gz
 
-LIBDISTFILES = $(LIQSRCDIR)/*.[ch] $(LIQSRCDIR)/COPYRIGHT $(LIQSRCDIR)/README.md $(LIQSRCDIR)/configure $(LIQSRCDIR)/Makefile
+LIBDISTFILES = $(LIQSRCDIR)/*.[ch] $(LIQSRCDIR)/COPYRIGHT $(LIQSRCDIR)/README.md $(LIQSRCDIR)/configure $(LIQSRCDIR)/Makefile $(LIQSRCDIR)/Cargo.toml
 
 TESTBIN = test/test
 
@@ -47,9 +47,12 @@ dist: $(TARFILE)
 
 $(TARFILE): $(DISTFILES)
 	rm -rf $(TARFILE) $(TARNAME)
-	mkdir -p $(TARNAME)/lib
+	mkdir -p $(TARNAME)/lib/rust $(TARNAME)/lib/msvc-dist $(TARNAME)/rust
 	cp $(DISTFILES) $(TARNAME)
+	cp rust/*.rs $(TARNAME)/rust/
 	cp $(LIBDISTFILES) $(TARNAME)/lib
+	cp lib/rust/*.rs $(TARNAME)/lib/rust/
+	cp lib/msvc-dist/*.[ch] $(TARNAME)/lib/msvc-dist/
 	tar -czf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
 	rm -rf $(TARNAME)
 	-shasum $(TARFILE)

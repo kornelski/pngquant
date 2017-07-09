@@ -40,7 +40,7 @@ fn main() {
     opts.optflag("", "strip", "");
     opts.optflag("V", "version", "");
     opts.optflag("", "floyd", ""); // https://github.com/rust-lang-nursery/getopts/issues/49
-    opts.optflag("", "ext", "");
+    opts.optopt("", "ext", "extension", "");
     opts.optopt("o", "output", "file", "");
     opts.optopt("s", "speed", "3", "");
     opts.optopt("Q", "quality", "0-100", "");

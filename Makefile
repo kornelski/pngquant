@@ -75,7 +75,7 @@ distclean: clean
 	-test -n '$(LIQSRCDIR)' && $(MAKE) -C '$(LIQSRCDIR)' distclean
 	rm -f config.mk pngquant-*-src.tar.gz
 
-config.mk:
+config.mk: Makefile
 ifeq ($(filter %clean %distclean, $(MAKECMDGOALS)), )
 	./configure
 endif

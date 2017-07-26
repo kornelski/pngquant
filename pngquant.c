@@ -316,12 +316,12 @@ pngquant_error pngquant_main(struct pngquant_options *options)
     }
 
     if (options->output_file_path && options->num_files != 1) {
-        fputs("Only one input file is allowed when --output is used\n", stderr);
+        fputs("  error: Only one input file is allowed when --output is used. This error also happens when filenames with spaces are not in quotes.\n", stderr);
         return INVALID_ARGUMENT;
     }
 
     if (options->using_stdout && !options->using_stdin && options->num_files != 1) {
-        fputs("Only one input file is allowed when using the special output path \"-\" to write to stdout\n", stderr);
+        fputs("  error: Only one input file is allowed when using the special output path \"-\" to write to stdout. This error also happens when filenames with spaces are not in quotes.\n", stderr);
         return INVALID_ARGUMENT;
     }
 

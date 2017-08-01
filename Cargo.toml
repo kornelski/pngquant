@@ -9,6 +9,7 @@ include = ["rwpng*", "pngquant.c", "rust/*", "COPYRIGHT", "Cargo.toml", "README.
 keywords = ["quantization", "palette", "image", "pngquant", "compression"]
 license = "GPL-3.0+"
 name = "pngquant"
+readme = "README.md"
 repository = "https://github.com/pornel/pngquant.git"
 version = "2.10.0"
 

@@ -2,6 +2,7 @@
 
 #[cfg(feature="alloc_system")]
 extern crate alloc_system;
+
 extern crate imagequant_sys;
 extern crate libpng_sys;
 extern crate getopts;
@@ -10,8 +11,6 @@ extern crate getopts;
 extern crate lcms2_sys;
 
 use std::os::raw::{c_uint, c_char};
-use std::io;
-use std::io::Write;
 use std::process;
 use std::env;
 use std::ptr;
@@ -51,7 +50,7 @@ fn main() {
     let mut m = match opts.parse(env::args().skip(1)) {
         Ok(m) => m,
         Err(err) => {
-            writeln!(&mut io::stderr(), "{}", err).ok();
+            eprintln!("{}", err);
             process::exit(2);
         },
     };

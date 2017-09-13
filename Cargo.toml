@@ -18,19 +18,19 @@ name = "pngquant"
 path = "rust/bin.rs"
 
 [build-dependencies]
-gcc = "0.3.51"
+gcc = "=0.3.51"
 
 [dependencies]
-getopts = "0.2.14"
+getopts = "0.2.15"
 libpng-sys = "0.1"
 
 [dependencies.imagequant-sys]
 path = "lib"
-version = "2.10.2"
+version = "2.10.3"
 
 [dependencies.lcms2-sys]
 optional = true
-version = "2.4.1"
+version = "2.4.4"
 
 [features]
 default = ["sse", "lcms2"]

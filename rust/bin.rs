@@ -1,3 +1,4 @@
+#![allow(unused_extern_crates)]
 #![cfg_attr(feature="alloc_system", feature(alloc_system))]
 
 #[cfg(feature="alloc_system")]

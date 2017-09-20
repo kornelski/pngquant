@@ -45,7 +45,9 @@
 #endif
 
 typedef enum {
+#ifndef SUCCESS
     SUCCESS = 0,
+#endif
     MISSING_ARGUMENT = 1,
     READ_ERROR = 2,
     INVALID_ARGUMENT = 4,

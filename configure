@@ -398,7 +398,7 @@ fi
 
 
 # libimagequant
-if [ "./lib" = "$LIQSRCDIR" -a -d ".git" -a ! -f "lib/libimagequant.h" ]; then
+if [ "./lib" = "$LIQSRCDIR" -a -d ".git" -a ! -f "lib/Cargo.toml" ]; then
     git submodule init && git submodule update;
 fi
 

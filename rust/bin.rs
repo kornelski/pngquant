@@ -39,7 +39,7 @@ fn main() {
     opts.optflag("", "skip-if-larger", "");
     opts.optflag("", "strip", "");
     opts.optflag("V", "version", "");
-    opts.optflag("", "floyd", ""); // https://github.com/rust-lang-nursery/getopts/issues/49
+    opts.optflagopt("", "floyd", "0.0-1.0", "");
     opts.optopt("", "ext", "extension", "");
     opts.optopt("o", "output", "file", "");
     opts.optopt("s", "speed", "3", "");

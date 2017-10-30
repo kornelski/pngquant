@@ -1,4 +1,4 @@
-extern crate gcc;
+extern crate cc;
 
 use std::env;
 
@@ -11,7 +11,8 @@ fn fudge_windows_unc_path(path: &str) -> &str {
 }
 
 fn main() {
-    let mut cc = gcc::Config::new();
+    let mut cc = cc::Build::new();
+    cc.warnings(false);
 
     cc.define("PNGQUANT_NO_MAIN", Some("1"));
 

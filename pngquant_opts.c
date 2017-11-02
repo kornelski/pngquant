@@ -1,3 +1,9 @@
+/*
+** © 2017 by Kornel Lesiński.
+**
+** See COPYRIGHT file for license.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

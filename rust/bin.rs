@@ -1,3 +1,9 @@
+/*
+** © 2017 by Kornel Lesiński.
+**
+** See COPYRIGHT file for license.
+*/
+
 #![allow(unused_extern_crates)]
 #![cfg_attr(feature="alloc_system", feature(alloc_system))]
 

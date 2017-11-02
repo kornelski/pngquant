@@ -45,7 +45,7 @@ $(TARFILE): $(DISTFILES)
 	cp $(DISTFILES) $(TARNAME)
 	cp rust/*.rs $(TARNAME)/rust/
 	cp $(LIBDISTFILES) $(TARNAME)/lib
-	cp $(LIQSRCDIR)/rust/*.rs $(TARNAME)/lib/rust/
+	cp $(LIQSRCDIR)/rust-sys/*.rs $(TARNAME)/lib/rust/
 	cp $(LIQSRCDIR)/msvc-dist/*.[ch] $(TARNAME)/lib/msvc-dist/
 	tar -czf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
 	rm -rf $(TARNAME)

@@ -32,7 +32,7 @@ $(STATICLIB): $(LIQSRCDIR)/config.mk $(LIBDISTFILES)
 $(OBJS): $(wildcard *.h) config.mk
 
 rwpng_cocoa.o: rwpng_cocoa.m
-	$(CC) -Wno-enum-conversion -c $(CFLAGS) -o $@ $< &> /dev/null || clang -Wno-enum-conversion -Ilib -c -O3 -o $@ $<
+	$(CC) -Wno-enum-conversion -c $(CFLAGS) -o $@ $< &> /dev/null || clang -mmacosx-version-min=10.6 -Wno-enum-conversion -Ilib -c -O3 -o $@ $<
 
 $(BIN): $(OBJS) $(STATICLIBDEPS)
 	$(CC) $(OBJS) $(CFLAGS) $(LDFLAGS) -o $@

@@ -16,6 +16,10 @@ fn main() {
 
     cc.define("PNGQUANT_NO_MAIN", Some("1"));
 
+    if cfg!(feature = "openmp") {
+        cc.flag("-fopenmp");
+    }
+
     if cfg!(feature = "cocoa") {
         if cfg!(feature = "lcms2") {
             println!("cargo:warning=Don't use both lcms2 and cocoa features at the same time, see --no-default-features");

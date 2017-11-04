@@ -10,6 +10,9 @@
 #[cfg(feature="alloc_system")]
 extern crate alloc_system;
 
+#[cfg(feature = "openmp")]
+extern crate openmp_sys;
+
 extern crate imagequant_sys;
 extern crate libpng_sys;
 extern crate getopts;

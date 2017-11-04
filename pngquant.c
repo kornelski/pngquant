@@ -7,7 +7,7 @@
 ** See COPYRIGHT file for license.
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (October 2017)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (November 2017)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\

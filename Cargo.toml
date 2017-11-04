@@ -11,7 +11,7 @@ license = "GPL-3.0+"
 name = "pngquant"
 readme = "README.md"
 repository = "https://github.com/pornel/pngquant.git"
-version = "2.11.0"
+version = "2.11.1"
 
 [[bin]]
 name = "pngquant"

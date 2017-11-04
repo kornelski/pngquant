@@ -22,7 +22,7 @@ cc = "1.0.3"
 
 [dependencies]
 getopts = "0.2.15"
-libpng-sys = "0.1"
+libpng-sys = "0.1.4"
 
 [dependencies.imagequant-sys]
 path = "lib"
@@ -36,5 +36,11 @@ version = "2.4.4"
 default = ["sse", "lcms2"]
 cocoa = []
 lcms2 = ["lcms2-sys"]
+lcms2-static = ["lcms2", "lcms2-sys/static"]
+png-static = ["libpng-sys/static"]
+static = ["lcms2-static", "png-static"]
 sse = ["imagequant-sys/sse"]
 alloc_system = []
+
+[profile.release]
+lto = true

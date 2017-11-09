@@ -24,10 +24,7 @@ fn main() {
         if cfg!(feature = "lcms2") {
             println!("cargo:warning=Don't use both lcms2 and cocoa features at the same time, see --no-default-features");
         }
-        println!("cargo:rustc-link-lib=framework=Cocoa");
-
         cc.define("USE_COCOA", Some("1"));
-        cc.file("rwpng_cocoa.m");
     }
     else if cfg!(feature = "lcms2") {
         if let Ok(p) = env::var("DEP_LCMS2_INCLUDE") {

@@ -22,7 +22,12 @@ cc = "1.0.3"
 
 [dependencies]
 getopts = "0.2.15"
+libc = "0.2.33"
 libpng-sys = "0.1.4"
+
+[dependencies.cocoa_image]
+optional = true
+version = "0.1.0"
 
 [dependencies.imagequant-sys]
 path = "lib"
@@ -37,8 +42,8 @@ optional = true
 version = "0.1.0"
 
 [features]
+cocoa = ["cocoa_image"]
 default = ["sse", "lcms2"]
-cocoa = []
 lcms2 = ["lcms2-sys"]
 lcms2-static = ["lcms2", "lcms2-sys/static"]
 openmp = ["openmp-sys", "imagequant-sys/openmp"]

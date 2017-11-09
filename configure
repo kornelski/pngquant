@@ -9,13 +9,7 @@ LIQCONFIGURE=(--quiet)
 SSE=auto
 OPENMP=
 LIBPNG_DIR=.
-if [[ "$OSTYPE" =~ "darwin" ]]; then
-    COCOA_READER=auto
-    LCMS2=0
-else
-    COCOA_READER=0
-    LCMS2=auto
-fi
+LCMS2=auto
 EXTRA_CFLAGS=
 EXTRA_LDFLAGS=
 
@@ -88,17 +82,15 @@ fi
         ;;
     --with-lcms2)
         LCMS2=1
-        COCOA_READER=0
         ;;
     --without-lcms2)
         LCMS2=0
         ;;
     --with-cocoa)
-        COCOA_READER=1
-        LCMS2=0
+        LCMS2=auto
         ;;
     --without-cocoa)
-        COCOA_READER=0
+        LCMS2=auto
         ;;
     --with-libpng=*)
         LIBPNG_DIR=${i#*=}
@@ -353,15 +345,6 @@ fi
 if [[ "$OSTYPE" =~ "darwin" ]]; then
     cflags "-mmacosx-version-min=10.6"
     lflags "-mmacosx-version-min=10.6"
-
-    if [ "$COCOA_READER" != 0 ] && "$CC" 2>/dev/null 1>/dev/null -xc -E <(echo "#import <Cocoa/Cocoa.h>"); then
-        COCOA_READER=1
-        cflags "-DUSE_COCOA=1"
-        lflags "-framework Cocoa"
-        status "Cocoa" "yes"
-    else
-        status "Cocoa" "no"
-    fi
 fi
 
 # pairs of possible *.h and lib*.so locations
@@ -546,7 +529,6 @@ VERSION = $VERSION
 CC = $CC
 CFLAGS = $CFLAGS
 LDFLAGS = $LDFLAGS
-COCOA_READER = $COCOA_READER
 SOLIBSUFFIX = $SOLIBSUFFIX
 STATICLIBDEPS = $STATICLIBDEPS
 LIQSRCDIR = $LIQSRCDIR

@@ -14,8 +14,12 @@ extern crate alloc_system;
 extern crate openmp_sys;
 
 extern crate imagequant_sys;
+extern crate cocoa_image;
 extern crate libpng_sys;
+extern crate libc;
 extern crate getopts;
+
+pub mod rwpng_cocoa;
 
 #[cfg(feature = "lcms2")]
 extern crate lcms2_sys;
@@ -132,5 +136,3 @@ fn main() {
 
     process::exit(unsafe {pngquant_main(&mut options)});
 }
-
-

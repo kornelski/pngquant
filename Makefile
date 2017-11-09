@@ -6,11 +6,6 @@ BINPREFIX ?= $(DESTDIR)$(PREFIX)/bin
 MANPREFIX ?= $(DESTDIR)$(PREFIX)/share/man
 
 OBJS = pngquant.o pngquant_opts.o rwpng.o
-COCOA_OBJS = rwpng_cocoa.o
-
-ifeq (1, $(COCOA_READER))
-OBJS += $(COCOA_OBJS)
-endif
 
 STATICLIB = $(LIQSRCDIR)/libimagequant.a
 DISTFILES = *.[chm] pngquant.1 Makefile configure README.md INSTALL CHANGELOG COPYRIGHT Cargo.toml
@@ -30,9 +25,6 @@ $(STATICLIB): $(LIQSRCDIR)/config.mk $(LIBDISTFILES)
 	$(MAKE) -C '$(LIQSRCDIR)' static
 
 $(OBJS): $(wildcard *.h) config.mk
-
-rwpng_cocoa.o: rwpng_cocoa.m
-	$(CC) -Wno-enum-conversion -c $(CFLAGS) -o $@ $< &> /dev/null || clang -mmacosx-version-min=10.6 -Wno-enum-conversion -Ilib -c -O3 -o $@ $<
 
 $(BIN): $(OBJS) $(STATICLIBDEPS)
 	$(CC) $(OBJS) $(CFLAGS) $(LDFLAGS) -o $@
@@ -69,7 +61,7 @@ uninstall:
 
 clean:
 	-test -n '$(LIQSRCDIR)' && $(MAKE) -C '$(LIQSRCDIR)' clean
-	rm -f '$(BIN)' $(OBJS) $(COCOA_OBJS) $(TARFILE)
+	rm -f '$(BIN)' $(OBJS) $(TARFILE)
 
 distclean: clean
 	-test -n '$(LIQSRCDIR)' && $(MAKE) -C '$(LIQSRCDIR)' distclean

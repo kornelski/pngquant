@@ -14,11 +14,13 @@ extern crate alloc_system;
 extern crate openmp_sys;
 
 extern crate imagequant_sys;
+#[cfg(feature = "cocoa")]
 extern crate cocoa_image;
 extern crate libpng_sys;
 extern crate libc;
 extern crate getopts;
 
+#[cfg(feature = "cocoa")]
 pub mod rwpng_cocoa;
 
 #[cfg(feature = "lcms2")]

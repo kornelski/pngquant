@@ -37,7 +37,7 @@ pub extern "C" fn rwpng_read_image32_cocoa(file_handle: *mut FILE, width: &mut u
         Err(_) => return pngquant_error::READ_ERROR,
     };
 
-    let image = match cocoa_image::decode_image_as_rgba_premultiplied(&data) {
+    let image = match cocoa_image::decode_image_as_rgba(&data) {
         Ok(img) => img,
         Err(_) => return pngquant_error::LIBPNG_FATAL_ERROR,
     };

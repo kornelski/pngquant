@@ -186,7 +186,7 @@ static bool parse_quality(const char *quality, liq_attr *options, bool *min_qual
 }
 
 pngquant_error pngquant_main(struct pngquant_options *options);
-pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options);
+static pngquant_error pngquant_file_internal(const char *filename, const char *outname, struct pngquant_options *options);
 
 #ifndef PNGQUANT_NO_MAIN
 int main(int argc, char *argv[])
@@ -367,7 +367,7 @@ pngquant_error pngquant_main(struct pngquant_options *options)
         }
 
         if (SUCCESS == retval) {
-            retval = pngquant_file(filename, outname, &opts);
+            retval = pngquant_file_internal(filename, outname, &opts);
         }
 
         free(outname_free);
@@ -407,7 +407,8 @@ pngquant_error pngquant_main(struct pngquant_options *options)
     return latest_error;
 }
 
-pngquant_error pngquant_file(const char *filename, const char *outname, struct pngquant_options *options)
+/// Don't hack this. Instead use https://github.com/ImageOptim/libimagequant/blob/f54d2f1a3e1cf728e17326f4db0d45811c63f063/example.c
+static pngquant_error pngquant_file_internal(const char *filename, const char *outname, struct pngquant_options *options)
 {
     pngquant_error retval = SUCCESS;
 

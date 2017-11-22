@@ -38,13 +38,14 @@ test: $(BIN) $(TESTBIN)
 dist: $(TARFILE)
 
 $(TARFILE): $(DISTFILES)
+	make -C $(LIQSRCDIR) cargo
 	rm -rf $(TARFILE) $(TARNAME)
 	mkdir -p $(TARNAME)/lib/rust $(TARNAME)/lib/msvc-dist $(TARNAME)/rust
 	cp $(DISTFILES) $(TARNAME)
 	cp rust/*.rs $(TARNAME)/rust/
 	cp $(LIBDISTFILES) $(TARNAME)/lib
-	cp lib/rust/*.rs $(TARNAME)/lib/rust/
-	cp lib/msvc-dist/*.[ch] $(TARNAME)/lib/msvc-dist/
+	cp $(LIQSRCDIR)/rust/*.rs $(TARNAME)/lib/rust/
+	cp $(LIQSRCDIR)/msvc-dist/*.[ch] $(TARNAME)/lib/msvc-dist/
 	tar -czf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
 	rm -rf $(TARNAME)
 	-shasum $(TARFILE)

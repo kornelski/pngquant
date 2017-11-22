@@ -1,14 +1,7 @@
 extern crate cc;
-
+extern crate dunce;
 use std::env;
-
-fn fudge_windows_unc_path(path: &str) -> &str {
-    if path.starts_with("\\\\?\\") {
-        &path[4..]
-    } else {
-        path
-    }
-}
+use std::path::Path;
 
 fn main() {
     let mut cc = cc::Build::new();
@@ -28,7 +21,7 @@ fn main() {
     }
     else if cfg!(feature = "lcms2") {
         if let Ok(p) = env::var("DEP_LCMS2_INCLUDE") {
-            cc.include(fudge_windows_unc_path(&p));
+            cc.include(dunce::simplified(Path::new(&p)));
         }
         cc.define("USE_LCMS", Some("1"));
     }
@@ -46,13 +39,13 @@ fn main() {
     cc.file("pngquant.c");
 
     if let Ok(p) = env::var("DEP_IMAGEQUANT_INCLUDE") {
-        cc.include(fudge_windows_unc_path(&p));
+        cc.include(dunce::simplified(Path::new(&p)));
     } else {
         cc.include("lib");
     }
 
     if let Ok(p) = env::var("DEP_LIBPNG_INCLUDE") {
-        cc.include(fudge_windows_unc_path(&p));
+        cc.include(dunce::simplified(Path::new(&p)));
     }
 
     cc.compile("libpngquant.a");

@@ -1,5 +1,7 @@
 # pngquant 2
 
+[![Build Status](https://travis-ci.org/pornel/pngquant.svg?branch=master)](https://travis-ci.org/pornel/pngquant)
+
 [pngquant](https://pngquant.org) is a PNG compresor that significantly reduces file sizes by converting images to a more efficient 8-bit PNG format *with alpha channel* (often 60-80% smaller than 24/32-bit PNG files). Compressed images are fully standards-compliant and are supported by all web browsers and operating systems.
 
 [This](https://github.com/pornel/pngquant) is the official `pngquant` repository. The compression engine is also available [as an embeddable library](https://github.com/ImageOptim/libimagequant).

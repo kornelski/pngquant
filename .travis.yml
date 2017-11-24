@@ -1,0 +1,21 @@
+language: c
+sudo: required
+
+os:
+  - linux
+  - osx
+
+before_install:
+  - if [[ $TRAVIS_OS_NAME = "osx" ]]; then
+      brew install lcms2;
+    elif [[ $TRAVIS_OS_NAME = "linux" ]]; then
+      echo "deb-src http://archive.ubuntu.com/ubuntu xenial main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list;
+      sudo apt-get update -q;
+      sudo apt-get build-dep -y libpng16-16;
+      sudo apt-get source -b -t xenial libpng16-16;
+    fi
+
+script:
+  - ./configure --with-lcms2
+  - make
+  - make test

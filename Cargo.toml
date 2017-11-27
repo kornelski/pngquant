@@ -11,7 +11,7 @@ license = "GPL-3.0+"
 name = "pngquant"
 readme = "README.md"
 repository = "https://github.com/pornel/pngquant.git"
-version = "2.11.2"
+version = "2.11.4"
 
 [[bin]]
 name = "pngquant"
@@ -25,6 +25,7 @@ dunce = "0.1.0"
 getopts = "0.2.15"
 libc = "0.2.33"
 libpng-sys = "0.1.4"
+wild = "0.1.0"
 
 [dependencies.cocoa_image]
 optional = true

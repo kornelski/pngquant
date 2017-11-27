@@ -1,3 +1,7 @@
+version 2.11
+ - fixed wildcard support on Windows
+ - fixed argument parsing on Windows
+
 version 2.10
 ------------
  - supports building with Rust/Cargo

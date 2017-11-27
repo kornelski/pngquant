@@ -19,6 +19,7 @@ extern crate cocoa_image;
 extern crate libpng_sys;
 extern crate libc;
 extern crate getopts;
+extern crate wild;
 
 #[cfg(feature = "cocoa")]
 pub mod rwpng_cocoa;
@@ -28,7 +29,6 @@ extern crate lcms2_sys;
 
 use std::os::raw::{c_uint, c_char};
 use std::process;
-use std::env;
 use std::ptr;
 use std::ffi::CString;
 
@@ -62,8 +62,9 @@ fn main() {
     opts.optopt("", "posterize", "0", "");
     opts.optopt("", "map", "png", "");
 
-    let has_some_explicit_args = env::args().skip(1).next().is_some();
-    let mut m = match opts.parse(env::args().skip(1)) {
+    let args: Vec<_> = wild::args().skip(1).collect();
+    let has_some_explicit_args = !args.is_empty();
+    let mut m = match opts.parse(args) {
         Ok(m) => m,
         Err(err) => {
             eprintln!("{}", err);

@@ -1,13 +1,13 @@
 /* pngquant.c - quantize the colors in an alphamap down to a specified number
 **
-** © 2009-2017 by Kornel Lesiński.
+** © 2009-2018 by Kornel Lesiński.
 ** © 1989, 1991 by Jef Poskanzer.
 ** © 1997-2002 by Greg Roelofs; based on an idea by Stefan Schneider.
 **
 ** See COPYRIGHT file for license.
 */
 
-#define PNGQUANT_VERSION LIQ_VERSION_STRING " (November 2017)"
+#define PNGQUANT_VERSION LIQ_VERSION_STRING " (January 2018)"
 
 #define PNGQUANT_USAGE "\
 usage:  pngquant [options] [ncolors] -- pngfile [pngfile ...]\n\

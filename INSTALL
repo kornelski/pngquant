@@ -6,7 +6,7 @@
 
 To get the code:
 
-    git clone --recursive https://github.com/pornel/pngquant.git
+    git clone --recursive https://github.com/kornelski/pngquant.git
 
 You will need libpng installed with development headers.
 On Linux install `libpng-dev` package. On macOS `brew install libpng`.
@@ -51,7 +51,7 @@ Compiling on Windows is supported only via Rust/Cargo.
 
 Open Git's Bash prompt and run:
 
-    git clone -b msvc --recursive https://github.com/pornel/pngquant.git
+    git clone -b msvc --recursive https://github.com/kornelski/pngquant.git
     cd pngquant
 
 This will create pngquant folder in your user folder. And then run:

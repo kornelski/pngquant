@@ -3,14 +3,14 @@ authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 build = "rust/build.rs"
 categories = ["multimedia::images"]
 description = "Convert 24/32-bit images to 8-bit palette with alpha channel.\nBindings for libimagequant that powers pngquant lossy PNG compressor.\n\nDual-licensed like pngquant. See https://pngquant.org for details."
-documentation= "https://github.com/pornel/pngquant#readme"
+documentation= "https://github.com/kornelski/pngquant#readme"
 homepage = "https://pngquant.org"
 include = ["/rwpng*", "/pngquant.c", "/rust/*", "/COPYRIGHT", "/Cargo.toml", "/README.md"]
 keywords = ["quantization", "palette", "image", "pngquant", "compression"]
 license = "GPL-3.0+"
 name = "pngquant"
 readme = "README.md"
-repository = "https://github.com/pornel/pngquant.git"
+repository = "https://github.com/kornelski/pngquant.git"
 version = "2.11.4"
 
 [[bin]]

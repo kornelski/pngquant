@@ -4,13 +4,14 @@ use std::env;
 use std::path::Path;
 
 fn main() {
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH not set");
     let mut cc = cc::Build::new();
     cc.warnings(false);
 
     cc.define("PNGQUANT_NO_MAIN", Some("1"));
 
     if cfg!(feature = "openmp") {
-        cc.flag("-fopenmp");
+        cc.flag(&env::var("DEP_OPENMP_FLAG").unwrap());
     }
 
     if cfg!(feature = "cocoa") {
@@ -30,8 +31,8 @@ fn main() {
         cc.define("NDEBUG", Some("1"));
     }
 
-    if cfg!(target_arch="x86_64") ||
-       (cfg!(target_arch="x86") && cfg!(feature = "sse")) {
+    if target_arch == "x86_64" ||
+       (target_arch == "x86" && cfg!(feature = "sse")) {
         cc.define("USE_SSE", Some("1"));
     }
 

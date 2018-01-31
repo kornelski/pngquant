@@ -1,6 +1,6 @@
 # pngquant 2 [![build](https://travis-ci.org/kornelski/pngquant.svg?branch=master)](https://travis-ci.org/kornelski/pngquant)
 
-[pngquant](https://pngquant.org) is a PNG compresor that significantly reduces file sizes by converting images to a more efficient 8-bit PNG format *with alpha channel* (often 60-80% smaller than 24/32-bit PNG files). Compressed images are fully standards-compliant and are supported by all web browsers and operating systems.
+[pngquant](https://pngquant.org) is a PNG compressor that significantly reduces file sizes by converting images to a more efficient 8-bit PNG format *with alpha channel* (often 60-80% smaller than 24/32-bit PNG files). Compressed images are fully standards-compliant and are supported by all web browsers and operating systems.
 
 [This](https://github.com/kornelski/pngquant) is the official `pngquant` repository. The compression engine is also available [as an embeddable library](https://github.com/ImageOptim/libimagequant).
 

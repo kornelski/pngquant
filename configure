@@ -387,9 +387,9 @@ fi
 
 
 if find_library "imagequant" "imagequant" "libimagequant.h" "libimagequant.a" "libimagequant.$SOLIBSUFFIX*"; then
-    if [ -z "$LIBRARY_FOUND_VERSION" ]; then
+    if [ -n "$LIBRARY_FOUND_VERSION" ]; then
         VERSION=$LIBRARY_FOUND_VERSION
-    elif [ -z "$LIBRARY_FOUND_HEADER" ]; then
+    elif [ -n "$LIBRARY_FOUND_HEADER" ]; then
         VERSION=$(grep LIQ_VERSION_STRING "$LIBRARY_FOUND_HEADER" | grep -Eo "2\.[0-9.]+")
     else
         VERSION=unknown

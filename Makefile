@@ -38,6 +38,7 @@ test: $(BIN) $(TESTBIN)
 dist: $(TARFILE)
 
 $(TARFILE): $(DISTFILES)
+	test -n "$(VERSION)"
 	make -C $(LIQSRCDIR) cargo
 	rm -rf $(TARFILE) $(TARNAME)
 	mkdir -p $(TARNAME)/lib/rust $(TARNAME)/lib/msvc-dist $(TARNAME)/rust

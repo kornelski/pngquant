@@ -343,8 +343,8 @@ fi
 
 # Cocoa
 if [[ "$OSTYPE" =~ "darwin" ]]; then
-    cflags "-mmacosx-version-min=10.6"
-    lflags "-mmacosx-version-min=10.6"
+    cflags "-mmacosx-version-min=10.7"
+    lflags "-mmacosx-version-min=10.7"
 fi
 
 # pairs of possible *.h and lib*.so locations

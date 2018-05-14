@@ -271,13 +271,15 @@ error() {
 echo
 
 # /tmp, because mingw has problems opening /dev/null and gives false negative
-if ! echo "int main(){}" | "$CC" -xc -std=c99 -o /tmp/gcccheck - > /dev/null; then
+if ! echo "int main(){}" | "$CC" -xc -std=c99 -o pngquant-gcccheck - > /dev/null; then
+    rm -f pngquant-gcccheck
     if [ "$SKIP_CC_CHECK" -eq 1 ]; then
         status "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
     else
         error "Compiler" "$CC failed to compile anything (make sure it's installed and supports C99)"
     fi
 fi
+rm -f pngquant-gcccheck
 
 status "Compiler" "$CC"
 

@@ -6,14 +6,10 @@ os:
   - osx
 
 before_install:
-  - if [[ $TRAVIS_OS_NAME = "osx" ]]; then
-      brew install lcms2;
-    elif [[ $TRAVIS_OS_NAME = "linux" ]]; then
-      echo "deb-src http://archive.ubuntu.com/ubuntu xenial main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list;
-      sudo apt-get update -q;
-      sudo apt-get build-dep -y libpng16-16;
-      sudo apt-get source -b -t xenial libpng16-16;
-    fi
+  - if [[ $TRAVIS_OS_NAME = "osx" ]]; then brew install lcms2; fi
+  - if [[ $TRAVIS_OS_NAME = "linux" ]]; then curl https://nixos.org/nix/install | sh &&
+                                             . ~/.nix-profile/etc/profile.d/nix.sh &&
+                                             nix-env -i libpng; fi
 
 script:
   - ./configure --with-lcms2

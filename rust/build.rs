@@ -45,8 +45,10 @@ fn main() {
         cc.include("lib");
     }
 
-    if let Ok(p) = env::var("DEP_LIBPNG_INCLUDE") {
-        cc.include(dunce::simplified(Path::new(&p)));
+    if let Ok(p) = env::var("DEP_PNG_INCLUDE") {
+        for p in env::split_paths(&p) {
+            cc.include(dunce::simplified(&p));
+        }
     }
 
     cc.compile("libpngquant.a");

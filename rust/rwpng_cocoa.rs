@@ -50,7 +50,7 @@ pub extern "C" fn rwpng_read_image32_cocoa(file_handle: *mut FILE, width: &mut u
         if (*out).is_null() {
             return pngquant_error::OUT_OF_MEMORY_ERROR;
         }
-        ::std::slice::from_raw_parts_mut((*out), image.buf.len()).clone_from_slice(&image.buf);
+        ::std::slice::from_raw_parts_mut(*out, image.buf.len()).clone_from_slice(&image.buf);
     }
 
     pngquant_error::SUCCESS

@@ -4,11 +4,12 @@
 ** See COPYRIGHT file for license.
 */
 
-#![allow(unused_extern_crates)]
-#![cfg_attr(feature="alloc_system", feature(alloc_system))]
+#[cfg(feature="alloc_system")]
+use std::alloc::System;
 
 #[cfg(feature="alloc_system")]
-extern crate alloc_system;
+#[global_allocator]
+static A: System = System;
 
 #[cfg(feature = "openmp")]
 extern crate openmp_sys;

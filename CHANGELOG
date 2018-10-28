@@ -1,4 +1,9 @@
+version 2.12
+------------
+ - improved speed on large images
+
 version 2.11
+------------
  - fixed wildcard support on Windows
  - fixed argument parsing on Windows
 

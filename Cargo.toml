@@ -11,7 +11,7 @@ license = "GPL-3.0+"
 name = "pngquant"
 readme = "README.md"
 repository = "https://github.com/kornelski/pngquant.git"
-version = "2.11.7"
+version = "2.12.2"
 
 [[bin]]
 name = "pngquant"
@@ -24,16 +24,16 @@ dunce = "0.1.0"
 [dependencies]
 getopts = "0.2.15"
 libc = "0.2.33"
-libpng-sys = "0.1.4"
-wild = "0.1.0"
+libpng-sys = "1.0.1"
+wild = "2.0.0"
 
 [dependencies.cocoa_image]
 optional = true
-version = "0.1.1"
+version = "1.0.0"
 
 [dependencies.imagequant-sys]
 path = "lib"
-version = "2.11.2"
+version = "2.12.0"
 
 [dependencies.lcms2-sys]
 optional = true
@@ -41,7 +41,7 @@ version = "2.4.4"
 
 [dependencies.openmp-sys]
 optional = true
-version = "0.1.0"
+version = "0.1.2"
 
 [features]
 cocoa = ["cocoa_image"]
@@ -51,6 +51,7 @@ lcms2-static = ["lcms2", "lcms2-sys/static"]
 openmp = ["openmp-sys", "imagequant-sys/openmp"]
 openmp-static = ["openmp", "openmp-sys/static", "imagequant-sys/openmp-static"]
 png-static = ["libpng-sys/static"]
+z-static = ["libpng-sys/static-libz"]
 static = ["lcms2-static", "png-static", "openmp-static"]
 sse = ["imagequant-sys/sse"]
 alloc_system = []

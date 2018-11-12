@@ -58,7 +58,7 @@ fn main() {
     opts.optflagopt("", "floyd", "0.0-1.0", "");
     opts.optopt("", "ext", "extension", "");
     opts.optopt("o", "output", "file", "");
-    opts.optopt("s", "speed", "3", "");
+    opts.optopt("s", "speed", "4", "");
     opts.optopt("Q", "quality", "0-100", "");
     opts.optopt("", "posterize", "0", "");
     opts.optopt("", "map", "png", "");

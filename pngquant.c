@@ -18,7 +18,7 @@ options:\n\
   --output file     destination file path to use instead of --ext (synonym: -o)\n\
   --ext new.png     set custom suffix/extension for output filenames\n\
   --quality min-max don't save below min, use fewer colors below max (0-100)\n\
-  --speed N         speed/quality trade-off. 1=slow, 3=default, 11=fast & rough\n\
+  --speed N         speed/quality trade-off. 1=slow, 4=default, 11=fast & rough\n\
   --nofs            disable Floyd-Steinberg dithering\n\
   --posterize N     output lower-precision color (e.g. for ARGB4444 output)\n\
   --strip           remove optional metadata (default on Mac)\n\

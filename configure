@@ -167,6 +167,9 @@ find_pkgconfig() {
         status "$LIBNAME" "shared ($LIBRARY_FOUND_VERSION)"
         return 0
     fi
+    if ! type "$PKG_CONFIG" &> /dev/null; then
+        echo "warning: pkg-config is not installed, can't search for libraries. Please install pkg-config."
+    fi
     return 1
 }
 

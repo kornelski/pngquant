@@ -1,0 +1,34 @@
+name: pngquant
+version: 2.12.0
+summary: pngquant
+description: |
+  Lossy PNG compressor — pngquant command based
+  on libimagequant library https://pngquant.org
+
+confinement: strict
+
+apps:
+  pngquant:
+    command: pngquant
+    plugs:
+    - home
+
+parts:
+  pngquant:
+    source-type: git
+    source: https://github.com/kornelski/pngquant.git
+    source-tag: 2.12.2
+    plugin: autotools
+    configflags:
+      - --with-openmp
+    build-packages:
+      - gcc
+      - make
+      - libpng16-dev
+      - zlib1g-dev
+      - liblcms2-dev
+    stage-packages:
+      - libgomp1
+      - libpng16-16
+      - zlib1g
+      - liblcms2-2

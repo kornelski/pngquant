@@ -5,6 +5,7 @@ description: |
   Lossy PNG compressor — pngquant command based
   on libimagequant library https://pngquant.org
 
+base: core18
 confinement: strict
 
 apps:
@@ -24,7 +25,7 @@ parts:
     build-packages:
       - gcc
       - make
-      - libpng16-dev
+      - libpng-dev
       - zlib1g-dev
       - liblcms2-dev
     stage-packages:

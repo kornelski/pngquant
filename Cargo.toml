@@ -11,7 +11,7 @@ license = "GPL-3.0+"
 name = "pngquant"
 readme = "README.md"
 repository = "https://github.com/kornelski/pngquant.git"
-version = "2.12.2"
+version = "2.12.3"
 
 [[bin]]
 name = "pngquant"
@@ -33,7 +33,7 @@ version = "1.0.0"
 
 [dependencies.imagequant-sys]
 path = "lib"
-version = "2.12.0"
+version = "2.12.3"
 
 [dependencies.lcms2-sys]
 optional = true

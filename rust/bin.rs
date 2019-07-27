@@ -1,26 +1,14 @@
 /*
-** © 2017 by Kornel Lesiński.
+** © 2019 by Kornel Lesiński.
 **
 ** See COPYRIGHT file for license.
 */
-
-#[cfg(feature="alloc_system")]
-use std::alloc::System;
-
-#[cfg(feature="alloc_system")]
-#[global_allocator]
-static A: System = System;
 
 #[cfg(feature = "openmp")]
 extern crate openmp_sys;
 
 extern crate imagequant_sys;
-#[cfg(feature = "cocoa")]
-extern crate cocoa_image;
 extern crate libpng_sys;
-extern crate libc;
-extern crate getopts;
-extern crate wild;
 
 #[cfg(feature = "cocoa")]
 pub mod rwpng_cocoa;
@@ -28,19 +16,76 @@ pub mod rwpng_cocoa;
 #[cfg(feature = "lcms2")]
 extern crate lcms2_sys;
 
+use imagequant_sys::liq_error::LIQ_OK;
+use imagequant_sys::*;
+use libc::FILE;
+use crate::ffi::PNGQUANT_VERSION;
+use crate::ffi::pngquant_internal_print_config;
 use std::os::raw::{c_uint, c_char};
-use std::process;
+
 use std::ptr;
-use std::ffi::CString;
+use std::io;
+use std::ffi::{CString, CStr};
 
 mod ffi;
-use ffi::*;
+use crate::ffi::*;
+use crate::ffi::pngquant_error::*;
 
 fn unwrap_ptr(opt: Option<&CString>) -> *const c_char {
     opt.map(|c| c.as_ptr()).unwrap_or(ptr::null())
 }
 
+fn print_full_version(fd: &mut dyn io::Write, c_fd: *mut FILE) {
+    let _ = writeln!(fd, "pngquant, {} (Rust), by Kornel Lesinski, Greg Roelofs.", unsafe{CStr::from_ptr(PNGQUANT_VERSION)}.to_str().unwrap());
+    let _ = fd.flush();
+    unsafe{pngquant_internal_print_config(c_fd);}
+    let _ = writeln!(fd);
+}
+
+fn print_usage(fd: &mut dyn io::Write) {
+    let _ = writeln!(fd, "{}", unsafe{CStr::from_ptr(PNGQUANT_USAGE)}.to_str().unwrap());
+}
+
+/**
+ *   N = automatic quality, uses limit unless force is set (N-N or 0-N)
+ *  -N = no better than N (same as 0-N)
+ * N-M = no worse than N, no better than M
+ * N-  = no worse than N, perfect if possible (same as N-100)
+ *
+ * where N,M are numbers between 0 (lousy) and 100 (perfect)
+ */
+fn parse_quality(quality: &str) -> Option<(u8, u8)> {
+    let mut parts = quality.splitn(2, '-');
+    let left = parts.next().unwrap();
+    let right = parts.next();
+
+    Some(match (left, right) {
+        // quality="%d-"
+        (t, Some("")) => {
+            (t.parse().ok()?, 100)
+        },
+        // quality="-%d"
+        ("", Some(t)) => {
+            (0, t.parse().ok()?)
+        },
+        // quality="%d"
+        (t, None) => {
+            let target = t.parse().ok()?;
+            (((target as u16)*9/10) as u8, target)
+        },
+        // quality="%d-%d"
+        (l, Some(t)) => {
+            (l.parse().ok()?, t.parse().ok()?)
+        },
+    })
+}
+
+
 fn main() {
+    std::process::exit(run() as _);
+}
+
+fn run() -> ffi::pngquant_error {
     let mut opts = getopts::Options::new();
 
     opts.optflag("v", "verbose", "");
@@ -69,7 +114,8 @@ fn main() {
         Ok(m) => m,
         Err(err) => {
             eprintln!("{}", err);
-            process::exit(2);
+            print_usage(&mut io::stderr());
+            return MISSING_ARGUMENT;
         },
     };
 
@@ -77,7 +123,7 @@ fn main() {
     let speed = m.opt_str("speed").and_then(|p| p.parse().ok()).unwrap_or(0);
     let floyd = m.opt_str("floyd").and_then(|p| p.parse().ok()).unwrap_or(1.);
 
-    let quality = m.opt_str("quality").and_then(|s| CString::new(s).ok());
+    let quality = m.opt_str("quality");
     let extension = m.opt_str("ext").and_then(|s| CString::new(s).ok());
     let map_file = m.opt_str("map").and_then(|s| CString::new(s).ok());
 
@@ -104,7 +150,7 @@ fn main() {
     let file_ptrs: Vec<_> = files.iter().map(|s| s.as_ptr()).collect();
 
     let mut options = pngquant_options {
-        quality: unwrap_ptr(quality.as_ref()),
+        quality: ptr::null_mut(), // handled in Rust now
         extension: unwrap_ptr(extension.as_ref()),
         output_file_path: unwrap_ptr(output_file_path.as_ref()),
         map_file: unwrap_ptr(map_file.as_ref()),
@@ -120,13 +166,12 @@ fn main() {
         force: m.opt_present("force") && !m.opt_present("no-force"),
         skip_if_larger: m.opt_present("skip-if-larger"),
         strip: m.opt_present("strip"),
-        iebug: m.opt_present("iebug"),
+        iebug: false,
         last_index_transparent: m.opt_present("transbug"),
         print_help: m.opt_present("h"),
         print_version: m.opt_present("V"),
         verbose: m.opt_present("v"),
 
-        liq: ptr::null_mut(),
         fixed_palette_image: ptr::null_mut(),
         log_callback: None,
         log_callback_user_info: ptr::null_mut(),
@@ -138,5 +183,39 @@ fn main() {
         options.floyd = 0.;
     }
 
-    process::exit(unsafe {pngquant_main(&mut options)});
+    if options.print_version {
+        println!("{}", unsafe{CStr::from_ptr(PNGQUANT_VERSION)}.to_str().unwrap());
+        return SUCCESS;
+    }
+
+    if options.missing_arguments {
+        print_full_version(&mut io::stderr(), unsafe{pngquant_c_stderr()});
+        print_usage(&mut io::stderr());
+        return MISSING_ARGUMENT;
+    }
+
+    if options.print_help {
+        print_full_version(&mut io::stdout(), unsafe{pngquant_c_stdout()});
+        print_usage(&mut io::stdout());
+        return SUCCESS;
+    }
+
+    let liq = unsafe {liq_attr_create().as_mut().unwrap()};
+
+    if let Some(q) = quality.as_ref() {
+        if let Some((limit, target)) = parse_quality(q) {
+            options.min_quality_limit = limit > 0;
+            if LIQ_OK != unsafe{liq_set_quality(liq, limit.into(), target.into())} {
+                eprintln!("Quality value(s) must be numbers in range 0-100.");
+                return INVALID_ARGUMENT;
+            }
+        } else {
+            eprintln!("Quality should be in format min-max where min and max are numbers in range 0-100.");
+            return INVALID_ARGUMENT;
+        }
+    }
+
+    let retval = unsafe {pngquant_main(&mut options, liq)};
+    unsafe {liq_attr_destroy(liq);}
+    retval
 }

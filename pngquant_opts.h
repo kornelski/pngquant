@@ -1,6 +1,5 @@
 
 struct pngquant_options {
-    liq_attr *liq;
     liq_image *fixed_palette_image;
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;

@@ -9,7 +9,7 @@ extern "C" {
     pub static PNGQUANT_USAGE: *const c_char;
     pub fn pngquant_internal_print_config(fd: *mut libc::FILE);
 
-    pub fn pngquant_main(options: &mut pngquant_options, liq: *mut liq_attr) -> pngquant_error;
+    pub fn pngquant_main_internal(options: &mut pngquant_options, liq: *mut liq_attr) -> pngquant_error;
     pub fn pngquant_c_stderr() -> *mut FILE;
     pub fn pngquant_c_stdout() -> *mut FILE;
 }

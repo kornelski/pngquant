@@ -199,7 +199,7 @@ static bool parse_quality(const char *quality, liq_attr *options, bool *min_qual
     return LIQ_OK == liq_set_quality(options, limit, target);
 }
 
-pngquant_error pngquant_main(struct pngquant_options *options, liq_attr *liq);
+pngquant_error pngquant_main_internal(struct pngquant_options *options, liq_attr *liq);
 static pngquant_error pngquant_file_internal(const char *filename, const char *outname, struct pngquant_options *options, liq_attr *liq);
 
 #ifndef PNGQUANT_NO_MAIN
@@ -244,71 +244,82 @@ int main(int argc, char *argv[])
         return INVALID_ARGUMENT;
     }
 
-    if (options->iebug) {
+    if (options.iebug) {
         // opacities above 238 will be rounded up to 255, because IE6 truncates <255 to 0.
         liq_set_min_opacity(liq, 238);
         fputs("  warning: the workaround for IE6 is deprecated\n", stderr);
     }
 
-    retval = pngquant_main(&options, liq);
-    liq_attr_destroy(liq);
-    return retval;
-}
-#endif
-
-pngquant_error pngquant_main(struct pngquant_options *options, liq_attr *liq)
-{
-    if (options->verbose) {
+    if (options.verbose) {
         liq_set_log_callback(liq, log_callback, NULL);
-        options->log_callback = log_callback;
+        options.log_callback = log_callback;
     }
 
-    if (options->last_index_transparent) {
+    if (options.last_index_transparent) {
         liq_set_last_index_transparent(liq, true);
     }
 
-    if (options->speed >= 10) {
-        options->fast_compression = true;
-        if (options->speed == 11) {
-            options->floyd = 0;
-            options->speed = 10;
+    if (options.speed >= 10) {
+        options.fast_compression = true;
+        if (options.speed == 11) {
+            options.floyd = 0;
+            options.speed = 10;
         }
     }
 
-    if (options->speed && LIQ_OK != liq_set_speed(liq, options->speed)) {
+    if (options.speed && LIQ_OK != liq_set_speed(liq, options.speed)) {
         fputs("Speed should be between 1 (slow) and 11 (fast).\n", stderr);
         return INVALID_ARGUMENT;
     }
-    if (options->colors && LIQ_OK != liq_set_max_colors(liq, options->colors)) {
+
+    if (options.colors && LIQ_OK != liq_set_max_colors(liq, options.colors)) {
         fputs("Number of colors must be between 2 and 256.\n", stderr);
         return INVALID_ARGUMENT;
     }
 
-    if (options->posterize && LIQ_OK != liq_set_min_posterization(liq, options->posterize)) {
+    if (options.posterize && LIQ_OK != liq_set_min_posterization(liq, options.posterize)) {
         fputs("Posterization should be number of bits in range 0-4.\n", stderr);
         return INVALID_ARGUMENT;
     }
 
-    if (options->extension && options->output_file_path) {
+    if (options.extension && options.output_file_path) {
         fputs("--ext and --output options can't be used at the same time\n", stderr);
         return INVALID_ARGUMENT;
     }
 
     // new filename extension depends on options used. Typically basename-fs8.png
-    if (options->extension == NULL) {
-        options->extension = options->floyd > 0 ? "-fs8.png" : "-or8.png";
+    if (options.extension == NULL) {
+        options.extension = options.floyd > 0 ? "-fs8.png" : "-or8.png";
     }
 
-    if (options->output_file_path && options->num_files != 1) {
+    if (options.output_file_path && options.num_files != 1) {
         fputs("  error: Only one input file is allowed when --output is used. This error also happens when filenames with spaces are not in quotes.\n", stderr);
         return INVALID_ARGUMENT;
     }
 
-    if (options->using_stdout && !options->using_stdin && options->num_files != 1) {
+    if (options.using_stdout && !options.using_stdin && options.num_files != 1) {
         fputs("  error: Only one input file is allowed when using the special output path \"-\" to write to stdout. This error also happens when filenames with spaces are not in quotes.\n", stderr);
         return INVALID_ARGUMENT;
     }
 
+    if (!options.num_files && !options.using_stdin) {
+        fputs("No input files specified.\n", stderr);
+        if (options.verbose) {
+            print_full_version(stderr);
+        }
+        print_usage(stderr);
+        return MISSING_ARGUMENT;
+    }
+
+    retval = pngquant_main_internal(&options, liq);
+    liq_attr_destroy(liq);
+    return retval;
+}
+#endif
+
+// Don't use this. This is not a public API.
+pngquant_error pngquant_main_internal(struct pngquant_options *options, liq_attr *liq)
+{
     if (options->map_file) {
         png24_image tmp = {.width=0};
         if (SUCCESS != read_image(liq, options->map_file, false, &tmp, &options->fixed_palette_image, true, true, false)) {
@@ -325,15 +336,6 @@ pngquant_error pngquant_main(struct pngquant_options *options, liq_attr *liq)
             liq_image_add_fixed_color(options->fixed_palette_image, pal->entries[i]);
         }
         liq_result_destroy(tmp_quantize);
-    }
-
-    if (!options->num_files && !options->using_stdin) {
-        fputs("No input files specified.\n", stderr);
-        if (options->verbose) {
-            print_full_version(stderr);
-        }
-        print_usage(stderr);
-        return MISSING_ARGUMENT;
     }
 
 #ifdef _OPENMP

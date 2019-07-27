@@ -29,6 +29,8 @@ fn main() {
 
     if env::var("PROFILE").map(|p|p != "debug").unwrap_or(true) {
         cc.define("NDEBUG", Some("1"));
+    } else {
+        cc.define("DEBUG", Some("1"));
     }
 
     if target_arch == "x86_64" ||

@@ -296,7 +296,7 @@ if [ -z "$DEBUG" ]; then
     cflags "-O3 -DNDEBUG"
     status "Debug" "no"
 else
-    cflags "-O1 -g"
+    cflags "-O1 -g -DDEBUG"
     status "Debug" "yes"
 fi
 

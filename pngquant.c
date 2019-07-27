@@ -362,8 +362,8 @@ pngquant_error pngquant_main_internal(struct pngquant_options *options, liq_attr
         #ifdef _OPENMP
         struct buffered_log buf = {0};
         if (opts.log_callback && omp_get_num_threads() > 1 && opts.num_files > 1) {
-            liq_set_log_callback(opts.liq, log_callback_buferred, &buf);
-            liq_set_log_flush_callback(opts.liq, log_callback_buferred_flush, &buf);
+            liq_set_log_callback(local_liq, log_callback_buferred, &buf);
+            liq_set_log_flush_callback(local_liq, log_callback_buferred_flush, &buf);
             opts.log_callback = log_callback_buferred;
             opts.log_callback_user_info = &buf;
         }

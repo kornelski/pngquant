@@ -127,8 +127,7 @@ static void log_callback_buferred(const liq_attr *attr, const char *msg, void* c
 #endif
 
 void pngquant_internal_print_config(FILE *fd) {
-    fprintf(fd,
-        ""
+    fputs(""
         #ifndef NDEBUG
                     "   WARNING: this is a DEBUG (slow) version.\n" /* NDEBUG disables assert() */
         #endif
@@ -138,7 +137,7 @@ void pngquant_internal_print_config(FILE *fd) {
         #if _OPENMP
                     "   Compiled with OpenMP (multicore support).\n"
         #endif
-    );
+    , fd);
     fflush(fd);
 }
 

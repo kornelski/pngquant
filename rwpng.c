@@ -115,7 +115,7 @@ static void user_flush_data(png_structp png_ptr)
 }
 
 
-static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_ptr, unsigned char *base, unsigned int height, png_size_t rowbytes)
+static png_bytepp rwpng_create_row_pointers(png_infop info_ptr, png_structp png_ptr, unsigned char *base, size_t height, png_size_t rowbytes)
 {
     if (!rowbytes) {
         rowbytes = png_get_rowbytes(png_ptr, info_ptr);

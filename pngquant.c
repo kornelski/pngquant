@@ -730,8 +730,8 @@ static pngquant_error prepare_output_image(liq_result *result, liq_image *input_
     ** Step 3.7 [GRR]: allocate memory for the entire indexed image
     */
 
-    output_image->indexed_data = malloc(output_image->height * output_image->width);
-    output_image->row_pointers = malloc(output_image->height * sizeof(output_image->row_pointers[0]));
+    output_image->indexed_data = malloc((size_t)output_image->height * (size_t)output_image->width);
+    output_image->row_pointers = malloc((size_t)output_image->height * sizeof(output_image->row_pointers[0]));
 
     if (!output_image->indexed_data || !output_image->row_pointers) {
         return OUT_OF_MEMORY_ERROR;

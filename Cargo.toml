@@ -1,5 +1,5 @@
 [package]
-version = "2.12.5"
+version = "2.12.6"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 build = "rust/build.rs"
 categories = ["multimedia::images"]
@@ -34,7 +34,7 @@ version = "1.0.0"
 
 [dependencies.imagequant-sys]
 path = "lib"
-version = "2.12.5"
+version = "2.12.6"
 
 [dependencies.lcms2-sys]
 optional = true

@@ -68,8 +68,8 @@ The features are:
  * `lcms2` — compile with support for color profiles via Little CMS.
  * `lcms2-static` — same, but link statically.
  * `cocoa` — compile with support for color profiles via macOS Cocoa.
- * `openmp` — use OpenMP to accelerate conversion. Requires GCC 7 or later.
-    Clang is not supported. Warning: GCC 4 will produce buggy code.
+ * `openmp` — use OpenMP to accelerate conversion. Requires GCC 9 or later.
+    Warning: GCC 4 will produce buggy code!
  * `openmp-static` — same, but link statically.
 
 ## Compilation with OpenMP
@@ -77,8 +77,7 @@ The features are:
     cargo build --release --features=openmp # or
     cargo build --release --features=openmp-static
 
-On macOS you may need to install gcc (`brew install gcc`) and run `export CC=gcc-9` first,
-because clang doesn't support OpenMP (yet).
+On macOS you may need to install gcc (`brew install gcc`) and run `export CC=gcc-10` first.
 
 ## Compilation with Cocoa image reader
 

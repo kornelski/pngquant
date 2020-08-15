@@ -1,12 +1,17 @@
+version 3.0
+-----------
+ - replaced C libimagequant library with a Rust imagequant crate
+ - switched build system from make to Cargo
+
 version 2.17
 ------------
-- fix for Unicode filenames on Windows
-- builds for ARM
-- small quality improvements
+ - fixed Unicode filenames on Windows
+ - builds for ARM
+ - small quality improvements
 
 version 2.16
 ------------
-- reduced stack usage, prevenitng stack overlfow in pathological cases
+ - reduced stack usage, prevenitng stack overlfow in pathological cases
 
 version 2.13-2.15
 ------------

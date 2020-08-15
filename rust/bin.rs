@@ -4,10 +4,6 @@
 ** See COPYRIGHT file for license.
 */
 
-#[cfg(feature = "openmp")]
-extern crate openmp_sys;
-
-extern crate imagequant_sys;
 extern crate libpng_sys;
 
 #[cfg(feature = "cocoa")]
@@ -15,11 +11,9 @@ pub mod rwpng_cocoa;
 
 #[cfg(feature = "lcms2")]
 extern crate lcms2_sys;
-
-use imagequant_sys::liq_error::LIQ_OK;
-use imagequant_sys::*;
+use imagequant::liq_error::LIQ_OK;
+use imagequant::ffi::*;
 use libc::FILE;
-use crate::ffi::PNGQUANT_VERSION;
 use crate::ffi::pngquant_internal_print_config;
 use std::os::raw::{c_uint, c_char, c_void};
 
@@ -36,7 +30,7 @@ fn unwrap_ptr(opt: Option<&CString>) -> *const c_char {
 }
 
 fn print_full_version(fd: &mut dyn io::Write, c_fd: *mut FILE) {
-    let _ = writeln!(fd, "pngquant, {} (Rust), by Kornel Lesinski, Greg Roelofs.", unsafe{CStr::from_ptr(PNGQUANT_VERSION)}.to_str().unwrap());
+    let _ = writeln!(fd, "pngquant, {} (Rust), by Kornel Lesinski, Greg Roelofs.", env!("CARGO_PKG_VERSION"));
     let _ = fd.flush();
     unsafe{pngquant_internal_print_config(c_fd);}
     let _ = writeln!(fd);
@@ -81,7 +75,7 @@ fn parse_quality(quality: &str) -> Option<(u8, u8)> {
 }
 
 unsafe extern "C" fn log_callback(_a: &liq_attr, msg: *const c_char, _user: *mut c_void) {
-    eprintln!("{}", CStr::from_ptr(msg).to_str().unwrap());
+    println!("{}", CStr::from_ptr(msg).to_str().unwrap());
 }
 
 fn main() {
@@ -131,7 +125,7 @@ fn run() -> ffi::pngquant_error {
 
     let colors = if let Some(c) = m.free.get(0).and_then(|s| s.parse().ok()) {
         m.free.remove(0);
-        if m.free.len() == 0 {
+        if m.free.is_empty() {
             m.free.push("-".to_owned()); // stdin default
         }
         c
@@ -186,7 +180,7 @@ fn run() -> ffi::pngquant_error {
     }
 
     if options.print_version {
-        println!("{}", unsafe { CStr::from_ptr(PNGQUANT_VERSION) }.to_str().unwrap());
+        println!("{}", env!("CARGO_PKG_VERSION"));
         return SUCCESS;
     }
 
@@ -202,20 +196,21 @@ fn run() -> ffi::pngquant_error {
         return SUCCESS;
     }
 
-    let liq = unsafe { liq_attr_create().as_mut().unwrap() };
+    let mut liq = liq_attr_create().unwrap();
+    let liq = &mut *liq;
 
     if options.verbose {
-        unsafe{liq_set_log_callback(liq, Some(log_callback), ptr::null_mut());}
+        unsafe { liq_set_log_callback(liq, log_callback, Default::default()); }
         options.log_callback = Some(log_callback);
     }
 
     if m.opt_present("transbug") {
-        unsafe{liq_set_last_index_transparent(liq, true as _);}
+        liq_set_last_index_transparent(liq, true as _);
     }
 
     if let Some(speed) = m.opt_str("speed") {
         let set_ok = speed.parse().ok()
-            .filter(|&s: &u8| s>=1 && s <=11)
+            .filter(|&s: &u8| (1..=11).contains(&s))
             .map_or(false, |mut speed| {
                 if speed >= 10 {
                     options.fast_compression = true;
@@ -224,7 +219,7 @@ fn run() -> ffi::pngquant_error {
                         options.floyd = 0.0;
                     }
                 }
-                LIQ_OK == unsafe{liq_set_speed(liq, speed.into())}
+                LIQ_OK == liq_set_speed(liq, speed.into())
             });
         if !set_ok {
             eprintln!("Speed should be between 1 (slow) and 11 (fast).");
@@ -235,7 +230,7 @@ fn run() -> ffi::pngquant_error {
     if let Some(q) = quality.as_ref() {
         if let Some((limit, target)) = parse_quality(q) {
             options.min_quality_limit = limit > 0;
-            if LIQ_OK != unsafe { liq_set_quality(liq, limit.into(), target.into()) } {
+            if LIQ_OK != liq_set_quality(liq, limit.into(), target.into()) {
                 eprintln!("Quality value(s) must be numbers in range 0-100.");
                 return INVALID_ARGUMENT;
             }
@@ -245,12 +240,12 @@ fn run() -> ffi::pngquant_error {
         }
     }
 
-    if options.colors > 0 && LIQ_OK != unsafe { liq_set_max_colors(liq, options.colors as _) } {
+    if options.colors > 0 && LIQ_OK != liq_set_max_colors(liq, options.colors as _) {
         eprintln!("Number of colors must be between 2 and 256.");
         return INVALID_ARGUMENT;
     }
 
-    if options.posterize > 0 && LIQ_OK != unsafe { liq_set_min_posterization(liq, options.posterize as _) } {
+    if options.posterize > 0 && LIQ_OK != liq_set_min_posterization(liq, options.posterize as _) {
         eprintln!("Posterization should be number of bits in range 0-4.");
         return INVALID_ARGUMENT;
     }
@@ -284,7 +279,6 @@ fn run() -> ffi::pngquant_error {
         return MISSING_ARGUMENT;
     }
 
-    let retval = unsafe {pngquant_main_internal(&mut options, liq)};
-    unsafe {liq_attr_destroy(liq);}
-    retval
+    
+    unsafe {pngquant_main_internal(&mut options, liq)}
 }

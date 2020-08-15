@@ -1,49 +1,17 @@
-## Compiling on Linux, *BSD and macOS using GNU/Make
+## Compiling via Rust/Cargo
 
-(For instructions for Windows or Rust, see sections below.)
-
-To get the code:
-
-    git clone --recursive https://github.com/kornelski/pngquant.git
-
-You will need libpng installed with development headers.
-On Linux install `libpng-dev` package. On macOS `brew install libpng`.
-
-There's an optional `./configure` step (see sections below). Run:
-
-    make
-
-It will create `pngquant` executable in the current directory. If you'd like
-to install it system-wide:
-
-    sudo make install
-
-By default it will be installed in `/usr/local/bin`. To install it in another
-directory run `./configure --prefix=dir && make`.
-
-pngquant uses GNU Makefile. To compile on FreeBSD you will need to use `gmake`.
-
-Avoid Linux distros that ship with libpng 1.2. It is old and buggy.
-libpng 1.6 or later is required.
-
-### Custom static libpng
-
-Extract libpng source code as a *sub*directory of pngquant source directory.
-Build static libpng (`./configure --enable-static && make`), and then
-`./configure && make` pngquant.
-
-## Compiling via Rust/Cargo (all platforms, including Windows)
+The old `configure && make` method is no longer supported.
 
 ### Prerequisites
 
-Install Rust 1.36 or later: https://www.rust-lang.org/install.html
+Install Rust 1.57 or later: https://rustup.rs
 
 On Windows also install msys-git and Visual C++ Build Tools
 with Windows 8 SDK enabled, and reboot.
 
 ### Building
 
-Get the code:
+Get the code by cloning *recursively*:
 
     # Unix version
     git clone --recursive https://github.com/kornelski/pngquant.git
@@ -60,24 +28,13 @@ This will create executable in `target/release/pngquant`(`.exe`).
 
 You can build with additional features:
 
-    cargo build --release --features=sse,lcms2
+    cargo build --release --features=lcms2
 
 The features are:
 
- * `sse` — enable use of SSE on x86 CPUs.
  * `lcms2` — compile with support for color profiles via Little CMS.
  * `lcms2-static` — same, but link statically.
  * `cocoa` — compile with support for color profiles via macOS Cocoa.
- * `openmp` — use OpenMP to accelerate conversion. Requires GCC 9 or later.
-    Warning: GCC 4 will produce buggy code!
- * `openmp-static` — same, but link statically.
-
-## Compilation with OpenMP
-
-    cargo build --release --features=openmp # or
-    cargo build --release --features=openmp-static
-
-On macOS you may need to install gcc (`brew install gcc`) and run `export CC=gcc-10` first.
 
 ## Compilation with Cocoa image reader
 
@@ -98,6 +55,6 @@ Set `export LCMS2_STATIC=1` or build `--features=lcms2-static` to force static l
 ## Compilation of `libimagequant.a` only
 
 If you want to use pngquant's conversion algorithm without loading/saving PNG
-files, then you can run `make` or `cargo build --release` in the `lib/` directory.
+files, then you can run `cargo build --release` in the `lib/` directory.
 
-The library doesn't need libpng nor zlib.
+The imagequant library doesn't need libpng nor zlib.

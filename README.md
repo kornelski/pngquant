@@ -9,7 +9,7 @@
 - batch conversion of multiple files: `pngquant *.png`
 - Unix-style stdin/stdout chaining: `… | pngquant - | …`
 
-To further reduce file size, try [optipng](http://optipng.sourceforge.net), [ImageOptim](https://imageoptim.com), or [zopflipng](https://github.com/google/zopfli).
+To further reduce file size, try [oxipng](https://lib.rs/oxipng), [ImageOptim](https://imageoptim.com), or [zopflipng](https://github.com/google/zopfli).
 
 ## Features
 

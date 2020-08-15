@@ -1,15 +1,15 @@
 [package]
-version = "2.17.0"
+name = "pngquant"
+version = "3.0.0-beta.1"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
+description = "Convert 24/32-bit PNG images to efficient 8-bit format with alpha channel"
 build = "rust/build.rs"
 categories = ["multimedia::images"]
-description = "Convert 24/32-bit images to 8-bit palette with alpha channel.\nBindings for libimagequant that powers pngquant lossy PNG compressor.\n\nDual-licensed like pngquant. See https://pngquant.org for details."
-documentation= "https://github.com/kornelski/pngquant#readme"
 homepage = "https://pngquant.org"
+documentation = "https://github.com/kornelski/pngquant#readme"
 include = ["/rwpng*.[ch]", "/pngquant.c","/pngquant_opts.[ch]", "/rust/*.rs", "/COPYRIGHT", "/Cargo.toml", "/README.md"]
 keywords = ["quantization", "palette", "image", "pngquant", "compression"]
-license = "GPL-3.0+"
-name = "pngquant"
+license = "GPL-3.0-or-later"
 readme = "README.md"
 repository = "https://github.com/kornelski/pngquant.git"
 edition = "2018"
@@ -19,12 +19,12 @@ name = "pngquant"
 path = "rust/bin.rs"
 
 [build-dependencies]
-cc = "1.0.71"
+cc = "1.0.72"
 dunce = "1.0.2"
 
 [dependencies]
 getopts = "0.2.21"
-libc = "0.2.106"
+libc = "0.2.112"
 libpng-sys = "1.1.8"
 wild = "2.0.4"
 
@@ -32,33 +32,28 @@ wild = "2.0.4"
 optional = true
 version = "1.0.4"
 
-[dependencies.imagequant-sys]
+[dependencies.imagequant]
 path = "lib"
-version = "3.0.2"
+version = "4.0.0-beta.1"
 
 [dependencies.lcms2-sys]
 optional = true
 version = "3.1.9"
 
-[dependencies.openmp-sys]
-optional = true
-version = "1.2.0"
-
 [features]
 cocoa = ["cocoa_image"]
-default = ["sse", "lcms2"]
+default = ["lcms2"]
 lcms2 = ["lcms2-sys"]
 lcms2-static = ["lcms2", "lcms2-sys/static"]
-openmp = ["openmp-sys", "imagequant-sys/openmp"]
-openmp-static = ["openmp", "openmp-sys/static", "imagequant-sys/openmp-static"]
 png-static = ["libpng-sys/static"]
 z-static = ["libpng-sys/static-libz"]
-static = ["lcms2-static", "png-static", "openmp-static"]
-sse = ["imagequant-sys/sse"]
-alloc_system = []
+static = ["lcms2-static", "png-static"]
 
 [profile.release]
+opt-level = 3
+codegen-units = 1
 lto = true
+panic = "abort"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

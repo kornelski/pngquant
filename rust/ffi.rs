@@ -2,13 +2,13 @@
 
 use libc::FILE;
 use std::os::raw::*;
-use imagequant_sys::*;
+use imagequant::ffi::*;
 
 extern "C" {
-    pub static PNGQUANT_VERSION: *const c_char;
     pub static PNGQUANT_USAGE: *const c_char;
     pub fn pngquant_internal_print_config(fd: *mut libc::FILE);
 
+    #[allow(improper_ctypes)]
     pub fn pngquant_main_internal(options: &mut pngquant_options, liq: *mut liq_attr) -> pngquant_error;
     pub fn pngquant_c_stderr() -> *mut FILE;
     pub fn pngquant_c_stdout() -> *mut FILE;
@@ -39,8 +39,8 @@ pub enum pngquant_error {
 
 #[repr(C)]
 pub struct pngquant_options {
-    pub fixed_palette_image: *mut liq_image,
-    pub log_callback: liq_log_callback_function,
+    pub fixed_palette_image: *mut liq_image<'static, 'static>,
+    pub log_callback: Option<liq_log_callback_function>,
     pub log_callback_user_info: *mut c_void,
     pub quality: *const c_char,
     pub extension: *const c_char,

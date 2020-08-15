@@ -55,10 +55,10 @@ use --force to overwrite. See man page for full list of options.\n";
 #endif
 
 #include "rwpng.h"  /* typedefs, common macros, public prototypes */
-#include "libimagequant.h" /* if it fails here, run: git submodule update; ./configure; or add -Ilib to compiler flags */
+#include "libimagequant.h" /* if it fails here, run: git submodule update or add -Ilib to compiler flags */
 #include "pngquant_opts.h"
 
-char *PNGQUANT_VERSION = LIQ_VERSION_STRING " (September 2021)";
+char *PNGQUANT_VERSION = LIQ_VERSION_STRING " (January 2022)";
 
 static pngquant_error prepare_output_image(liq_result *result, liq_image *input_image, rwpng_color_transform tag, png8_image *output_image);
 static void set_palette(liq_result *result, png8_image *output_image);

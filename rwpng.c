@@ -12,7 +12,7 @@
 #include <string.h>
 #include <limits.h>
 
-#include "png.h"  /* if this include fails, you need to install libpng (e.g. libpng-devel package) and run ./configure */
+#include "png.h"  /* if this include fails, you need to install libpng (e.g. libpng-devel package) */
 #include "rwpng.h"
 #if USE_LCMS
 #include "lcms2.h"

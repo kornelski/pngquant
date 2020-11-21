@@ -481,7 +481,9 @@ fi
 
 # zlib
 if ! find_library "zlib" "z" "zlib.h" "libz.a" "libz.$SOLIBSUFFIX*"; then
-    error "zlib" "not found (please install zlib-devel package)"
+    if ! find_library "zlib" "z" "zlib.h" "zlib.a" "zlib.$SOLIBSUFFIX*"; then
+        error "zlib" "not found (please install zlib-devel package)"
+    fi
 fi
 
 # lcms2

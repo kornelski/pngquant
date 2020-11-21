@@ -495,7 +495,7 @@ static pngquant_error pngquant_file_internal(const char *filename, const char *o
         if (options->skip_if_larger) {
             // this is very rough approximation, but generally avoid losing more quality than is gained in file size.
             // Quality is raised to 1.5, because even greater savings are needed to justify big quality loss.
-            // but >50% savings are considered always worthwile in order to allow low quality conversions to work at all
+            // but >50% savings are considered always worthwhile in order to allow low quality conversions to work at all
             const double quality = quality_percent/100.0;
             const double expected_reduced_size = pow(quality, 1.5);
             output_image.maximum_file_size = (input_image_rwpng.file_size-1) * (expected_reduced_size < 0.5 ? 0.5 : expected_reduced_size);

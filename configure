@@ -349,8 +349,10 @@ fi
 
 # Cocoa
 if [[ "$OSTYPE" =~ "darwin" ]]; then
-    cflags "-mmacosx-version-min=10.7"
-    lflags "-mmacosx-version-min=10.7"
+    if [ -z "${MACOSX_DEPLOYMENT_TARGET+isset}" ]; then
+        cflags "-mmacosx-version-min=10.9"
+        lflags "-mmacosx-version-min=10.9"
+    fi
 fi
 
 # pairs of possible *.h and lib*.so locations
@@ -377,8 +379,8 @@ if [[ "$OSTYPE" =~ "darwin" ]]; then
     # Search Developer SDK paths, since Apple seems to have dropped the standard Unixy ones
     XCODE_CMD="xcode-select"
     XCODE_PATH=$($XCODE_CMD -p)
-    DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/lib")
-    DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/usr/lib")
+    DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib")
+    DIRS+=("$XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk/usr/include $XCODE_PATH/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk/usr/lib")
 elif [[ "$OSTYPE" =~ "msys" ]]; then
     SOLIBSUFFIX=dll
 else

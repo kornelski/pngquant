@@ -1,15 +1,15 @@
 Name:           pngquant
-Version:        2.13.1
+Version:        2.14.0
 Release:        1%{?dist}
 Summary:        PNG quantization tool for reducing image file size
 # New code is under GPL, forked from old BSD-like
 License:        GPLv3+ and BSD
 URL:            https://pngquant.org
 Source0:        https://github.com/kornelski/pngquant/archive/%{version}.tar.gz
-BuildRequires:  libpng-devel%{?_isa} >= 1.4.20
+BuildRequires:  libpng-devel%{?_isa} >= 1.6.0
 BuildRequires:  zlib-devel%{?_isa} >= 1.2.3-1
 BuildRequires:  gcc%{?_isa} >= 4.2-1
-Requires:       libpng%{?_isa} >= 1.4.20
+Requires:       libpng%{?_isa} >= 1.6.0
 Requires:       zlib%{?isa} >= 1.2.3-1
 
 %description

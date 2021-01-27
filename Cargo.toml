@@ -1,5 +1,5 @@
 [package]
-version = "2.13.0"
+version = "2.14.0"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 build = "rust/build.rs"
 categories = ["multimedia::images"]
@@ -19,26 +19,26 @@ name = "pngquant"
 path = "rust/bin.rs"
 
 [build-dependencies]
-cc = "1.0.38"
-dunce = "1.0.0"
+cc = "1.0.66"
+dunce = "1.0.1"
 
 [dependencies]
-getopts = "0.2.19"
-libc = "0.2.60"
-libpng-sys = "1.1.5"
-wild = "2.0.2"
+getopts = "0.2.21"
+libc = "0.2.82"
+libpng-sys = "1.1.8"
+wild = "2.0.4"
 
 [dependencies.cocoa_image]
 optional = true
-version = "1.0.0"
+version = "1.0.4"
 
 [dependencies.imagequant-sys]
 path = "lib"
-version = "2.13.0"
+version = "3.0.2"
 
 [dependencies.lcms2-sys]
 optional = true
-version = "3.1.1"
+version = "3.1.6"
 
 [dependencies.openmp-sys]
 optional = true

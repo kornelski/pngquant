@@ -37,7 +37,7 @@ $CC $CFLAGS  -c pngquant.c -o pngquant.o  -I. -O3 \
 find . -name "*.o" -exec ar rcs fuzz_lib.a {} \;
 
 # Build the fuzzer(s)
-$CC $CFLAGS -c $SRC/fuzzer.c -o fuzzer.o -I. \
+$CC $CFLAGS -c test/fuzzer.c -o fuzzer.o -I. \
 	-O3 -DNDEBUG -DUSE_SSE=1 -msse -mfpmath=sse \
 	-Wno-unknown-pragmas -I./lib -I./libpng \
 	-I/usr/include

@@ -40,10 +40,11 @@ use --force to overwrite. See man page for full list of options.\n";
 #include <math.h>
 
 #if defined(_WIN32) || defined(WIN32) || defined(__WIN32__)
-#  include <fcntl.h>    /* O_BINARY */
-#  include <io.h>   /* setmode() */
+#include <fcntl.h>    /* O_BINARY */
+#include <io.h>   /* setmode() */
+#include <locale.h> /* UTF-8 locale */
 #else
-#  include <unistd.h>
+#include <unistd.h>
 #endif
 
 #ifdef _OPENMP
@@ -230,6 +231,10 @@ int main(int argc, char *argv[])
         print_usage(stdout);
         return SUCCESS;
     }
+
+#if defined(_WIN32) || defined(WIN32) || defined(__WIN32__)
+    setlocale(LC_ALL, ".65001"); // issue #376; set UTF-8 for Unicode filenames
+#endif
 
     liq_attr *liq = liq_attr_create();
 

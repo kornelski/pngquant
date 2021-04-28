@@ -41,13 +41,15 @@ $(TARFILE): $(DISTFILES)
 	test -n "$(VERSION)"
 	make -C $(LIQSRCDIR) cargo
 	rm -rf $(TARFILE) $(TARNAME)
-	mkdir -p $(TARNAME)/lib/rust $(TARNAME)/lib/msvc-dist $(TARNAME)/rust
+	mkdir -p $(TARNAME)/lib/rust $(TARNAME)/lib/msvc-dist $(TARNAME)/rust $(TARNAME)/test/img
 	cp $(DISTFILES) $(TARNAME)
 	cp rust/*.rs $(TARNAME)/rust/
 	cp $(LIBDISTFILES) $(TARNAME)/lib
 	cp $(LIQSRCDIR)/rust-sys/*.rs $(TARNAME)/lib/rust/
 	cp $(LIQSRCDIR)/msvc-dist/*.[ch] $(TARNAME)/lib/msvc-dist/
-	tar -czf $(TARFILE) --numeric-owner --exclude='._*' $(TARNAME)
+	cp test/test.c test/test.sh $(TARNAME)/test/
+	cp test/img/*.png $(TARNAME)/test/img/
+	find $(TARNAME) -type f | rev | sort | rev | tar -czf $(TARFILE) --numeric-owner --exclude='._*' --files-from=-
 	rm -rf $(TARNAME)
 	-shasum $(TARFILE)
 

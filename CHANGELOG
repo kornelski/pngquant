@@ -1,6 +1,11 @@
+version 2.13-2.15
+------------
+ - speed and quality improvements
+
 version 2.12
 ------------
  - improved speed on large images
+ - OpenMP fixes/workarounds
 
 version 2.11
 ------------

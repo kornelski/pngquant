@@ -1,4 +1,5 @@
 [package]
+version = "2.15.0"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 build = "rust/build.rs"
 categories = ["multimedia::images"]
@@ -11,37 +12,37 @@ license = "GPL-3.0+"
 name = "pngquant"
 readme = "README.md"
 repository = "https://github.com/kornelski/pngquant.git"
-version = "2.12.2"
+edition = "2018"
 
 [[bin]]
 name = "pngquant"
 path = "rust/bin.rs"
 
 [build-dependencies]
-cc = "1.0.3"
-dunce = "0.1.0"
+cc = "1.0.66"
+dunce = "1.0.1"
 
 [dependencies]
-getopts = "0.2.15"
-libc = "0.2.33"
-libpng-sys = "1.0.1"
-wild = "2.0.0"
+getopts = "0.2.21"
+libc = "0.2.82"
+libpng-sys = "1.1.8"
+wild = "2.0.4"
 
 [dependencies.cocoa_image]
 optional = true
-version = "1.0.0"
+version = "1.0.4"
 
 [dependencies.imagequant-sys]
 path = "lib"
-version = "2.12.0"
+version = "3.0.2"
 
 [dependencies.lcms2-sys]
 optional = true
-version = "2.4.4"
+version = "3.1.6"
 
 [dependencies.openmp-sys]
 optional = true
-version = "0.1.2"
+version = "1.0.0"
 
 [features]
 cocoa = ["cocoa_image"]
@@ -58,3 +59,6 @@ alloc_system = []
 
 [profile.release]
 lto = true
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]

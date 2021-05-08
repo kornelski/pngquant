@@ -1,8 +1,6 @@
-## Compiling on Linux, *BSD and macOS
+## Compiling on Linux, *BSD and macOS using GNU/Make
 
-(For instructions for Windows see section below.)
-
-### Using GNU/Makefile
+(For instructions for Windows or Rust, see sections below.)
 
 To get the code:
 
@@ -20,17 +18,13 @@ to install it system-wide:
 
     sudo make install
 
-By default it will be installed in /usr/local/bin. To install it in another
+By default it will be installed in `/usr/local/bin`. To install it in another
 directory run `./configure --prefix=dir && make`.
 
 pngquant uses GNU Makefile. To compile on FreeBSD you will need to use `gmake`.
 
 Avoid Linux distros that ship with libpng 1.2. It is old and buggy.
-Use libpng 1.6 or later.
-
-### Using Rust/Cargo
-
-If you have Rust, you can also build with `cargo build`.
+libpng 1.6 or later is required.
 
 ### Custom static libpng
 
@@ -38,40 +32,57 @@ Extract libpng source code as a *sub*directory of pngquant source directory.
 Build static libpng (`./configure --enable-static && make`), and then
 `./configure && make` pngquant.
 
-When building with Cargo, `export PNG_STATIC=1`.
+## Compiling via Rust/Cargo (all platforms, including Windows)
 
-## Windows
+### Prerequisites
 
-Compiling on Windows is supported only via Rust/Cargo.
+Install Rust 1.36 or later: https://www.rust-lang.org/install.html
 
- 1. Install git (msys-git).
- 2. Install Visual C++ 2015 Build Tools.
- 3. [Install Rust](https://www.rust-lang.org/install.html)
- 4. Restart Windows.
+On Windows also install msys-git and Visual C++ Build Tools
+with Windows 8 SDK enabled, and reboot.
 
-Open Git's Bash prompt and run:
+### Building
 
+Get the code:
+
+    # Unix version
+    git clone --recursive https://github.com/kornelski/pngquant.git
+
+    # Windows version
     git clone -b msvc --recursive https://github.com/kornelski/pngquant.git
+
+And then build:
+
     cd pngquant
-
-This will create pngquant folder in your user folder. And then run:
-
     cargo build --release
 
-It will create `pngquant.exe` in `target/release` subfolder.
+This will create executable in `target/release/pngquant`(`.exe`).
+
+You can build with additional features:
+
+    cargo build --release --features=sse,lcms2
+
+The features are:
+
+ * `sse` — enable use of SSE on x86 CPUs.
+ * `lcms2` — compile with support for color profiles via Little CMS.
+ * `lcms2-static` — same, but link statically.
+ * `cocoa` — compile with support for color profiles via macOS Cocoa.
+ * `openmp` — use OpenMP to accelerate conversion. Requires GCC 9 or later.
+    Warning: GCC 4 will produce buggy code!
+ * `openmp-static` — same, but link statically.
 
 ## Compilation with OpenMP
 
     cargo build --release --features=openmp # or
     cargo build --release --features=openmp-static
 
-On macOS you may need to install gcc and run `export CC=gcc-7` first,
-because clang doesn't support OpenMP (yet).
+On macOS you may need to install gcc (`brew install gcc`) and run `export CC=gcc-10` first.
 
-## Compilation without Cocoa image reader
+## Compilation with Cocoa image reader
 
 macOS version can use Cocoa to read images. This adds support for color profiles
-and other image formats as input.
+and other image formats as input. However, it also disables support for preserving PNG metadata.
 
     cargo build --release --features=cocoa
 
@@ -82,11 +93,11 @@ Little CMS library is used by default.
 It's linked dynamically if `pkg-config` is working (e.g. install `liblcms2-dev`).
 Otherwise uses static build as a fallback.
 
-Set `export LCMS2_STATIC=1` to force static linking.
+Set `export LCMS2_STATIC=1` or build `--features=lcms2-static` to force static linking.
 
 ## Compilation of `libimagequant.a` only
 
 If you want to use pngquant's conversion algorithm without loading/saving PNG
-files, then you can run `make` or `cargo build` in the `lib/` directory.
+files, then you can run `make` or `cargo build --release` in the `lib/` directory.
 
 The library doesn't need libpng nor zlib.

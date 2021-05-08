@@ -49,7 +49,7 @@ Don't write converted files if the conversion isn't worth it.
 
 ### `--speed N`
 
-Speed/quality trade-off from 1 (slowest, highest quality, smallest files) to 11 (fastest, less consistent quality, light comperssion). The default is 3. It's recommended to keep the default, unless you need to generate images in real time (e.g. map tiles). Higher speeds are fine with 256 colors, but don't handle lower number of colors well.
+Speed/quality trade-off from 1 (slowest, highest quality, smallest files) to 11 (fastest, less consistent quality, light comperssion). The default is 4. It's recommended to keep the default, unless you need to generate images in real time (e.g. map tiles). Higher speeds are fine with 256 colors, but don't handle lower number of colors well.
 
 ### `--nofs`
 

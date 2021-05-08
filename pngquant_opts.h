@@ -1,6 +1,7 @@
+#ifndef PNGQUANT_OPTS_H
+#define PNGQUANT_OPTS_H
 
 struct pngquant_options {
-    liq_attr *liq;
     liq_image *fixed_palette_image;
     liq_log_callback_function *log_callback;
     void *log_callback_user_info;
@@ -22,3 +23,4 @@ struct pngquant_options {
 };
 
 pngquant_error pngquant_parse_options(int argc, char *argv[], struct pngquant_options *options);
+#endif

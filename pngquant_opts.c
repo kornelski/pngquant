@@ -129,7 +129,7 @@ pngquant_error pngquant_parse_options(int argc, char *argv[], struct pngquant_op
                 break;
 
             case 's':
-                options->speed = atoi(optarg);
+                options->speed = optarg[0] == '0' ? -1 : atoi(optarg);
                 break;
 
             case 'Q':

@@ -32,6 +32,7 @@ typedef enum {
     LIBPNG_FATAL_ERROR = 25,
     WRONG_INPUT_COLOR_TYPE = 26,
     LIBPNG_INIT_ERROR = 35,
+    LCMS_FATAL_ERROR = 45,
     TOO_LARGE_FILE = 98,
     TOO_LOW_QUALITY = 99,
 } pngquant_error;

@@ -376,6 +376,12 @@ static pngquant_error rwpng_read_image24_libpng(FILE *infile, png24_image *mainp
                                                       hOutProfile, TYPE_RGBA_8,
                                                       INTENT_PERCEPTUAL,
                                                       omp_get_max_threads() > 1 ? cmsFLAGS_NOCACHE : 0);
+        if(!hTransform) {
+            png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+            cmsCloseProfile(hOutProfile);
+            cmsCloseProfile(hInProfile);
+            return LCMS_FATAL_ERROR;
+        }
 
         #pragma omp parallel for \
             if (mainprog_ptr->height*mainprog_ptr->width > 8000) \

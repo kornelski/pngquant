@@ -1,12 +1,12 @@
 [package]
-version = "2.16.0"
+version = "2.16.0-alpha.1"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 build = "rust/build.rs"
 categories = ["multimedia::images"]
 description = "Convert 24/32-bit images to 8-bit palette with alpha channel.\nBindings for libimagequant that powers pngquant lossy PNG compressor.\n\nDual-licensed like pngquant. See https://pngquant.org for details."
 documentation= "https://github.com/kornelski/pngquant#readme"
 homepage = "https://pngquant.org"
-include = ["/rwpng*", "/pngquant.c", "/rust/*", "/COPYRIGHT", "/Cargo.toml", "/README.md"]
+include = ["/rwpng*.[ch]", "/pngquant.c","/pngquant_opts.[ch]", "/rust/*.rs", "/COPYRIGHT", "/Cargo.toml", "/README.md"]
 keywords = ["quantization", "palette", "image", "pngquant", "compression"]
 license = "GPL-3.0+"
 name = "pngquant"

@@ -1,3 +1,7 @@
+version 2.16
+------------
+- reduced stack usage, prevenitng stack overlfow in pathological cases
+
 version 2.13-2.15
 ------------
  - speed and quality improvements

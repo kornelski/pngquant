@@ -18,6 +18,7 @@ extern "C" {
 #[derive(Debug, Copy, Clone)]
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
+#[non_exhaustive]
 pub enum pngquant_error {
     SUCCESS = 0,
     MISSING_ARGUMENT = 1,
@@ -31,6 +32,7 @@ pub enum pngquant_error {
     LIBPNG_FATAL_ERROR = 25,
     WRONG_INPUT_COLOR_TYPE = 26,
     LIBPNG_INIT_ERROR = 35,
+    LCMS_FATAL_ERROR = 45,
     TOO_LARGE_FILE = 98,
     TOO_LOW_QUALITY = 99,
 }

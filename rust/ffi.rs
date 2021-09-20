@@ -18,6 +18,7 @@ extern "C" {
 #[derive(Debug, Copy, Clone)]
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
+#[non_exhaustive]
 pub enum pngquant_error {
     SUCCESS = 0,
     MISSING_ARGUMENT = 1,

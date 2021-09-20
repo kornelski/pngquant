@@ -1,5 +1,5 @@
 name: pngquant
-version: 2.15.1
+version: 2.16.0
 summary: pngquant
 description: |
   Lossy PNG compressor — pngquant command based
@@ -18,7 +18,7 @@ parts:
   pngquant:
     source-type: git
     source: https://github.com/kornelski/pngquant.git
-    source-tag: 2.15.1
+    source-tag: 2.16.0
     plugin: autotools
     configflags:
       - --with-openmp

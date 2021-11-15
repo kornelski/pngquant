@@ -324,6 +324,10 @@ int main(int argc, char *argv[])
 // Don't use this. This is not a public API.
 pngquant_error pngquant_main_internal(struct pngquant_options *options, liq_attr *liq)
 {
+#if defined(_WIN32) || defined(WIN32) || defined(__WIN32__)
+    setlocale(LC_ALL, ".65001"); // issue #376; set UTF-8 for Unicode filenames
+#endif
+
     if (options->map_file) {
         png24_image tmp = {.width=0};
         if (SUCCESS != read_image(liq, options->map_file, false, &tmp, &options->fixed_palette_image, true, true, false)) {

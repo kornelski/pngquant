@@ -1,28 +1,61 @@
 name: CI
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
-
+    name: ${{ matrix.job.target }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { target: aarch64-unknown-linux-gnu   , os: ubuntu-20.04, use-cross: true }
+          - { target: arm-unknown-linux-gnueabihf , os: ubuntu-20.04, use-cross: true }
+          - { target: arm-unknown-linux-musleabihf, os: ubuntu-20.04, use-cross: true }
+          - { target: i686-pc-windows-msvc        , os: windows-2019                  }
+          - { target: i686-unknown-linux-gnu      , os: ubuntu-20.04, use-cross: true }
+          - { target: i686-unknown-linux-musl     , os: ubuntu-20.04, use-cross: true }
+          - { target: x86_64-apple-darwin         , os: macos-10.15                   }
+          - { target: x86_64-pc-windows-gnu       , os: windows-2019                  }
+          - { target: x86_64-pc-windows-msvc      , os: windows-2019                  }
+          - { target: x86_64-unknown-linux-gnu    , os: ubuntu-20.04                  }
+          - { target: x86_64-unknown-linux-musl   , os: ubuntu-20.04, use-cross: true }
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all
-          
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        case ${{ matrix.job.target }} in
+          *-linux-*) sudo apt update ; sudo apt -y install libpng-dev ;;
+          *-apple-*) brew update ; brew install libpng ;;
+        esac
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ matrix.job.target }}
+        override: true
+        profile: minimal
+
+    - name: Build
+      uses: actions-rs/cargo@v1
+      with:
+        use-cross: ${{ matrix.job.use-cross }}
+        command: build
+        args: --release --target=${{ matrix.job.target }} --features=sse,lcms2
+
+    - name: Test
+      uses: actions-rs/cargo@v1
+      with:
+        use-cross: ${{ matrix.job.use-cross }}
+        command: test
+        args: --target=${{ matrix.job.target }} --all

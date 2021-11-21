@@ -21,15 +21,16 @@ pub extern "C" fn rwpng_read_image32_cocoa(file_handle: *mut FILE, width: &mut u
         Err(_) => return pngquant_error::LIBPNG_FATAL_ERROR,
     };
 
+    let (buf, w, h) = image.into_contiguous_buf();
     *file_size = data.len();
-    *width = image.width() as u32;
-    *height = image.height() as u32;
+    *width = w as u32;
+    *height = h as u32;
     unsafe {
-        *out = malloc(image.buf.len() * ::std::mem::size_of::<cocoa_image::RGBA8>()) as *mut _;
+        *out = malloc(buf.len() * std::mem::size_of::<cocoa_image::RGBA8>()) as *mut cocoa_image::RGBA8;
         if (*out).is_null() {
             return pngquant_error::OUT_OF_MEMORY_ERROR;
         }
-        ::std::slice::from_raw_parts_mut(*out, image.buf.len()).clone_from_slice(&image.buf);
+        std::slice::from_raw_parts_mut(*out, buf.len()).copy_from_slice(&buf);
     }
 
     pngquant_error::SUCCESS

@@ -1,6 +1,6 @@
 [package]
 name = "pngquant"
-version = "3.0.0-beta.2"
+version = "3.0.0-beta.3"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 description = "Convert 24/32-bit PNG images to efficient 8-bit format with alpha channel"
 build = "rust/build.rs"
@@ -27,7 +27,7 @@ getopts = "0.2.21"
 libc = "0.2.112"
 libpng-sys = "1.1.8"
 wild = "2.0.4"
-imagequant-sys = { version = "4.0.0-beta.4", path = "lib/imagequant-sys" }
+imagequant-sys = { version = "4.0.0-beta.5", path = "lib/imagequant-sys" }
 
 [dependencies.cocoa_image]
 optional = true

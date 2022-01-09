@@ -2,7 +2,7 @@
 
 use libc::FILE;
 use std::os::raw::*;
-use imagequant_sys::*;
+use imagequant::*;
 
 extern "C" {
     pub static PNGQUANT_USAGE: *const c_char;

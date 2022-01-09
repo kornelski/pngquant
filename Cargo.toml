@@ -32,9 +32,9 @@ wild = "2.0.4"
 optional = true
 version = "1.0.4"
 
-[dependencies.imagequant]
-path = "lib"
-version = "4.0.0-beta.1"
+[dependencies.imagequant-sys]
+path = "lib/imagequant-sys"
+version = "4.0.0-beta.3"
 
 [dependencies.lcms2-sys]
 optional = true

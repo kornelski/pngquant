@@ -38,6 +38,7 @@ fn main() {
         cc.include(dunce::simplified(Path::new(&p)));
     } else {
         cc.include("lib");
+        cc.include("lib/imagequant-sys");
     }
 
     if let Ok(p) = env::var("DEP_PNG_INCLUDE") {

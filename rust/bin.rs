@@ -11,11 +11,11 @@ pub mod rwpng_cocoa;
 
 #[cfg(feature = "lcms2")]
 extern crate lcms2_sys;
-use imagequant::liq_error::LIQ_OK;
-use imagequant::ffi::*;
+use imagequant_sys::liq_error::LIQ_OK;
+use imagequant_sys::*;
 use libc::FILE;
 use crate::ffi::pngquant_internal_print_config;
-use std::os::raw::{c_uint, c_char, c_void};
+use std::os::raw::{c_uint, c_char};
 
 use std::ptr;
 use std::io;
@@ -74,7 +74,7 @@ fn parse_quality(quality: &str) -> Option<(u8, u8)> {
     })
 }
 
-unsafe extern "C" fn log_callback(_a: &liq_attr, msg: *const c_char, _user: *mut c_void) {
+unsafe extern "C" fn log_callback(_a: &liq_attr, msg: *const c_char, _user: AnySyncSendPtr) {
     println!("{}", CStr::from_ptr(msg).to_str().unwrap());
 }
 

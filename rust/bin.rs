@@ -11,8 +11,8 @@ pub mod rwpng_cocoa;
 
 #[cfg(feature = "lcms2")]
 extern crate lcms2_sys;
-use imagequant::liq_error::LIQ_OK;
-use imagequant::*;
+use imagequant_sys::liq_error::LIQ_OK;
+use imagequant_sys::*;
 use libc::FILE;
 use crate::ffi::pngquant_internal_print_config;
 use std::os::raw::{c_uint, c_char};

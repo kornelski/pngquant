@@ -4,10 +4,10 @@ The old `configure && make` method is no longer supported.
 
 ### Prerequisites
 
-Install Rust 1.57 or later: https://rustup.rs
+Install Rust 1.60 or later: https://rustup.rs
 
 On Windows also install msys-git and Visual C++ Build Tools
-with Windows 8 SDK enabled, and reboot.
+with Windows 8/10/11 SDK enabled, and reboot.
 
 ### Building
 
@@ -52,7 +52,7 @@ Otherwise uses static build as a fallback.
 
 Set `export LCMS2_STATIC=1` or build `--features=lcms2-static` to force static linking.
 
-## Compilation of `libimagequant.a` only
+## Compilation of `libimagequant_sys.a` only
 
 If you want to use pngquant's conversion algorithm without loading/saving PNG
 files, then you can run `cargo build --release` in the `lib/` directory.

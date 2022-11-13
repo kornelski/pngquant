@@ -1,6 +1,6 @@
 [package]
 name = "pngquant"
-version = "3.0.0"
+version = "3.0.1"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 description = "Convert 24/32-bit PNG images to efficient 8-bit format with alpha channel"
 build = "rust/build.rs"
@@ -13,6 +13,7 @@ license = "GPL-3.0-or-later"
 readme = "README.md"
 repository = "https://github.com/kornelski/pngquant.git"
 edition = "2021"
+rust-version = "1.60"
 
 [[bin]]
 name = "pngquant"
@@ -35,13 +36,13 @@ version = "1.0.4"
 
 [dependencies.lcms2-sys]
 optional = true
-version = "3.1.9"
+version = "4.0.0"
 
 [features]
-cocoa = ["cocoa_image"]
+cocoa = ["dep:cocoa_image"]
 default = ["lcms2"]
-lcms2 = ["lcms2-sys"]
-lcms2-static = ["lcms2", "lcms2-sys/static"]
+lcms2 = ["dep:lcms2-sys"]
+lcms2-static = ["lcms2", "lcms2-sys?/static"]
 png-static = ["libpng-sys/static"]
 z-static = ["libpng-sys/static-libz"]
 static = ["lcms2-static", "png-static"]

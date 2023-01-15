@@ -346,16 +346,6 @@ pngquant_error pngquant_main_internal(struct pngquant_options *options, liq_attr
         liq_result_destroy(tmp_quantize);
     }
 
-#ifdef _OPENMP
-    // if there's a lot of files, coarse parallelism can be used
-    if (options->num_files > 2*omp_get_max_threads()) {
-        omp_set_nested(0);
-        omp_set_dynamic(1);
-    } else {
-        omp_set_nested(1);
-    }
-#endif
-
     unsigned int error_count=0, skipped_count=0, file_count=0;
     pngquant_error latest_error=SUCCESS;
 

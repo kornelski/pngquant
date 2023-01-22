@@ -26,7 +26,7 @@ use crate::ffi::*;
 use crate::ffi::pngquant_error::*;
 
 fn unwrap_ptr(opt: Option<&CString>) -> *const c_char {
-    opt.map(|c| c.as_ptr()).unwrap_or(ptr::null())
+    opt.map_or(ptr::null(), |c| c.as_ptr())
 }
 
 fn print_full_version(fd: &mut dyn io::Write, c_fd: *mut FILE) {
@@ -65,7 +65,7 @@ fn parse_quality(quality: &str) -> Option<(u8, u8)> {
         // quality="%d"
         (t, None) => {
             let target = t.parse().ok()?;
-            (((target as u16)*9/10) as u8, target)
+            ((u16::from(target)*9/10) as u8, target)
         },
         // quality="%d-%d"
         (l, Some(t)) => {
@@ -110,7 +110,7 @@ fn run() -> ffi::pngquant_error {
     let mut m = match opts.parse(args) {
         Ok(m) => m,
         Err(err) => {
-            eprintln!("{}", err);
+            eprintln!("{err}");
             print_usage(&mut io::stderr());
             return MISSING_ARGUMENT;
         },
@@ -205,7 +205,7 @@ fn run() -> ffi::pngquant_error {
     }
 
     if m.opt_present("transbug") {
-        liq_set_last_index_transparent(liq, true as _);
+        liq_set_last_index_transparent(liq, i32::from(true));
     }
 
     if let Some(speed) = m.opt_str("speed") {
@@ -257,7 +257,7 @@ fn run() -> ffi::pngquant_error {
 
     // new filename extension depends on options used. Typically basename-fs8.png
     if options.extension.is_null() {
-        options.extension = if options.floyd > 0. { b"-fs8.png\0" } else { b"-or8.png\0" }.as_ptr() as *const _;
+        options.extension = if options.floyd > 0. { b"-fs8.png\0" } else { b"-or8.png\0" }.as_ptr().cast();
     }
 
     if !options.output_file_path.is_null() && options.num_files != 1 {

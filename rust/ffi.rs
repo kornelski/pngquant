@@ -1,8 +1,8 @@
 #![allow(non_camel_case_types)]
 
 use libc::FILE;
-use std::os::raw::*;
 use imagequant_sys::*;
+use std::os::raw::{c_char, c_uint, c_void};
 
 extern "C" {
     pub static PNGQUANT_USAGE: *const c_char;
@@ -18,6 +18,7 @@ extern "C" {
 #[derive(Debug, Copy, Clone)]
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
 #[non_exhaustive]
 pub enum pngquant_error {
     SUCCESS = 0,

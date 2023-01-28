@@ -1,57 +1,37 @@
 [package]
 name = "pngquant"
-version = "3.0.1"
+version = "4.0.0"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 description = "Convert 24/32-bit PNG images to efficient 8-bit format with alpha channel"
-build = "rust/build.rs"
 categories = ["multimedia::images"]
 homepage = "https://pngquant.org"
 documentation = "https://github.com/kornelski/pngquant#readme"
-include = ["/rwpng*.[ch]", "/pngquant.c","/pngquant_opts.[ch]", "/rust/*.rs", "/COPYRIGHT", "/Cargo.toml", "/README.md"]
+include = ["/src/*.rs", "/COPYRIGHT", "/Cargo.toml", "/README.md"]
 keywords = ["quantization", "palette", "image", "pngquant", "compression"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
 repository = "https://github.com/kornelski/pngquant.git"
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.63"
 
 [[bin]]
+path = "src/pngquant.rs"
 name = "pngquant"
-path = "rust/bin.rs"
-
-[build-dependencies]
-cc = "1.0.72"
-dunce = "1.0.2"
 
 [dependencies]
-getopts = "0.2.21"
-libc = "0.2.112"
-libpng-sys = "1.1.8"
-wild = "2.0.4"
-imagequant-sys = { version = "4", path = "lib/imagequant-sys" }
-
-[dependencies.cocoa_image]
-optional = true
-version = "1.0.4"
-
-[dependencies.lcms2-sys]
-optional = true
-version = "4.0.0"
-
-[features]
-cocoa = ["dep:cocoa_image"]
-default = ["lcms2"]
-lcms2 = ["dep:lcms2-sys"]
-lcms2-static = ["lcms2", "lcms2-sys?/static"]
-png-static = ["libpng-sys/static"]
-z-static = ["libpng-sys/static-libz"]
-static = ["lcms2-static", "png-static"]
+clap = { version = "4.1.4", features = ["cargo"] }
+imagequant = { version = "4.1", path = "lib" }
+load_image = "3.0.1"
+lodepng = "3.7.2"
+rayon = "1.6.1"
+wild = "2.1.0"
 
 [profile.release]
 opt-level = 3
 codegen-units = 1
-lto = true
+lto = "fat"
 panic = "abort"
+strip = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

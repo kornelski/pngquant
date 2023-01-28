@@ -4,7 +4,7 @@ The old `configure && make` method is no longer supported.
 
 ### Prerequisites
 
-Install Rust 1.60 or later: https://rustup.rs
+Install Rust 1.66 or later [from rustup.rs](https://rustup.rs).
 
 On Windows also install msys-git and Visual C++ Build Tools
 with Windows 8/10/11 SDK enabled, and reboot.

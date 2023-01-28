@@ -6,10 +6,9 @@ TESTDIR=$1
 IMGSRC=$TESTDIR/img
 TMPDIR=$(mktemp -d -t pngquantXXXXXX)
 BIN=$2
-TESTBIN=$3
 PATH=.:$PATH # Required, since BIN may be just 'pngquant'
 
-$BIN --version 2>&1 | fgrep 2.
+$BIN --version 2>&1 | fgrep 4.
 $BIN --help | fgrep -q "usage:"
 
 $BIN 2>/dev/null && { echo "should fail without args"; exit 1; } || true
@@ -53,7 +52,7 @@ function test_skip() {
     $BIN "$TMPDIR/skiptest.png" -Q 0-50 -o "$TMPDIR/q50output.png"
     test -f "$TMPDIR/q50output.png"
 
-    $BIN "$TMPDIR/q50output.png" --skip-if-larger -Q 0-49 -o "$TMPDIR/q49output.png" && { echo "should skip due to filesize"; exit 1; } || RET=$?
+    $BIN "$TMPDIR/q50output.png" --skip-if-larger -Q 0-55 -o "$TMPDIR/q55output.png" && { echo "should skip due to filesize"; exit 1; } || RET=$?
     test "$RET" -eq 98 || { echo "should return 98, not $RET"; exit 1; }
     test '!' -e "$TMPDIR/q49output.png"
 }
@@ -78,4 +77,3 @@ do
     wait $job
 done
 
-$TESTBIN

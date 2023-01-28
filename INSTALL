@@ -1,6 +1,6 @@
-## Compiling on Linux, *BSD and macOS using GNU/Make
+## Compiling on Linux, *BSD and macOS using the old GNU/Make
 
-(For instructions for Windows or Rust, see sections below.)
+(For better instructions for Windows or Rust, see sections below.)
 
 To get the code:
 
@@ -36,7 +36,7 @@ Build static libpng (`./configure --enable-static && make`), and then
 
 ### Prerequisites
 
-Install Rust 1.36 or later: https://www.rust-lang.org/install.html
+Install Rust 1.67 or later: https://www.rust-lang.org/install.html
 
 On Windows also install msys-git and Visual C++ Build Tools
 with Windows 8 SDK enabled, and reboot.

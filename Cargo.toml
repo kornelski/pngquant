@@ -1,5 +1,5 @@
 [package]
-version = "2.17.1"
+version = "2.18.0"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 build = "rust/build.rs"
 categories = ["multimedia::images"]

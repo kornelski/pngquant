@@ -229,6 +229,12 @@ fn run() -> Result<(), Error> {
             .value_name("pal.png")
             .value_parser(value_parser!(PathBuf))
             .help("Use a palette of this file instead"))
+        .arg(Arg::new("importance")
+            .long("importance")
+            .value_name("mask.png")
+            .conflicts_with("map")
+            .value_parser(value_parser!(PathBuf))
+            .help("Importance of each pixel"))
         .arg(Arg::new("files")
             .value_name("FILES")
             .value_parser(value_parser!(PathBuf))
@@ -265,7 +271,8 @@ fn run() -> Result<(), Error> {
         0.
     };
 
-    let map_file = m.get_one::<PathBuf>("map");
+    let palette_file = m.get_one::<PathBuf>("map");
+    let importance_map_file = m.get_one::<PathBuf>("importance");
     let verbose = m.get_flag("verbose");
 
     if verbose {
@@ -349,7 +356,12 @@ fn run() -> Result<(), Error> {
         return Err(Error::new("No input files specified", MissingArgument));
     }
 
-    let fixed_palette = map_file.map(|map_file| {
+    let importance_map = importance_map_file.map(|importance_map_file| {
+        let (img, _) = read_image_from_path(&importance_map_file.as_ref())?;
+        Ok(image_to_grayscale(img))
+    }).transpose()?;
+
+    let fixed_palette = palette_file.map(|map_file| {
         let (img, _) = read_image_from_path(map_file.as_ref())?;
 
         // settings like speed and posterize are fine, but not the quality limit
@@ -364,14 +376,14 @@ fn run() -> Result<(), Error> {
     match &input {
         Input::Stdin(data) => {
             let img = load_image::load_data(data).map_err(|e| Error::new(format!("unable to parse image: {e}"), ExitCode::ReadError))?;
-            let png = pngquant_image(&liq, img, dithering_level, fixed_palette.as_deref())?;
+            let png = pngquant_image(&liq, img, dithering_level, fixed_palette.as_deref(), importance_map.as_deref())?;
             save_image(&output, None, data, &png, skip_if_larger, force)?;
         },
         Input::Paths(files) => {
             // Don't abort on the first failure
             let results = files.par_iter().map(move |&file| {
                 let (img, encoded_data) = read_image_from_path(file.as_ref())?;
-                let png = pngquant_image(&liq, img, dithering_level, fixed_palette.as_deref())?;
+                let png = pngquant_image(&liq, img, dithering_level, fixed_palette.as_deref(), importance_map.as_deref())?;
                 save_image(&output, Some(file), &encoded_data, &png, skip_if_larger, force)
             }).collect::<Vec<_>>();
             let failed = results.iter().filter(|r| r.is_err()).count();
@@ -445,10 +457,13 @@ fn write_to_path(path: &Path, png: &[u8]) -> Result<(), Error> {
         .map_err(|e| Error::new(format!("Can't write '{}': {e}", path.display()), ExitCode::WriteError))
 }
 
-fn pngquant_image(liq: &Attributes, img: load_image::Image, dithering_level: f32, fixed_palette: Option<&[RGBA]>) -> Result<Vec<u8>, Error> {
+fn pngquant_image(liq: &Attributes, img: load_image::Image, dithering_level: f32, fixed_palette: Option<&[RGBA]>, importance_map: Option<&[u8]>) -> Result<Vec<u8>, Error> {
     let mut img = convert_image(liq, &img)?;
     let width = img.width();
     let height = img.height();
+    if let Some(imp) = importance_map {
+        img.set_importance_map(imp).msg("Importance map failed")?;
+    }
     if let Some(fixed_palette) = fixed_palette {
         for c in fixed_palette {
             img.add_fixed_color(*c).msg("Fixed palette error")?;
@@ -456,9 +471,9 @@ fn pngquant_image(liq: &Attributes, img: load_image::Image, dithering_level: f32
     }
     let mut res = liq.quantize(&mut img).msg("Quantization failed")?;
     res.set_dithering_level(dithering_level).msg("Invalid dithering level")?;
-    let (pal, img) = res.remapped(&mut img).msg("Remapping failed")?;
+    let (pal, pixels) = res.remapped(&mut img).msg("Remapping failed")?;
 
-    encode_image(&pal, &img, width, height)
+    encode_image(&pal, &pixels, width, height)
 }
 
 fn encode_image(palette: &[RGBA], pixels: &[u8], width: usize, height: usize) -> Result<Vec<u8>, Error> {
@@ -508,6 +523,19 @@ fn convert_image<'a>(liq: &Attributes, img: &'a load_image::Image) -> Result<Ima
     }.map_err(|e| {
         Error::new(format!("internal error: {}", e), ExitCode::WrongInputColorType)
     })
+}
+
+fn image_to_grayscale(img: load_image::Image) -> Vec<u8> {
+    match img.bitmap {
+        ImageData::RGB8(pixels) => pixels.into_iter().map(|px| px.g).collect(),
+        ImageData::RGBA8(pixels) => pixels.into_iter().map(|px| px.g).collect(),
+        ImageData::RGB16(pixels) => pixels.into_iter().map(|px| (px.g>>8) as u8).collect(),
+        ImageData::RGBA16(pixels) => pixels.into_iter().map(|px| (px.g>>8) as u8).collect(),
+        ImageData::GRAY8(pixels) => pixels.into_iter().map(|px| px.0).collect(),
+        ImageData::GRAY16(pixels) => pixels.into_iter().map(|px| (px.0>>8) as u8).collect(),
+        ImageData::GRAYA8(pixels) => pixels.into_iter().map(|px| px.0).collect(),
+        ImageData::GRAYA16(pixels) => pixels.into_iter().map(|px| (px.0>>8) as u8).collect(),
+    }
 }
 
 #[cfg(windows)]

@@ -2,15 +2,13 @@ name: CI
 
 env:
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  CARGO_TERM_COLOR: always
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
-env:
-  CARGO_TERM_COLOR: always
 
 jobs:
   build:

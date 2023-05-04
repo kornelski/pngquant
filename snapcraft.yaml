@@ -10,7 +10,7 @@ confinement: strict
 
 apps:
   pngquant:
-    command: pngquant
+    command: bin/pngquant
     plugs:
     - home
 

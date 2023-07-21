@@ -145,10 +145,15 @@ static int read_chunk_callback(png_structp png_ptr, png_unknown_chunkp in_chunk)
     struct rwpng_chunk **head = (struct rwpng_chunk **)png_get_user_chunk_ptr(png_ptr);
 
     struct rwpng_chunk *chunk = malloc(sizeof(struct rwpng_chunk));
+    if (!chunk) return 0;
+
     memcpy(chunk->name, in_chunk->name, 5);
     chunk->size = in_chunk->size;
     chunk->location = in_chunk->location;
     chunk->data = in_chunk->size ? malloc(in_chunk->size) : NULL;
+    if (in_chunk->size && !chunk->data) {
+        return 0;
+    }
     if (in_chunk->size) {
         memcpy(chunk->data, in_chunk->data, in_chunk->size);
     }
@@ -455,6 +460,9 @@ pngquant_error rwpng_read_image24(FILE *infile, png24_image *out, int strip, int
     out->output_color = RWPNG_SRGB;
     out->rgba_data = (unsigned char *)pixel_data;
     out->row_pointers = malloc(sizeof(out->row_pointers[0])*out->height);
+    if (!out->row_pointers) {
+        return OUT_OF_MEMORY_ERROR;
+    }
     for(int i=0; i < out->height; i++) {
         out->row_pointers[i] = (unsigned char *)&pixel_data[out->width*i];
     }

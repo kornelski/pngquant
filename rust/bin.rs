@@ -104,6 +104,7 @@ fn run() -> ffi::pngquant_error {
     opts.optopt("Q", "quality", "0-100", "");
     opts.optopt("", "posterize", "0", "");
     opts.optopt("", "map", "png", "");
+    opts.optopt("", "colors", "0", "");
 
     let args: Vec<_> = wild::args().skip(1).collect();
     let has_some_explicit_args = !args.is_empty();
@@ -123,10 +124,12 @@ fn run() -> ffi::pngquant_error {
     let extension = m.opt_str("ext").and_then(|s| CString::new(s).ok());
     let map_file = m.opt_str("map").and_then(|s| CString::new(s).ok());
 
-    let colors = if let Some(c) = m.free.get(0).and_then(|s| s.parse().ok()) {
-        m.free.remove(0);
-        if m.free.is_empty() {
-            m.free.push("-".to_owned()); // stdin default
+    let colors = if let Some(c) = m.opt_str("colors").as_ref().or(m.free.get(0)).and_then(|s| s.parse().ok()) {
+        if !m.opt_present("colors") {
+            m.free.remove(0);
+            if m.free.is_empty() {
+                m.free.push("-".to_owned()); // stdin default
+            }
         }
         c
     } else {0};

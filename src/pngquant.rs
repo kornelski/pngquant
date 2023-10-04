@@ -1,6 +1,15 @@
+//! This is the main CLI executable for the Rust version
+//!
 //! © 2021 by Kornel Lesiński.
 //!
 //! See COPYRIGHT file for license.
+
+#![allow(clippy::manual_range_contains)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::enum_glob_use)]
+#![allow(clippy::inline_always)]
+#![allow(clippy::map_unwrap_or)]
+#![allow(clippy::ignored_unit_patterns)]
 
 use load_image::ImageData;
 use load_image::export::rgb::{ComponentMap};
@@ -51,7 +60,7 @@ fn parse_quality(quality: &str) -> Result<(u8, u8), String> {
         // quality="%d"
         (t, None) => {
             let target = t.parse().map_err(|_| "Quality value is not a number")?;
-            (((target as u16) * 9 / 10) as u8, target)
+            ((u16::from(target) * 9 / 10) as u8, target)
         }
         // quality="%d-%d"
         (l, Some(t)) => (l.parse().map_err(|_| "First number is invalid")?, t.parse().map_err(|_| "Last number is invalid")?),
@@ -277,7 +286,7 @@ fn run() -> Result<(), Error> {
 
     if verbose {
         liq.set_log_callback(|_a, msg| {
-            println!("  {}", msg);
+            println!("  {msg}");
         });
     }
 
@@ -299,7 +308,7 @@ fn run() -> Result<(), Error> {
             let first_arg = files.get(0)?;
             let colors = first_arg.to_str()?.parse::<u8>().ok()?;
             if !Path::new(first_arg).exists() {
-                eprintln!("use --colors {} instead", colors);
+                eprintln!("use --colors {colors} instead");
                 files.remove(0);
                 if files.is_empty() {
                     files.push("-".as_ref()); // stdin default
@@ -317,7 +326,7 @@ fn run() -> Result<(), Error> {
 
     let input = if files.len() == 1 && files[0] == Path::new("-") {
         let mut data_in = Vec::with_capacity(1<<16);
-        std::io::stdin().lock().read_to_end(&mut data_in).map_err(|e| Error::new(format!("error reading stdin: {}", e), ReadError))?;
+        std::io::stdin().lock().read_to_end(&mut data_in).map_err(|e| Error::new(format!("error reading stdin: {e}"), ReadError))?;
         Input::Stdin(data_in)
     } else {
         Input::Paths(files)
@@ -357,7 +366,7 @@ fn run() -> Result<(), Error> {
     }
 
     let importance_map = importance_map_file.map(|importance_map_file| {
-        let (img, _) = read_image_from_path(&importance_map_file.as_ref())?;
+        let (img, _) = read_image_from_path(importance_map_file.as_ref())?;
         Ok(image_to_grayscale(img))
     }).transpose()?;
 
@@ -382,7 +391,7 @@ fn run() -> Result<(), Error> {
         Input::Paths(files) => {
             // Don't abort on the first failure
             let results = files.par_iter().map(move |&file| {
-                let (img, encoded_data) = read_image_from_path(file.as_ref())?;
+                let (img, encoded_data) = read_image_from_path(file)?;
                 let png = pngquant_image(&liq, img, dithering_level, fixed_palette.as_deref(), importance_map.as_deref())?;
                 save_image(&output, Some(file), &encoded_data, &png, skip_if_larger, force)
             }).collect::<Vec<_>>();
@@ -423,7 +432,7 @@ fn save_image(output: &Output, base_path: Option<&Path>, original_data: &[u8], p
                 }
             }
             if !skip_if_larger || png.len() < original_data_len {
-                write_to_path(path, &png)?
+                write_to_path(path, png)?;
             } else {
                 return Err(Error::new(format!("skipped {}, because new {}B file was larger than original {original_data_len}B", path.display(), png.len()), ExitCode::NotOverwritingError));
             }
@@ -435,7 +444,7 @@ fn save_image(output: &Output, base_path: Option<&Path>, original_data: &[u8], p
             } else {
                 original_data
             };
-            std::io::stdout().lock().write_all(&data).map_err(|e| Error::new(format!("Can't write to stdout: {}", e), ExitCode::WriteError))?;
+            std::io::stdout().lock().write_all(data).map_err(|e| Error::new(format!("Can't write to stdout: {e}"), ExitCode::WriteError))?;
             if use_original {
                 return Err(Error::new(format!("kept original, because new {}B file was larger than original {}B", png.len(), original_data.len()), ExitCode::NotOverwritingError));
             }
@@ -446,7 +455,7 @@ fn save_image(output: &Output, base_path: Option<&Path>, original_data: &[u8], p
 
 fn path_to_save(ext: &OsStr, base_path: &Path) -> PathBuf {
     let p = base_path.to_string_lossy(); // maybe osstr will be useful one day…
-    let stem = p.rsplitn(2, '.').nth(1).unwrap_or(&p);
+    let stem = p.rsplit_once('.').map(|x| x.0).unwrap_or(&p);
     let mut s = OsString::with_capacity(stem.len() + ext.len());
     s.extend([stem.as_ref(), ext]);
     s.into()
@@ -480,7 +489,7 @@ fn encode_image(palette: &[RGBA], pixels: &[u8], width: usize, height: usize) ->
     let mut enc = lodepng::Encoder::new();
     enc.set_palette(palette)
         .and_then(move |_| enc.encode(pixels, width, height))
-        .map_err(|e| Error::new(format!("Encoding error: {}", e), ExitCode::EncodingError))
+        .map_err(|e| Error::new(format!("Encoding error: {e}"), ExitCode::EncodingError))
 }
 
 fn read_image_from_path(path: &Path) -> Result<(load_image::Image, Vec<u8>), Error> {
@@ -500,7 +509,7 @@ fn read_image_from_path(path: &Path) -> Result<(load_image::Image, Vec<u8>), Err
     Ok((img, data))
 }
 
-fn row_converter<'a, T: Send + Sync + Copy>(data: &'a [T], convert_pixel: impl Fn(T) -> RGBA + Send + Sync + 'static) -> impl Fn(&mut [MaybeUninit<imagequant::RGBA>], usize) + Send + Sync + 'a {
+fn row_converter<T: Send + Sync + Copy>(data: &[T], convert_pixel: impl Fn(T) -> RGBA + Send + Sync + 'static) -> impl Fn(&mut [MaybeUninit<imagequant::RGBA>], usize) + Send + Sync + '_ {
     move |output_row: &mut [MaybeUninit<imagequant::RGBA>], y: usize| {
         let width = output_row.len();
         let input_row = &data[y * width..y * width + width];
@@ -521,7 +530,7 @@ fn convert_image<'a>(liq: &Attributes, img: &'a load_image::Image) -> Result<Ima
         ImageData::GRAYA8(pixels) => unsafe { Image::new_fn(liq, row_converter(pixels, |g| RGBA::new(g.0,g.0,g.0,g.1)), img.width, img.height, 0.) },
         ImageData::GRAYA16(pixels) => unsafe { Image::new_fn(liq, row_converter(pixels, |ga| {let g = (ga.0>>8) as u8; RGBA::new(g,g,g,(ga.1>>8) as u8)}), img.width, img.height, 0.) },
     }.map_err(|e| {
-        Error::new(format!("internal error: {}", e), ExitCode::WrongInputColorType)
+        Error::new(format!("internal error: {e}"), ExitCode::WrongInputColorType)
     })
 }
 

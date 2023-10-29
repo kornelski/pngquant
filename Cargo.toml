@@ -1,6 +1,6 @@
 [package]
 name = "pngquant"
-version = "3.0.2"
+version = "3.0.3"
 authors = ["Kornel Lesiński <kornel@pngquant.org>"]
 description = "Convert 24/32-bit PNG images to efficient 8-bit format with alpha channel"
 build = "rust/build.rs"

@@ -1,5 +1,5 @@
 name: pngquant
-version: 3.0.1
+version: 3.0.3
 summary: pngquant
 description: |
   Lossy PNG compressor — pngquant command based
@@ -18,7 +18,7 @@ parts:
   pngquant:
     source-type: git
     source: https://github.com/kornelski/pngquant.git
-    source-tag: 3.0.1
+    source-tag: 3.0.3
     plugin: rust
     build-packages:
       - gcc

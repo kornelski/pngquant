@@ -124,7 +124,7 @@ fn run() -> ffi::pngquant_error {
     let extension = m.opt_str("ext").and_then(|s| CString::new(s).ok());
     let map_file = m.opt_str("map").and_then(|s| CString::new(s).ok());
 
-    let colors = if let Some(c) = m.opt_str("colors").as_ref().or(m.free.get(0)).and_then(|s| s.parse().ok()) {
+    let colors = if let Some(c) = m.opt_str("colors").as_ref().or(m.free.first()).and_then(|s| s.parse().ok()) {
         if !m.opt_present("colors") {
             m.free.remove(0);
             if m.free.is_empty() {

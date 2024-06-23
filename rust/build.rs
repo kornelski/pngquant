@@ -26,8 +26,7 @@ fn main() {
         cc.define("DEBUG", Some("1"));
     }
 
-    if target_arch == "x86_64" ||
-       (target_arch == "x86" && cfg!(feature = "sse")) {
+    if target_arch == "x86_64" || target_arch == "x86" {
         cc.define("USE_SSE", Some("1"));
     }
 

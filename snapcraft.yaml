@@ -7,7 +7,7 @@ description: |
   Makes PNG images 3–4 times smaller with minimal loss of quality. Supports alpha transparency. Compatible with all browsers and operating systems.
 
   A command-line tool based on the libimagequant library.
-license: GPL-3.0+
+license: GPL-3.0-or-later
 contact: kornel+snap@pngquant.org
 donation: https://paypal.me/kornel
 issues: https://github.com/kornelski/pngquant/issues
@@ -20,13 +20,16 @@ apps:
     command: bin/pngquant
     plugs:
     - home
+    - removable-media
 
 parts:
   pngquant:
     source-type: git
     source: https://github.com/kornelski/pngquant.git
-    source-tag: 3.0.3
     plugin: rust
+    override-pull: |
+      craftctl default
+      craftctl set version="$(git describe --tags --abbrev=0)"
     build-packages:
       - gcc
       - libpng-dev

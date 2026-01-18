@@ -28,7 +28,7 @@ getopts = "0.2.21"
 libc = "0.2.112"
 libpng-sys = "1.1.9"
 wild = "2.2.0"
-imagequant-sys = { version = "4.1.0", path = "lib/imagequant-sys" }
+imagequant-sys = { version = "4.1.0", path = "lib/imagequant-sys", default-features = false }
 
 [dependencies.cocoa_image]
 optional = true
@@ -39,18 +39,21 @@ optional = true
 version = "4.0.3"
 
 [features]
+default = ["lcms2", "threads"]
+
 cocoa = ["dep:cocoa_image"]
-default = ["lcms2"]
 lcms2 = ["dep:lcms2-sys"]
 lcms2-static = ["lcms2", "lcms2-sys?/static"]
 png-static = ["libpng-sys/static"]
 z-static = ["libpng-sys/static-libz"]
 static = ["lcms2-static", "png-static"]
+threads = ["imagequant-sys/threads"]
 
 [profile.release]
 opt-level = 3
 codegen-units = 1
 lto = true
+strip = true
 panic = "abort"
 
 [package.metadata.docs.rs]

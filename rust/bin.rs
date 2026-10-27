@@ -203,7 +203,7 @@ fn run() -> ffi::pngquant_error {
     let liq = &mut *liq;
 
     if options.verbose {
-        unsafe { liq_set_log_callback(liq, log_callback, Default::default()); }
+        unsafe { liq_set_log_callback(liq, Some(log_callback), Default::default()); }
         options.log_callback = Some(log_callback);
     }
 
